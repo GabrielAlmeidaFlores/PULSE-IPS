@@ -12,7 +12,7 @@ export function CopyReportLink({ orgSlug }: Props): React.ReactElement {
 
   function handleCopy(): void {
     const url = `${window.location.origin}/report/${orgSlug}`
-    navigator.clipboard.writeText(url).then(() => {
+    void navigator.clipboard.writeText(url).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })

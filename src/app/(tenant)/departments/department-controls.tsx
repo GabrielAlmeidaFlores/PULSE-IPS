@@ -134,7 +134,6 @@ export function DepartmentControls({ departments }: Props): React.ReactElement {
         </div>
       </div>
 
-      {/* Modal: Adicionar departamento */}
       <Dialog open={showAddModal} onOpenChange={(o) => { if (!o) { setShowAddModal(false); setNewName("") } }}>
         <DialogPortal>
           <DialogOverlay />
@@ -173,6 +172,7 @@ export function DepartmentControls({ departments }: Props): React.ReactElement {
       </Dialog>
 
       <EditNameModal
+        key={editTarget?.id ?? "closed"}
         open={editTarget !== null}
         onClose={() => setEditTarget(null)}
         onSave={handleRename}

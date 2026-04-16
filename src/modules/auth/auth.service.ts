@@ -3,6 +3,7 @@ import { randomUUID } from "crypto"
 import { addHours } from "date-fns"
 import { env } from "@/env"
 import { getEmailService } from "@/libs/integrations"
+import { renderEmailTemplate } from "@/libs/email-templates"
 import { AppError } from "@/libs/errors/app-error"
 import { createSession, createSuperAdminSession, destroySession, destroySuperAdminSession } from "@/modules/auth/session"
 import type { LoginInput, SuperAdminLoginInput, SessionPayload } from "@/modules/auth/auth.types"
@@ -105,17 +106,7 @@ export async function requestPasswordReset(email: string, orgSlug: string): Prom
   await emailService.send({
     to: email,
     subject: "Redefinição de senha — Pulse",
-    html: `
-      <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
-        <h2 style="color:#0f172a">Redefinir sua senha</h2>
-        <p>Recebemos uma solicitação de redefinição de senha para a conta <strong>${email}</strong> na organização <strong>${org.name}</strong>.</p>
-        <p>Clique no botão abaixo para criar uma nova senha:</p>
-        <a href="${resetUrl}" style="display:inline-block;padding:12px 24px;background:#0f172a;color:#fff;text-decoration:none;font-weight:bold;margin:16px 0">
-          Redefinir senha
-        </a>
-        <p style="color:#64748b;font-size:13px">Este link expira em 1 hora. Se você não solicitou a redefinição, ignore este e-mail.</p>
-      </div>
-    `,
+    html: renderEmailTemplate({ name: "password-reset", props: { resetUrl } }),
   })
 }
 

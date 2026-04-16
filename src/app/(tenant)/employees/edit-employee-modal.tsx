@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useTransition } from "react"
-import { useForm } from "react-hook-form"
+import { useState, useEffect } from "react"
+import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { ChevronDown, ChevronUp } from "lucide-react"
@@ -46,7 +46,7 @@ interface Props {
 }
 
 export function EditEmployeeModal({ open, onClose, onSave, loading, employee, departments }: Props): React.ReactElement {
-  const [showSchedule, setShowSchedule] = useState(false)
+  const [showSchedule, setShowSchedule] = useState(Boolean(employee?.workStartTime))
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -60,6 +60,8 @@ export function EditEmployeeModal({ open, onClose, onSave, loading, employee, de
     },
   })
 
+  const departmentIdValue = useWatch({ control: form.control, name: "departmentId" })
+
   useEffect(() => {
     if (open && employee) {
       form.reset({
@@ -70,7 +72,6 @@ export function EditEmployeeModal({ open, onClose, onSave, loading, employee, de
         workStartTime: employee.workStartTime ?? "",
         workEndTime: employee.workEndTime ?? "",
       })
-      setShowSchedule(Boolean(employee.workStartTime))
     }
   }, [open, employee, form])
 
@@ -111,7 +112,7 @@ export function EditEmployeeModal({ open, onClose, onSave, loading, employee, de
               <select
                 style={{ borderRadius: 0 }}
                 className="w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors appearance-none"
-                value={form.watch("departmentId")}
+                value={departmentIdValue}
                 onChange={(e) => form.setValue("departmentId", e.target.value)}
               >
                 <option value="">Selecione...</option>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Dialog, DialogClose, DialogContent, DialogOverlay, DialogPortal, DialogTitle } from "@/components/ui/dialog"
 
 interface Props {
@@ -11,12 +11,8 @@ interface Props {
   initialName?: string
 }
 
-export function EditNameModal({ open, onClose, onSave, loading, initialName = "" }: Props): React.ReactElement {
+export function EditNameModal({ open, onClose, onSave, loading = false, initialName = "" }: Props): React.ReactElement {
   const [name, setName] = useState(initialName)
-
-  useEffect(() => {
-    if (open) setName(initialName)
-  }, [open, initialName])
 
   function handleSave(): void {
     if (!name.trim()) return

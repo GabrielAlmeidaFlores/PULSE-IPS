@@ -159,6 +159,7 @@ export function EmployeeTable({ employees, total, departments }: Props): React.R
       </div>
 
       <EditEmployeeModal
+        key={editTarget?.id ?? "closed"}
         open={editTarget !== null}
         onClose={() => setEditTarget(null)}
         onSave={handleSaveEdit}

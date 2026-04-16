@@ -2,6 +2,7 @@ import { randomUUID } from "crypto"
 import { addDays } from "date-fns"
 import { env } from "@/env"
 import { getEmailService } from "@/libs/integrations"
+import { renderEmailTemplate } from "@/libs/email-templates"
 import { AppError } from "@/libs/errors/app-error"
 import { hashPassword } from "@/modules/auth/auth.service"
 import {
@@ -32,8 +33,11 @@ export async function sendInvite(
   const emailService = getEmailService()
   await emailService.send({
     to: email,
-    subject: `You have been invited to ${org.name} on Pulse`,
-    html: `<p>You have been invited to join <strong>${org.name}</strong> on Pulse.</p><p><a href="${inviteUrl}">Accept Invitation</a></p><p>This link expires in 7 days.</p>`,
+    subject: `Você foi convidado para ${org.name} no Pulse`,
+    html: renderEmailTemplate({
+      name: "org-invite",
+      props: { orgName: org.name, inviteUrl, role },
+    }),
   })
 }
 

@@ -1,36 +1,60 @@
-import { renderToStaticMarkup } from "react-dom/server"
-import { createElement } from "react"
-import { OrgInviteEmail } from "@/libs/email-templates/org-invite"
-import { EmailVerificationEmail } from "@/libs/email-templates/email-verification"
-import { PasswordResetEmail } from "@/libs/email-templates/password-reset"
-import { PlanSubscribedEmail } from "@/libs/email-templates/plan-subscribed"
-import { PaymentFailedEmail } from "@/libs/email-templates/payment-failed"
-import { PlanCancelledEmail } from "@/libs/email-templates/plan-cancelled"
+import { join } from "path"
+import { readFileSync } from "fs"
+
+interface OrgInviteProps extends Record<string, string> {
+  orgName: string
+  inviteUrl: string
+  role: string
+}
+
+interface EmailVerificationProps extends Record<string, string> {
+  verificationUrl: string
+}
+
+interface PasswordResetProps extends Record<string, string> {
+  resetUrl: string
+}
+
+interface PlanSubscribedProps extends Record<string, string> {
+  orgName: string
+  planName: string
+  priceFormatted: string
+  interval: string
+}
+
+interface PaymentFailedProps extends Record<string, string> {
+  orgName: string
+  portalUrl: string
+}
+
+interface PlanCancelledProps extends Record<string, string> {
+  orgName: string
+  endDate: string
+}
 
 type EmailTemplate =
-  | { name: "org-invite"; props: { orgName: string; inviteUrl: string; role: string } }
-  | { name: "email-verification"; props: { verificationUrl: string } }
-  | { name: "password-reset"; props: { resetUrl: string } }
-  | {
-      name: "plan-subscribed"
-      props: { orgName: string; planName: string; priceFormatted: string; interval: string }
-    }
-  | { name: "payment-failed"; props: { orgName: string; portalUrl: string } }
-  | { name: "plan-cancelled"; props: { orgName: string; endDate: string } }
+  | { name: "org-invite"; props: OrgInviteProps }
+  | { name: "email-verification"; props: EmailVerificationProps }
+  | { name: "password-reset"; props: PasswordResetProps }
+  | { name: "plan-subscribed"; props: PlanSubscribedProps }
+  | { name: "payment-failed"; props: PaymentFailedProps }
+  | { name: "plan-cancelled"; props: PlanCancelledProps }
+
+function applyVars(html: string, vars: Record<string, string>): string {
+  return Object.entries(vars).reduce(
+    (acc, [key, value]) => acc.replaceAll(`{{${key}}}`, value),
+    html,
+  )
+}
 
 export function renderEmailTemplate(template: EmailTemplate): string {
-  switch (template.name) {
-    case "org-invite":
-      return renderToStaticMarkup(createElement(OrgInviteEmail, template.props))
-    case "email-verification":
-      return renderToStaticMarkup(createElement(EmailVerificationEmail, template.props))
-    case "password-reset":
-      return renderToStaticMarkup(createElement(PasswordResetEmail, template.props))
-    case "plan-subscribed":
-      return renderToStaticMarkup(createElement(PlanSubscribedEmail, template.props))
-    case "payment-failed":
-      return renderToStaticMarkup(createElement(PaymentFailedEmail, template.props))
-    case "plan-cancelled":
-      return renderToStaticMarkup(createElement(PlanCancelledEmail, template.props))
-  }
+  const filePath = join(
+    process.cwd(),
+    "assets",
+    "email",
+    "template",
+    `${template.name}.html`,
+  )
+  const html = readFileSync(filePath, "utf-8")
+  return applyVars(html, template.props)
 }
