@@ -5,9 +5,12 @@ import { ConsoleEmailAdapter } from "@/libs/integrations/email/console-email.ada
 import { ResendAdapter } from "@/libs/integrations/email/resend.adapter"
 import { FakeBillingAdapter } from "@/libs/integrations/billing/fake-billing.adapter"
 import { StripeAdapter } from "@/libs/integrations/billing/stripe.adapter"
+import { ConsoleStorageAdapter } from "@/libs/integrations/storage/console.adapter"
+import { S3Adapter } from "@/libs/integrations/storage/s3.adapter"
 import type { IMessagingService } from "@/libs/integrations/messaging/messaging.interface"
 import type { IEmailService } from "@/libs/integrations/email/email.interface"
 import type { IBillingService } from "@/libs/integrations/billing/billing.interface"
+import type { IStorageService } from "@/libs/integrations/storage/storage.interface"
 import { env } from "@/env"
 
 export function getMessagingService(): IMessagingService {
@@ -36,5 +39,14 @@ export function getBillingService(): IBillingService {
       return new StripeAdapter()
     default:
       return new FakeBillingAdapter()
+  }
+}
+
+export function getStorageService(): IStorageService {
+  switch (env.STORAGE_PROVIDER) {
+    case "s3":
+      return new S3Adapter()
+    default:
+      return new ConsoleStorageAdapter()
   }
 }

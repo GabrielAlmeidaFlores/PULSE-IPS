@@ -12,6 +12,8 @@
     "worker:schedules": "SKIP_ENV_VALIDATION=true tsx --tsconfig tsconfig.json src/workers/register-schedules.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1030.0",
+    "@aws-sdk/s3-request-presigner": "^3.1030.0",
     "@base-ui/react": "^1.4.0",
     "@hookform/resolvers": "^5.2.2",
     "@prisma/adapter-pg": "^7.7.0",
