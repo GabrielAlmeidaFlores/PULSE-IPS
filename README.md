@@ -781,561 +781,99 @@ yarn start
 
 > O projeto segue as regras definidas em `eslint.config.mjs`: TypeScript strict, import order, sonarjs, unicorn e regras customizadas documentadas em `AGENTS.md`.
 
+
 ---
 
-## Fluxogramas
+## Fluxograma
 
-Cole o bloco abaixo no [Mermaid Live Editor](https://mermaid.live) para visualizar o diagrama completo de todos os fluxos.
+Cole o bloco abaixo no [Mermaid Live Editor](https://mermaid.live) para visualizar como o Pulse funciona.
 
 ```mermaid
 flowchart TD
 
-%% ══════════════════════════════════════════════════════════════════
-%% ATORES
-%% ══════════════════════════════════════════════════════════════════
+%% ── ATORES ──────────────────────────────────────────────
 
-    ACTOR_SA(["👤 Super Admin"])
-    ACTOR_ADM(["👤 Admin da Org"])
-    ACTOR_RH(["👤 RH"])
-    ACTOR_EMP(["👤 Funcionário"])
-    ACTOR_PUB(["👤 Público"])
+    SA(["👤 Super Admin"])
+    ADMIN(["👤 Admin da empresa"])
+    RH(["👤 RH"])
+    FUNC(["👤 Funcionário"])
+    PUB(["👤 Qualquer pessoa"])
 
-%% ══════════════════════════════════════════════════════════════════
-%% MIDDLEWARE — PROTEÇÃO DE ROTAS
-%% ══════════════════════════════════════════════════════════════════
+%% ── CONFIGURAÇÃO DA PLATAFORMA (Super Admin) ────────────
 
-    subgraph PROXY["Middleware — proxy.ts"]
-        PX_REQ{"Rota pública?\n/login /survey /consent\n/report /checkout /invite\n/accept-terms /learn-more\n/api/webhooks /api/jobs"}
-        PX_SA_CHECK{"Rota\n/super-admin?"}
-        PX_SA_COOKIE{"Cookie\npulse_super_admin_session\npresente?"}
-        PX_SA_JWT{"JWT\nválido?"}
-        PX_ORG_COOKIE{"Cookie\npulse_session\npresente?"}
-        PX_ORG_JWT{"JWT\nválido?"}
-        PX_OK["Passa — injeta\nx-tenant-id no header"]
-        PX_REDIR_SA["Redirect\n/super-admin/login"]
-        PX_REDIR_ORG["Redirect /login"]
-        PX_FREE["Passa sem\nverificação"]
-    end
+    SA --> PLANS["Define os planos\ndisponíveis e preços"]
+    SA --> TERMS["Publica os Termos\nde Uso da plataforma"]
+    SA --> ORGS["Acompanha todas\nas organizações cadastradas"]
 
-    PX_REQ -- Sim --> PX_FREE
-    PX_REQ -- Não --> PX_SA_CHECK
-    PX_SA_CHECK -- Sim --> PX_SA_COOKIE
-    PX_SA_COOKIE -- Não --> PX_REDIR_SA
-    PX_SA_COOKIE -- Sim --> PX_SA_JWT
-    PX_SA_JWT -- Não --> PX_REDIR_SA
-    PX_SA_JWT -- Sim --> PX_OK
-    PX_SA_CHECK -- Não --> PX_ORG_COOKIE
-    PX_ORG_COOKIE -- Não --> PX_REDIR_ORG
-    PX_ORG_COOKIE -- Sim --> PX_ORG_JWT
-    PX_ORG_JWT -- Não --> PX_REDIR_ORG
-    PX_ORG_JWT -- Sim --> PX_OK
+%% ── CADASTRO DE UMA NOVA EMPRESA ────────────────────────
 
-%% ══════════════════════════════════════════════════════════════════
-%% SUPER ADMIN
-%% ══════════════════════════════════════════════════════════════════
+    PLANS --> CHECKOUT["Empresa se cadastra\ne escolhe um plano"]
+    CHECKOUT --> PAYMENT["Pagamento\nrealizado"]
+    PAYMENT --> ACCEPT_TERMS["Admin aceita os\nTermos de Uso"]
+    ACCEPT_TERMS --> DASH["🏠 Dashboard\nda organização"]
 
-    subgraph SA_FLOW["Super Admin"]
-        SA_LOGIN["/super-admin/login\ne-mail + senha"]
-        SA_BCRYPT{"bcrypt\nválido?"}
-        SA_JWT["Cria JWT adminId\nCookie pulse_super_admin_session 7d"]
-        SA_DASH["/super-admin/dashboard\nMétricas gerais da plataforma"]
+%% ── CONVITE DE EQUIPE ───────────────────────────────────
 
-        subgraph SA_PLANS["Planos e Preços"]
-            SAP_LIST["/super-admin/plans\nListar todos os planos"]
-            SAP_NEW["/super-admin/plans/new"]
-            SAP_CREATE["Cria Plan\nnome, descrição, maxEmployees"]
-            SAP_PRICE["Cria PlanPrice\npriceInCents, interval\nexternalPriceId Stripe"]
-            SAP_TOGGLE["Ativar / Desativar plano\nisActive toggle"]
-        end
+    DASH -->|"Admin convida"| INVITE["Usuário de RH\nrecebe convite por e-mail"]
+    INVITE --> RH_ACCESS["RH acessa\no sistema"]
+    RH --> RH_ACCESS
 
-        subgraph SA_ORGS["Organizações"]
-            SAO_LIST["/super-admin/organizations\nListar todas as orgs"]
-            SAO_DETAIL["/super-admin/organizations/id\nFuncionários, dispatches, alertas"]
-            SAO_OVERRIDE["Override maxEmployees\nmaxEmployeesOverride"]
-            SAO_BILLING["/organizations/id/billing\nHistórico de assinatura e webhooks"]
-        end
+%% ── ESTRUTURA DA EMPRESA ────────────────────────────────
 
-        subgraph SA_TERMS["Termos de Uso da Plataforma"]
-            SAT_LIST["/super-admin/terms\nListar versões"]
-            SAT_NEW["Criar nova versão\nversion + title + content HTML"]
-            SAT_ACTIVATE["Ativa nova versão\nDesativa versão anterior automaticamente"]
-            SAT_NOTE["Usuários existentes devem aceitar\nna próxima sessão"]
-        end
+    DASH --> DEPTS["Cria departamentos\n(ex: TI, Vendas, RH)"]
+    DASH --> EMPLOYEES["Cadastra funcionários\ncom telefone e horário de trabalho"]
 
-        SA_EXPORT["/api/super-admin/export\nGera Excel com métricas\nde todas as organizações"]
-    end
+%% ── CONSENTIMENTO LGPD ──────────────────────────────────
 
-    ACTOR_SA --> SA_LOGIN --> SA_BCRYPT
-    SA_BCRYPT -- Não --> SA_LOGIN
-    SA_BCRYPT -- Sim --> SA_JWT --> SA_DASH
-    SA_DASH --> SAP_LIST & SAO_LIST & SAT_LIST & SA_EXPORT
-    SAP_LIST --> SAP_NEW --> SAP_CREATE --> SAP_PRICE
-    SAP_LIST --> SAP_TOGGLE
-    SAO_LIST --> SAO_DETAIL --> SAO_OVERRIDE & SAO_BILLING
-    SAT_LIST --> SAT_NEW --> SAT_ACTIVATE --> SAT_NOTE
+    EMPLOYEES --> CONSENT_INVITE["Funcionário recebe link\npara autorizar coleta de dados"]
+    CONSENT_INVITE --> FUNC_CONSENT{"Funcionário\ndecide"}
+    FUNC_CONSENT -->|"Autoriza"| CONSENT_OK["Consentimento\nregistrado ✅"]
+    FUNC_CONSENT -->|"Recusa"| CONSENT_NO["Recusa\nregistrada 🚫"]
+    CONSENT_OK & CONSENT_NO --> CONSENT_AUDIT["Histórico salvo\npara fins legais (LGPD)"]
 
-%% ══════════════════════════════════════════════════════════════════
-%% AUTENTICAÇÃO E ONBOARDING DA ORGANIZAÇÃO
-%% ══════════════════════════════════════════════════════════════════
+%% ── CONFIGURAÇÃO DE PESQUISA ────────────────────────────
 
-    subgraph AUTH_FLOW["Autenticação e Onboarding da Organização"]
+    DASH --> SURVEY_CFG["Configura pesquisa\npor departamento:\nperguntas, frequência\ne dias e horário de envio"]
 
-        subgraph CHECKOUT_FLOW["Checkout — Nova Organização"]
-            CO_PG["/checkout"]
-            CO_FILL["Nome org, nome, e-mail, senha\nSeleciona plano"]
-            CO_EMAIL{"E-mail já\ncadastrado?"}
-            CO_ERR_EMAIL["Erro: e-mail em uso"]
-            CO_ORG["Cria Organization + slug único"]
-            CO_USER["Cria OrganizationUser\nrole=admin"]
-            CO_BILLING{"BILLING_PROVIDER?"}
-            CO_STRIPE_CS["Stripe: createCustomer()\nCria Checkout Session"]
-            CO_STRIPE_REDIRECT["Redirect Stripe Checkout"]
-            CO_STRIPE_PAID["Pagamento confirmado pelo usuário"]
-            CO_FAKE["Fake: billingStatus=active direto"]
-        end
+%% ── ENVIO AUTOMÁTICO ────────────────────────────────────
 
-        subgraph LOGIN_FLOW["Login"]
-            LG_PG["/login\ne-mail + senha"]
-            LG_BCRYPT{"bcrypt\nválido?"}
-            LG_ERR["Erro: credenciais inválidas"]
-            LG_TERMS{"Termos da plataforma\nacceitos?"}
-            LG_JWT["Cria JWT HS256\nuserId + tenantId + role\nExpira em 7 dias"]
-            LG_COOKIE["Cookie pulse_session\nHttpOnly, SameSite=Lax, Secure prod"]
-        end
+    SURVEY_CFG --> AUTO_SEND["⏰ Sistema envia\nautomaticamente\nno horário do expediente"]
+    AUTO_SEND --> FUNC_MSG["Funcionário recebe\nSMS ou WhatsApp\ncom link da pesquisa"]
 
-        subgraph TERMS_FLOW["Aceitar Termos da Plataforma"]
-            AT_PG["/accept-terms"]
-            AT_SHOW["Exibe versão ativa\nPlatformTermsVersion"]
-            AT_ACCEPT["Registra PlatformTermsAcceptance\nuserId + termsVersionId + IP + UserAgent"]
-        end
+%% ── RESPOSTA DO FUNCIONÁRIO ─────────────────────────────
 
-        subgraph FORGOT_FLOW["Recuperação de Senha"]
-            FP_PG["/forgot-password\nInforma e-mail"]
-            FP_TOKEN["Gera AuthToken\ntype=password_reset, expira 1h"]
-            FP_EMAIL_SEND["Envia e-mail com link\n/reset-password/token"]
-            FP_NEW_PG["/reset-password/token\nInforma nova senha"]
-            FP_VALID{"Token válido?\nnão expirado?\nnão usado?"}
-            FP_UPDATE["Atualiza passwordHash\nusedAt=now()"]
-            FP_ERR["Erro: token inválido"]
-        end
+    FUNC_MSG --> FUNC_ANSWER{"Funcionário\nresponde?"}
+    FUNC_ANSWER -->|"Sim"| SURVEY_DONE["Responde as perguntas\ncom nota de 1 a 5"]
+    FUNC_ANSWER -->|"Não responde\nem 48h"| LOW_ADH["⚠️ Alerta de\nbaixa participação"]
 
-        subgraph INVITE_FLOW["Convite de Equipe (Admin)"]
-            INV_FORM["Admin informa e-mail + role\nadmin | rh"]
-            INV_CREATE_REC["Cria OrganizationInvitation\ntoken UUID, expira 7d"]
-            INV_EMAIL_SEND["Envia e-mail\ncom link /invite/token"]
-            INV_PG["/invite/token\nConvidado acessa link"]
-            INV_VALID{"Token válido?\nnão expirado?\nnão usado?"}
-            INV_ERR["Erro: convite inválido ou expirado"]
-            INV_PWD["Define senha"]
-            INV_USER["Cria OrganizationUser\nMarca convite usedAt=now()"]
-        end
+%% ── ANÁLISE DOS RESULTADOS ──────────────────────────────
 
-        AUTH_LOGOUT["Logout\nApaga cookie pulse_session\nRedirect /login"]
-        AUTH_DASH["/dashboard"]
-    end
+    SURVEY_DONE --> ANALYSIS{"Notas\nbaixas?"}
+    ANALYSIS -->|"Sim"| ALERT["⚠️ Alerta de\nsaúde gerado"]
+    ANALYSIS -->|"Não"| NEXT_CYCLE["Aguarda o próximo\nenvio automático"]
 
-    ACTOR_ADM --> CO_PG --> CO_FILL --> CO_EMAIL
-    CO_EMAIL -- Sim --> CO_ERR_EMAIL
-    CO_EMAIL -- Não --> CO_ORG --> CO_USER --> CO_BILLING
-    CO_BILLING -- stripe --> CO_STRIPE_CS --> CO_STRIPE_REDIRECT --> CO_STRIPE_PAID --> AT_PG
-    CO_BILLING -- fake --> CO_FAKE --> AT_PG
-    AT_PG --> AT_SHOW --> AT_ACCEPT --> AUTH_DASH
+%% ── ALERTAS → PLANO DE AÇÃO ─────────────────────────────
 
-    ACTOR_ADM --> LG_PG
-    ACTOR_RH --> LG_PG
-    LG_PG --> LG_BCRYPT
-    LG_BCRYPT -- Não --> LG_ERR
-    LG_BCRYPT -- Sim --> LG_TERMS
-    LG_TERMS -- Não --> AT_PG
-    LG_TERMS -- Sim --> LG_JWT --> LG_COOKIE --> AUTH_DASH
+    ALERT & LOW_ADH --> ALERT_VIEW["Admin/RH visualiza\nalertas no painel"]
+    ALERT_VIEW --> ACTION_PLAN["Cria um Plano de Ação\ncom tarefas e responsáveis"]
+    ACTION_PLAN --> AP_PROGRESS["Equipe executa\nas tarefas"]
+    AP_PROGRESS --> AP_DONE["Plano concluído ✅"]
 
-    AUTH_DASH --> AUTH_LOGOUT
+%% ── DOCUMENTOS ──────────────────────────────────────────
 
-    FP_PG --> FP_TOKEN --> FP_EMAIL_SEND --> FP_NEW_PG --> FP_VALID
-    FP_VALID -- Não --> FP_ERR
-    FP_VALID -- Sim --> FP_UPDATE --> LG_PG
+    DASH --> DOCS["Armazena documentos\nda empresa (PPRA, PCMSO…)\ncom histórico de versões"]
 
-    INV_FORM --> INV_CREATE_REC --> INV_EMAIL_SEND --> INV_PG --> INV_VALID
-    INV_VALID -- Não --> INV_ERR
-    INV_VALID -- Sim --> INV_PWD --> INV_USER --> AT_PG
+%% ── PGR ─────────────────────────────────────────────────
 
-%% ══════════════════════════════════════════════════════════════════
-%% GESTÃO DE FUNCIONÁRIOS
-%% ══════════════════════════════════════════════════════════════════
+    DASH --> PGR["Gerencia o PGR\n(Programa de Gerenciamento\nde Riscos — NR-1)"]
+    PGR --> PGR_REMINDER["📧 Sistema lembra\nautomaticamente quando\na revisão vencer"]
 
-    subgraph EMP_FLOW["Gestão de Funcionários"]
-        EMP_LIST["/employees\nListar funcionários ativos"]
+%% ── DENÚNCIAS ANÔNIMAS ──────────────────────────────────
 
-        subgraph EMP_CREATE["Cadastro Manual"]
-            EC_PG["/employees/new"]
-            EC_FILL["nome, telefone, e-mail opcional\ndepartamento\nworkStartTime, workEndTime"]
-            EC_ACTION["createEmployeeAction()\nLê tenantId da sessão JWT"]
-            EC_DB["Cria Employee status=active"]
-            EC_CONSENT_INIT["Cria EmployeeConsent\nevent=invite_sent + token temporário"]
-            EC_MSG_Q["Enfileira SMS/WhatsApp\n→ /consent/token"]
-        end
+    PUB --> ANON_REPORT["Faz uma denúncia\nanônima pelo link\npúblico da empresa"]
+    ANON_REPORT --> REPORT_MGMT["Admin/RH acompanha\ne resolve a denúncia"]
 
-        subgraph EMP_IMPORT["Importação em Lote (CSV)"]
-            IM_PG["/employees/import"]
-            IM_UPLOAD["Upload .csv\ncolunas: name, email, phone\ndepartment, work_start_time, work_end_time"]
-            IM_ACTION["importEmployeesAction()\nLê tenantId da sessão JWT"]
-            IM_LOOP["Processa linha a linha"]
-            IM_DEPT{"Departamento\nexiste?"}
-            IM_DEPT_CREATE["Cria Department"]
-            IM_EMP_CREATE["Cria Employee"]
-            IM_REPORT["Retorna relatório:\nimportados / ignorados / erros"]
-        end
+%% ── FATURAMENTO ─────────────────────────────────────────
 
-        subgraph EMP_DETAIL["Perfil do Funcionário"]
-            ED_PG["/employees/id"]
-            ED_EDIT["Editar nome, telefone, e-mail\nhorário, departamento"]
-            ED_PAUSE_SET["Definir pauseStartAt + pauseEndAt\nstatus → paused"]
-            ED_SURVEY_HIST["Ver histórico de pesquisas"]
-            ED_CONSENT_HIST["Ver histórico de consentimentos"]
-        end
-
-        subgraph EMP_UNPAUSE["Reativação Automática"]
-            EU_CRON["Cron: employee-unpause\ndiariamente 01:00"]
-            EU_QUERY["Busca employees\npauseEndAt <= now() AND status=paused"]
-            EU_REACTIVATE["status → active"]
-        end
-    end
-
-    AUTH_DASH --> EMP_LIST
-    EMP_LIST --> EC_PG & IM_PG & ED_PG
-    EC_PG --> EC_FILL --> EC_ACTION --> EC_DB --> EC_CONSENT_INIT --> EC_MSG_Q
-    IM_PG --> IM_UPLOAD --> IM_ACTION --> IM_LOOP --> IM_DEPT
-    IM_DEPT -- Não --> IM_DEPT_CREATE --> IM_EMP_CREATE
-    IM_DEPT -- Sim --> IM_EMP_CREATE --> IM_REPORT
-    ED_PG --> ED_EDIT & ED_PAUSE_SET & ED_SURVEY_HIST & ED_CONSENT_HIST
-    EU_CRON --> EU_QUERY --> EU_REACTIVATE
-
-%% ══════════════════════════════════════════════════════════════════
-%% CONSENTIMENTO LGPD
-%% ══════════════════════════════════════════════════════════════════
-
-    subgraph CONSENT_FLOW["Consentimento LGPD (Funcionário)"]
-        CN_RECEIVE["Funcionário recebe SMS/WhatsApp\ncom link /consent/token"]
-        CN_PG["/consent/token"]
-        CN_VALID{"Token existe?\nnão expirado?"}
-        CN_ERR["Erro: link inválido ou expirado"]
-        CN_SHOW["Exibe texto da ConsentTermVersion ativa\nversão vigente dos termos de coleta"]
-        CN_DECISION{"Funcionário\ndecide?"}
-        CN_ACCEPT["Cria EmployeeConsent\nevent=accepted\ncpfHash opcional + fonte"]
-        CN_REFUSE["Cria EmployeeConsent\nevent=refused"]
-        CN_INVALIDATE["Inativa token de consentimento"]
-        CN_AUDIT["Histórico imutável e auditável\n(base legal LGPD)"]
-    end
-
-    EC_MSG_Q --> CN_RECEIVE
-    CN_RECEIVE --> CN_PG --> CN_VALID
-    CN_VALID -- Não --> CN_ERR
-    CN_VALID -- Sim --> CN_SHOW --> CN_DECISION
-    CN_DECISION -- Aceitar --> CN_ACCEPT --> CN_INVALIDATE
-    CN_DECISION -- Recusar --> CN_REFUSE --> CN_INVALIDATE
-    CN_INVALIDATE --> CN_AUDIT
-
-%% ══════════════════════════════════════════════════════════════════
-%% CONFIGURAÇÃO DE PESQUISA
-%% ══════════════════════════════════════════════════════════════════
-
-    subgraph SURVEY_CFG["Configuração de Pesquisa (Admin/RH)"]
-        SV_LIST["/surveys\nHistórico de dispatches"]
-        SV_CFG_PG["/surveys/configure"]
-        SV_CFG_DEPT["Seleciona departamento"]
-        SV_CFG_FREQ["Define frequência:\ndaily / twice_weekly / weekly\nbiweekly / monthly"]
-        SV_CFG_HOURS["Define expediente:\nworkStartTime HH:mm\nworkEndTime HH:mm"]
-        SV_CFG_DAYS["Define dias de trabalho:\nworkDays ex: 1,2,3,4,5\n0=Dom 1=Seg … 6=Sáb"]
-        SV_CFG_QS["Adiciona perguntas\ncom texto e ordem"]
-        SV_CFG_SAVE["Salva SurveyConfiguration\nUNIQUE por tenantId + departmentId"]
-        SV_MANUAL["Disparo manual\nCria SurveyDispatch\nstatus=scheduled, scheduledAt=now()"]
-    end
-
-    AUTH_DASH --> SV_LIST & SV_CFG_PG
-    SV_CFG_PG --> SV_CFG_DEPT --> SV_CFG_FREQ --> SV_CFG_HOURS --> SV_CFG_DAYS --> SV_CFG_QS --> SV_CFG_SAVE
-    SV_LIST --> SV_MANUAL
-
-%% ══════════════════════════════════════════════════════════════════
-%% DISPARO AUTOMÁTICO (CRON + FILA)
-%% ══════════════════════════════════════════════════════════════════
-
-    subgraph DISPATCH_FLOW["Disparo de Pesquisas — Cron + BullMQ"]
-
-        subgraph SCHEDULES["register-schedules.ts (executa uma vez ao iniciar)"]
-            SCH_CONNECT["Conecta ao Redis"]
-            SCH_CLEAR["Remove schedules existentes"]
-            SCH_REG["Registra jobs na fila pulse:jobs\ncom padrão cron"]
-        end
-
-        subgraph CRON_JOB["Cron: survey-dispatcher (a cada 15 min)"]
-            CR_TRIGGER["BullMQ dispara job survey-dispatcher"]
-            CR_AUTO["runAutoDispatchScheduler()\nBusca SurveyConfigurations ativas\ncom employees ativos"]
-            CR_WORKDAY{"Hoje é dia de trabalho?\n(verifica workDays no timezone da org)"}
-            CR_SKIP_DAY["Pula esta execução"]
-            CR_INTERVAL{"Dias desde último dispatch\n>= intervalo da frequência?"}
-            CR_SKIP_FREQ["Pula — ainda não é hora"]
-            CR_MANUAL_FETCH["runSurveyDispatcher()\nBusca SurveyDispatch status=scheduled"]
-            CR_FIRE["fireDispatch()"]
-            CR_DISPATCH_DB["Cria SurveyDispatch\nstatus=sent, dispatchedAt=now()"]
-            CR_TOKENS_DB["Cria SurveyResponseToken por employee\ntoken UUID, expira em 24h\nSnapshot workStartTime/workEndTime do token"]
-            CR_MARK_SENT["markDispatchSent(totalRecipients)"]
-            CR_ENQUEUE_MSG["Enfileira job send-message\nna fila pulse:messages\n(1 job por funcionário)"]
-        end
-
-        subgraph MSG_WORKER["Worker: pulse:messages"]
-            MW_PROC["processMessageJob(data)"]
-            MW_PROVIDER{"MESSAGING_PROVIDER?"}
-            MW_TWILIO["TwilioSMS.send(to, body)"]
-            MW_WA["WhatsAppCloud.send(to, body)"]
-            MW_CONSOLE["Console: log no terminal\n(modo dev)"]
-            MW_LOG["Registra MessageLog\ntenant + employee + type + status"]
-            MW_CONTENT["SMS/WhatsApp enviado:\nPulse: Seu check-in está pronto.\nhttps://app.usepulse.com.br/survey/TOKEN"]
-        end
-    end
-
-    SCH_CONNECT --> SCH_CLEAR --> SCH_REG --> CR_TRIGGER
-    SV_CFG_SAVE --> CR_TRIGGER
-    SV_MANUAL --> CR_MANUAL_FETCH
-
-    CR_TRIGGER --> CR_AUTO --> CR_WORKDAY
-    CR_WORKDAY -- Não --> CR_SKIP_DAY
-    CR_WORKDAY -- Sim --> CR_INTERVAL
-    CR_INTERVAL -- Não --> CR_SKIP_FREQ
-    CR_INTERVAL -- Sim --> CR_FIRE
-    CR_MANUAL_FETCH --> CR_FIRE
-    CR_FIRE --> CR_DISPATCH_DB --> CR_TOKENS_DB --> CR_MARK_SENT --> CR_ENQUEUE_MSG
-
-    CR_ENQUEUE_MSG --> MW_PROC --> MW_PROVIDER
-    MW_PROVIDER -- twilio_sms --> MW_TWILIO --> MW_CONTENT --> MW_LOG
-    MW_PROVIDER -- whatsapp_cloud --> MW_WA --> MW_CONTENT
-    MW_PROVIDER -- console --> MW_CONSOLE --> MW_LOG
-
-%% ══════════════════════════════════════════════════════════════════
-%% RESPOSTA À PESQUISA (FUNCIONÁRIO)
-%% ══════════════════════════════════════════════════════════════════
-
-    subgraph RESP_FLOW["Resposta à Pesquisa — Funcionário"]
-        RESP_RECEIVE["Funcionário recebe SMS/WhatsApp\ncom link único"]
-        RESP_PG["/survey/token"]
-        RESP_TOKEN_V{"Token existe?\nexpiresAt > now?\nusedAt = null?"}
-        RESP_TOKEN_ERR["Página de erro:\nlink inválido ou expirado"]
-        RESP_HOURS_V{"Hora atual está dentro\ndo expediente?\n(workStartTime/workEndTime do token\nno timezone da org)"}
-        RESP_HOURS_ERR["Fora do expediente:\nexibe horário disponível"]
-        RESP_FORM["Exibe perguntas da pesquisa\nScore 1–5 por pergunta"]
-        RESP_SUBMIT["Funcionário responde e envia"]
-        RESP_RESPONSE["Cria SurveyResponse\n+ SurveyResponseItem por pergunta"]
-        RESP_TOKEN_USED["Marca token usedAt=now()"]
-        RESP_DISPATCH_INC["SurveyDispatch.totalResponses++"]
-        RESP_THANKS["Tela de agradecimento"]
-    end
-
-    MW_CONTENT --> RESP_RECEIVE --> RESP_PG --> RESP_TOKEN_V
-    RESP_TOKEN_V -- Não --> RESP_TOKEN_ERR
-    RESP_TOKEN_V -- Sim --> RESP_HOURS_V
-    RESP_HOURS_V -- Não --> RESP_HOURS_ERR
-    RESP_HOURS_V -- Sim --> RESP_FORM --> RESP_SUBMIT --> RESP_RESPONSE --> RESP_TOKEN_USED --> RESP_DISPATCH_INC --> RESP_THANKS
-
-%% ══════════════════════════════════════════════════════════════════
-%% VERIFICAÇÃO DE ADERÊNCIA
-%% ══════════════════════════════════════════════════════════════════
-
-    subgraph ADH_FLOW["Cron: adherence-checker (a cada hora)"]
-        ADH_QUERY["Busca SurveyDispatch\nadherenceCheckedAt = null\ndispatchedAt < now - 48h"]
-        ADH_COUNT["Conta respostas recebidas\npor dispatch"]
-        ADH_RATE["adherenceRate =\ntotalResponses / totalRecipients"]
-        ADH_CHECK{"adherenceRate\n< 50%?"}
-        ADH_ALERT_CREATE["Cria Alert\ntipo: low_adherence\nseverity: medium\npara o departamento"]
-        ADH_MARK["Atualiza adherenceCheckedAt=now()\ntotalResponses"]
-    end
-
-    CR_MARK_SENT -->|"48h depois"| ADH_QUERY
-    ADH_QUERY --> ADH_COUNT --> ADH_RATE --> ADH_CHECK
-    ADH_CHECK -- Sim --> ADH_ALERT_CREATE --> ADH_MARK
-    ADH_CHECK -- Não --> ADH_MARK
-
-%% ══════════════════════════════════════════════════════════════════
-%% DETECÇÃO DE ALERTAS DE SCORE
-%% ══════════════════════════════════════════════════════════════════
-
-    subgraph ALERT_DETECT["Cron: alert-detector (03:00 diário)"]
-        AL_QUERY["Busca SurveyResponseItems\ndas últimas 48h"]
-        AL_AVG["Calcula score médio\npor departamento"]
-        AL_CHECK{"Score médio\n<= threshold critico?"}
-        AL_HIGH["Cria Alert severity=high"]
-        AL_MED_CHECK{"Score médio\n<= threshold moderado?"}
-        AL_MED["Cria Alert severity=medium"]
-        AL_OK["Nenhum alerta necessário"]
-    end
-
-    subgraph ALERT_MGMT["Gestão de Alertas (Admin/RH)"]
-        ALM_LIST["/alerts\nListar alertas ativos"]
-        ALM_READ["Marcar como lido\nisRead=true"]
-        ALM_RESOLVE["Marcar como resolvido\nresolvedAt=now()"]
-        ALM_FILTER["Filtrar por severity\ntipo e status"]
-        ALM_AP["Criar Plano de Ação\na partir do alerta"]
-    end
-
-    RESP_RESPONSE -->|"diariamente 03h"| AL_QUERY
-    AL_QUERY --> AL_AVG --> AL_CHECK
-    AL_CHECK -- Sim --> AL_HIGH
-    AL_CHECK -- Não --> AL_MED_CHECK
-    AL_MED_CHECK -- Sim --> AL_MED
-    AL_MED_CHECK -- Não --> AL_OK
-
-    AL_HIGH & AL_MED & ADH_ALERT_CREATE --> ALM_LIST
-    AUTH_DASH --> ALM_LIST
-    ALM_LIST --> ALM_READ & ALM_RESOLVE & ALM_FILTER
-    ALM_RESOLVE --> ALM_AP
-
-%% ══════════════════════════════════════════════════════════════════
-%% PLANOS DE AÇÃO
-%% ══════════════════════════════════════════════════════════════════
-
-    subgraph AP_FLOW["Planos de Ação (Admin/RH)"]
-        AP_LIST["/action-plans\nListar planos"]
-        AP_NEW["/action-plans/new"]
-        AP_FILL["título, descrição\nprioridade: low | medium | high\ndata limite opcional"]
-        AP_SAVE["Cria ActionPlan status=open"]
-        AP_TASKS["Adiciona ActionPlanTask\nresponsável + prazo"]
-        AP_DETAIL["/action-plans/id"]
-        AP_STATUS_IP["Atualiza status → in_progress"]
-        AP_TASK_DONE["Tarefa concluída\ncompletedAt=now()"]
-        AP_COMPLETE["Plano concluído\nstatus=completed, completedAt=now()"]
-    end
-
-    AUTH_DASH --> AP_LIST
-    ALM_AP --> AP_NEW
-    AP_LIST --> AP_NEW --> AP_FILL --> AP_SAVE --> AP_TASKS
-    AP_LIST --> AP_DETAIL
-    AP_DETAIL --> AP_STATUS_IP --> AP_TASK_DONE --> AP_COMPLETE
-
-%% ══════════════════════════════════════════════════════════════════
-%% DOCUMENTOS
-%% ══════════════════════════════════════════════════════════════════
-
-    subgraph DOC_FLOW["Documentos (Admin/RH)"]
-        DC_LIST["/documents\nListar documentos"]
-        DC_ADD["Criar Document\ntítulo + tipo (SST, PPRA, PCMSO…)"]
-        DC_VERSION["Upload DocumentVersion\nfileUrl + uploadedBy"]
-        DC_HISTORY["Ver histórico de versões"]
-        DC_NEW_VER["Adicionar nova versão\nversão anterior mantida no histórico"]
-        DC_ARCHIVE["Arquivar documento\nisActive=false"]
-    end
-
-    AUTH_DASH --> DC_LIST
-    DC_LIST --> DC_ADD --> DC_VERSION --> DC_HISTORY
-    DC_HISTORY --> DC_NEW_VER
-    DC_LIST --> DC_ARCHIVE
-
-%% ══════════════════════════════════════════════════════════════════
-%% PGR — PROGRAMA DE GERENCIAMENTO DE RISCOS
-%% ══════════════════════════════════════════════════════════════════
-
-    subgraph PGR_FLOW["PGR (Admin/RH)"]
-        PG_LIST["/pgr\nListar revisões do PGR"]
-        PG_CREATE["Criar PgrReview\nperíodo + arquivo PDF"]
-        PG_STATUS["Atualizar status:\npending → generated → reviewed"]
-        PG_NEXT["Definir nextReviewAt\ndata da próxima revisão obrigatória"]
-        PG_REMINDER_CRON["Cron: pgr-review-reminder\ndiariamente 08:00\nnextReviewAt <= hoje"]
-        PG_REMINDER_EMAIL["Envia e-mail de lembrete\npara todos os admins da organização"]
-    end
-
-    AUTH_DASH --> PG_LIST
-    PG_LIST --> PG_CREATE --> PG_STATUS --> PG_NEXT --> PG_REMINDER_CRON --> PG_REMINDER_EMAIL
-
-%% ══════════════════════════════════════════════════════════════════
-%% DENÚNCIAS ANÔNIMAS
-%% ══════════════════════════════════════════════════════════════════
-
-    subgraph REPORT_FLOW["Denúncias Anônimas"]
-        RP_PG["/report/orgSlug\nAcesso público — sem autenticação"]
-        RP_FILL["Preenche: categoria + descrição da denúncia"]
-        RP_CREATE["Cria AnonymousReport\nSEM vínculo com usuário ou funcionário\nAnonimato garantido"]
-        RP_LIST["/reports\nAdmin/RH visualiza denúncias"]
-        RP_STATUS["Atualiza status:\nopen → analyzing → resolved → archived"]
-    end
-
-    ACTOR_PUB --> RP_PG --> RP_FILL --> RP_CREATE --> RP_LIST
-    AUTH_DASH --> RP_LIST
-    RP_LIST --> RP_STATUS
-
-%% ══════════════════════════════════════════════════════════════════
-%% CONFIGURAÇÕES DA ORGANIZAÇÃO (ADMIN ONLY)
-%% ══════════════════════════════════════════════════════════════════
-
-    subgraph SETTINGS_FLOW["Configurações (Admin only)"]
-        ST_PG["/settings"]
-        ST_ORG["Editar organização:\nnome, timezone"]
-        ST_PWD["Alterar senha do usuário logado"]
-        ST_TEAM["Gerenciar equipe\nListar usuários ativos"]
-        ST_INVITE["Convidar Admin ou RH\npor e-mail"]
-        ST_REVOKE["Revogar acesso\nisActive=false"]
-    end
-
-    AUTH_DASH -->|"Admin only"| ST_PG
-    ST_PG --> ST_ORG & ST_PWD & ST_TEAM
-    ST_TEAM --> ST_INVITE & ST_REVOKE
-    ST_INVITE --> INV_FORM
-
-%% ══════════════════════════════════════════════════════════════════
-%% FATURAMENTO E STRIPE
-%% ══════════════════════════════════════════════════════════════════
-
-    subgraph BILLING_FLOW["Faturamento e Stripe (Admin only)"]
-        BL_PG["/billing"]
-        BL_VIEW["Ver plano atual\nstatus + período + próxima cobrança"]
-        BL_CANCEL["Cancelar ao fim do período\ncancelAtPeriodEnd=true"]
-        BL_UPGRADE["Fazer upgrade de plano\nNova Checkout Session Stripe"]
-
-        subgraph WEBHOOK_FLOW["Webhook POST /api/webhooks/stripe"]
-            WH_RECEIVE["Recebe evento Stripe"]
-            WH_IDEMPOTENT{"externalEventId\njá existe em\nBillingWebhookEvent?"}
-            WH_IGNORE["Ignora — idempotência\nevento já processado"]
-            WH_SAVE["Salva BillingWebhookEvent\nexternalEventId + type + payload"]
-            WH_TYPE{"Tipo do evento?"}
-            WH_CHECKOUT_EV["checkout.session.completed\nAtiva assinatura"]
-            WH_UPDATED_EV["customer.subscription.updated\nAtualiza status e período"]
-            WH_DELETED_EV["customer.subscription.deleted\nstatus → canceled"]
-            WH_FAILED_EV["invoice.payment_failed\nstatus → past_due\nEnvia e-mail ao admin"]
-            WH_PAID_EV["invoice.payment_succeeded\nAtualiza currentPeriodEnd"]
-            WH_UPSERT["Cria/Atualiza OrganizationSubscription\nSnapshot: planName, maxEmployees\npriceInCents, interval"]
-            WH_ORG_STATUS["Atualiza Organization.billingStatus"]
-            WH_DONE["Marca processedAt=now()"]
-        end
-
-        subgraph WEBHOOK_RETRY["Cron: stripe-webhook-retry (a cada hora)"]
-            WR_QUERY["Busca BillingWebhookEvent\nerror != null AND processedAt = null"]
-            WR_RETRY["Reprocessa evento"]
-            WR_OK{"Sucesso?"}
-            WR_DONE2["Marca processedAt=now()"]
-            WR_FAIL["Atualiza campo error\nincrementa tentativas"]
-        end
-    end
-
-    AUTH_DASH -->|"Admin only"| BL_PG
-    BL_PG --> BL_VIEW & BL_CANCEL & BL_UPGRADE
-    BL_UPGRADE --> CO_STRIPE_CS
-
-    CO_STRIPE_PAID -->|"Stripe envia webhook"| WH_RECEIVE
-    WH_RECEIVE --> WH_IDEMPOTENT
-    WH_IDEMPOTENT -- Sim --> WH_IGNORE
-    WH_IDEMPOTENT -- Não --> WH_SAVE --> WH_TYPE
-    WH_TYPE --> WH_CHECKOUT_EV & WH_UPDATED_EV & WH_DELETED_EV & WH_FAILED_EV & WH_PAID_EV
-    WH_CHECKOUT_EV & WH_UPDATED_EV --> WH_UPSERT --> WH_ORG_STATUS --> WH_DONE
-    WH_DELETED_EV & WH_FAILED_EV & WH_PAID_EV --> WH_ORG_STATUS
-
-    WR_QUERY --> WR_RETRY --> WR_OK
-    WR_OK -- Sim --> WR_DONE2
-    WR_OK -- Não --> WR_FAIL
-
-%% ══════════════════════════════════════════════════════════════════
-%% JOBS RESTANTES (TOKEN CLEANUP)
-%% ══════════════════════════════════════════════════════════════════
-
-    subgraph OTHER_JOBS["Outros Jobs Agendados"]
-        TK_CRON["Cron: token-cleanup\ndiariamente 02:00"]
-        TK_DELETE["Remove SurveyResponseToken\nexpiresAt <= now() AND usedAt = null\nEvita acúmulo de tokens obsoletos"]
-    end
-
-    TK_CRON --> TK_DELETE
+    DASH -->|"Admin only"| BILLING["Gerencia a assinatura:\nplano, pagamento\ne cancelamento"]
 ```
