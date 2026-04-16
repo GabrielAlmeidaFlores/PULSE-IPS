@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { Poppins } from "next/font/google"
 import { Toaster } from "sonner"
+import { NuqsAdapter } from "nuqs/adapters/next/app"
 import "@/app/globals.css"
 
 const poppins = Poppins({
@@ -25,9 +26,11 @@ export default function RootLayout({
       className={`${poppins.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
-        {children}
-        <Toaster position="top-right" theme="light" richColors />
-      </body>
+          <NuqsAdapter>
+            {children}
+          </NuqsAdapter>
+          <Toaster position="top-right" theme="light" richColors />
+        </body>
     </html>
   )
 }
