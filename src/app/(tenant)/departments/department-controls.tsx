@@ -2,7 +2,7 @@
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { Pencil, Trash2, Plus, Check, X } from "lucide-react"
+import { Pencil, Trash2, Check, X } from "lucide-react"
 import { createDepartmentAction, renameDepartmentAction, deleteDepartmentAction } from "@/app/(tenant)/departments/actions"
 
 interface DepartmentRow {
@@ -66,18 +66,23 @@ export function DepartmentControls({ departments }: Props): React.ReactElement {
   }
 
   return (
-    <div className="border border-border bg-card overflow-hidden">
-      <div className="border-b border-border bg-muted/40 px-4 py-2.5 flex items-center justify-between">
-        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{departments.length} departamentos</span>
+    <div className="flex flex-col h-full">
+      <div className="border-b border-border bg-card px-6 py-4 flex items-center justify-between shrink-0">
+        <div>
+          <h1 className="text-sm font-bold uppercase tracking-widest">Departamentos</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">{departments.length} departamentos</p>
+        </div>
         <button
           onClick={() => { setShowAddForm((v) => !v); setNewName("") }}
           style={{ borderRadius: 0 }}
-          className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider border border-border text-muted-foreground hover:bg-muted"
+          className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90 transition-colors border border-primary"
         >
-          <Plus size={12} />
-          Novo Departamento
+          Adicionar
         </button>
       </div>
+
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="border border-border bg-card overflow-hidden">
 
       {showAddForm && (
         <div className="border-b border-border px-4 py-2.5 flex items-center gap-2 bg-muted/20">
@@ -219,6 +224,8 @@ export function DepartmentControls({ departments }: Props): React.ReactElement {
           ))}
         </tbody>
       </table>
+        </div>
+      </div>
     </div>
   )
 }

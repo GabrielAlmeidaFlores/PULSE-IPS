@@ -17,13 +17,7 @@ export default async function DepartmentsPage(): Promise<React.ReactElement> {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="border-b border-border bg-card px-6 py-4 shrink-0">
-        <h1 className="text-sm font-bold uppercase tracking-widest">Departamentos</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">{departments.length} departamentos</p>
-      </div>
-      <div className="flex-1 overflow-y-auto p-6">
-        <DepartmentControls departments={mappedDepartments} />
-      </div>
+      <DepartmentControls departments={mappedDepartments} />
     </div>
   )
 }
