@@ -41,7 +41,21 @@ export default async function SurveysPage(): Promise<React.ReactElement> {
           <ScheduleDispatchButton configs={configOptions} />
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        {configs.length === 0 && (
+          <div className="border border-primary/30 bg-primary/5 px-4 py-3 flex items-start gap-3">
+            <span className="text-primary text-lg leading-none mt-0.5">ⓘ</span>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-primary">Nenhuma pesquisa configurada</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Para agendar um disparo, primeiro configure uma pesquisa para ao menos um departamento.{" "}
+                <Link href="/surveys/configure" className="text-primary hover:underline font-medium">
+                  Configurar agora →
+                </Link>
+              </p>
+            </div>
+          </div>
+        )}
         <div className="border border-border bg-card overflow-hidden">
           <table className="w-full text-sm">
             <thead>
