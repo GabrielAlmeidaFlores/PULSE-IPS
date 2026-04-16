@@ -791,89 +791,107 @@ Cole o bloco abaixo no [Mermaid Live Editor](https://mermaid.live) para visualiz
 ```mermaid
 flowchart TD
 
-%% ── ATORES ──────────────────────────────────────────────
+%% ════════════════════════════════════════════════
+%% ÁREA DO SUPER ADMIN (gestão da plataforma)
+%% ════════════════════════════════════════════════
 
     SA(["👤 Super Admin"])
+
+    SA --> SA_PLANS["Cria e gerencia os\nplanos disponíveis para compra"]
+    SA --> SA_TERMS["Publica os Termos\nde Uso da plataforma"]
+    SA --> SA_ORGS["Monitora todas as\nempresas cadastradas"]
+
+%% ════════════════════════════════════════════════
+%% ÁREA DO ADMIN DA EMPRESA
+%% ════════════════════════════════════════════════
+
     ADMIN(["👤 Admin da empresa"])
-    RH(["👤 RH"])
-    FUNC(["👤 Funcionário"])
-    PUB(["👤 Qualquer pessoa"])
 
-%% ── CONFIGURAÇÃO DA PLATAFORMA (Super Admin) ────────────
+    ADMIN --> CHECKOUT["Escolhe um plano\ne realiza o pagamento"]
+    CHECKOUT --> ACCEPT_TERMS["Aceita os Termos de Uso"]
+    ACCEPT_TERMS --> DASH["🏠 Dashboard da empresa"]
 
-    SA --> PLANS["Define os planos\ndisponíveis e preços"]
-    SA --> TERMS["Publica os Termos\nde Uso da plataforma"]
-    SA --> ORGS["Acompanha todas\nas organizações cadastradas"]
-
-%% ── CADASTRO DE UMA NOVA EMPRESA ────────────────────────
-
-    PLANS --> CHECKOUT["Empresa se cadastra\ne escolhe um plano"]
-    CHECKOUT --> PAYMENT["Pagamento\nrealizado"]
-    PAYMENT --> ACCEPT_TERMS["Admin aceita os\nTermos de Uso"]
-    ACCEPT_TERMS --> DASH["🏠 Dashboard\nda organização"]
-
-%% ── CONVITE DE EQUIPE ───────────────────────────────────
-
-    DASH -->|"Admin convida"| INVITE["Usuário de RH\nrecebe convite por e-mail"]
-    INVITE --> RH_ACCESS["RH acessa\no sistema"]
-    RH --> RH_ACCESS
-
-%% ── ESTRUTURA DA EMPRESA ────────────────────────────────
+    DASH -->|"Convida por e-mail"| INVITE_RH["RH recebe convite\ne cria sua senha"]
 
     DASH --> DEPTS["Cria departamentos\n(ex: TI, Vendas, RH)"]
     DASH --> EMPLOYEES["Cadastra funcionários\ncom telefone e horário de trabalho"]
+    DASH -->|"somente Admin"| BILLING["Gerencia assinatura:\nplano, pagamento e cancelamento"]
 
-%% ── CONSENTIMENTO LGPD ──────────────────────────────────
+%% ════════════════════════════════════════════════
+%% ÁREA DO RH (compartilhada com o Admin)
+%% ════════════════════════════════════════════════
 
-    EMPLOYEES --> CONSENT_INVITE["Funcionário recebe link\npara autorizar coleta de dados"]
-    CONSENT_INVITE --> FUNC_CONSENT{"Funcionário\ndecide"}
-    FUNC_CONSENT -->|"Autoriza"| CONSENT_OK["Consentimento\nregistrado ✅"]
-    FUNC_CONSENT -->|"Recusa"| CONSENT_NO["Recusa\nregistrada 🚫"]
-    CONSENT_OK & CONSENT_NO --> CONSENT_AUDIT["Histórico salvo\npara fins legais (LGPD)"]
+    RH(["👤 RH"])
 
-%% ── CONFIGURAÇÃO DE PESQUISA ────────────────────────────
+    INVITE_RH --> RH_DASH["🏠 Dashboard da empresa\n(mesma visão do Admin,\nsem acesso ao faturamento)"]
+    RH --> RH_DASH
 
-    DASH --> SURVEY_CFG["Configura pesquisa\npor departamento:\nperguntas, frequência\ne dias e horário de envio"]
+    RH_DASH --> SURVEY_CFG["Configura pesquisa\npor departamento:\nperguntas, frequência\ne horário de envio"]
+    RH_DASH --> ALERT_VIEW["Visualiza alertas\nde saúde gerados\npelo sistema"]
+    RH_DASH --> AP_CREATE["Cria Planos de Ação\ncom tarefas e responsáveis"]
+    RH_DASH --> DOCS["Gerencia documentos\nda empresa (PPRA, PCMSO…)"]
+    RH_DASH --> PGR["Gerencia o PGR\n(revisões periódicas — NR-1)"]
+    RH_DASH --> REPORTS["Acompanha\ndenúncias anônimas"]
 
-%% ── ENVIO AUTOMÁTICO ────────────────────────────────────
+    DASH --> SURVEY_CFG
+    DASH --> ALERT_VIEW
+    DASH --> AP_CREATE
+    DASH --> DOCS
+    DASH --> PGR
+    DASH --> REPORTS
 
-    SURVEY_CFG --> AUTO_SEND["⏰ Sistema envia\nautomaticamente\nno horário do expediente"]
+%% ════════════════════════════════════════════════
+%% FLUXO DE CONSENTIMENTO (Funcionário)
+%% ════════════════════════════════════════════════
+
+    FUNC(["👤 Funcionário"])
+
+    EMPLOYEES --> CONSENT_LINK["Funcionário recebe link\npara autorizar coleta de dados"]
+    CONSENT_LINK --> FUNC_DECISION{"Funcionário\ndecide"}
+    FUNC_DECISION -->|"Autoriza"| CONSENT_OK["Consentimento\nregistrado ✅"]
+    FUNC_DECISION -->|"Recusa"| CONSENT_NO["Recusa\nregistrada 🚫"]
+    CONSENT_OK & CONSENT_NO --> CONSENT_AUDIT["Histórico salvo\npara fins legais — LGPD"]
+    FUNC --> CONSENT_LINK
+
+%% ════════════════════════════════════════════════
+%% FLUXO DE PESQUISA (envio → resposta → alerta)
+%% ════════════════════════════════════════════════
+
+    SURVEY_CFG --> AUTO_SEND["⏰ Sistema envia automaticamente\nno dia e horário do expediente"]
     AUTO_SEND --> FUNC_MSG["Funcionário recebe\nSMS ou WhatsApp\ncom link da pesquisa"]
+    FUNC --> FUNC_MSG
 
-%% ── RESPOSTA DO FUNCIONÁRIO ─────────────────────────────
+    FUNC_MSG --> ANSWERED{"Funcionário\nresponde?"}
+    ANSWERED -->|"Sim"| SURVEY_DONE["Responde as perguntas\ncom nota de 1 a 5"]
+    ANSWERED -->|"Não responde\nem 48h"| LOW_ADH["⚠️ Alerta de\nbaixa participação"]
 
-    FUNC_MSG --> FUNC_ANSWER{"Funcionário\nresponde?"}
-    FUNC_ANSWER -->|"Sim"| SURVEY_DONE["Responde as perguntas\ncom nota de 1 a 5"]
-    FUNC_ANSWER -->|"Não responde\nem 48h"| LOW_ADH["⚠️ Alerta de\nbaixa participação"]
+    SURVEY_DONE --> SCORE{"Notas\nbaixas?"}
+    SCORE -->|"Sim"| HEALTH_ALERT["⚠️ Alerta de\nsaúde gerado"]
+    SCORE -->|"Não"| NEXT_CYCLE["Aguarda o próximo\nenvio automático"]
+    NEXT_CYCLE --> AUTO_SEND
 
-%% ── ANÁLISE DOS RESULTADOS ──────────────────────────────
+    HEALTH_ALERT & LOW_ADH --> ALERT_VIEW
 
-    SURVEY_DONE --> ANALYSIS{"Notas\nbaixas?"}
-    ANALYSIS -->|"Sim"| ALERT["⚠️ Alerta de\nsaúde gerado"]
-    ANALYSIS -->|"Não"| NEXT_CYCLE["Aguarda o próximo\nenvio automático"]
+%% ════════════════════════════════════════════════
+%% PLANO DE AÇÃO
+%% ════════════════════════════════════════════════
 
-%% ── ALERTAS → PLANO DE AÇÃO ─────────────────────────────
+    ALERT_VIEW --> AP_CREATE
+    AP_CREATE --> AP_TASKS["Define tarefas,\nresponsáveis e prazos"]
+    AP_TASKS --> AP_DONE["Plano concluído ✅"]
 
-    ALERT & LOW_ADH --> ALERT_VIEW["Admin/RH visualiza\nalertas no painel"]
-    ALERT_VIEW --> ACTION_PLAN["Cria um Plano de Ação\ncom tarefas e responsáveis"]
-    ACTION_PLAN --> AP_PROGRESS["Equipe executa\nas tarefas"]
-    AP_PROGRESS --> AP_DONE["Plano concluído ✅"]
+%% ════════════════════════════════════════════════
+%% PGR — LEMBRETE AUTOMÁTICO
+%% ════════════════════════════════════════════════
 
-%% ── DOCUMENTOS ──────────────────────────────────────────
+    PGR --> PGR_REMINDER["📧 Sistema envia lembrete\nautomaticamente quando\na revisão estiver vencendo"]
 
-    DASH --> DOCS["Armazena documentos\nda empresa (PPRA, PCMSO…)\ncom histórico de versões"]
+%% ════════════════════════════════════════════════
+%% DENÚNCIAS ANÔNIMAS (acesso público)
+%% ════════════════════════════════════════════════
 
-%% ── PGR ─────────────────────────────────────────────────
+    PUB(["👤 Qualquer pessoa"])
 
-    DASH --> PGR["Gerencia o PGR\n(Programa de Gerenciamento\nde Riscos — NR-1)"]
-    PGR --> PGR_REMINDER["📧 Sistema lembra\nautomaticamente quando\na revisão vencer"]
-
-%% ── DENÚNCIAS ANÔNIMAS ──────────────────────────────────
-
-    PUB --> ANON_REPORT["Faz uma denúncia\nanônima pelo link\npúblico da empresa"]
-    ANON_REPORT --> REPORT_MGMT["Admin/RH acompanha\ne resolve a denúncia"]
-
-%% ── FATURAMENTO ─────────────────────────────────────────
-
-    DASH -->|"Admin only"| BILLING["Gerencia a assinatura:\nplano, pagamento\ne cancelamento"]
+    PUB --> ANON["Faz uma denúncia anônima\npelo link público da empresa"]
+    ANON --> REPORTS
 ```
