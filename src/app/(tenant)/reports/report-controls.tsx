@@ -72,8 +72,8 @@ export function ReportControls({ reports }: Props): React.ReactElement {
                 <td className="px-4 py-3 text-xs text-muted-foreground font-mono whitespace-nowrap">
                   {new Intl.DateTimeFormat("pt-BR").format(new Date(report.createdAt))}
                 </td>
-                <td className="px-4 py-3 text-xs text-muted-foreground">
-                  {report.category ?? "—"}
+                <td className="px-4 py-3 text-xs text-muted-foreground max-w-[10rem] truncate" title={report.category ?? ""}>
+                  {report.category ? report.category.slice(0, 20) : "—"}
                 </td>
                 <td className="px-4 py-3 text-xs max-w-xs truncate">{report.content}</td>
                 <td className="px-4 py-3">

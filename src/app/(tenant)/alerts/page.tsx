@@ -3,6 +3,7 @@ import { getSession } from "@/modules/auth/session"
 import { getAlerts } from "@/modules/alerts/alert.service"
 import { format } from "date-fns"
 import { AlertRowActions } from "@/app/(tenant)/alerts/alert-row-actions"
+import { PageHelp } from "@/components/page-help"
 
 export default async function AlertsPage(): Promise<React.ReactElement> {
   const session = await getSession()
@@ -13,7 +14,10 @@ export default async function AlertsPage(): Promise<React.ReactElement> {
   return (
     <div className="flex flex-col h-full">
       <div className="border-b border-border bg-card px-6 py-4 shrink-0">
-        <h1 className="text-sm font-bold uppercase tracking-widest">Alertas</h1>
+        <div className="flex items-center gap-1.5">
+          <h1 className="text-sm font-bold uppercase tracking-widest">Alertas</h1>
+          <PageHelp text="Notificações automáticas geradas quando o sistema detecta padrões preocupantes — como funcionários que nunca responderam pesquisas ou índices baixos de bem-estar. Cada alerta pode ser marcado como lido ou resolvido pela equipe de RH." />
+        </div>
         <p className="text-xs text-muted-foreground mt-0.5">{alerts.length} alertas</p>
       </div>
       <div className="flex-1 overflow-y-auto p-6">

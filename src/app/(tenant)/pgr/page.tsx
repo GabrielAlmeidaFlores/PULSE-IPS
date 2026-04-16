@@ -3,6 +3,7 @@ import { getSession } from "@/modules/auth/session"
 import { getPgrReviews } from "@/modules/pgr/pgr.service"
 import { format } from "date-fns"
 import { PgrGenerateButton } from "@/app/(tenant)/pgr/pgr-generate-button"
+import { PageHelp } from "@/components/page-help"
 
 export default async function PgrPage(): Promise<React.ReactElement> {
   const session = await getSession()
@@ -14,7 +15,10 @@ export default async function PgrPage(): Promise<React.ReactElement> {
     <div className="flex flex-col h-full">
       <div className="border-b border-border bg-card px-6 py-4 flex items-center justify-between shrink-0">
         <div>
-          <h1 className="text-sm font-bold uppercase tracking-widest">PGR — Revisoes</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-sm font-bold uppercase tracking-widest">PGR — Revisoes</h1>
+            <PageHelp text="Programa de Gerenciamento de Riscos exigido pela NR-1. Gera relatórios periódicos do estado de saúde emocional da empresa com base nas respostas das pesquisas. Selecione o período (mês/ano) e gere o relatório para fins de conformidade legal e auditoria trabalhista." />
+          </div>
           <p className="text-xs text-muted-foreground mt-0.5">{reviews.length} revisoes</p>
         </div>
         <PgrGenerateButton />

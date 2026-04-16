@@ -6,6 +6,7 @@ import { getOrgUsers } from "@/modules/auth/invite.service"
 import { SettingsForm } from "@/app/(tenant)/settings/settings-form"
 import { TeamManagement } from "@/app/(tenant)/settings/team-management"
 import { ChangePasswordForm } from "@/app/(tenant)/settings/change-password-form"
+import { PageHelp } from "@/components/page-help"
 
 export default async function SettingsPage(): Promise<React.ReactElement> {
   const session = await getSession()
@@ -20,7 +21,10 @@ export default async function SettingsPage(): Promise<React.ReactElement> {
   return (
     <div className="flex flex-col h-full">
       <div className="border-b border-border bg-card px-6 py-4 shrink-0">
-        <h1 className="text-sm font-bold uppercase tracking-widest">Configuracoes</h1>
+        <div className="flex items-center gap-1.5">
+          <h1 className="text-sm font-bold uppercase tracking-widest">Configuracoes</h1>
+          <PageHelp text="Dados gerais da empresa no Pulse: nome da organização, fuso horário e membros da equipe. O fuso horário é usado para calcular o horário exato de envio das pesquisas. Em 'Equipe' você convida usuários de RH para acessar a plataforma. Disponível apenas para o administrador." />
+        </div>
         <p className="text-xs text-muted-foreground mt-0.5">Dados da organizacao</p>
       </div>
       <div className="flex-1 overflow-y-auto p-6">

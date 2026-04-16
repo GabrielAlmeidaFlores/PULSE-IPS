@@ -10,13 +10,6 @@ import { ChevronDown, ChevronUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { createEmployeeAction } from "@/app/(tenant)/employees/new/actions"
 
 const schema = z.object({
@@ -89,16 +82,17 @@ export function CreateEmployeeForm({ departments }: Props): React.ReactElement {
       <form onSubmit={form.handleSubmit(onSubmit)} className="p-5 space-y-4">
         <div className="space-y-1.5">
           <Label className={fieldCls}>Departamento</Label>
-          <Select onValueChange={(val: string | null) => { if (val !== null) form.setValue("departmentId", val) }}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione o departamento" />
-            </SelectTrigger>
-            <SelectContent>
-              {departments.map((dept) => (
-                <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <select
+            style={{ borderRadius: 0 }}
+            className="w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors appearance-none"
+            onChange={(e) => form.setValue("departmentId", e.target.value)}
+            defaultValue=""
+          >
+            <option value="" disabled>Selecione o departamento</option>
+            {departments.map((dept) => (
+              <option key={dept.id} value={dept.id}>{dept.name}</option>
+            ))}
+          </select>
           {form.formState.errors.departmentId && (
             <p className="text-xs text-destructive">Selecione um departamento</p>
           )}

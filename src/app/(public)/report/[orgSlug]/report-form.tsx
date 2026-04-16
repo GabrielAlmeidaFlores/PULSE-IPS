@@ -13,7 +13,7 @@ import { submitReportAction } from "@/app/(public)/report/[orgSlug]/actions"
 
 const schema = z.object({
   content: z.string().min(10).max(5000),
-  category: z.string().optional(),
+  category: z.string().max(20).optional(),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -55,7 +55,7 @@ export function ReportForm({ orgSlug }: Props): React.ReactElement {
           <Label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
             Categoria (opcional)
           </Label>
-          <Input {...form.register("category")} placeholder="ex: assedio, seguranca..." />
+          <Input {...form.register("category")} placeholder="ex: assedio, seguranca..." maxLength={20} />
         </div>
         <div className="space-y-1.5">
           <Label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">

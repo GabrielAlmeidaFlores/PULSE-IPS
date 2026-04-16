@@ -3,6 +3,7 @@ import { getSession } from "@/modules/auth/session"
 import { getAlerts } from "@/modules/alerts/alert.service"
 import { getTotalEmployeeCount } from "@/modules/employees/employee.service"
 import { getDispatches } from "@/modules/surveys/survey.service"
+import { PageHelp } from "@/components/page-help"
 
 export default async function DashboardPage(): Promise<React.ReactElement> {
   const session = await getSession()
@@ -20,7 +21,10 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
   return (
     <div className="flex flex-col h-full">
       <div className="border-b border-border bg-card px-6 py-4 shrink-0">
-        <h1 className="text-sm font-bold uppercase tracking-widest">Dashboard</h1>
+        <div className="flex items-center gap-1.5">
+          <h1 className="text-sm font-bold uppercase tracking-widest">Dashboard</h1>
+          <PageHelp text="Visão geral da saúde emocional da sua empresa. Mostra o total de funcionários, alertas ativos, e os últimos disparos de pesquisas. Use para identificar rapidamente se há alertas críticos pendentes ou departamentos que precisam de atenção." />
+        </div>
         <p className="text-xs text-muted-foreground mt-0.5">Visao geral do sistema</p>
       </div>
       <div className="flex-1 overflow-y-auto p-6 space-y-6">

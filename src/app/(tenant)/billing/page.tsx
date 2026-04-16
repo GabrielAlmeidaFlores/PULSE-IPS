@@ -4,6 +4,7 @@ import { getSubscription } from "@/modules/billing/billing.service"
 import { getAllPlans } from "@/modules/plans/plan.service"
 import { format } from "date-fns"
 import { PlanCard, ManageSubscriptionButton } from "@/app/(tenant)/billing/billing-actions"
+import { PageHelp } from "@/components/page-help"
 
 export default async function BillingPage(): Promise<React.ReactElement> {
   const session = await getSession()
@@ -18,7 +19,10 @@ export default async function BillingPage(): Promise<React.ReactElement> {
   return (
     <div className="flex flex-col h-full">
       <div className="border-b border-border bg-card px-6 py-4 shrink-0">
-        <h1 className="text-sm font-bold uppercase tracking-widest">Assinatura</h1>
+        <div className="flex items-center gap-1.5">
+          <h1 className="text-sm font-bold uppercase tracking-widest">Assinatura</h1>
+          <PageHelp text="Gerencia o plano da sua empresa no Pulse. Exibe o plano atual, data de renovação e histórico de pagamentos. Você pode fazer upgrade, downgrade ou cancelar a assinatura a qualquer momento. Disponível apenas para o administrador da conta." />
+        </div>
         <p className="text-xs text-muted-foreground mt-0.5">Gerenciamento de plano e faturamento</p>
       </div>
       <div className="flex-1 overflow-y-auto p-6 space-y-6">

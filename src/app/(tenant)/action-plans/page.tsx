@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { getSession } from "@/modules/auth/session"
 import { getActionPlans } from "@/modules/action-plans/action-plan.service"
+import { PageHelp } from "@/components/page-help"
 
 export default async function ActionPlansPage(): Promise<React.ReactElement> {
   const session = await getSession()
@@ -13,7 +14,10 @@ export default async function ActionPlansPage(): Promise<React.ReactElement> {
     <div className="flex flex-col h-full">
       <div className="border-b border-border bg-card px-6 py-4 flex items-center justify-between shrink-0">
         <div>
-          <h1 className="text-sm font-bold uppercase tracking-widest">Planos de Acao</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-sm font-bold uppercase tracking-widest">Planos de Acao</h1>
+            <PageHelp text="Registro das medidas tomadas a partir de alertas ou pesquisas preocupantes. Cada plano tem título, responsável, prazo e status de acompanhamento (aberto, em andamento ou concluído). Serve para documentar e garantir que os problemas identificados sejam efetivamente tratados." />
+          </div>
           <p className="text-xs text-muted-foreground mt-0.5">{plans.length} planos</p>
         </div>
         <Link href="/action-plans/new" className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90 transition-colors border border-primary" style={{ borderRadius: 0 }}>Novo Plano</Link>

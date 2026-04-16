@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Pencil, Trash2, Check, X } from "lucide-react"
 import { createDepartmentAction, renameDepartmentAction, deleteDepartmentAction } from "@/app/(tenant)/departments/actions"
+import { PageHelp } from "@/components/page-help"
 
 interface DepartmentRow {
   id: string
@@ -69,7 +70,10 @@ export function DepartmentControls({ departments }: Props): React.ReactElement {
     <div className="flex flex-col h-full">
       <div className="border-b border-border bg-card px-6 py-4 flex items-center justify-between shrink-0">
         <div>
-          <h1 className="text-sm font-bold uppercase tracking-widest">Departamentos</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-sm font-bold uppercase tracking-widest">Departamentos</h1>
+            <PageHelp text="Departamentos agrupam os funcionários da empresa. Cada departamento pode ter sua própria configuração de pesquisa com horários e frequência distintos. Ao cadastrar um funcionário, ele é vinculado a um departamento e herda as configurações de envio desse grupo." />
+          </div>
           <p className="text-xs text-muted-foreground mt-0.5">{departments.length} departamentos</p>
         </div>
         <button
@@ -120,7 +124,7 @@ export function DepartmentControls({ departments }: Props): React.ReactElement {
           <tr className="border-b border-border bg-muted/40">
             <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Nome</th>
             <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Funcionarios</th>
-            <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Ações</th>
+            <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-48">Ações</th>
           </tr>
         </thead>
         <tbody>
@@ -147,8 +151,8 @@ export function DepartmentControls({ departments }: Props): React.ReactElement {
               <td className="px-4 py-3 text-right font-mono text-muted-foreground">
                 {dept.employeeCount}
               </td>
-              <td className="px-4 py-3">
-                <div className="flex items-center justify-end gap-1">
+              <td className="px-4 py-3 w-48">
+                <div className="flex items-center justify-end gap-1 whitespace-nowrap">
                   {(() => {
                     if (editingId === dept.id) {
                       return (

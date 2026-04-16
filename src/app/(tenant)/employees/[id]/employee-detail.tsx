@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { useForm, useWatch } from "react-hook-form"
+import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
@@ -10,13 +10,6 @@ import { ChevronDown, ChevronUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { updateEmployeeAction, deactivateEmployeeAction, sendConsentInviteAction } from "@/app/(tenant)/employees/[id]/actions"
 
 const schema = z.object({
@@ -70,7 +63,6 @@ export function EmployeeDetail({ employee, departments }: Props): React.ReactEle
       workEndTime: employee.workEndTime ?? "",
     },
   })
-  const departmentId = useWatch({ control: form.control, name: "departmentId" })
 
   function onSubmit(values: FormValues): void {
     startTransition(async () => {
@@ -138,19 +130,16 @@ export function EmployeeDetail({ employee, departments }: Props): React.ReactEle
         </div>
         <div className="space-y-1">
           <Label className="text-[10px] font-bold uppercase tracking-widest">Departamento</Label>
-          <Select
-            value={departmentId}
-            onValueChange={(v) => form.setValue("departmentId", v ?? "")}
+          <select
+            style={{ borderRadius: 0 }}
+            className="w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors appearance-none"
+            defaultValue={employee.departmentId}
+            onChange={(e) => form.setValue("departmentId", e.target.value)}
           >
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione um departamento" />
-            </SelectTrigger>
-            <SelectContent>
-              {departments.map((d) => (
-                <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            {departments.map((d) => (
+              <option key={d.id} value={d.id}>{d.name}</option>
+            ))}
+          </select>
           {form.formState.errors.departmentId && (
             <p className="text-[11px] text-destructive">{form.formState.errors.departmentId.message}</p>
           )}

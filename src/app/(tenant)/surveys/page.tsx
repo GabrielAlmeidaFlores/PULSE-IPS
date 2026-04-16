@@ -4,6 +4,7 @@ import { getSession } from "@/modules/auth/session"
 import { getDispatches, getSurveyConfigs } from "@/modules/surveys/survey.service"
 import { format } from "date-fns"
 import { ScheduleDispatchButton } from "@/app/(tenant)/surveys/schedule-dispatch-button"
+import { PageHelp } from "@/components/page-help"
 
 export default async function SurveysPage(): Promise<React.ReactElement> {
   const session = await getSession()
@@ -23,7 +24,10 @@ export default async function SurveysPage(): Promise<React.ReactElement> {
     <div className="flex flex-col h-full">
       <div className="border-b border-border bg-card px-6 py-4 flex items-center justify-between shrink-0">
         <div>
-          <h1 className="text-sm font-bold uppercase tracking-widest">Pesquisas</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-sm font-bold uppercase tracking-widest">Pesquisas</h1>
+            <PageHelp text="Pesquisas de bem-estar enviadas automaticamente aos funcionários via WhatsApp ou SMS no horário de trabalho de cada equipe. O sistema dispara e coleta respostas sem intervenção manual. Configure a frequência e os horários por departamento em 'Configurar'. Aqui você acompanha o histórico de envios e taxas de resposta." />
+          </div>
           <p className="text-xs text-muted-foreground mt-0.5">{dispatches.length} disparos · {configs.length} configurações</p>
         </div>
         <div className="flex gap-0">
