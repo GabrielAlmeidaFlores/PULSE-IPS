@@ -4,14 +4,21 @@ import { redirect } from "next/navigation"
 import { headers } from "next/headers"
 import { isRedirectError } from "next/dist/client/components/redirect-error"
 import type { ActionResult } from "@/libs/utils/action-result"
-import { getSession } from "@/modules/auth/session"
+import { getSession, destroySession } from "@/modules/auth/session"
 import { acceptTerms } from "@/modules/terms/terms.service"
+import { getOrgUserById } from "@/modules/auth/auth.service"
 
 
 export async function acceptTermsAction(termsVersionId: string): Promise<ActionResult> {
   try {
     const session = await getSession()
     if (!session) return { error: "Sessão expirada. Faça login novamente." }
+
+    const userExists = await getOrgUserById(session.userId, session.tenantId)
+    if (!userExists) {
+      await destroySession()
+      redirect("/login")
+    }
 
     const headersList = await headers()
     const ip =

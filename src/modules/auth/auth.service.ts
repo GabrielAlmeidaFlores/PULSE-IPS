@@ -121,3 +121,7 @@ export async function resetPassword(token: string, newPassword: string): Promise
   await consumeAuthToken(authToken.id, authToken.userId, newHash)
 }
 
+export function getOrgUserById(userId: string, tenantId: string): ReturnType<typeof findOrgUserById> {
+  return findOrgUserById(userId, tenantId)
+}
+
