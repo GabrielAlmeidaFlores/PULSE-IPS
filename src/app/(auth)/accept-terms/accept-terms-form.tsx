@@ -27,7 +27,7 @@ export function AcceptTermsForm({ termsVersionId, title, version, content }: Pro
   }
 
   return (
-    <div className="border border-border bg-card w-full max-w-2xl mx-auto" style={{ borderRadius: 0 }}>
+    <div className="border border-border bg-card w-full max-w-3xl mx-auto flex flex-col max-h-[78vh]" style={{ borderRadius: 0 }}>
       <div className="border-b border-border px-6 py-4 border-l-4 border-l-primary">
         <div className="flex flex-col leading-none mb-1">
           <span className="text-[18px] font-black tracking-[0.2em] uppercase text-foreground">PULSE</span>
@@ -37,8 +37,8 @@ export function AcceptTermsForm({ termsVersionId, title, version, content }: Pro
         <p className="text-[11px] text-muted-foreground">Versão {version}</p>
       </div>
 
-      <div className="px-6 py-4 max-h-[50vh] overflow-y-auto border-b border-border">
-        <div className="text-[13px] text-foreground leading-relaxed prose prose-sm max-w-none"
+      <div className="px-8 py-6 flex-1 overflow-y-auto border-b border-border min-h-0">
+        <div className="text-[14px] text-foreground leading-loose prose prose-sm max-w-none space-y-4"
           dangerouslySetInnerHTML={{ __html: content }}
         />
       </div>

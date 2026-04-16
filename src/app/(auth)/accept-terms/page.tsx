@@ -11,7 +11,7 @@ export default async function AcceptTermsPage(): Promise<React.ReactElement> {
   if (!pending) redirect("/dashboard")
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="min-h-screen flex items-start justify-center bg-background p-4 pt-6">
       <AcceptTermsForm
         termsVersionId={pending.id}
         title={pending.title}
