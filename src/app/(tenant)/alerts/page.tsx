@@ -5,24 +5,41 @@ import { format } from "date-fns"
 import { AlertRowActions } from "@/app/(tenant)/alerts/alert-row-actions"
 import { PageHelp } from "@/components/page-help"
 
-const ALERT_SEVERITY_LABELS: Record<string, string> = {
+const BADGE_DEFAULT = "bg-muted text-muted-foreground border-border"
+const BADGE_BASE = "inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border"
+
+const SEVERITY_LABELS: Record<string, string> = {
   info: "Informativo",
   warning: "Atenção",
   critical: "Crítico",
 }
 
-const ALERT_SEVERITY_STYLE: Record<string, string> = {
-  info: "bg-muted text-muted-foreground border-border",
-  warning: "bg-yellow-50 text-yellow-700 border-yellow-200",
-  critical: "bg-destructive/10 text-destructive border-destructive/20",
+const SEVERITY_STYLE: Record<string, string> = {
+  info: "bg-blue-100 text-blue-800 border-blue-300",
+  warning: "bg-yellow-100 text-yellow-800 border-yellow-300",
+  critical: "bg-red-100 text-red-800 border-red-300",
 }
 
-const ALERT_TYPE_LABELS: Record<string, string> = {
+const SEVERITY_DOT: Record<string, string> = {
+  info: "bg-blue-500",
+  warning: "bg-yellow-500",
+  critical: "bg-red-500",
+}
+
+const TYPE_LABELS: Record<string, string> = {
   low_score: "Score baixo",
   no_response: "Sem resposta",
   consent_expired: "Consentimento expirado",
   billing: "Cobrança",
   system: "Sistema",
+}
+
+const TYPE_STYLE: Record<string, string> = {
+  low_score: "bg-amber-100 text-amber-800 border-amber-300",
+  no_response: "bg-red-100 text-red-800 border-red-300",
+  consent_expired: BADGE_DEFAULT,
+  billing: "bg-blue-100 text-blue-800 border-blue-300",
+  system: BADGE_DEFAULT,
 }
 
 export default async function AlertsPage(): Promise<React.ReactElement> {
@@ -57,46 +74,45 @@ export default async function AlertsPage(): Promise<React.ReactElement> {
               {alerts.length === 0 && (
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-xs text-muted-foreground">Nenhum alerta.</td></tr>
               )}
-              {alerts.map((alert, i) => (
-                <tr key={alert.id} className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors ${  i % 2 !== 0 ? "bg-muted/10" : ""}`}>
-                  <td className="px-4 py-3 text-xs font-mono text-muted-foreground">{ALERT_TYPE_LABELS[alert.type] ?? alert.type}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${ALERT_SEVERITY_STYLE[alert.severity] ?? "bg-muted text-muted-foreground border-border"}`}>
-                      {ALERT_SEVERITY_LABELS[alert.severity] ?? alert.severity}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 max-w-xs truncate text-xs">{alert.message}</td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{format(new Date(alert.createdAt), "dd/MM HH:mm")}</td>
-                  <td className="px-4 py-3">
-                    {(() => {
-                      let statusCls: string
-                      if (alert.resolvedAt) {
-                        statusCls = "bg-primary/10 text-primary border-primary/20"
-                      } else if (alert.isRead) {
-                        statusCls = "bg-muted text-muted-foreground border-border"
-                      } else {
-                        statusCls = "bg-amber-50 text-amber-700 border-amber-200"
-                      }
-                      let statusLabel: string
-                      if (alert.resolvedAt) {
-                        statusLabel = "resolvido"
-                      } else if (alert.isRead) {
-                        statusLabel = "lido"
-                      } else {
-                        statusLabel = "novo"
-                      }
-                      return (
-                        <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${statusCls}`}>
-                          {statusLabel}
-                        </span>
-                      )
-                    })()}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <AlertRowActions alertId={alert.id} isRead={alert.isRead} isResolved={Boolean(alert.resolvedAt)} />
-                  </td>
-                </tr>
-              ))}
+              {alerts.map((alert, i) => {
+                let statusCls: string
+                let statusLabel: string
+                if (alert.resolvedAt) {
+                  statusCls = "bg-green-100 text-green-800 border-green-300"
+                  statusLabel = "resolvido"
+                } else if (alert.isRead) {
+                  statusCls = BADGE_DEFAULT
+                  statusLabel = "lido"
+                } else {
+                  statusCls = "bg-amber-100 text-amber-800 border-amber-300"
+                  statusLabel = "novo"
+                }
+                return (
+                  <tr key={alert.id} className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors ${i % 2 !== 0 ? "bg-muted/10" : ""}`}>
+                    <td className="px-4 py-3">
+                      <span className={`${BADGE_BASE} ${TYPE_STYLE[alert.type] ?? BADGE_DEFAULT}`}>
+                        {TYPE_LABELS[alert.type] ?? alert.type}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${SEVERITY_STYLE[alert.severity] ?? BADGE_DEFAULT}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${SEVERITY_DOT[alert.severity] ?? "bg-muted-foreground"}`} />
+                        {SEVERITY_LABELS[alert.severity] ?? alert.severity}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 max-w-xs truncate text-xs">{alert.message}</td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{format(new Date(alert.createdAt), "dd/MM HH:mm")}</td>
+                    <td className="px-4 py-3">
+                      <span className={`${BADGE_BASE} ${statusCls}`}>
+                        {statusLabel}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <AlertRowActions alertId={alert.id} isRead={alert.isRead} isResolved={Boolean(alert.resolvedAt)} />
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
