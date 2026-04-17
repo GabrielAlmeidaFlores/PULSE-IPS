@@ -1,8 +1,9 @@
-import type { SurveyConfiguration, SurveyQuestion, Department, SurveyDispatch, SurveyResponse, SurveyResponseToken, Organization, Employee } from "@prisma/client"
+import type { SurveyConfiguration, SurveyQuestion, Department, SurveyDispatch, SurveyResponse, SurveyResponseToken, Organization, Employee, Prisma } from "@prisma/client"
 import { prisma } from "@/libs/db"
 import type { CreateSurveyConfigInput, CreateSurveyResponseInput, CreateSurveyTokenInput, CreateAdherenceAlertInput, CreateMessageLogInput } from "@/modules/surveys/survey.types"
 
-export type SurveyConfigWithDetails = SurveyConfiguration & { department: Department; questions: SurveyQuestion[] }
+type SurveyConfigWithWorkDays = Prisma.SurveyConfigurationGetPayload<{ include: { workDays: true } }>
+export type SurveyConfigWithDetails = SurveyConfigWithWorkDays & { department: Department; questions: SurveyQuestion[] }
 export type DispatchWithConfig = SurveyDispatch & { surveyConfiguration: SurveyConfiguration & { department: Department } }
 export type DispatchWithDetails = SurveyDispatch & { surveyConfiguration: SurveyConfiguration & { questions: SurveyQuestion[] }; responses: SurveyResponse[] }
 export type TokenWithDispatch = SurveyResponseToken & { dispatch: SurveyDispatch & { surveyConfiguration: SurveyConfiguration & { questions: SurveyQuestion[]; organization: Organization } } }
@@ -13,6 +14,7 @@ export function findSurveyConfigsByTenant(tenantId: string): Promise<SurveyConfi
     include: {
       department: true,
       questions: { orderBy: { order: "asc" } },
+      workDays: true,
     },
     orderBy: { createdAt: "desc" },
   })
@@ -21,7 +23,7 @@ export function findSurveyConfigsByTenant(tenantId: string): Promise<SurveyConfi
 export function findSurveyConfigById(tenantId: string, configId: string): Promise<SurveyConfigWithDetails | null> {
   return prisma.surveyConfiguration.findFirst({
     where: { id: configId, tenantId },
-    include: { department: true, questions: { orderBy: { order: "asc" } } },
+    include: { department: true, questions: { orderBy: { order: "asc" } }, workDays: true },
   })
 }
 
@@ -40,7 +42,10 @@ export async function upsertSurveyConfig(tenantId: string, input: CreateSurveyCo
         frequency: input.frequency,
         workStartTime: input.workStartTime,
         workEndTime: input.workEndTime,
-        workDays: input.workDays,
+        workDays: {
+          deleteMany: {},
+          createMany: { data: input.workDays.map((d) => ({ dayOfWeek: d })) },
+        },
         questions: {
           create: input.questions.map((q) => ({ ...q, tenantId })),
         },
@@ -56,7 +61,9 @@ export async function upsertSurveyConfig(tenantId: string, input: CreateSurveyCo
       frequency: input.frequency,
       workStartTime: input.workStartTime,
       workEndTime: input.workEndTime,
-      workDays: input.workDays,
+      workDays: {
+        createMany: { data: input.workDays.map((d) => ({ dayOfWeek: d })) },
+      },
       questions: {
         create: input.questions.map((q) => ({ ...q, tenantId })),
       },
@@ -81,14 +88,36 @@ export function findDispatchById(tenantId: string, dispatchId: string): Promise<
   })
 }
 
-export function findPendingDispatches(): Promise<(SurveyDispatch & { surveyConfiguration: SurveyConfiguration & { questions: SurveyQuestion[]; department: Department & { employees: (Employee & { workStartTime: string | null; workEndTime: string | null })[] } }; organization: Organization })[]> {
+export function findPendingDispatches(): Promise<
+  (SurveyDispatch & {
+    surveyConfiguration: SurveyConfiguration & {
+      workDays: { dayOfWeek: number }[]
+      questions: SurveyQuestion[]
+      department: Department & {
+        workDays: { dayOfWeek: number }[]
+        employees: (Employee & {
+          workStartTime: string | null
+          workEndTime: string | null
+          workDays: { dayOfWeek: number }[]
+        })[]
+      }
+    }
+    organization: Organization
+  })[]
+> {
   return prisma.surveyDispatch.findMany({
     where: { status: "scheduled", scheduledAt: { lte: new Date() } },
     include: {
       surveyConfiguration: {
         include: {
+          workDays: true,
           questions: { orderBy: { order: "asc" } },
-          department: { include: { employees: { where: { status: "active" } } } },
+          department: {
+            include: {
+              workDays: true,
+              employees: { where: { status: "active" }, include: { workDays: true } },
+            },
+          },
         },
       },
       organization: true,
@@ -168,15 +197,30 @@ export async function markDispatchSent(tenantId: string, dispatchId: string, tot
   })
 }
 
+export interface DispatchEmployee {
+  id: string
+  phone: string
+  workStartTime: string | null
+  workEndTime: string | null
+  workDays: number[]
+}
+
+export interface DispatchDepartment {
+  workStartTime: string
+  workEndTime: string
+  workDays: number[]
+  employees: DispatchEmployee[]
+}
+
 export interface ActiveConfigForDispatch {
   id: string
   tenantId: string
   frequency: string
   workStartTime: string
   workEndTime: string
-  workDays: string
+  workDays: number[]
   organization: { timezone: string }
-  department: Department & { employees: (Employee & { workStartTime: string | null; workEndTime: string | null })[] }
+  department: DispatchDepartment
   questions: SurveyQuestion[]
   lastDispatchedAt: Date | null
 }
@@ -187,7 +231,13 @@ export async function findActiveConfigsForAutoDispatch(): Promise<ActiveConfigFo
     include: {
       organization: { select: { timezone: true } },
       questions: { orderBy: { order: "asc" } },
-      department: { include: { employees: { where: { status: "active" } } } },
+      workDays: true,
+      department: {
+        include: {
+          workDays: true,
+          employees: { where: { status: "active" }, include: { workDays: true } },
+        },
+      },
       dispatches: {
         where: { status: "dispatched" },
         orderBy: { dispatchedAt: "desc" },
@@ -204,9 +254,20 @@ export async function findActiveConfigsForAutoDispatch(): Promise<ActiveConfigFo
       frequency: c.frequency,
       workStartTime: c.workStartTime,
       workEndTime: c.workEndTime,
-      workDays: c.workDays,
+      workDays: c.workDays.map((w) => w.dayOfWeek),
       organization: c.organization,
-      department: c.department as Department & { employees: (Employee & { workStartTime: string | null; workEndTime: string | null })[] },
+      department: {
+        workStartTime: c.department.workStartTime,
+        workEndTime: c.department.workEndTime,
+        workDays: c.department.workDays.map((w) => w.dayOfWeek),
+        employees: c.department.employees.map((emp) => ({
+          id: emp.id,
+          phone: emp.phone,
+          workStartTime: emp.workStartTime,
+          workEndTime: emp.workEndTime,
+          workDays: emp.workDays.map((w) => w.dayOfWeek),
+        })),
+      },
       questions: c.questions,
       lastDispatchedAt: c.dispatches[0]?.dispatchedAt ?? null,
     }))

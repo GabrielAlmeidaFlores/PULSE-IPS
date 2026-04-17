@@ -23,6 +23,7 @@ interface EmployeeRow {
   departmentId: string
   workStartTime: string | null
   workEndTime: string | null
+  workDays: number[]
   department: { name: string }
 }
 
@@ -48,6 +49,7 @@ export function EmployeeTable({ employees, total, departments }: Props): React.R
       status: emp.status,
       workStartTime: emp.workStartTime,
       workEndTime: emp.workEndTime,
+      workDays: emp.workDays,
     })
   }
 
@@ -59,6 +61,7 @@ export function EmployeeTable({ employees, total, departments }: Props): React.R
         email: values.email === "" ? null : values.email,
         workStartTime: values.workStartTime ?? null,
         workEndTime: values.workEndTime ?? null,
+        workDays: values.workDays ?? null,
         status: values.status,
       })
       if (result.error) {

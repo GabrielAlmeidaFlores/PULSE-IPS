@@ -12,6 +12,7 @@ import {
   countResponsesForDispatch,
   createAdherenceAlert,
   markDispatchAdherenceChecked,
+  type DispatchEmployee,
 } from "@/modules/surveys/survey.repository"
 
 const FREQUENCY_INTERVAL_DAYS: Record<string, number> = {
@@ -28,36 +29,47 @@ function getDayOfWeekInTimezone(timezone: string): number {
   return dayMap[dayName] ?? new Date().getDay()
 }
 
-function isWorkDay(workDays: string, timezone: string): boolean {
+function isWorkDay(workDays: number[], timezone: string): boolean {
   const today = getDayOfWeekInTimezone(timezone)
-  return workDays.split(",").map((d) => parseInt(d, 10)).includes(today)
+  return workDays.includes(today)
 }
 
 async function fireDispatch(
   configId: string,
   tenantId: string,
-  employees: { id: string; phone: string; workStartTime: string | null; workEndTime: string | null }[],
-  workStartTime: string,
-  workEndTime: string,
+  employees: DispatchEmployee[],
+  department: { workStartTime: string; workEndTime: string; workDays: number[] },
+  configWorkStartTime: string,
+  configWorkEndTime: string,
+  timezone: string,
 ): Promise<void> {
+  const today = getDayOfWeekInTimezone(timezone)
+
+  const eligibleEmployees = employees.filter((emp) => {
+    const effectiveDays = emp.workDays.length > 0 ? emp.workDays : department.workDays
+    return effectiveDays.includes(today)
+  })
+
+  if (eligibleEmployees.length === 0) return
+
   const dispatch = await createDispatch(tenantId, configId, new Date())
   const messageQueue = getMessageQueue()
 
-  const tokens = employees.map((emp) => ({
+  const tokens = eligibleEmployees.map((emp) => ({
     tenantId,
     dispatchId: dispatch.id,
     employeeId: emp.id,
     token: randomUUID(),
     expiresAt: addHours(new Date(), 24),
-    workStartTime: emp.workStartTime ?? workStartTime,
-    workEndTime: emp.workEndTime ?? workEndTime,
+    workStartTime: emp.workStartTime ?? department.workStartTime ?? configWorkStartTime,
+    workEndTime: emp.workEndTime ?? department.workEndTime ?? configWorkEndTime,
   }))
 
   await createSurveyTokens(tokens)
-  await markDispatchSent(tenantId, dispatch.id, employees.length)
+  await markDispatchSent(tenantId, dispatch.id, eligibleEmployees.length)
 
   for (const empToken of tokens) {
-    const employee = employees.find((e) => e.id === empToken.employeeId)
+    const employee = eligibleEmployees.find((e) => e.id === empToken.employeeId)
     if (!employee) continue
     const surveyUrl = `${env.NEXT_PUBLIC_APP_URL}/survey/${empToken.token}`
     await messageQueue.add("send-message", {
@@ -80,39 +92,30 @@ export async function runSurveyDispatcher(): Promise<{ dispatched: number; error
     const config = dispatch.surveyConfiguration
     const timezone = dispatch.organization.timezone
 
-    if (!isWorkDay(config.workDays, timezone)) {
+    if (!isWorkDay(config.workDays.map((w) => w.dayOfWeek), timezone)) {
       continue
     }
 
     try {
-      const employees = config.department.employees
-      const tokens = employees.map((emp) => ({
-        tenantId: dispatch.tenantId,
-        dispatchId: dispatch.id,
-        employeeId: emp.id,
-        token: randomUUID(),
-        expiresAt: addHours(new Date(), 24),
-        workStartTime: emp.workStartTime ?? config.workStartTime,
-        workEndTime: emp.workEndTime ?? config.workEndTime,
+      const dept = config.department
+      const deptWorkDays = dept.workDays.map((w) => w.dayOfWeek)
+      const employees: DispatchEmployee[] = dept.employees.map((emp) => ({
+        id: emp.id,
+        phone: emp.phone,
+        workStartTime: emp.workStartTime,
+        workEndTime: emp.workEndTime,
+        workDays: emp.workDays.map((w) => w.dayOfWeek),
       }))
 
-      await createSurveyTokens(tokens)
-      await markDispatchSent(dispatch.tenantId, dispatch.id, employees.length)
-
-      const messageQueue = getMessageQueue()
-      for (const empToken of tokens) {
-        const employee = employees.find((e) => e.id === empToken.employeeId)
-        if (!employee) continue
-        const surveyUrl = `${env.NEXT_PUBLIC_APP_URL}/survey/${empToken.token}`
-        await messageQueue.add("send-message", {
-          to: employee.phone,
-          body: `Pulse: Seu check-in diário está pronto. Por favor, responda em 2 minutos: ${surveyUrl}`,
-          tenantId: dispatch.tenantId,
-          employeeId: employee.id,
-          provider: env.MESSAGING_PROVIDER,
-          type: "survey_dispatch",
-        })
-      }
+      await fireDispatch(
+        config.id,
+        dispatch.tenantId,
+        employees,
+        { workStartTime: dept.workStartTime, workEndTime: dept.workEndTime, workDays: deptWorkDays },
+        config.workStartTime,
+        config.workEndTime,
+        timezone,
+      )
 
       dispatched++
     } catch {
@@ -150,8 +153,10 @@ export async function runAutoDispatchScheduler(): Promise<{ triggered: number; s
         config.id,
         config.tenantId,
         config.department.employees,
+        config.department,
         config.workStartTime,
         config.workEndTime,
+        timezone,
       )
       triggered++
     } catch {

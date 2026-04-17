@@ -19,6 +19,7 @@ const schema = z.object({
   email: z.string().email().optional().or(z.literal("")),
   workStartTime: z.string().optional(),
   workEndTime: z.string().optional(),
+  workDays: z.array(z.number()).optional(),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -42,11 +43,22 @@ const SHIFT_PRESETS: Record<ShiftPreset, { label: string; start: string; end: st
   custom: null,
 }
 
+const ALL_DAYS = [
+  { value: 0, label: "Dom" },
+  { value: 1, label: "Seg" },
+  { value: 2, label: "Ter" },
+  { value: 3, label: "Qua" },
+  { value: 4, label: "Qui" },
+  { value: 5, label: "Sex" },
+  { value: 6, label: "Sáb" },
+]
+
 export function CreateEmployeeForm({ departments }: Props): React.ReactElement {
   const router = useRouter()
   const form = useForm<FormValues>({ resolver: zodResolver(schema) })
   const [showSchedule, setShowSchedule] = useState(false)
   const [shiftPreset, setShiftPreset] = useState<ShiftPreset | "">("")
+  const [selectedDays, setSelectedDays] = useState<number[]>([])
 
   function applyPreset(preset: ShiftPreset): void {
     setShiftPreset(preset)
@@ -57,12 +69,21 @@ export function CreateEmployeeForm({ departments }: Props): React.ReactElement {
     }
   }
 
+  function toggleDay(day: number): void {
+    const next = selectedDays.includes(day)
+      ? selectedDays.filter((d) => d !== day)
+      : [...selectedDays, day]
+    setSelectedDays(next)
+    form.setValue("workDays", next.length > 0 ? next : undefined)
+  }
+
   async function onSubmit(values: FormValues): Promise<void> {
     const result = await createEmployeeAction({
       ...values,
       email: values.email === "" ? undefined : values.email,
-      workStartTime: values.workStartTime ?? undefined,
-      workEndTime: values.workEndTime ?? undefined,
+      workStartTime: values.workStartTime !== "" ? values.workStartTime : undefined,
+      workEndTime: values.workEndTime !== "" ? values.workEndTime : undefined,
+      workDays: values.workDays && values.workDays.length > 0 ? values.workDays : undefined,
     })
     if (result.error) {
       toast.error(result.error)
@@ -125,12 +146,35 @@ export function CreateEmployeeForm({ departments }: Props): React.ReactElement {
           >
             <span className="text-[10px] font-bold uppercase tracking-widest text-foreground">
               Horário personalizado{" "}
-              <span className="text-muted-foreground font-normal">(opcional — herda do departamento se não preenchido)</span>
+              <span className="text-muted-foreground font-normal">(opcional — herda do departamento)</span>
             </span>
             {showSchedule ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
           </button>
           {showSchedule && (
-            <div className="p-4 space-y-3 border-t border-border">
+            <div className="p-4 space-y-4 border-t border-border">
+              <div className="space-y-1.5">
+                <Label className={fieldCls}>Dias de trabalho</Label>
+                <div className="flex gap-1.5 flex-wrap">
+                  {ALL_DAYS.map((day) => {
+                    const active = selectedDays.includes(day.value)
+                    return (
+                      <button
+                        key={day.value}
+                        type="button"
+                        onClick={() => toggleDay(day.value)}
+                        style={{ borderRadius: 0 }}
+                        className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border transition-colors ${
+                          active
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "border-border text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
+                        {day.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
               <div className="space-y-1.5">
                 <Label className={fieldCls}>Turno</Label>
                 <select
@@ -159,6 +203,7 @@ export function CreateEmployeeForm({ departments }: Props): React.ReactElement {
                   </div>
                 </div>
               )}
+              <p className="text-[11px] text-muted-foreground">Deixe em branco para herdar o horário do departamento.</p>
             </div>
           )}
         </div>

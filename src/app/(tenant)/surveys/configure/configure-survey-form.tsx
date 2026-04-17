@@ -24,13 +24,13 @@ const selectCls =
   "w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors appearance-none"
 
 const WEEK_DAYS = [
-  { value: "1", label: "Seg" },
-  { value: "2", label: "Ter" },
-  { value: "3", label: "Qua" },
-  { value: "4", label: "Qui" },
-  { value: "5", label: "Sex" },
-  { value: "6", label: "Sáb" },
-  { value: "0", label: "Dom" },
+  { value: 1, label: "Seg" },
+  { value: 2, label: "Ter" },
+  { value: 3, label: "Qua" },
+  { value: 4, label: "Qui" },
+  { value: 5, label: "Sex" },
+  { value: 6, label: "Sáb" },
+  { value: 0, label: "Dom" },
 ]
 
 export function ConfigureSurveyForm({ departments }: Props): React.ReactElement {
@@ -41,7 +41,7 @@ export function ConfigureSurveyForm({ departments }: Props): React.ReactElement 
   const [frequency, setFrequency] = useState<"daily" | "twice_weekly" | "weekly" | "biweekly" | "monthly">("weekly")
   const [workStartTime, setWorkStartTime] = useState("09:00")
   const [workEndTime, setWorkEndTime] = useState("18:00")
-  const [workDays, setWorkDays] = useState(new Set(["1", "2", "3", "4", "5"]))
+  const [workDays, setWorkDays] = useState(new Set([1, 2, 3, 4, 5]))
   const [questions, setQuestions] = useState([
     { text: "Como você se sente em relação ao seu bem-estar no trabalho hoje?", order: 1 },
     { text: "Você se sente sobrecarregado com as demandas do trabalho?", order: 2 },
@@ -49,7 +49,7 @@ export function ConfigureSurveyForm({ departments }: Props): React.ReactElement 
   ])
   const [newQuestion, setNewQuestion] = useState("")
 
-  function toggleDay(value: string): void {
+  function toggleDay(value: number): void {
     setWorkDays((prev) => {
       const next = new Set(prev)
       if (next.has(value)) {
@@ -85,7 +85,7 @@ export function ConfigureSurveyForm({ departments }: Props): React.ReactElement 
         frequency,
         workStartTime,
         workEndTime,
-        workDays: Array.from(workDays).sort().join(","),
+        workDays: Array.from(workDays).sort((a, b) => a - b),
         questions,
       })
       if (result?.error) {

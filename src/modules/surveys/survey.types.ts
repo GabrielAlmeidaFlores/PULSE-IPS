@@ -5,7 +5,7 @@ export interface SurveyConfigurationType {
   frequency: string
   workStartTime: string
   workEndTime: string
-  workDays: string
+  workDays: number[]
   isActive: boolean
   createdAt: Date
   updatedAt: Date
@@ -40,7 +40,7 @@ export interface CreateSurveyConfigInput {
   frequency: "daily" | "twice_weekly" | "weekly" | "biweekly" | "monthly"
   workStartTime: string
   workEndTime: string
-  workDays: string
+  workDays: number[]
   questions: { text: string; order: number }[]
 }
 

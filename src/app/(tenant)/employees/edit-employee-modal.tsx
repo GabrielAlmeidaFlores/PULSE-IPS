@@ -17,6 +17,7 @@ const schema = z.object({
   status: z.enum(["active", "inactive"]),
   workStartTime: z.string().optional(),
   workEndTime: z.string().optional(),
+  workDays: z.array(z.number()).optional(),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -36,6 +37,7 @@ export interface EmployeeEditData {
   status: string
   workStartTime: string | null
   workEndTime: string | null
+  workDays: number[] | null
 }
 
 interface Props {
@@ -47,8 +49,23 @@ interface Props {
   departments: Department[]
 }
 
+const ALL_DAYS = [
+  { value: 0, label: "Dom" },
+  { value: 1, label: "Seg" },
+  { value: 2, label: "Ter" },
+  { value: 3, label: "Qua" },
+  { value: 4, label: "Qui" },
+  { value: 5, label: "Sex" },
+  { value: 6, label: "Sáb" },
+]
+
 export function EditEmployeeModal({ open, onClose, onSave, loading, employee, departments }: Props): React.ReactElement {
-  const [showSchedule, setShowSchedule] = useState(Boolean(employee?.workStartTime))
+  const [showSchedule, setShowSchedule] = useState(
+    ((employee?.workStartTime?.length ?? 0) > 0) || ((employee?.workDays?.length ?? 0) > 0)
+  )
+  const [selectedDays, setSelectedDays] = useState<number[]>(
+    employee?.workDays ?? []
+  )
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -60,6 +77,7 @@ export function EditEmployeeModal({ open, onClose, onSave, loading, employee, de
       status: "active",
       workStartTime: "",
       workEndTime: "",
+      workDays: [],
     },
   })
 
@@ -68,6 +86,7 @@ export function EditEmployeeModal({ open, onClose, onSave, loading, employee, de
 
   useEffect(() => {
     if (open && employee) {
+      const days = employee.workDays ?? []
       form.reset({
         name: employee.name,
         phone: employee.phone,
@@ -76,9 +95,18 @@ export function EditEmployeeModal({ open, onClose, onSave, loading, employee, de
         status: employee.status === "inactive" ? "inactive" : "active",
         workStartTime: employee.workStartTime ?? "",
         workEndTime: employee.workEndTime ?? "",
+        workDays: days,
       })
     }
   }, [open, employee, form])
+
+  function toggleDay(day: number): void {
+    const next = selectedDays.includes(day)
+      ? selectedDays.filter((d) => d !== day)
+      : [...selectedDays, day]
+    setSelectedDays(next)
+    form.setValue("workDays", next)
+  }
 
   function handleSubmit(values: FormValues): void {
     onSave(values)
@@ -160,12 +188,36 @@ export function EditEmployeeModal({ open, onClose, onSave, loading, employee, de
                 style={{ borderRadius: 0 }}
               >
                 <span className="text-[10px] font-bold uppercase tracking-widest text-foreground">
-                  Horário personalizado
+                  Horário personalizado{" "}
+                  <span className="text-muted-foreground font-normal">(herda do departamento se não definido)</span>
                 </span>
                 {showSchedule ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
               </button>
               {showSchedule && (
-                <div className="p-4 space-y-3 border-t border-border">
+                <div className="p-4 space-y-4 border-t border-border">
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest">Dias de trabalho</Label>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {ALL_DAYS.map((day) => {
+                        const active = selectedDays.includes(day.value)
+                        return (
+                          <button
+                            key={day.value}
+                            type="button"
+                            onClick={() => toggleDay(day.value)}
+                            style={{ borderRadius: 0 }}
+                            className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border transition-colors ${
+                              active
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "border-border text-muted-foreground hover:bg-muted"
+                            }`}
+                          >
+                            {day.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className="text-[10px] font-bold uppercase tracking-widest">Início</Label>

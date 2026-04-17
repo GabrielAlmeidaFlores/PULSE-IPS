@@ -520,7 +520,7 @@ O arquivo `src/proxy.ts` intercepta todas as requisições:
 2. Define:
    - **Frequência**: `daily`, `twice_weekly`, `weekly`, `biweekly`, `monthly`
    - **Horário de expediente**: `workStartTime` e `workEndTime` (formato `HH:mm`)
-   - **Dias de trabalho**: números de 0 (domingo) a 6 (sábado), separados por vírgula (ex: `1,2,3,4,5`)
+   - **Dias de trabalho**: seleção de dias da semana (0=Dom … 6=Sáb), armazenados na tabela relacional `survey_config_work_days` — nunca como string separada por vírgula
    - **Perguntas**: lista de questões com score de 1 a 5
 3. A action salva a `SurveyConfiguration` com `@@unique([tenantId, departmentId])` — só existe uma configuração ativa por departamento.
 
@@ -745,12 +745,16 @@ O super admin acessa `/super-admin` com credenciais separadas e tem controle tot
 - Configurável em `/settings`.
 
 **Horário de expediente:**
-- Configurado por departamento em `SurveyConfiguration` (`workStartTime`, `workEndTime`, `workDays`).
-- Pode ser sobrescrito por funcionário (`Employee.workStartTime`, `Employee.workEndTime`).
-- O horário do funcionário tem precedência sobre o do departamento.
+- Configurado em 3 níveis com herança:
+  1. `SurveyConfiguration` — janela de disparo da pesquisa (`workStartTime`, `workEndTime`, `survey_config_work_days`)
+  2. `Department` — expediente padrão do setor (`workStartTime`, `workEndTime`, `department_work_days`) — fallback do colaborador
+  3. `Employee` — override individual (`workStartTime`, `workEndTime`, `employee_work_days`) — tem **precedência** sobre o departamento
+- **Cadeia de herança para horários**: `employee → department → surveyConfig`
+- **Cadeia de herança para dias de trabalho**: `employee_work_days` (se preenchido) → `department_work_days`
+- O horário do colaborador tem precedência sobre o departamento; o departamento tem precedência sobre a config da pesquisa.
 
 **No disparo de pesquisas:**
-1. O worker verifica se o dia atual (no timezone da organização) é um dia de trabalho (`workDays`).
+1. O worker verifica se o dia atual (no timezone da organização) está nos dias configurados em `survey_config_work_days`.
 2. Verifica se a hora atual (no timezone da organização) está dentro do expediente (`workStartTime` ≤ agora ≤ `workEndTime`).
 3. Se fora do expediente, o disparo é adiado para a próxima execução do job (a cada 15 min).
 

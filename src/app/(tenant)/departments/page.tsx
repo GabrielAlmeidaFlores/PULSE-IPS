@@ -12,6 +12,9 @@ export default async function DepartmentsPage(): Promise<React.ReactElement> {
   const mappedDepartments = departments.map((dept) => ({
     id: dept.id,
     name: dept.name,
+    workStartTime: dept.workStartTime,
+    workEndTime: dept.workEndTime,
+    workDays: dept.workDays.map((w) => w.dayOfWeek),
     employeeCount: (dept as { _count?: { employees?: number } })._count?.employees ?? 0,
   }))
 

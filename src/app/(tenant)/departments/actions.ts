@@ -5,13 +5,24 @@ import { createDept, updateDept, removeDept } from "@/modules/departments/depart
 import { AppError } from "@/libs/errors/app-error"
 import type { ActionResult } from "@/libs/utils/action-result"
 
+interface DeptFormData {
+  name: string
+  workStartTime?: string
+  workEndTime?: string
+  workDays?: number[]
+}
 
-export async function createDepartmentAction(name: string): Promise<ActionResult> {
+export async function createDepartmentAction(data: DeptFormData): Promise<ActionResult> {
   const session = await getSession()
   if (!session) return { error: "Sessão expirada." }
-  if (!name.trim()) return { error: "Nome é obrigatório." }
+  if (!data.name.trim()) return { error: "Nome é obrigatório." }
   try {
-    await createDept(session.tenantId, { name: name.trim() })
+    await createDept(session.tenantId, {
+      name: data.name.trim(),
+      workStartTime: data.workStartTime !== undefined && data.workStartTime !== "" ? data.workStartTime : "09:00",
+      workEndTime: data.workEndTime !== undefined && data.workEndTime !== "" ? data.workEndTime : "18:00",
+      workDays: data.workDays ?? [1, 2, 3, 4, 5],
+    })
     revalidatePath("/departments")
     return {}
   } catch (err) {
@@ -20,12 +31,17 @@ export async function createDepartmentAction(name: string): Promise<ActionResult
   }
 }
 
-export async function renameDepartmentAction(departmentId: string, name: string): Promise<ActionResult> {
+export async function updateDepartmentAction(departmentId: string, data: DeptFormData): Promise<ActionResult> {
   const session = await getSession()
   if (!session) return { error: "Sessão expirada." }
-  if (!name.trim()) return { error: "Nome é obrigatório." }
+  if (!data.name.trim()) return { error: "Nome é obrigatório." }
   try {
-    await updateDept(session.tenantId, departmentId, { name: name.trim() })
+    await updateDept(session.tenantId, departmentId, {
+      name: data.name.trim(),
+      ...(data.workStartTime ? { workStartTime: data.workStartTime } : {}),
+      ...(data.workEndTime ? { workEndTime: data.workEndTime } : {}),
+      ...(data.workDays && data.workDays.length > 0 ? { workDays: data.workDays } : {}),
+    })
     revalidatePath("/departments")
     return {}
   } catch (err) {

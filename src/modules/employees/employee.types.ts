@@ -8,6 +8,7 @@ export interface Employee {
   status: "active" | "inactive" | "paused"
   workStartTime: string | null
   workEndTime: string | null
+  workDays: number[]
   createdAt: Date
   updatedAt: Date
 }
@@ -19,6 +20,7 @@ export interface CreateEmployeeInput {
   email?: string | undefined
   workStartTime?: string | undefined
   workEndTime?: string | undefined
+  workDays?: number[] | undefined
 }
 
 export interface UpdateEmployeeInput {
@@ -29,6 +31,7 @@ export interface UpdateEmployeeInput {
   status?: "active" | "inactive" | "paused" | undefined
   workStartTime?: string | null | undefined
   workEndTime?: string | null | undefined
+  workDays?: number[] | null | undefined
 }
 
 export interface ImportRow {

@@ -37,6 +37,7 @@ interface Employee {
   departmentId: string
   workStartTime: string | null
   workEndTime: string | null
+  workDays: { dayOfWeek: number }[]
   department: { name: string }
 }
 
@@ -45,12 +46,24 @@ interface Props {
   departments: Department[]
 }
 
+const ALL_DAYS = [
+  { value: 0, label: "Dom" },
+  { value: 1, label: "Seg" },
+  { value: 2, label: "Ter" },
+  { value: 3, label: "Qua" },
+  { value: 4, label: "Qui" },
+  { value: 5, label: "Sex" },
+  { value: 6, label: "Sáb" },
+]
+
 export function EmployeeDetail({ employee, departments }: Props): React.ReactElement {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [isDeactivating, setIsDeactivating] = useState(false)
   const [isSendingConsent, setIsSendingConsent] = useState(false)
-  const [showSchedule, setShowSchedule] = useState(Boolean(employee.workStartTime))
+  const hasCustomSchedule = Boolean(employee.workStartTime) || employee.workDays.length > 0
+  const [showSchedule, setShowSchedule] = useState(hasCustomSchedule)
+  const [selectedDays, setSelectedDays] = useState<number[]>(employee.workDays.map((w) => w.dayOfWeek))
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -64,6 +77,12 @@ export function EmployeeDetail({ employee, departments }: Props): React.ReactEle
     },
   })
 
+  function toggleDay(day: number): void {
+    setSelectedDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+    )
+  }
+
   function onSubmit(values: FormValues): void {
     startTransition(async () => {
       const result = await updateEmployeeAction(employee.id, {
@@ -71,6 +90,7 @@ export function EmployeeDetail({ employee, departments }: Props): React.ReactEle
         email: values.email === "" ? null : values.email,
         workStartTime: values.workStartTime ?? null,
         workEndTime: values.workEndTime ?? null,
+        workDays: selectedDays.length > 0 ? selectedDays : null,
       })
       if (result.error) {
         toast.error(result.error)
@@ -155,15 +175,36 @@ export function EmployeeDetail({ employee, departments }: Props): React.ReactEle
             <span className="text-[10px] font-bold uppercase tracking-widest text-foreground">
               Horário personalizado{" "}
               <span className="text-muted-foreground font-normal normal-case">
-                {employee.workStartTime
-                  ? `${employee.workStartTime} – ${employee.workEndTime}`
-                  : "(herda do departamento)"}
+                {hasCustomSchedule ? "configurado" : "(herda do departamento)"}
               </span>
             </span>
             {showSchedule ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
           </button>
           {showSchedule && (
-            <div className="p-4 space-y-3 border-t border-border">
+            <div className="p-4 space-y-4 border-t border-border">
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-bold uppercase tracking-widest">Dias de trabalho</Label>
+                <div className="flex gap-1.5 flex-wrap">
+                  {ALL_DAYS.map((day) => {
+                    const active = selectedDays.includes(day.value)
+                    return (
+                      <button
+                        key={day.value}
+                        type="button"
+                        onClick={() => toggleDay(day.value)}
+                        style={{ borderRadius: 0 }}
+                        className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border transition-colors ${
+                          active
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "border-border text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
+                        {day.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-[10px] font-bold uppercase tracking-widest">Início</Label>

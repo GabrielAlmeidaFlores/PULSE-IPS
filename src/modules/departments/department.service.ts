@@ -5,9 +5,9 @@ import {
   createDepartment,
   updateDepartment,
   deactivateDepartment,
+  type DepartmentWithWorkDays,
 } from "@/modules/departments/department.repository"
 import type { CreateDepartmentInput, UpdateDepartmentInput } from "@/modules/departments/department.types"
-import type { Department } from "@prisma/client"
 
 export function getDepartments(tenantId: string): ReturnType<typeof findDepartmentsByTenant> {
   return findDepartmentsByTenant(tenantId)
@@ -33,6 +33,6 @@ export function removeDept(tenantId: string, departmentId: string): ReturnType<t
   return deactivateDepartment(tenantId, departmentId)
 }
 
-export function getActiveDepartments(tenantId: string): Promise<Department[]> {
+export function getActiveDepartments(tenantId: string): Promise<DepartmentWithWorkDays[]> {
   return findActiveDepartmentsByTenant(tenantId)
 }

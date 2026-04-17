@@ -36,7 +36,18 @@ export default async function EmployeesPage(): Promise<React.ReactElement> {
       </div>
       <div className="flex-1 overflow-y-auto p-6">
         <EmployeeTable
-          employees={employees}
+          employees={employees.map((emp) => ({
+            id: emp.id,
+            name: emp.name,
+            phone: emp.phone,
+            email: emp.email,
+            status: emp.status,
+            departmentId: emp.departmentId,
+            workStartTime: emp.workStartTime,
+            workEndTime: emp.workEndTime,
+            department: emp.department,
+            workDays: emp.workDays.map((w) => w.dayOfWeek),
+          }))}
           total={total}
           departments={departments.map((d) => ({ id: d.id, name: d.name }))}
         />

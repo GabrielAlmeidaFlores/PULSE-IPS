@@ -616,8 +616,12 @@ Tokens de uso único para reset de senha e fluxos de autenticação stateless.
 | tenant_id | uuid | NOT NULL, FK → organizations.id |
 | name | varchar(255) | NOT NULL |
 | is_active | boolean | NOT NULL, default true |
+| work_start_time | varchar(5) | `"HH:MM"` — início do expediente padrão (default `"09:00"`) |
+| work_end_time | varchar(5) | `"HH:MM"` — fim do expediente padrão (default `"18:00"`) |
 | created_at | timestamptz | NOT NULL |
 | updated_at | timestamptz | NOT NULL |
+
+Dias de trabalho do departamento em `department_work_days` (join table — ver abaixo). Padrão: Segunda a Sexta (`[1,2,3,4,5]`).
 
 **Índice:** `(tenant_id, is_active)`
 
@@ -640,7 +644,7 @@ Tokens de uso único para reset de senha e fluxos de autenticação stateless.
 | updated_at | timestamptz | NOT NULL |
 | UNIQUE | (tenant_id, email) | |
 
-> `work_start_time` e `work_end_time` do colaborador sobrepõem os valores do setor quando preenchidos. Armazenados como strings `"HH:MM"` sem timezone — interpretados no `organizations.timezone` no momento do dispatch.
+> `work_start_time` e `work_end_time` do colaborador sobrepõem os valores do departamento quando preenchidos (cadeia: `employee → department → surveyConfig`). Dias de trabalho opcionais em `employee_work_days` (join table — ver abaixo); quando vazio, herda de `department_work_days`. Todos avaliados no `organizations.timezone` no momento do dispatch.
 
 #### `employee_consents`
 
@@ -669,15 +673,46 @@ Tokens de uso único para reset de senha e fluxos de autenticação stateless.
 | tenant_id | uuid | NOT NULL |
 | department_id | uuid | NOT NULL, FK → departments.id |
 | frequency | varchar(20) | `'daily'` \| `'twice_weekly'` \| `'weekly'` \| `'biweekly'` \| `'monthly'` |
-| work_start_time | varchar(5) | `"HH:MM"` — início do expediente do setor (ex: `"09:00"`) |
-| work_end_time | varchar(5) | `"HH:MM"` — fim do expediente do setor (ex: `"18:00"`) |
-| work_days | varchar(13) | dias da semana separados por vírgula: `"1,2,3,4,5"` (0=Dom, 1=Seg, …, 6=Sáb) |
+| work_start_time | varchar(5) | `"HH:MM"` — início do expediente configurado para esta pesquisa (ex: `"09:00"`) |
+| work_end_time | varchar(5) | `"HH:MM"` — fim do expediente configurado para esta pesquisa (ex: `"18:00"`) |
 | is_active | boolean | NOT NULL |
 | UNIQUE | (tenant_id, department_id) | |
 
-> `work_start_time`, `work_end_time` e `work_days` definem a janela de trabalho do setor. Colaboradores podem sobrepor `work_start_time`/`work_end_time` individualmente no campo equivalente de `employees`. Todos avaliados no `organizations.timezone`.
+Dias de trabalho da pesquisa em `survey_config_work_days` (join table — ver abaixo). Armazenados como `day_of_week INT` (0=Dom … 6=Sáb).
+
+> `work_start_time`, `work_end_time` e `work_days` (via join table) definem a janela de disparo da pesquisa. **Cadeia de herança no disparo:** `employee.workStartTime/workEndTime → department.workStartTime/workEndTime → surveyConfig.workStartTime/workEndTime`. Para dias de trabalho por funcionário: `employee_work_days` (se não vazio) → `department_work_days`. Todos avaliados no `organizations.timezone`.
 
 > Não existe mais `send_days` (jsonb) nem `send_time` (time) separados — o disparo ocorre automaticamente pelo scheduler ao detectar que estamos dentro do expediente configurado.
+
+#### `department_work_days`
+
+Tabela de dias de trabalho do departamento. Relacionamento N:1 com `departments`.
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| department_id | uuid | NOT NULL, FK → departments.id ON DELETE CASCADE |
+| day_of_week | integer | NOT NULL — 0=Dom, 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sáb |
+| PK | (department_id, day_of_week) | |
+
+#### `employee_work_days`
+
+Dias de trabalho específicos de um colaborador. Quando presente, sobrepõe `department_work_days` para esse colaborador. Quando ausente, o colaborador herda os dias do departamento.
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| employee_id | uuid | NOT NULL, FK → employees.id ON DELETE CASCADE |
+| day_of_week | integer | NOT NULL — 0=Dom … 6=Sáb |
+| PK | (employee_id, day_of_week) | |
+
+#### `survey_config_work_days`
+
+Dias de trabalho configurados para uma pesquisa. Define em quais dias o scheduler dispara essa configuração.
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| survey_configuration_id | uuid | NOT NULL, FK → survey_configurations.id ON DELETE CASCADE |
+| day_of_week | integer | NOT NULL — 0=Dom … 6=Sáb |
+| PK | (survey_configuration_id, day_of_week) | |
 
 #### `survey_questions`
 
@@ -1094,7 +1129,7 @@ Isso inclui:
   // ❌ Errado — usa timezone do servidor (pode ser UTC ou qualquer outro)
   const day = new Date().getDay()
   ```
-- `workDays` armazena dias da semana como `"1,2,3,4,5"` (1=Seg, 5=Sex, 0=Dom, 6=Sáb) — avaliado no timezone da organização
+- `workDays` é armazenado em tabelas de join relacionais (`department_work_days`, `employee_work_days`, `survey_config_work_days`) — nunca como string separada por vírgula. Em TypeScript, `workDays: number[]` (0=Dom … 6=Sáb) — avaliado no timezone da organização
 - `workStartTime`/`workEndTime` como `"HH:MM"` — avaliados no timezone da organização no momento do dispatch
 
 **Settings:** O RH configura o fuso horário em `/settings` → campo `Fuso horário`. O valor salvo é um IANA timezone string (ex: `"America/Sao_Paulo"`).
