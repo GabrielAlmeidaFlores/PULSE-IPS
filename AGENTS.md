@@ -2402,3 +2402,72 @@ localStorage.setItem("pulse:last-org-slug", slug)
 ---
 
 *Pulse — AGENTS.md | Documento interno | Abril de 2026*
+
+## 24. Labels e Badges — Valores de Enum na UI
+
+**Regra:** Nunca exibir valores de enum/banco de dados diretamente na interface (`score_drop`, `pgr_review_due`, `WARNING`, etc.).  
+Todo valor técnico deve ter um label em **português** definido explicitamente antes de ser renderizado.
+
+### Padrão obrigatório
+
+```tsx
+// ✅ CORRETO — label explícito em ptBR
+const TYPE_LABELS: Record<string, string> = {
+  score_drop:      "Queda de score",
+  pgr_review_due:  "Revisão PGR pendente",
+  low_adherence:   "Adesão baixa",
+  negative_trend:  "Tendência negativa",
+  // ...
+}
+// Uso:
+{TYPE_LABELS[item.type] ?? item.type}
+
+// ❌ ERRADO — jamais renderize o valor bruto diretamente
+{item.type}              // mostra "score_drop"
+{item.severity}          // mostra "warning"
+```
+
+### Fallback
+
+O fallback `?? item.type` é permitido apenas como segurança (para tipos futuros não mapeados). Sempre adicione o label correspondente ao Record quando um novo tipo for criado.
+
+### Tipos de alerta mapeados (`alerts`)
+
+| Valor no banco | Label exibido |
+|---|---|
+| `score_drop` | Queda de score |
+| `low_score` | Score baixo |
+| `pgr_review_due` | Revisão PGR pendente |
+| `negative_trend` | Tendência negativa |
+| `low_adherence` | Adesão baixa |
+| `no_response` | Sem resposta |
+| `consent_expired` | Consentimento expirado |
+| `billing` | Cobrança |
+| `system` | Sistema |
+
+### Severidades mapeadas (`alerts`)
+
+| Valor no banco | Label exibido |
+|---|---|
+| `info` | Informativo |
+| `warning` | Atenção |
+| `critical` | Crítico |
+
+### Cores de badges
+
+Use classes Tailwind com shades `-100` (fundo) / `-800` (texto) / `-300` (borda). Essas shades são visíveis e já existem no CSS gerado pelo projeto.
+
+```tsx
+// Padrão visual de badge
+const BADGE_DEFAULT = "bg-muted text-muted-foreground border-border"  // neutro/cinza
+
+// Cores semânticas
+"bg-red-100 text-red-800 border-red-300"      // erro / crítico
+"bg-amber-100 text-amber-800 border-amber-300" // atenção / queda
+"bg-yellow-100 text-yellow-800 border-yellow-300" // aviso leve
+"bg-blue-100 text-blue-800 border-blue-300"   // informativo
+"bg-green-100 text-green-800 border-green-300" // sucesso / resolvido
+```
+
+**Não use inline `style={{ color, backgroundColor }}`** para badges — usar className garante consistência com o tema e o Tailwind JIT/oxide inclui as classes por serem literais no fonte.
+

@@ -27,7 +27,11 @@ const SEVERITY_DOT: Record<string, string> = {
 }
 
 const TYPE_LABELS: Record<string, string> = {
+  score_drop: "Queda de score",
   low_score: "Score baixo",
+  pgr_review_due: "Revisão PGR pendente",
+  negative_trend: "Tendência negativa",
+  low_adherence: "Adesão baixa",
   no_response: "Sem resposta",
   consent_expired: "Consentimento expirado",
   billing: "Cobrança",
@@ -35,7 +39,11 @@ const TYPE_LABELS: Record<string, string> = {
 }
 
 const TYPE_STYLE: Record<string, string> = {
+  score_drop: "bg-red-100 text-red-800 border-red-300",
   low_score: "bg-amber-100 text-amber-800 border-amber-300",
+  pgr_review_due: "bg-blue-100 text-blue-800 border-blue-300",
+  negative_trend: "bg-amber-100 text-amber-800 border-amber-300",
+  low_adherence: "bg-yellow-100 text-yellow-800 border-yellow-300",
   no_response: "bg-red-100 text-red-800 border-red-300",
   consent_expired: BADGE_DEFAULT,
   billing: "bg-blue-100 text-blue-800 border-blue-300",
@@ -100,7 +108,7 @@ export default async function AlertsPage(): Promise<React.ReactElement> {
                         {SEVERITY_LABELS[alert.severity] ?? alert.severity}
                       </span>
                     </td>
-                    <td className="px-4 py-3 max-w-xs truncate text-xs">{alert.message}</td>
+                    <td className="px-4 py-3 text-xs">{alert.message}</td>
                     <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{format(new Date(alert.createdAt), "dd/MM HH:mm")}</td>
                     <td className="px-4 py-3">
                       <span className={`${BADGE_BASE} ${statusCls}`}>
