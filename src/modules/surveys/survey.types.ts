@@ -1,3 +1,25 @@
+export interface DispatchDashboardStats {
+  id: string
+  departmentId: string
+  status: string
+  scheduledAt: Date
+  dispatchedAt: Date | null
+  departmentName: string
+  frequency: string
+  totalRecipients: number
+  totalResponses: number
+  notResponded: number
+  adherenceRate: number
+  avgScore: number | null
+  questions: {
+    id: string
+    text: string
+    order: number
+    avgScore: number | null
+    distribution: { score: number; count: number }[]
+  }[]
+}
+
 export interface SurveyConfigurationType {
   id: string
   tenantId: string

@@ -6,12 +6,14 @@ import {
   findSurveyConfigById,
   upsertSurveyConfig,
   findDispatchesByTenant,
+  findDispatchWithDashboard,
   createDispatch,
   findTokenByValue,
   deleteExpiredTokens,
   createSurveyResponseWithItems,
 } from "@/modules/surveys/survey.repository"
-import type { CreateSurveyConfigInput, SubmitSurveyInput, SurveyTokenValidation } from "@/modules/surveys/survey.types"
+import type { CreateSurveyConfigInput, SubmitSurveyInput, SurveyTokenValidation, DispatchDashboardStats } from "@/modules/surveys/survey.types"
+export type { DispatchWithConfig } from "@/modules/surveys/survey.repository"
 
 export function getSurveyConfigs(tenantId: string): ReturnType<typeof findSurveyConfigsByTenant> {
   return findSurveyConfigsByTenant(tenantId)
@@ -85,4 +87,41 @@ export async function submitSurveyResponse(input: SubmitSurveyInput): Promise<vo
     tokenId: tokenRecord.id,
     answers: input.answers,
   })
+}
+
+export async function getDispatchDashboard(tenantId: string, dispatchId: string): Promise<DispatchDashboardStats | null> {
+  const data = await findDispatchWithDashboard(tenantId, dispatchId)
+  if (!data) return null
+
+  const notResponded = Math.max(0, data.totalRecipients - data.totalResponses)
+  const adherenceRate = data.totalRecipients > 0 ? data.totalResponses / data.totalRecipients : 0
+
+  const allScores = data.responseItems.map((i) => i.score)
+  const avgScore = allScores.length > 0 ? allScores.reduce((a, b) => a + b, 0) / allScores.length : null
+
+  const questions = data.questions.map((q) => {
+    const qScores = data.responseItems.filter((i) => i.questionId === q.id).map((i) => i.score)
+    const qAvg = qScores.length > 0 ? qScores.reduce((a, b) => a + b, 0) / qScores.length : null
+    const distribution = [1, 2, 3, 4, 5].map((s) => ({
+      score: s,
+      count: qScores.filter((v) => v === s).length,
+    }))
+    return { ...q, avgScore: qAvg, distribution }
+  })
+
+  return {
+    id: data.id,
+    departmentId: data.departmentId,
+    status: data.status,
+    scheduledAt: data.scheduledAt,
+    dispatchedAt: data.dispatchedAt,
+    departmentName: data.departmentName,
+    frequency: data.frequency,
+    totalRecipients: data.totalRecipients,
+    totalResponses: data.totalResponses,
+    notResponded,
+    adherenceRate,
+    avgScore,
+    questions,
+  }
 }

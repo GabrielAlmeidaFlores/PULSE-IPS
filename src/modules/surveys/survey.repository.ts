@@ -81,6 +81,66 @@ export function findDispatchesByTenant(tenantId: string): Promise<DispatchWithCo
   })
 }
 
+export interface DispatchResponseItem {
+  questionId: string
+  score: number
+}
+
+export interface DispatchDashboardData {
+  id: string
+  tenantId: string
+  departmentId: string
+  status: string
+  scheduledAt: Date
+  dispatchedAt: Date | null
+  totalRecipients: number
+  totalResponses: number
+  departmentName: string
+  frequency: string
+  questions: { id: string; text: string; order: number }[]
+  responseItems: DispatchResponseItem[]
+}
+
+export async function findDispatchWithDashboard(tenantId: string, dispatchId: string): Promise<DispatchDashboardData | null> {
+  const dispatch = await prisma.surveyDispatch.findFirst({
+    where: { id: dispatchId, tenantId },
+    include: {
+      surveyConfiguration: {
+        include: {
+          department: true,
+          questions: { orderBy: { order: "asc" } },
+        },
+      },
+      responses: {
+        include: {
+          items: true,
+        },
+      },
+    },
+  })
+
+  if (!dispatch) return null
+
+  const responseItems: DispatchResponseItem[] = dispatch.responses.flatMap((r) =>
+    r.items.map((item) => ({ questionId: item.questionId, score: item.score })),
+  )
+
+  return {
+    id: dispatch.id,
+    tenantId: dispatch.tenantId,
+    status: dispatch.status,
+    scheduledAt: dispatch.scheduledAt,
+    dispatchedAt: dispatch.dispatchedAt,
+    totalRecipients: dispatch.totalRecipients,
+    totalResponses: dispatch.totalResponses,
+    departmentId: dispatch.surveyConfiguration.departmentId,
+    departmentName: dispatch.surveyConfiguration.department.name,
+    frequency: dispatch.surveyConfiguration.frequency,
+    questions: dispatch.surveyConfiguration.questions.map((q) => ({ id: q.id, text: q.text, order: q.order })),
+    responseItems,
+  }
+}
+
 export function findDispatchById(tenantId: string, dispatchId: string): Promise<DispatchWithDetails | null> {
   return prisma.surveyDispatch.findFirst({
     where: { id: dispatchId, tenantId },
