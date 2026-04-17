@@ -4,10 +4,11 @@ import { useState } from "react"
 import { HelpCircle } from "lucide-react"
 
 interface Props {
-  text: string
+  text?: string
+  content?: React.ReactNode
 }
 
-export function PageHelp({ text }: Props): React.ReactElement {
+export function PageHelp({ text, content }: Props): React.ReactElement {
   const [open, setOpen] = useState(false)
 
   return (
@@ -25,8 +26,8 @@ export function PageHelp({ text }: Props): React.ReactElement {
       </button>
 
       {open && (
-        <div className="absolute left-5 top-0 z-50 w-72 border border-border bg-card shadow-lg p-3" style={{ borderRadius: 0 }}>
-          <p className="text-[12px] text-foreground leading-relaxed">{text}</p>
+        <div className="absolute left-5 top-0 z-50 w-80 border border-border bg-card shadow-lg p-3" style={{ borderRadius: 0 }}>
+          {content ?? <p className="text-[12px] text-foreground leading-relaxed">{text}</p>}
         </div>
       )}
     </div>

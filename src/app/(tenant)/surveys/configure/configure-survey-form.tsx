@@ -6,6 +6,7 @@ import { Plus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
 import { configureSurveyAction } from "@/app/(tenant)/surveys/configure/actions"
+import { PageHelp } from "@/components/page-help"
 
 interface Department {
   id: string
@@ -118,8 +119,37 @@ export function ConfigureSurveyForm({ departments }: Props): React.ReactElement 
       </div>
 
       <div className="border border-border bg-card" style={{ borderRadius: 0 }}>
-        <div className="border-b border-border px-4 py-2.5 bg-muted">
+        <div className="border-b border-border px-4 py-2.5 bg-muted flex items-center gap-1.5">
           <span className="text-[10px] font-black tracking-widest uppercase text-foreground">Configuração</span>
+          <PageHelp content={
+            <div className="space-y-3 text-[12px] leading-relaxed">
+              <div>
+                <p className="font-bold uppercase tracking-widest text-[10px] text-primary mb-1">Quem recebe a pesquisa?</p>
+                <p className="text-foreground">Todos os funcionários <strong>ativos</strong> do departamento recebem a mensagem ao mesmo tempo, no momento do disparo. Não há filtro por turno no envio.</p>
+              </div>
+              <div>
+                <p className="font-bold uppercase tracking-widest text-[10px] text-primary mb-1">Horário para responder</p>
+                <p className="text-foreground">Cada funcionário recebe um link individual válido por <strong>24 horas</strong>. Ao abrir o link, o sistema verifica o horário:</p>
+                <ul className="mt-1 space-y-0.5 text-muted-foreground">
+                  <li>• Dentro do turno → pesquisa exibida normalmente</li>
+                  <li>• Fora do turno → link bloqueado, pesquisa não aparece</li>
+                  <li>• Após 24h → link expirado</li>
+                </ul>
+              </div>
+              <div>
+                <p className="font-bold uppercase tracking-widest text-[10px] text-primary mb-1">De onde vem o horário de cada um?</p>
+                <p className="text-foreground">O sistema usa o horário cadastrado no <strong>perfil do funcionário</strong>. Se ele não tiver horário próprio, herda automaticamente o <strong>início/fim do expediente definido aqui</strong>.</p>
+              </div>
+              <div>
+                <p className="font-bold uppercase tracking-widest text-[10px] text-primary mb-1">Dias e frequência</p>
+                <p className="text-foreground">Nos dias não marcados, o disparo não ocorre. O próximo envio é agendado automaticamente contando os dias desde o último disparo: diário=1d · 2×/sem=3d · semanal=7d · quinzenal=14d · mensal=28d.</p>
+              </div>
+              <div>
+                <p className="font-bold uppercase tracking-widest text-[10px] text-primary mb-1">Atenção</p>
+                <p className="text-muted-foreground">Departamentos sem funcionários ativos são ignorados. É necessário ter ao menos uma configuração de pesquisa criada para que os disparos aconteçam.</p>
+              </div>
+            </div>
+          } />
         </div>
         <div className="p-4 space-y-4">
           <div>

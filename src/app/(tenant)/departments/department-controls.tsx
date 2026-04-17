@@ -1,9 +1,8 @@
 "use client"
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
 import { toast } from "sonner"
-import { Pencil, Trash2, Clock } from "lucide-react"
+import { Pencil, Trash2 } from "lucide-react"
 import { createDepartmentAction, renameDepartmentAction, deleteDepartmentAction } from "@/app/(tenant)/departments/actions"
 import { PageHelp } from "@/components/page-help"
 import { ConfirmDeleteModal } from "@/components/confirm-delete-modal"
@@ -110,14 +109,6 @@ export function DepartmentControls({ departments }: Props): React.ReactElement {
                   <td className="px-4 py-3 text-right font-mono text-muted-foreground">{dept.employeeCount}</td>
                   <td className="px-4 py-3 w-24">
                     <div className="flex items-center justify-end gap-1">
-                      <Link
-                        href={`/departments/${dept.id}/timeline`}
-                        style={{ borderRadius: 0 }}
-                        className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider border border-border text-muted-foreground hover:bg-muted"
-                        title="Linha do tempo"
-                      >
-                        <Clock size={12} />
-                      </Link>
                       <button
                         onClick={() => setEditTarget(dept)}
                         style={{ borderRadius: 0 }}

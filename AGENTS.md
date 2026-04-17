@@ -276,7 +276,6 @@ src/
 │   │   │   ├── import/preview/page.tsx     # Preview válidos/erros antes de confirmar
 │   │   │   └── [id]/page.tsx
 │   │   ├── departments/
-│   │   │   └── [id]/timeline/page.tsx      # Linha do tempo do setor
 │   │   ├── surveys/
 │   │   ├── reports/
 │   │   ├── action-plans/
