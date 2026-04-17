@@ -4,6 +4,34 @@ import { getSession } from "@/modules/auth/session"
 import { getActionPlans } from "@/modules/action-plans/action-plan.service"
 import { PageHelp } from "@/components/page-help"
 
+const PLAN_STATUS_LABELS: Record<string, string> = {
+  open: "Aberto",
+  in_progress: "Em andamento",
+  completed: "Concluído",
+  cancelled: "Cancelado",
+}
+
+const BADGE_DEFAULT = "bg-muted text-muted-foreground border-border"
+
+const PLAN_STATUS_STYLE: Record<string, string> = {
+  open: BADGE_DEFAULT,
+  in_progress: "bg-yellow-50 text-yellow-700 border-yellow-200",
+  completed: "bg-primary/10 text-primary border-primary/20",
+  cancelled: "bg-destructive/10 text-destructive border-destructive/20",
+}
+
+const PLAN_PRIORITY_LABELS: Record<string, string> = {
+  low: "Baixa",
+  medium: "Média",
+  high: "Alta",
+}
+
+const PLAN_PRIORITY_STYLE: Record<string, string> = {
+  low: BADGE_DEFAULT,
+  medium: "bg-yellow-50 text-yellow-700 border-yellow-200",
+  high: "bg-destructive/10 text-destructive border-destructive/20",
+}
+
 export default async function ActionPlansPage(): Promise<React.ReactElement> {
   const session = await getSession()
   if (!session) redirect("/login")
@@ -45,13 +73,13 @@ export default async function ActionPlansPage(): Promise<React.ReactElement> {
                     </Link>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border border-border text-muted-foreground bg-muted">
-                      {plan.priority}
+                    <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${PLAN_PRIORITY_STYLE[plan.priority] ?? BADGE_DEFAULT}`}>
+                      {PLAN_PRIORITY_LABELS[plan.priority] ?? plan.priority}
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${  plan.status === "completed" ? "bg-primary/10 text-primary border-primary/20" : "bg-muted text-muted-foreground border-border"}`}>
-                      {plan.status}
+                    <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${PLAN_STATUS_STYLE[plan.status] ?? BADGE_DEFAULT}`}>
+                      {PLAN_STATUS_LABELS[plan.status] ?? plan.status}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right font-mono text-muted-foreground">{plan.tasks.length}</td>

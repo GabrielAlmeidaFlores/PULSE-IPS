@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { selfServiceCheckoutAction } from "@/app/(auth)/checkout/actions"
+import { storage } from "@/libs/local-storage"
 
 const schema = z.object({
   orgName: z.string().min(2, "Minimo 2 caracteres"),
@@ -52,6 +53,7 @@ export function CheckoutForm({ priceId, planName, priceLabel }: CheckoutFormProp
       toast.error(result.error)
       return
     }
+    storage.set(storage.KEYS.lastOrgSlug, values.slug)
     router.push(result.checkoutUrl ?? "/")
   }
 

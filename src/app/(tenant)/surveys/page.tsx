@@ -6,6 +6,20 @@ import { format } from "date-fns"
 import { ScheduleDispatchButton } from "@/app/(tenant)/surveys/schedule-dispatch-button"
 import { PageHelp } from "@/components/page-help"
 
+const DISPATCH_STATUS_LABELS: Record<string, string> = {
+  scheduled: "Agendado",
+  dispatched: "Enviado",
+  completed: "Concluído",
+  failed: "Falhou",
+}
+
+const DISPATCH_STATUS_STYLE: Record<string, string> = {
+  scheduled: "bg-muted text-muted-foreground border-border",
+  dispatched: "bg-primary/10 text-primary border-primary/20",
+  completed: "bg-green-50 text-green-700 border-green-200",
+  failed: "bg-destructive/10 text-destructive border-destructive/20",
+}
+
 export default async function SurveysPage(): Promise<React.ReactElement> {
   const session = await getSession()
   if (!session) redirect("/login")
@@ -76,8 +90,8 @@ export default async function SurveysPage(): Promise<React.ReactElement> {
                   <td className="px-4 py-3">{d.surveyConfiguration.department.name}</td>
                   <td className="px-4 py-3 text-xs font-mono text-muted-foreground">{format(new Date(d.scheduledAt), "dd/MM/yyyy HH:mm")}</td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${  d.status === "dispatched" ? "bg-primary/10 text-primary border-primary/20" : "bg-muted text-muted-foreground border-border"}`}>
-                      {d.status}
+                    <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${DISPATCH_STATUS_STYLE[d.status] ?? "bg-muted text-muted-foreground border-border"}`}>
+                      {DISPATCH_STATUS_LABELS[d.status] ?? d.status}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right font-mono">{d.totalRecipients}</td>

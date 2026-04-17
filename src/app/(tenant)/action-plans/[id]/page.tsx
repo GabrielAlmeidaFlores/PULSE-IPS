@@ -5,6 +5,12 @@ import { getActionPlan } from "@/modules/action-plans/action-plan.service"
 import { TaskControls } from "@/app/(tenant)/action-plans/[id]/task-controls"
 import { CompletePlanButton } from "@/app/(tenant)/action-plans/[id]/complete-plan-button"
 
+const PLAN_PRIORITY_LABELS: Record<string, string> = {
+  low: "Baixa",
+  medium: "Média",
+  high: "Alta",
+}
+
 interface Props {
   params: Promise<{ id: string }>
 }
@@ -28,7 +34,7 @@ export default async function ActionPlanDetailPage({ params }: Props): Promise<R
           </div>
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border border-border text-muted-foreground bg-muted">
-              {plan.priority}
+              {PLAN_PRIORITY_LABELS[plan.priority] ?? plan.priority}
             </span>
             <CompletePlanButton planId={plan.id} currentStatus={plan.status} />
           </div>

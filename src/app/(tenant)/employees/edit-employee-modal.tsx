@@ -14,6 +14,7 @@ const schema = z.object({
   phone: z.string().min(8, "Telefone inválido"),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
   departmentId: z.string().uuid("Departamento obrigatório"),
+  status: z.enum(["active", "inactive"]),
   workStartTime: z.string().optional(),
   workEndTime: z.string().optional(),
 })
@@ -32,6 +33,7 @@ export interface EmployeeEditData {
   phone: string
   email: string | null
   departmentId: string
+  status: string
   workStartTime: string | null
   workEndTime: string | null
 }
@@ -55,12 +57,14 @@ export function EditEmployeeModal({ open, onClose, onSave, loading, employee, de
       phone: "",
       email: "",
       departmentId: "",
+      status: "active",
       workStartTime: "",
       workEndTime: "",
     },
   })
 
   const departmentIdValue = useWatch({ control: form.control, name: "departmentId" })
+  const statusValue = useWatch({ control: form.control, name: "status" })
 
   useEffect(() => {
     if (open && employee) {
@@ -69,6 +73,7 @@ export function EditEmployeeModal({ open, onClose, onSave, loading, employee, de
         phone: employee.phone,
         email: employee.email ?? "",
         departmentId: employee.departmentId,
+        status: employee.status === "inactive" ? "inactive" : "active",
         workStartTime: employee.workStartTime ?? "",
         workEndTime: employee.workEndTime ?? "",
       })
@@ -123,6 +128,28 @@ export function EditEmployeeModal({ open, onClose, onSave, loading, employee, de
               {form.formState.errors.departmentId && (
                 <p className="text-[11px] text-destructive">{form.formState.errors.departmentId.message}</p>
               )}
+            </div>
+
+            <div className="flex items-center justify-between border border-border px-4 py-3" style={{ borderRadius: 0 }}>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-foreground">Status</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {statusValue === "active" ? "Recebe pesquisas normalmente" : "Não receberá pesquisas"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => form.setValue("status", statusValue === "active" ? "inactive" : "active")}
+                className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer border-2 border-transparent transition-colors focus:outline-none ${statusValue === "active" ? "bg-primary" : "bg-muted-foreground/30"}`}
+                style={{ borderRadius: 9999 }}
+                role="switch"
+                aria-checked={statusValue === "active"}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 transform bg-white shadow transition-transform ${statusValue === "active" ? "translate-x-4" : "translate-x-0"}`}
+                  style={{ borderRadius: 9999 }}
+                />
+              </button>
             </div>
 
             <div className="border border-border" style={{ borderRadius: 0 }}>

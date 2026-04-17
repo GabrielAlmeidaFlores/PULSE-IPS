@@ -12,7 +12,7 @@ interface Props {
 export function QuestionFilter({ questions }: Props): React.ReactElement {
   const [selectedOrders, setSelectedOrders] = useQueryState(
     "q",
-    parseAsArrayOf(parseAsInteger).withDefault([]),
+    parseAsArrayOf(parseAsInteger).withDefault([]).withOptions({ shallow: false }),
   )
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)

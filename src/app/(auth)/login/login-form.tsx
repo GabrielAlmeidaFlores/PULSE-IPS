@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -7,6 +8,7 @@ import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { loginAction } from "@/app/(auth)/login/actions"
+import { storage } from "@/libs/local-storage"
 
 const schema = z.object({
   orgSlug: z.string().min(1),
@@ -20,12 +22,18 @@ export function LoginForm(): React.ReactElement {
   const router = useRouter()
   const form = useForm<FormValues>({ resolver: zodResolver(schema) })
 
+  useEffect(() => {
+    const saved = storage.get(storage.KEYS.lastOrgSlug)
+    if (saved) form.setValue("orgSlug", saved)
+  }, [form])
+
   async function onSubmit(values: FormValues): Promise<void> {
     const result = await loginAction(values)
     if (result.error) {
       toast.error(result.error)
       return
     }
+    storage.set(storage.KEYS.lastOrgSlug, values.orgSlug)
     router.push("/dashboard")
   }
 

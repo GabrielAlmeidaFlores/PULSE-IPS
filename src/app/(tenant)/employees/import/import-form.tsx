@@ -3,11 +3,10 @@
 import { useRef, useState, useTransition } from "react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
-import { Upload, Download, CheckCircle2, XCircle, FileSpreadsheet } from "lucide-react"
-import { importEmployeesAction } from "@/app/(tenant)/employees/import/actions"
+import { Upload, Download, FileSpreadsheet } from "lucide-react"
+import { previewImportAction } from "@/app/(tenant)/employees/import/actions"
 
-const _inputCls =
-  "w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+const PREVIEW_STORAGE_KEY = "pulse:import-preview"
 
 function downloadSampleCsv(): void {
   const rows = [
@@ -26,19 +25,15 @@ function downloadSampleCsv(): void {
   URL.revokeObjectURL(url)
 }
 
-interface ImportError { row: number; error: string }
-interface Result { created: number; failed: number; errors: ImportError[] }
-
 export function ImportEmployeesForm(): React.ReactElement {
   const inputRef = useRef<HTMLInputElement>(null)
   const [fileName, setFileName] = useState<string | null>(null)
-  const [result, setResult] = useState<Result | null>(null)
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
 
   function handleFileChange(): void {
     const file = inputRef.current?.files?.[0]
-    if (file) { setFileName(file.name); setResult(null) }
+    if (file) setFileName(file.name)
   }
 
   function handleSubmit(): void {
@@ -48,16 +43,12 @@ export function ImportEmployeesForm(): React.ReactElement {
     startTransition(async () => {
       const formData = new FormData()
       formData.append("file", file)
-      const res = await importEmployeesAction(formData)
+      const res = await previewImportAction(formData)
 
       if (res.error) { toast.error(res.error); return }
 
-      setResult({ created: res.created ?? 0, failed: res.failed ?? 0, errors: res.errors ?? [] })
-
-      if ((res.created ?? 0) > 0) {
-        toast.success(`${res.created} colaborador(es) importado(s)`)
-        router.refresh()
-      }
+      sessionStorage.setItem(PREVIEW_STORAGE_KEY, JSON.stringify(res.preview))
+      router.push("/employees/import/preview")
     })
   }
 
@@ -65,7 +56,7 @@ export function ImportEmployeesForm(): React.ReactElement {
     <div className="max-w-xl space-y-4">
 
       <div className="border border-border bg-card" style={{ borderRadius: 0 }}>
-        <div className="px-4 py-2.5 border-b border-border bg-muted">
+        <div className="px-4 py-2.5 border-b border-border bg-muted flex items-center justify-between">
           <span className="text-[10px] font-black tracking-widest uppercase text-foreground">Instruções</span>
           <button
             onClick={downloadSampleCsv}
@@ -109,11 +100,11 @@ export function ImportEmployeesForm(): React.ReactElement {
           />
           <label
             htmlFor="file-upload"
-            className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border hover:border-primary transition-colors py-8 bg-background"
+            className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border hover:border-primary transition-colors py-8 bg-background cursor-pointer"
             style={{ borderRadius: 0 }}
           >
             <FileSpreadsheet className="h-6 w-6 text-muted-foreground" />
-            {fileName ? (
+            {fileName !== null ? (
               <span className="text-[13px] font-bold text-foreground">{fileName}</span>
             ) : (
               <span className="text-[12px] text-muted-foreground">Clique para selecionar o arquivo</span>
@@ -125,45 +116,13 @@ export function ImportEmployeesForm(): React.ReactElement {
 
       <button
         onClick={handleSubmit}
-        disabled={!fileName || isPending}
+        disabled={fileName === null || isPending}
         className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground text-[11px] font-bold tracking-widest uppercase hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors w-full justify-center"
         style={{ borderRadius: 0 }}
       >
         <Upload className="h-3.5 w-3.5" />
-        {isPending ? "Importando..." : "Importar colaboradores"}
+        {isPending ? "Analisando..." : "Pré-visualizar importação"}
       </button>
-
-      {result && (
-        <div className="border border-border bg-card" style={{ borderRadius: 0 }}>
-          <div className="px-4 py-2.5 border-b border-border bg-muted">
-            <span className="text-[10px] font-black tracking-widest uppercase text-foreground">Resultado</span>
-          </div>
-          <div className="p-4 space-y-3">
-            <div className="flex gap-4">
-              <div className="flex items-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
-                <span className="text-[13px] font-bold text-foreground">{result.created} importados</span>
-              </div>
-              {result.failed > 0 && (
-                <div className="flex items-center gap-1.5">
-                  <XCircle className="h-4 w-4 text-destructive" />
-                  <span className="text-[13px] font-bold text-destructive">{result.failed} com erro</span>
-                </div>
-              )}
-            </div>
-            {result.errors.length > 0 && (
-              <div className="border border-destructive/20 bg-destructive/5 divide-y divide-destructive/10" style={{ borderRadius: 0 }}>
-                {result.errors.map((e) => (
-                  <div key={e.row} className="px-3 py-2 flex gap-3 text-[11px]">
-                    <span className="font-mono font-bold text-muted-foreground shrink-0">Linha {e.row}</span>
-                    <span className="text-destructive">{e.error}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   )
 }

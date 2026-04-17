@@ -5,6 +5,26 @@ import { format } from "date-fns"
 import { AlertRowActions } from "@/app/(tenant)/alerts/alert-row-actions"
 import { PageHelp } from "@/components/page-help"
 
+const ALERT_SEVERITY_LABELS: Record<string, string> = {
+  info: "Informativo",
+  warning: "Atenção",
+  critical: "Crítico",
+}
+
+const ALERT_SEVERITY_STYLE: Record<string, string> = {
+  info: "bg-muted text-muted-foreground border-border",
+  warning: "bg-yellow-50 text-yellow-700 border-yellow-200",
+  critical: "bg-destructive/10 text-destructive border-destructive/20",
+}
+
+const ALERT_TYPE_LABELS: Record<string, string> = {
+  low_score: "Score baixo",
+  no_response: "Sem resposta",
+  consent_expired: "Consentimento expirado",
+  billing: "Cobrança",
+  system: "Sistema",
+}
+
 export default async function AlertsPage(): Promise<React.ReactElement> {
   const session = await getSession()
   if (!session) redirect("/login")
@@ -39,10 +59,10 @@ export default async function AlertsPage(): Promise<React.ReactElement> {
               )}
               {alerts.map((alert, i) => (
                 <tr key={alert.id} className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors ${  i % 2 !== 0 ? "bg-muted/10" : ""}`}>
-                  <td className="px-4 py-3 text-xs font-mono text-muted-foreground">{alert.type}</td>
+                  <td className="px-4 py-3 text-xs font-mono text-muted-foreground">{ALERT_TYPE_LABELS[alert.type] ?? alert.type}</td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${  alert.severity === "critical" ? "bg-destructive/10 text-destructive border-destructive/20" : "bg-muted text-muted-foreground border-border"}`}>
-                      {alert.severity}
+                    <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${ALERT_SEVERITY_STYLE[alert.severity] ?? "bg-muted text-muted-foreground border-border"}`}>
+                      {ALERT_SEVERITY_LABELS[alert.severity] ?? alert.severity}
                     </span>
                   </td>
                   <td className="px-4 py-3 max-w-xs truncate text-xs">{alert.message}</td>

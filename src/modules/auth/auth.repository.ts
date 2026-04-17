@@ -92,3 +92,7 @@ export function findOrgUsersByTenant(tenantId: string): Promise<OrganizationUser
     orderBy: { createdAt: "asc" },
   })
 }
+
+export function findAllSuperAdmins(): Promise<SuperAdmin[]> {
+  return prisma.superAdmin.findMany({ orderBy: { createdAt: "asc" } })
+}

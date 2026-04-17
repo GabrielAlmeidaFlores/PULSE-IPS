@@ -8,12 +8,23 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Input } from "@/components/ui/input"
 import { submitReportAction } from "@/app/(public)/report/[orgSlug]/actions"
+
+const CATEGORIES = [
+  { value: "harassment", label: "Assédio" },
+  { value: "discrimination", label: "Discriminação" },
+  { value: "conflict", label: "Conflito interpessoal" },
+  { value: "overload", label: "Sobrecarga de trabalho" },
+  { value: "mental_health", label: "Saúde mental" },
+  { value: "safety", label: "Segurança no trabalho" },
+  { value: "physical_environment", label: "Ambiente físico" },
+  { value: "management", label: "Gestão / liderança" },
+  { value: "other", label: "Outro" },
+]
 
 const schema = z.object({
   content: z.string().min(10).max(5000),
-  category: z.string().max(20).optional(),
+  category: z.string().optional(),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -55,7 +66,16 @@ export function ReportForm({ orgSlug }: Props): React.ReactElement {
           <Label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
             Categoria (opcional)
           </Label>
-          <Input {...form.register("category")} placeholder="ex: assedio, seguranca..." maxLength={20} />
+          <select
+            {...form.register("category")}
+            style={{ borderRadius: 0 }}
+            className="w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors appearance-none"
+          >
+            <option value="">Selecione uma categoria...</option>
+            {CATEGORIES.map((c) => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+          </select>
         </div>
         <div className="space-y-1.5">
           <Label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">

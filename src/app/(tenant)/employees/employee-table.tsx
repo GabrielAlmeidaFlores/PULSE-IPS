@@ -45,6 +45,7 @@ export function EmployeeTable({ employees, total, departments }: Props): React.R
       phone: emp.phone,
       email: emp.email,
       departmentId: emp.departmentId,
+      status: emp.status,
       workStartTime: emp.workStartTime,
       workEndTime: emp.workEndTime,
     })
@@ -58,6 +59,7 @@ export function EmployeeTable({ employees, total, departments }: Props): React.R
         email: values.email === "" ? null : values.email,
         workStartTime: values.workStartTime ?? null,
         workEndTime: values.workEndTime ?? null,
+        status: values.status,
       })
       if (result.error) {
         toast.error(result.error)

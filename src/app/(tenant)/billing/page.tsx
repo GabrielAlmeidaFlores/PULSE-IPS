@@ -6,6 +6,26 @@ import { format } from "date-fns"
 import { PlanCard, ManageSubscriptionButton } from "@/app/(tenant)/billing/billing-actions"
 import { PageHelp } from "@/components/page-help"
 
+const BILLING_STATUS_LABELS: Record<string, string> = {
+  pending: "Pendente",
+  active: "Ativo",
+  trialing: "Em teste",
+  past_due: "Em atraso",
+  canceled: "Cancelado",
+  paused: "Pausado",
+  unpaid: "Não pago",
+}
+
+const BILLING_STATUS_STYLE: Record<string, string> = {
+  pending: "bg-muted text-muted-foreground border-border",
+  active: "bg-primary/10 text-primary border-primary/20",
+  trialing: "bg-yellow-50 text-yellow-700 border-yellow-200",
+  past_due: "bg-destructive/10 text-destructive border-destructive/20",
+  canceled: "bg-destructive/10 text-destructive border-destructive/20",
+  paused: "bg-muted text-muted-foreground border-border",
+  unpaid: "bg-destructive/10 text-destructive border-destructive/20",
+}
+
 export default async function BillingPage(): Promise<React.ReactElement> {
   const session = await getSession()
   if (!session) redirect("/login")
@@ -36,8 +56,8 @@ export default async function BillingPage(): Promise<React.ReactElement> {
               {[
                 { label: "Plano", value: subscription.snapshotPlanName },
                 { label: "Status", value: (
-                  <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${  subscription.status === "active" ? "bg-primary/10 text-primary border-primary/20" : "bg-muted text-muted-foreground border-border"}`}>
-                    {subscription.status}
+                  <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${BILLING_STATUS_STYLE[subscription.status] ?? "bg-muted text-muted-foreground border-border"}`}>
+                    {BILLING_STATUS_LABELS[subscription.status] ?? subscription.status}
                   </span>
                 )},
                 { label: "Valor", value: `${(subscription.snapshotPriceInCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })  } / ${  subscription.snapshotInterval}` },

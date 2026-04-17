@@ -20,6 +20,18 @@ const STATUS_STYLES: Record<string, string> = {
   archived: "bg-muted/50 text-muted-foreground/60 border-border",
 }
 
+const CATEGORY_LABELS: Record<string, string> = {
+  harassment: "Assédio",
+  discrimination: "Discriminação",
+  conflict: "Conflito interpessoal",
+  overload: "Sobrecarga de trabalho",
+  mental_health: "Saúde mental",
+  safety: "Segurança no trabalho",
+  physical_environment: "Ambiente físico",
+  management: "Gestão / liderança",
+  other: "Outro",
+}
+
 interface Props {
   reports: AnonymousReport[]
 }
@@ -72,8 +84,8 @@ export function ReportControls({ reports }: Props): React.ReactElement {
                 <td className="px-4 py-3 text-xs text-muted-foreground font-mono whitespace-nowrap">
                   {new Intl.DateTimeFormat("pt-BR").format(new Date(report.createdAt))}
                 </td>
-                <td className="px-4 py-3 text-xs text-muted-foreground max-w-[10rem] truncate" title={report.category ?? ""}>
-                  {report.category ? report.category.slice(0, 20) : "—"}
+                <td className="px-4 py-3 text-xs text-muted-foreground max-w-[12rem] truncate" title={report.category ? (CATEGORY_LABELS[report.category] ?? report.category) : ""}>
+                  {report.category ? (CATEGORY_LABELS[report.category] ?? report.category) : "—"}
                 </td>
                 <td className="px-4 py-3 text-xs max-w-xs truncate">{report.content}</td>
                 <td className="px-4 py-3">

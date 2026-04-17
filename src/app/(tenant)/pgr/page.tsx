@@ -5,6 +5,18 @@ import { format } from "date-fns"
 import { PgrGenerateButton } from "@/app/(tenant)/pgr/pgr-generate-button"
 import { PageHelp } from "@/components/page-help"
 
+const PGR_STATUS_LABELS: Record<string, string> = {
+  pending: "Pendente",
+  generated: "Gerado",
+  reviewed: "Revisado",
+}
+
+const PGR_STATUS_STYLE: Record<string, string> = {
+  pending: "bg-muted text-muted-foreground border-border",
+  generated: "bg-primary/10 text-primary border-primary/20",
+  reviewed: "bg-green-50 text-green-700 border-green-200",
+}
+
 export default async function PgrPage(): Promise<React.ReactElement> {
   const session = await getSession()
   if (!session) redirect("/login")
@@ -42,8 +54,8 @@ export default async function PgrPage(): Promise<React.ReactElement> {
                 <tr key={review.id} className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors ${  i % 2 !== 0 ? "bg-muted/10" : ""}`}>
                   <td className="px-4 py-3 font-mono text-xs">{review.period}</td>
                   <td className="px-4 py-3">
-                    <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border border-border text-muted-foreground bg-muted">
-                      {review.status}
+                    <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${PGR_STATUS_STYLE[review.status] ?? "bg-muted text-muted-foreground border-border"}`}>
+                      {PGR_STATUS_LABELS[review.status] ?? review.status}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-xs font-mono text-muted-foreground">

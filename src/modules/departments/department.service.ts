@@ -1,11 +1,13 @@
 import {
   findDepartmentsByTenant,
   findDepartmentById,
+  findActiveDepartmentsByTenant,
   createDepartment,
   updateDepartment,
   deactivateDepartment,
 } from "@/modules/departments/department.repository"
 import type { CreateDepartmentInput, UpdateDepartmentInput } from "@/modules/departments/department.types"
+import type { Department } from "@prisma/client"
 
 export function getDepartments(tenantId: string): ReturnType<typeof findDepartmentsByTenant> {
   return findDepartmentsByTenant(tenantId)
@@ -29,4 +31,8 @@ export function updateDept(
 
 export function removeDept(tenantId: string, departmentId: string): ReturnType<typeof deactivateDepartment> {
   return deactivateDepartment(tenantId, departmentId)
+}
+
+export function getActiveDepartments(tenantId: string): Promise<Department[]> {
+  return findActiveDepartmentsByTenant(tenantId)
 }

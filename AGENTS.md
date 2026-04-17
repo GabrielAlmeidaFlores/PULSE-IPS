@@ -344,10 +344,10 @@ src/
 │
 ├── libs/
 │   ├── db/index.ts                         # Prisma client singleton (com PG adapter)
+│   ├── local-storage.ts                    # Utilitário SSR-safe para localStorage (ver seção 23)
 │   ├── design-system/
 │   │   ├── index.ts
 │   │   └── components/
-│   │       ├── ui/                         # shadcn/ui (Button, Input, Select, Dialog, Table…)
 │   │       ├── layout/                     # Sidebar, Header, SuperAdminSidebar, PageHeader
 │   │       ├── feedback/                   # Alert, EmptyState, LoadingSpinner
 │   │       └── data-display/              # StatCard, DataTable, StatusBadge, SectorHealthBar
@@ -383,6 +383,9 @@ src/
 │       ├── date.ts
 │       └── slug.ts
 │
+├── components/
+│   └── ui/                                 # shadcn/ui (Button, Input, Select, Dialog, Table…)
+│                                           # Instalados em src/components/ui/ pelo CLI do shadcn
 ├── proxy.ts                                # Next.js 16 proxy (auth + tenant resolution)
 │                                           # ⚠️ Não é middleware.ts — Next.js 16 usa proxy.ts
 ├── env.ts                                  # Variáveis de ambiente tipadas (@t3-oss/env-nextjs + Zod)
@@ -2231,7 +2234,7 @@ Todas as variáveis são tipadas e validadas via `src/env.ts` com `@t3-oss/env-n
 DATABASE_URL=postgresql://user:pass@host:5432/pulse
 
 # Auth
-JWT_SECRET=...                            # segredo para assinar cookies de sessão
+NEXTAUTH_SECRET=...                       # segredo para assinar cookies de sessão (mín. 32 chars)
 
 # Email
 EMAIL_PROVIDER=resend
@@ -2307,6 +2310,60 @@ npm run worker:dev          # inicia processo worker BullMQ
 # Stripe (desenvolvimento)
 stripe listen --forward-to http://localhost:3000/api/webhooks/stripe
 ```
+
+---
+
+## 23. localStorage — Padrão de Uso
+
+### Utilitário centralizado
+
+Todo acesso ao `localStorage` passa por `src/libs/local-storage.ts`.  
+**Nunca use `window.localStorage` diretamente nos componentes.**
+
+```typescript
+// src/libs/local-storage.ts
+import { storage } from "@/libs/local-storage"
+
+storage.get(storage.KEYS.lastOrgSlug)        // lê
+storage.set(storage.KEYS.lastOrgSlug, slug)  // escreve
+storage.remove(storage.KEYS.lastOrgSlug)     // apaga
+```
+
+### Chaves disponíveis (`storage.KEYS`)
+
+| Chave | Valor no localStorage | Descrição |
+|---|---|---|
+| `lastOrgSlug` | `pulse:last-org-slug` | Último slug de organização usado no login |
+
+### Regras obrigatórias
+
+1. **Prefixo `pulse:`** — todas as chaves usam o prefixo `pulse:` para evitar colisão com outras libs.
+2. **SSR-safe** — o utilitário guarda com `typeof window === "undefined"`. Nunca lança exceção em SSR/RSC.
+3. **try/catch silencioso** — falhas de storage (private browsing, storage cheio) são ignoradas silenciosamente.
+4. **Somente em Client Components** — importar `@/libs/local-storage` apenas em arquivos com `"use client"`.
+5. **Sem lógica de negócio** — o utilitário é apenas I/O. Decisões sobre o que salvar ficam no componente.
+
+### Adicionar nova chave
+
+1. Adicione a entrada em `KEYS` em `src/libs/local-storage.ts`
+2. Documente na tabela acima
+3. Use apenas `storage.KEYS.nomeDaChave` — nunca escreva a string literal fora do utilitário
+
+```typescript
+// Correto
+storage.set(storage.KEYS.lastOrgSlug, slug)
+
+// ERRADO — nunca faça isso
+localStorage.setItem("pulse:last-org-slug", slug)
+```
+
+### Onde está implementado hoje
+
+| Componente | Evento | Operação |
+|---|---|---|
+| `src/app/(auth)/login/login-form.tsx` | `useEffect` (mount) | Lê `lastOrgSlug` → preenche campo "Organização" |
+| `src/app/(auth)/login/login-form.tsx` | Login bem-sucedido | Salva `lastOrgSlug` com o slug digitado |
+| `src/app/(auth)/checkout/checkout-form.tsx` | Submit bem-sucedido (antes do redirect Stripe) | Salva `lastOrgSlug` com o slug cadastrado |
 
 ---
 

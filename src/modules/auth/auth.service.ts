@@ -7,6 +7,7 @@ import { renderEmailTemplate } from "@/libs/email-templates"
 import { AppError } from "@/libs/errors/app-error"
 import { createSession, createSuperAdminSession, destroySession, destroySuperAdminSession } from "@/modules/auth/session"
 import type { LoginInput, SuperAdminLoginInput, SessionPayload } from "@/modules/auth/auth.types"
+import type { SuperAdmin } from "@prisma/client"
 import {
   findOrgBySlug,
   findOrgUserByEmail,
@@ -17,6 +18,7 @@ import {
   createPasswordResetToken,
   findAuthToken,
   consumeAuthToken,
+  findAllSuperAdmins,
 } from "@/modules/auth/auth.repository"
 
 const INVALID_CREDENTIALS_MSG = "Credenciais inválidas"
@@ -125,3 +127,8 @@ export function getOrgUserById(userId: string, tenantId: string): ReturnType<typ
   return findOrgUserById(userId, tenantId)
 }
 
+
+
+export function listSuperAdmins(): Promise<SuperAdmin[]> {
+  return findAllSuperAdmins()
+}
