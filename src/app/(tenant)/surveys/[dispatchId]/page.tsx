@@ -110,6 +110,10 @@ function scoreAccentClass(avg: number | null): string {
   return "text-red-600"
 }
 
+function rawDisplayScore(normalizedAvg: number, direction: ScoreDirection): number {
+  return direction === "lower_is_better" ? 6 - normalizedAvg : normalizedAvg
+}
+
 function scoreLabel(avg: number | null): string {
   if (avg === null) return "—"
   if (avg >= 3.5) return "Saudável"
@@ -210,8 +214,8 @@ function DeptChartSection({ deptStats }: DeptChartSectionProps): React.ReactElem
                 <div className="text-right">
                   {q.avgScore !== null ? (
                     <>
-                      <p className={`text-xl font-black ${scoreAccentClass(q.avgScore)}`}>{q.avgScore.toFixed(1)}</p>
-                      <p className="text-[9px] text-muted-foreground uppercase tracking-wider">normalizado</p>
+                      <p className={`text-xl font-black ${scoreAccentClass(q.avgScore)}`}>{rawDisplayScore(q.avgScore, q.scoreDirection).toFixed(1)}</p>
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{q.scoreDirection === "lower_is_better" ? "1=bom·5=ruim" : "1=ruim·5=bom"}</p>
                     </>
                   ) : (
                     <p className="text-xl font-black text-muted-foreground">—</p>

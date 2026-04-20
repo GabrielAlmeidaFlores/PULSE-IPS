@@ -13,54 +13,15 @@ import { Activity, Users, AlertTriangle, BarChart2, TrendingUp, TrendingDown, Mi
 import { AlertTypeInfo } from "@/components/alert-type-info"
 import { format } from "date-fns"
 import Link from "next/link"
-
-const BADGE_DEFAULT = "bg-muted text-muted-foreground border-border"
-const BADGE_RED = "bg-red-100 text-red-800 border-red-300"
-const BADGE_BASE = "inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border"
-
-const SEVERITY_LABELS: Record<string, string> = {
-  info: "Informativo",
-  warning: "Atenção",
-  critical: "Crítico",
-}
-
-const SEVERITY_STYLE: Record<string, string> = {
-  info: "bg-blue-100 text-blue-800 border-blue-300",
-  warning: "bg-yellow-100 text-yellow-800 border-yellow-300",
-  critical: BADGE_RED,
-}
-
-const SEVERITY_DOT: Record<string, string> = {
-  info: "bg-blue-500",
-  warning: "bg-yellow-500",
-  critical: "bg-red-500",
-}
-
-const TYPE_LABELS: Record<string, string> = {
-  score_drop: "Queda no bem-estar",
-  low_score: "Bem-estar abaixo do esperado",
-  pgr_review_due: "Revisão PGR pendente",
-  negative_trend: "Tendência de piora persistente",
-  low_adherence: "Adesão baixa",
-  no_response: "Sem resposta",
-  consent_expired: "Consentimento expirado",
-  billing: "Cobrança",
-  system: "Sistema",
-  crisis_report: "Relato de crise",
-}
-
-const TYPE_STYLE: Record<string, string> = {
-  score_drop: BADGE_RED,
-  low_score: "bg-amber-100 text-amber-800 border-amber-300",
-  pgr_review_due: "bg-blue-100 text-blue-800 border-blue-300",
-  negative_trend: BADGE_RED,
-  low_adherence: "bg-yellow-100 text-yellow-800 border-yellow-300",
-  no_response: BADGE_RED,
-  consent_expired: BADGE_DEFAULT,
-  billing: "bg-blue-100 text-blue-800 border-blue-300",
-  system: BADGE_DEFAULT,
-  crisis_report: BADGE_RED,
-}
+import {
+  BADGE_DEFAULT,
+  BADGE_BASE,
+  SEVERITY_LABELS,
+  SEVERITY_STYLE,
+  SEVERITY_DOT,
+  TYPE_LABELS,
+  TYPE_STYLE,
+} from "@/libs/design-system/alert-labels"
 
 interface Props {
   searchParams: Promise<Record<string, string | string[] | undefined>>

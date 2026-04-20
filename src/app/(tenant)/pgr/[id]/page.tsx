@@ -336,7 +336,7 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                         </div>
                         <p className="text-xs text-foreground leading-relaxed flex-1">{bestQuestion.text}</p>
                         <div className="shrink-0 text-right">
-                          <p className={`text-xl font-black font-mono ${scoreColor(bestQuestion.avgScore)}`}>{bestQuestion.avgScore.toFixed(2)}</p>
+                          <p className={`text-xl font-black font-mono ${scoreColor(bestQuestion.avgScore)}`}>{rawDisplayScore(bestQuestion.avgScore, bestQuestion.scoreDirection).toFixed(2)}</p>
                           <p className={`text-[9px] font-bold uppercase tracking-wider ${scoreColor(bestQuestion.avgScore)}`}>{scoreLabel(bestQuestion.avgScore)}</p>
                         </div>
                       </div>
@@ -351,7 +351,7 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                         </div>
                         <p className="text-xs text-foreground leading-relaxed flex-1">{worstQuestion.text}</p>
                         <div className="shrink-0 text-right">
-                          <p className={`text-xl font-black font-mono ${scoreColor(worstQuestion.avgScore)}`}>{worstQuestion.avgScore.toFixed(2)}</p>
+                          <p className={`text-xl font-black font-mono ${scoreColor(worstQuestion.avgScore)}`}>{rawDisplayScore(worstQuestion.avgScore, worstQuestion.scoreDirection).toFixed(2)}</p>
                           <p className={`text-[9px] font-bold uppercase tracking-wider ${scoreColor(worstQuestion.avgScore)}`}>{scoreLabel(worstQuestion.avgScore)}</p>
                         </div>
                       </div>

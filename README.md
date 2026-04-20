@@ -500,11 +500,13 @@ O arquivo `src/proxy.ts` intercepta todas as requisições:
 3. Dispara a action de consentimento: cria um `EmployeeConsent` com `event = "invite_sent"` e um token temporário.
 4. Envia SMS/WhatsApp para o funcionário com o link de consentimento `/consent/[token]`.
 
-**Importação CSV:**
-1. Usuário faz upload de um arquivo `.csv` com as colunas: `name`, `email`, `phone`, `department`, `work_start_time`, `work_end_time`.
-2. A action `importEmployeesAction` lê `tenantId` da sessão (nunca do cliente).
-3. Para cada linha válida: busca ou cria o departamento, cria o funcionário.
-4. Retorna um relatório com linhas importadas, ignoradas e erros.
+**Importação por planilha Excel:**
+1. Usuário faz upload de um arquivo `.xlsx` em `/employees/import`.
+2. O serviço detecta automaticamente os cabeçalhos da planilha (case-insensitive, suporta variações em português: "nome", "telefone", "whatsapp", "setor", etc.).
+3. Cada linha é validada via Zod. O resultado é exibido em `/employees/import/preview` com duas listas: linhas válidas e inválidas (com motivo do erro).
+4. O usuário confirma o import. A action `importEmployeesAction` lê `tenantId` da sessão (nunca do cliente).
+5. Para cada linha válida: vincula ao departamento informado (por nome, case-insensitive) e cria o funcionário. Duplicatas de e-mail no mesmo tenant são ignoradas silenciosamente.
+6. Retorna um relatório com total importado e erros.
 
 **Pausa de funcionário:**
 1. Admin define `pauseStartAt` e `pauseEndAt` no perfil do funcionário.
@@ -521,7 +523,7 @@ O arquivo `src/proxy.ts` intercepta todas as requisições:
    - **Frequência**: `daily`, `twice_weekly`, `weekly`, `biweekly`, `monthly`
    - **Horário de expediente**: `workStartTime` e `workEndTime` (formato `HH:mm`)
    - **Dias de trabalho**: seleção de dias da semana (0=Dom … 6=Sáb), armazenados na tabela relacional `survey_config_work_days` — nunca como string separada por vírgula
-   - **Perguntas**: lista de questões com score de 1 a 5
+   - **Perguntas**: lista de questões com score de 1 a 5, cada uma com `scoreDirection` (`higher_is_better` ou `lower_is_better`). Perguntas de estresse e carga de trabalho usam `lower_is_better` (1 = ótimo). O sistema normaliza automaticamente antes de calcular métricas e gerar alertas.
 3. A action salva a `SurveyConfiguration` com `@@unique([tenantId, departmentId])` — só existe uma configuração ativa por departamento.
 
 ---
@@ -603,13 +605,32 @@ O job `adherence-checker` (a cada hora) verifica dispatches com mais de 48 horas
 
 ### 8. Detecção de alertas
 
-O job `alert-detector` (diariamente às 03:00) analisa respostas recentes:
+O job `alert-detector` (diariamente às 03:00) analisa respostas das últimas 48 horas:
 
-1. Busca `SurveyResponse` das últimas 48 horas com scores baixos (média ≤ 2).
-2. Agrupa por departamento.
-3. Para cada departamento com score médio abaixo do threshold, cria um `Alert` com `severity = "high"` ou `severity = "medium"`.
-4. Alertas são exibidos na tela `/alerts` para o admin.
-5. Admin pode marcar alertas como lidos ou resolvidos.
+1. Busca `SurveyResponse` das últimas 48 horas com os itens e a direção de cada questão (`scoreDirection`).
+2. Para cada resposta, normaliza os scores: questões com `scoreDirection = "lower_is_better"` têm score invertido (`6 - raw`) antes de calcular a média. Isso garante que a escala seja sempre "maior = melhor bem-estar".
+3. Agrupa médias normalizadas por departamento.
+4. Para cada departamento com score médio normalizado abaixo de **3,0**, cria um `Alert` com:
+   - `type = "low_score"`
+   - `severity = "critical"` se score < 2,0, caso contrário `severity = "warning"`
+   - Mensagem em português descrevendo o índice de bem-estar ocupacional do setor.
+5. Alertas são exibidos na tela `/alerts` para o admin/RH.
+6. Admin pode marcar alertas como lidos ou resolvidos.
+
+**Tipos de alerta disponíveis:**
+
+| Tipo | Gerado por | Significado |
+|---|---|---|
+| `low_score` | `alert-detector` (job) | Score de bem-estar normalizado abaixo de 3,0 |
+| `low_adherence` | `adherence-checker` (job) | Menos de 80% de respostas em 48h após disparo |
+| `score_drop` | Manual/futuro job | Queda no índice de bem-estar em relação ao período anterior |
+| `negative_trend` | Manual/futuro job | 3 períodos consecutivos abaixo da média histórica |
+| `pgr_review_due` | `pgr-review-reminder` (job) | Revisão PGR vence em até 30 dias |
+| `crisis_report` | Detecção de palavras-chave | Relato anônimo com indicadores de crise |
+| `no_response` | Futuro job | Nenhuma resposta recebida no ciclo |
+| `consent_expired` | Futuro job | TCLE expirado ou pendente |
+| `billing` | Webhook Stripe | Pendência de pagamento |
+| `system` | Sistema interno | Notificações operacionais |
 
 ---
 
@@ -688,7 +709,7 @@ Checkout → Stripe Checkout Session
 | `invoice.payment_succeeded` | Atualiza período atual |
 
 **Idempotência dos webhooks:**
-- Cada evento é salvo em `billing_webhook_events` pelo `externalEventId`.
+- Cada evento é salvo em `stripe_webhook_events` pelo `stripe_event_id`.
 - Ao processar, verifica se o evento já foi processado. Se sim, ignora.
 - O job `stripe-webhook-retry` (a cada hora) reprocessa eventos com `error != null` e `processedAt = null`.
 
