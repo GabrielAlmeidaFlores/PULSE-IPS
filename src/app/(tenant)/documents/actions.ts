@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache"
 import { randomUUID } from "crypto"
 import { getSession } from "@/modules/auth/session"
-import { createNewDocument, addDocumentVersion, getDocument } from "@/modules/documents/document.service"
+import { createNewDocument, addDocumentVersion, getDocument, getDocumentVersions } from "@/modules/documents/document.service"
+import type { DocumentVersionItem } from "@/modules/documents/document.types"
 import { AppError } from "@/libs/errors/app-error"
 import type { ActionResult } from "@/libs/utils/action-result"
 
@@ -70,6 +71,32 @@ export async function uploadDocumentVersionAction(
     await addDocumentVersion(session.tenantId, documentId, key, session.email)
     revalidatePath("/documents")
     return {}
+  } catch (err) {
+    if (err instanceof AppError) return { error: err.message }
+    throw err
+  }
+}
+
+export type { DocumentVersionItem } from "@/modules/documents/document.types"
+
+interface VersionsResult extends ActionResult {
+  versions?: DocumentVersionItem[]
+}
+
+export async function getDocumentVersionsAction(documentId: string): Promise<VersionsResult> {
+  const session = await getSession()
+  if (!session) return { error: "Sessão expirada." }
+
+  try {
+    const versions = await getDocumentVersions(session.tenantId, documentId)
+    return {
+      versions: versions.map((v) => ({
+        id: v.id,
+        version: v.version,
+        uploadedBy: v.uploadedBy,
+        createdAt: v.createdAt,
+      })),
+    }
   } catch (err) {
     if (err instanceof AppError) return { error: err.message }
     throw err

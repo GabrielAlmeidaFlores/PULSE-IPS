@@ -1,8 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { Upload } from "lucide-react"
+import { Upload, History } from "lucide-react"
 import { DocumentVersionModal } from "@/app/(tenant)/documents/document-version-modal"
+import { DocumentVersionsHistoryModal } from "@/app/(tenant)/documents/document-versions-history-modal"
 
 interface DocumentVersion {
   id: string
@@ -34,6 +35,7 @@ const TYPE_LABELS: Record<string, string> = {
 
 export function DocumentsTable({ documents }: Props): React.ReactElement {
   const [versionDoc, setVersionDoc] = useState<{ id: string; title: string } | null>(null)
+  const [historyDoc, setHistoryDoc] = useState<{ id: string; title: string } | null>(null)
 
   return (
     <>
@@ -100,6 +102,14 @@ export function DocumentsTable({ documents }: Props): React.ReactElement {
                         </a>
                       )}
                       <button
+                        onClick={() => setHistoryDoc({ id: doc.id, title: doc.title })}
+                        title="Ver histórico de versões"
+                        className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        style={{ borderRadius: 0 }}
+                      >
+                        <History size={13} />
+                      </button>
+                      <button
                         onClick={() => setVersionDoc({ id: doc.id, title: doc.title })}
                         title="Enviar nova versão"
                         className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
@@ -121,6 +131,14 @@ export function DocumentsTable({ documents }: Props): React.ReactElement {
           document={versionDoc}
           open={true}
           onClose={() => setVersionDoc(null)}
+        />
+      )}
+
+      {historyDoc && (
+        <DocumentVersionsHistoryModal
+          document={historyDoc}
+          open={true}
+          onClose={() => setHistoryDoc(null)}
         />
       )}
     </>

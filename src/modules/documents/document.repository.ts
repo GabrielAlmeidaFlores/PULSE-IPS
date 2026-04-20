@@ -28,6 +28,19 @@ export function createDocumentVersion(data: CreateDocumentVersionInput): Promise
   return prisma.documentVersion.create({ data })
 }
 
+export function findVersionsByDocument(tenantId: string, documentId: string): Promise<DocumentVersion[]> {
+  return prisma.documentVersion.findMany({
+    where: { documentId, document: { tenantId } },
+    orderBy: { version: "desc" },
+  })
+}
+
+export function findVersionByIdForDownload(tenantId: string, documentId: string, versionId: string): Promise<DocumentVersion | null> {
+  return prisma.documentVersion.findFirst({
+    where: { id: versionId, documentId, document: { tenantId } },
+  })
+}
+
 export function updateDocument(
   tenantId: string,
   documentId: string,

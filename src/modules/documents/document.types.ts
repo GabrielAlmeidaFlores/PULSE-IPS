@@ -21,3 +21,10 @@ export interface CreateDocumentVersionInput {
   fileUrl: string
   uploadedBy: string
 }
+
+export interface DocumentVersionItem {
+  id: string
+  version: number
+  uploadedBy: string
+  createdAt: Date
+}

@@ -2,6 +2,8 @@ import { AppError } from "@/libs/errors/app-error"
 import {
   findDocumentsByTenant,
   findDocumentById,
+  findVersionsByDocument,
+  findVersionByIdForDownload,
   createDocument,
   createDocumentVersion,
 } from "@/modules/documents/document.repository"
@@ -13,6 +15,14 @@ export function getDocuments(tenantId: string): ReturnType<typeof findDocumentsB
 
 export function getDocument(tenantId: string, documentId: string): ReturnType<typeof findDocumentById> {
   return findDocumentById(tenantId, documentId)
+}
+
+export function getDocumentVersions(tenantId: string, documentId: string): ReturnType<typeof findVersionsByDocument> {
+  return findVersionsByDocument(tenantId, documentId)
+}
+
+export function getDocumentVersionForDownload(tenantId: string, documentId: string, versionId: string): ReturnType<typeof findVersionByIdForDownload> {
+  return findVersionByIdForDownload(tenantId, documentId, versionId)
 }
 
 export function createNewDocument(tenantId: string, input: CreateDocumentInput): ReturnType<typeof createDocument> {
