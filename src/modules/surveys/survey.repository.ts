@@ -141,6 +141,41 @@ export async function findDispatchWithDashboard(tenantId: string, dispatchId: st
   }
 }
 
+export async function findMultipleDispatchesWithDashboard(
+  tenantId: string,
+  dispatchIds: string[],
+): Promise<DispatchDashboardData[]> {
+  if (dispatchIds.length === 0) return []
+  const dispatches = await prisma.surveyDispatch.findMany({
+    where: { id: { in: dispatchIds }, tenantId },
+    include: {
+      surveyConfiguration: {
+        include: {
+          department: true,
+          questions: { orderBy: { order: "asc" } },
+        },
+      },
+      responses: { include: { items: true } },
+    },
+  })
+  return dispatches.map((dispatch) => ({
+    id: dispatch.id,
+    tenantId: dispatch.tenantId,
+    status: dispatch.status,
+    scheduledAt: dispatch.scheduledAt,
+    dispatchedAt: dispatch.dispatchedAt,
+    totalRecipients: dispatch.totalRecipients,
+    totalResponses: dispatch.totalResponses,
+    departmentId: dispatch.surveyConfiguration.departmentId,
+    departmentName: dispatch.surveyConfiguration.department.name,
+    frequency: dispatch.surveyConfiguration.frequency,
+    questions: dispatch.surveyConfiguration.questions.map((q) => ({ id: q.id, text: q.text, order: q.order })),
+    responseItems: dispatch.responses.flatMap((r) =>
+      r.items.map((item) => ({ questionId: item.questionId, score: item.score })),
+    ),
+  }))
+}
+
 export function findDispatchById(tenantId: string, dispatchId: string): Promise<DispatchWithDetails | null> {
   return prisma.surveyDispatch.findFirst({
     where: { id: dispatchId, tenantId },

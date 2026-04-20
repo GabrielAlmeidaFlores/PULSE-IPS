@@ -1,12 +1,13 @@
 import { redirect, notFound } from "next/navigation"
 import Link from "next/link"
 import { getSession } from "@/modules/auth/session"
-import { getDispatchDashboard, getDispatches, type DispatchWithConfig } from "@/modules/surveys/survey.service"
+import { getDispatchDashboard, getDispatches, getMultipleDispatchDashboards, type DispatchWithConfig } from "@/modules/surveys/survey.service"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { ArrowLeft, Users, CheckCircle2, XCircle, Activity, BarChart2, TrendingUp } from "lucide-react"
 import { QuestionScoreChart, ScoreDistributionBar, AdherenceGauge, DeptTrendChart, type TrendPoint } from "@/app/(tenant)/surveys/[dispatchId]/components/dispatch-charts"
 import { DeptFilter } from "@/app/(tenant)/surveys/[dispatchId]/components/dept-filter"
+import type { DispatchDashboardStats } from "@/modules/surveys/survey.types"
 
 interface Props {
   params: Promise<{ dispatchId: string }>
@@ -35,6 +36,65 @@ const STATUS_LABELS: Record<string, string> = {
   failed: "Falhou",
 }
 
+interface MergedStatsBase {
+  id: string
+  departmentId: string
+  status: string
+  scheduledAt: Date
+  dispatchedAt: Date | null
+  frequency: string
+  departmentName: string
+}
+
+function mergeDispatchStats(statsArray: DispatchDashboardStats[], base: MergedStatsBase): DispatchDashboardStats {
+  const totalRecipients = statsArray.reduce((s, d) => s + d.totalRecipients, 0)
+  const totalResponses = statsArray.reduce((s, d) => s + d.totalResponses, 0)
+  const notResponded = Math.max(0, totalRecipients - totalResponses)
+  const adherenceRate = totalRecipients > 0 ? totalResponses / totalRecipients : 0
+
+  const questionsByText = new Map<string, { id: string; text: string; order: number; distCounts: Map<number, number> }>()
+  for (const deptStats of statsArray) {
+    for (const q of deptStats.questions) {
+      const existing = questionsByText.get(q.text)
+      if (existing) {
+        for (const d of q.distribution) {
+          existing.distCounts.set(d.score, (existing.distCounts.get(d.score) ?? 0) + d.count)
+        }
+      } else {
+        const distCounts = new Map<number, number>()
+        for (const d of q.distribution) {
+          distCounts.set(d.score, d.count)
+        }
+        questionsByText.set(q.text, { id: q.id, text: q.text, order: q.order, distCounts })
+      }
+    }
+  }
+
+  const questions = Array.from(questionsByText.values())
+    .sort((a, b) => a.order - b.order)
+    .map((q) => {
+      const distribution = [1, 2, 3, 4, 5].map((s) => ({ score: s, count: q.distCounts.get(s) ?? 0 }))
+      const totalCount = distribution.reduce((s, d) => s + d.count, 0)
+      const weightedSum = distribution.reduce((s, d) => s + d.score * d.count, 0)
+      const avgScore = totalCount > 0 ? weightedSum / totalCount : null
+      return { id: q.id, text: q.text, order: q.order, avgScore, distribution }
+    })
+
+  const questionAvgs = questions.map((q) => q.avgScore).filter((s): s is number => s !== null)
+  const avgScore = questionAvgs.length > 0 ? questionAvgs.reduce((a, b) => a + b, 0) / questionAvgs.length : null
+
+  return { ...base, totalRecipients, totalResponses, notResponded, adherenceRate, avgScore, questions }
+}
+
+function computeMergedLabel(selectedIds: string[], aggrStats: DispatchDashboardStats[]): string {
+  if (selectedIds.length === 0) return "Todos os departamentos"
+  if (aggrStats.length === 1) {
+    const first = aggrStats[0]
+    return first?.departmentName ?? "Departamento"
+  }
+  return `${aggrStats.length} departamentos`
+}
+
 function scoreAccentClass(avg: number | null): string {
   if (avg === null) return "text-muted-foreground"
   if (avg >= 3.5) return "text-green-600"
@@ -61,6 +121,106 @@ function adherenceBarClass(pct: number): string {
   return "bg-red-500"
 }
 
+interface DeptChartSectionProps {
+  deptStats: DispatchDashboardStats
+}
+
+function DeptChartSection({ deptStats }: DeptChartSectionProps): React.ReactElement {
+  const hasResponses = deptStats.totalResponses > 0
+  const deptAdherence = Math.round(deptStats.adherenceRate * 100)
+
+  return (
+    <div className="border border-border bg-card overflow-hidden">
+      <div className="px-5 py-3 border-b border-border bg-muted/30 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h2 className="text-sm font-bold">{deptStats.departmentName}</h2>
+          {deptStats.avgScore !== null && (
+            <span className={`text-[10px] font-bold uppercase tracking-wider ${scoreAccentClass(deptStats.avgScore)}`}>
+              {scoreLabel(deptStats.avgScore)}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
+          <span>{deptStats.totalResponses}/{deptStats.totalRecipients} respostas</span>
+          <span className={`font-bold ${adherenceClass(deptAdherence)}`}>{deptAdherence}% adesão</span>
+          {deptStats.avgScore !== null && (
+            <span className={`font-black text-sm font-mono ${scoreAccentClass(deptStats.avgScore)}`}>
+              {deptStats.avgScore.toFixed(2)}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-0 divide-y md:divide-y-0 md:divide-x divide-border">
+        <div className="p-5 flex flex-col items-center justify-center gap-2">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Taxa de adesão</p>
+          <AdherenceGauge rate={deptStats.adherenceRate} />
+          <p className="text-xs text-muted-foreground text-center">
+            {deptStats.totalResponses} de {deptStats.totalRecipients} responderam
+          </p>
+          {deptStats.adherenceRate < 0.5 && deptStats.totalRecipients > 0 && (
+            <p className="text-[10px] font-bold text-red-600 uppercase tracking-wider">⚠ Adesão crítica</p>
+          )}
+        </div>
+
+        <div className="md:col-span-2 p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <BarChart2 className="w-3.5 h-3.5 text-muted-foreground" />
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Score médio por pergunta</p>
+          </div>
+          {hasResponses ? (
+            <QuestionScoreChart stats={deptStats} />
+          ) : (
+            <p className="text-xs text-muted-foreground text-center py-8">Nenhuma resposta registrada ainda.</p>
+          )}
+        </div>
+      </div>
+
+      {hasResponses && (
+        <div className="border-t border-border">
+          <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Distribuição de notas</p>
+            <div className="flex items-baseline gap-2">
+              <p className={`text-sm font-black ${scoreAccentClass(deptStats.avgScore)}`}>{deptStats.avgScore?.toFixed(2) ?? "—"}</p>
+              <span className={`text-[10px] font-bold uppercase tracking-wider ${scoreAccentClass(deptStats.avgScore)}`}>{scoreLabel(deptStats.avgScore)}</span>
+            </div>
+          </div>
+          <div className="divide-y divide-border">
+            {deptStats.questions.map((q) => (
+              <div key={q.id} className="px-5 py-4 grid grid-cols-1 md:grid-cols-[auto_1fr_80px] gap-3 items-center">
+                <div className="flex items-start gap-3 md:max-w-xs">
+                  <span className="text-[10px] font-black text-muted-foreground shrink-0 mt-0.5 w-6">P{q.order}</span>
+                  <p className="text-xs text-foreground leading-relaxed">{q.text}</p>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <ScoreDistributionBar question={q} />
+                  <div className="flex gap-1 flex-wrap">
+                    {q.distribution.filter((d) => d.count > 0).map((d) => (
+                      <span key={d.score} className="text-[9px] text-muted-foreground">
+                        {d.score}★ {d.count}x
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="text-right">
+                  {q.avgScore !== null ? (
+                    <>
+                      <p className={`text-xl font-black ${scoreAccentClass(q.avgScore)}`}>{q.avgScore.toFixed(1)}</p>
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-wider">média</p>
+                    </>
+                  ) : (
+                    <p className="text-xl font-black text-muted-foreground">—</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default async function DispatchDetailPage({ params, searchParams }: Props): Promise<React.ReactElement> {
   const session = await getSession()
   if (!session) redirect("/login")
@@ -68,13 +228,12 @@ export default async function DispatchDetailPage({ params, searchParams }: Props
   const { dispatchId } = await params
   const resolvedSearch = await searchParams
 
-  const [stats, allDispatches] = await Promise.all([
+  const [anchorStats, allDispatches] = await Promise.all([
     getDispatchDashboard(session.tenantId, dispatchId),
     getDispatches(session.tenantId),
   ])
-  if (!stats) notFound()
+  if (!anchorStats) notFound()
 
-  //Latest dispatch per department
   const latestPerDept = new Map<string, DispatchWithConfig>()
   for (const d of allDispatches) {
     const deptId = d.surveyConfiguration.departmentId
@@ -84,31 +243,38 @@ export default async function DispatchDetailPage({ params, searchParams }: Props
     }
   }
 
-  //All department options (for filter component)
   const allDeptOptions = Array.from(latestPerDept.entries()).map(([id, d]) => ({
     id,
     name: d.surveyConfiguration.department.name,
   }))
 
-  //Parse selected dept IDs from URL (nuqs format: comma-separated in "depts" param)
   const rawDepts = resolvedSearch.depts
-  const selectedIds = (Array.isArray(rawDepts) ? rawDepts : rawDepts?.split(",").filter(Boolean) ?? [])
-    .filter(Boolean)
+  const selectedIds = (Array.isArray(rawDepts) ? rawDepts : rawDepts?.split(",").filter(Boolean) ?? []).filter(Boolean)
 
-  //Dispatches to aggregate: filter by selected depts or show all
-  const aggrDispatches = selectedIds.length > 0
-    ? Array.from(latestPerDept.entries())
-        .filter(([id]) => selectedIds.includes(id))
-        .map(([, d]) => d)
-    : Array.from(latestPerDept.values())
+  const aggrDispatches =
+    selectedIds.length > 0
+      ? Array.from(latestPerDept.entries())
+          .filter(([id]) => selectedIds.includes(id))
+          .map(([, d]) => d)
+      : Array.from(latestPerDept.values())
 
-  //Aggregated KPIs across filtered departments
-  const aggrRecipients = aggrDispatches.reduce((s, d) => s + d.totalRecipients, 0)
-  const aggrResponses = aggrDispatches.reduce((s, d) => s + d.totalResponses, 0)
-  const aggrNotResponded = Math.max(0, aggrRecipients - aggrResponses)
-  const aggrAdherence = aggrRecipients > 0 ? aggrResponses / aggrRecipients : 0
+  const aggrStats = await getMultipleDispatchDashboards(
+    session.tenantId,
+    aggrDispatches.map((d) => d.id),
+  )
 
-  //Per-dept breakdown (sorted by name)
+  const mergedLabel = computeMergedLabel(selectedIds, aggrStats)
+  const mergedStatsBase: MergedStatsBase = {
+    id: anchorStats.id,
+    departmentId: anchorStats.departmentId,
+    status: anchorStats.status,
+    scheduledAt: anchorStats.scheduledAt,
+    dispatchedAt: anchorStats.dispatchedAt,
+    frequency: anchorStats.frequency,
+    departmentName: mergedLabel,
+  }
+  const mergedStats = mergeDispatchStats(aggrStats, mergedStatsBase)
+
   const deptBreakdown = aggrDispatches
     .map((d) => ({
       id: d.surveyConfiguration.departmentId,
@@ -117,29 +283,60 @@ export default async function DispatchDetailPage({ params, searchParams }: Props
       recipients: d.totalRecipients,
       responses: d.totalResponses,
       adherence: d.totalRecipients > 0 ? Math.round((d.totalResponses / d.totalRecipients) * 100) : 0,
-      isAnchor: d.surveyConfiguration.departmentId === stats.departmentId,
+      isAnchor: d.surveyConfiguration.departmentId === anchorStats.departmentId,
     }))
     .sort((a, b) => a.name.localeCompare(b.name))
 
-  //Dispatches for anchor department history (trend chart)
-  const anchorDeptDispatches = allDispatches
-    .filter((d: DispatchWithConfig) => d.surveyConfiguration.departmentId === stats.departmentId)
-    .sort((a: DispatchWithConfig, b: DispatchWithConfig) =>
-      new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime(),
-    )
+  const historyDeptName = computeMergedLabel(selectedIds, aggrStats)
 
-  const trendData: TrendPoint[] = anchorDeptDispatches.map((d: DispatchWithConfig) => ({
-    date: format(new Date(d.scheduledAt), "dd/MM"),
-    adherence: d.totalRecipients > 0 ? Math.round((d.totalResponses / d.totalRecipients) * 100) : 0,
-    dispatchId: d.id,
+  const historyDeptIds = selectedIds.length > 0 ? selectedIds : Array.from(latestPerDept.keys())
+  const relevantDispatches = allDispatches.filter((d: DispatchWithConfig) =>
+    historyDeptIds.includes(d.surveyConfiguration.departmentId),
+  )
+
+  interface HistoryBucket {
+    dayKey: string
+    scheduledAt: Date
+    totalRecipients: number
+    totalResponses: number
+    dispatchId: string | null
+  }
+
+  const historyBucketMap = new Map<string, HistoryBucket>()
+  for (const d of relevantDispatches) {
+    const dayKey = format(new Date(d.scheduledAt), "yyyy-MM-dd")
+    const existing = historyBucketMap.get(dayKey)
+    if (existing !== undefined) {
+      existing.totalRecipients += d.totalRecipients
+      existing.totalResponses += d.totalResponses
+      existing.dispatchId = null
+    } else {
+      historyBucketMap.set(dayKey, {
+        dayKey,
+        scheduledAt: new Date(d.scheduledAt),
+        totalRecipients: d.totalRecipients,
+        totalResponses: d.totalResponses,
+        dispatchId: d.id,
+      })
+    }
+  }
+
+  const sortedBuckets = Array.from(historyBucketMap.values()).sort((a, b) =>
+    a.dayKey.localeCompare(b.dayKey),
+  )
+
+  const anchorDayKey = format(new Date(anchorStats.scheduledAt), "yyyy-MM-dd")
+
+  const trendData: TrendPoint[] = sortedBuckets.map((b) => ({
+    date: format(b.scheduledAt, "dd/MM"),
+    adherence: b.totalRecipients > 0 ? Math.round((b.totalResponses / b.totalRecipients) * 100) : 0,
+    dispatchId: b.dayKey,
   }))
 
-  const hasAnchorResponses = stats.totalResponses > 0
-  const showMultipleDepts = aggrDispatches.length > 1
+  const showMultipleDepts = aggrStats.length > 1
 
   return (
     <div className="flex flex-col h-full">
-      {/*Header */}
       <div className="border-b border-border bg-card px-6 py-4 shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -149,14 +346,14 @@ export default async function DispatchDetailPage({ params, searchParams }: Props
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-sm font-bold uppercase tracking-widest">Dashboard de Pesquisas</h1>
-                <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${STATUS_STYLE[stats.status] ?? "bg-muted text-muted-foreground border-border"}`}>
-                  {STATUS_LABELS[stats.status] ?? stats.status}
+                <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${STATUS_STYLE[anchorStats.status] ?? "bg-muted text-muted-foreground border-border"}`}>
+                  {STATUS_LABELS[anchorStats.status] ?? anchorStats.status}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {stats.departmentName}
-                {" · "}{format(new Date(stats.scheduledAt), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
-                {" · "}{FREQUENCY_LABELS[stats.frequency] ?? stats.frequency}
+                {anchorStats.departmentName}
+                {" · "}{format(new Date(anchorStats.scheduledAt), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+                {" · "}{FREQUENCY_LABELS[anchorStats.frequency] ?? anchorStats.frequency}
               </p>
             </div>
           </div>
@@ -167,43 +364,40 @@ export default async function DispatchDetailPage({ params, searchParams }: Props
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
-
-        {/*Aggregated KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-0 border border-border bg-card">
           <div className="px-5 py-4 border-r border-border">
             <div className="flex items-center gap-2 mb-1">
               <Users className="w-3.5 h-3.5 text-muted-foreground" />
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Enviados</p>
             </div>
-            <p className="text-3xl font-black text-primary">{aggrRecipients}</p>
-            {showMultipleDepts && <p className="text-[10px] text-muted-foreground mt-0.5">{aggrDispatches.length} departamentos</p>}
+            <p className="text-3xl font-black text-primary">{mergedStats.totalRecipients}</p>
+            {showMultipleDepts && <p className="text-[10px] text-muted-foreground mt-0.5">{aggrStats.length} departamentos</p>}
           </div>
           <div className="px-5 py-4 border-r border-border">
             <div className="flex items-center gap-2 mb-1">
               <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Responderam</p>
             </div>
-            <p className="text-3xl font-black text-green-600">{aggrResponses}</p>
+            <p className="text-3xl font-black text-green-600">{mergedStats.totalResponses}</p>
           </div>
           <div className="px-5 py-4 border-r border-border">
             <div className="flex items-center gap-2 mb-1">
               <XCircle className="w-3.5 h-3.5 text-red-500" />
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Não responderam</p>
             </div>
-            <p className="text-3xl font-black text-red-500">{aggrNotResponded}</p>
+            <p className="text-3xl font-black text-red-500">{mergedStats.notResponded}</p>
           </div>
           <div className="px-5 py-4">
             <div className="flex items-center gap-2 mb-1">
               <Activity className="w-3.5 h-3.5 text-muted-foreground" />
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Adesão geral</p>
             </div>
-            <p className={`text-3xl font-black ${adherenceClass(Math.round(aggrAdherence * 100))}`}>
-              {Math.round(aggrAdherence * 100)}%
+            <p className={`text-3xl font-black ${adherenceClass(Math.round(mergedStats.adherenceRate * 100))}`}>
+              {Math.round(mergedStats.adherenceRate * 100)}%
             </p>
           </div>
         </div>
 
-        {/*Per-department breakdown (shown when multiple depts) */}
         {showMultipleDepts && (
           <div className="border border-border bg-card overflow-hidden">
             <div className="px-5 py-3 border-b border-border">
@@ -211,8 +405,7 @@ export default async function DispatchDetailPage({ params, searchParams }: Props
             </div>
             <div className="divide-y divide-border">
               {deptBreakdown.map((dept) => {
-                const adhPct = dept.adherence
-                const barColor = adherenceBarClass(adhPct)
+                const barColor = adherenceBarClass(dept.adherence)
                 return (
                   <Link
                     key={dept.id}
@@ -227,12 +420,12 @@ export default async function DispatchDetailPage({ params, searchParams }: Props
                     </div>
                     <div className="flex-1 flex flex-col gap-1">
                       <div className="w-full h-1.5 bg-muted overflow-hidden">
-                        <div className={`h-full ${barColor}`} style={{ width: `${adhPct}%` }} />
+                        <div className={`h-full ${barColor}`} style={{ width: `${dept.adherence}%` }} />
                       </div>
                     </div>
                     <div className="flex items-center gap-3 shrink-0 text-[11px]">
                       <span className="text-muted-foreground">{dept.responses}/{dept.recipients}</span>
-                      <span className={`font-black w-10 text-right ${adherenceClass(adhPct)}`}>{adhPct}%</span>
+                      <span className={`font-black w-10 text-right ${adherenceClass(dept.adherence)}`}>{dept.adherence}%</span>
                     </div>
                   </Link>
                 )
@@ -241,124 +434,58 @@ export default async function DispatchDetailPage({ params, searchParams }: Props
           </div>
         )}
 
-        {/*Single-dept view: adherence gauge + question chart */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="border border-border bg-card p-5 flex flex-col items-center justify-center gap-2">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Taxa de adesão</p>
-            <AdherenceGauge rate={showMultipleDepts ? aggrAdherence : stats.adherenceRate} />
-            <p className="text-xs text-muted-foreground text-center">
-              {showMultipleDepts
-                ? `${aggrResponses} de ${aggrRecipients} responderam`
-                : `${stats.totalResponses} de ${stats.totalRecipients} responderam`}
-            </p>
-            {aggrAdherence < 0.5 && aggrRecipients > 0 && (
-              <p className="text-[10px] font-bold text-red-600 uppercase tracking-wider">⚠ Adesão crítica</p>
-            )}
-          </div>
+        <DeptChartSection deptStats={mergedStats} />
 
-          <div className="md:col-span-2 border border-border bg-card p-5">
-            <div className="flex items-center gap-2 mb-1">
-              <BarChart2 className="w-3.5 h-3.5 text-muted-foreground" />
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Score médio por pergunta</p>
-              <span className="ml-auto text-[10px] text-muted-foreground">{stats.departmentName}</span>
-            </div>
-            {hasAnchorResponses ? (
-              <div className="mt-3">
-                <QuestionScoreChart stats={stats} />
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground text-center py-8">Nenhuma resposta registrada ainda para este departamento.</p>
-            )}
-          </div>
-        </div>
-
-        {/*Score distribution for anchor dispatch */}
-        {hasAnchorResponses && (
-          <div className="border border-border bg-card">
-            <div className="px-5 py-3 border-b border-border flex items-center justify-between">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Distribuição de notas — {stats.departmentName}</p>
-              <div className="flex items-baseline gap-2">
-                <p className={`text-sm font-black ${scoreAccentClass(stats.avgScore)}`}>{stats.avgScore?.toFixed(2) ?? "—"}</p>
-                <span className={`text-[10px] font-bold uppercase tracking-wider ${scoreAccentClass(stats.avgScore)}`}>{scoreLabel(stats.avgScore)}</span>
-              </div>
-            </div>
-            <div className="divide-y divide-border">
-              {stats.questions.map((q) => (
-                <div key={q.id} className="px-5 py-4 grid grid-cols-1 md:grid-cols-[auto_1fr_80px] gap-3 items-center">
-                  <div className="flex items-start gap-3 md:max-w-xs">
-                    <span className="text-[10px] font-black text-muted-foreground shrink-0 mt-0.5 w-6">P{q.order}</span>
-                    <p className="text-xs text-foreground leading-relaxed">{q.text}</p>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <ScoreDistributionBar question={q} />
-                    <div className="flex gap-1 flex-wrap">
-                      {q.distribution.filter((d) => d.count > 0).map((d) => (
-                        <span key={d.score} className="text-[9px] text-muted-foreground">
-                          {d.score}★ {d.count}x
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    {q.avgScore !== null ? (
-                      <>
-                        <p className={`text-xl font-black ${scoreAccentClass(q.avgScore)}`}>{q.avgScore.toFixed(1)}</p>
-                        <p className="text-[9px] text-muted-foreground uppercase tracking-wider">média</p>
-                      </>
-                    ) : (
-                      <p className="text-xl font-black text-muted-foreground">—</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {!hasAnchorResponses && (
-          <div className="border border-border bg-card px-5 py-10 text-center">
-            <p className="text-sm font-bold text-muted-foreground">Aguardando respostas</p>
-            <p className="text-xs text-muted-foreground mt-1">Os dados de score aparecerão aqui conforme os colaboradores responderem a pesquisa.</p>
-          </div>
-        )}
-
-        {/*Historical trend for anchor department */}
         {trendData.length > 0 && (
           <div className="border border-border bg-card">
             <div className="px-5 py-3 border-b border-border flex items-center gap-2">
               <TrendingUp className="w-3.5 h-3.5 text-muted-foreground" />
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Histórico de adesão — {stats.departmentName}
+                Histórico de adesão — {historyDeptName}
               </p>
               <span className="ml-auto text-[10px] text-muted-foreground">
-                {anchorDeptDispatches.length} disparo{anchorDeptDispatches.length !== 1 ? "s" : ""}
+                {sortedBuckets.length} disparo{sortedBuckets.length !== 1 ? "s" : ""}
               </span>
             </div>
             <div className="px-5 py-4">
-              <DeptTrendChart data={trendData} currentId={stats.id} />
+              <DeptTrendChart data={trendData} currentId={anchorDayKey} />
             </div>
             <div className="border-t border-border divide-y divide-border">
-              {[...anchorDeptDispatches].reverse().slice(0, 5).map((d: DispatchWithConfig) => {
-                const adh = d.totalRecipients > 0 ? Math.round((d.totalResponses / d.totalRecipients) * 100) : 0
-                const isCurrent = d.id === stats.id
-                return (
-                  <Link
-                    key={d.id}
-                    href={`/surveys/${d.id}`}
-                    className={`flex items-center justify-between px-5 py-2.5 text-[11px] hover:bg-muted/30 transition-colors ${isCurrent ? "bg-primary/5" : ""}`}
-                  >
+              {[...sortedBuckets].reverse().slice(0, 5).map((b) => {
+                const adh = b.totalRecipients > 0 ? Math.round((b.totalResponses / b.totalRecipients) * 100) : 0
+                const isCurrent = b.dayKey === anchorDayKey
+                const rowContent = (
+                  <>
                     <span className={`font-mono ${isCurrent ? "font-bold text-primary" : "text-muted-foreground"}`}>
-                      {format(new Date(d.scheduledAt), "dd/MM/yyyy HH:mm")}
+                      {format(b.scheduledAt, "dd/MM/yyyy")}
                       {isCurrent && <span className="ml-2 text-[9px] font-bold uppercase tracking-wider">← atual</span>}
                     </span>
                     <span className={`font-bold ${adherenceClass(adh)}`}>{adh}%</span>
-                  </Link>
+                  </>
+                )
+                if (b.dispatchId !== null) {
+                  return (
+                    <Link
+                      key={b.dayKey}
+                      href={`/surveys/${b.dispatchId}`}
+                      className={`flex items-center justify-between px-5 py-2.5 text-[11px] hover:bg-muted/30 transition-colors ${isCurrent ? "bg-primary/5" : ""}`}
+                    >
+                      {rowContent}
+                    </Link>
+                  )
+                }
+                return (
+                  <div
+                    key={b.dayKey}
+                    className={`flex items-center justify-between px-5 py-2.5 text-[11px] ${isCurrent ? "bg-primary/5" : ""}`}
+                  >
+                    {rowContent}
+                  </div>
                 )
               })}
             </div>
           </div>
         )}
-
       </div>
     </div>
   )

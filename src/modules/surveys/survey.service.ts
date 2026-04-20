@@ -7,6 +7,7 @@ import {
   upsertSurveyConfig,
   findDispatchesByTenant,
   findDispatchWithDashboard,
+  findMultipleDispatchesWithDashboard,
   createDispatch,
   findTokenByValue,
   deleteExpiredTokens,
@@ -73,6 +74,43 @@ export async function validateSurveyToken(token: string): Promise<SurveyTokenVal
 
 export function cleanupExpiredTokens(): Promise<{ count: number }> {
   return deleteExpiredTokens()
+}
+
+export async function getMultipleDispatchDashboards(
+  tenantId: string,
+  dispatchIds: string[],
+): Promise<DispatchDashboardStats[]> {
+  const dataList = await findMultipleDispatchesWithDashboard(tenantId, dispatchIds)
+  return dataList.map((data) => {
+    const notResponded = Math.max(0, data.totalRecipients - data.totalResponses)
+    const adherenceRate = data.totalRecipients > 0 ? data.totalResponses / data.totalRecipients : 0
+    const allScores = data.responseItems.map((i) => i.score)
+    const avgScore = allScores.length > 0 ? allScores.reduce((a, b) => a + b, 0) / allScores.length : null
+    const questions = data.questions.map((q) => {
+      const qScores = data.responseItems.filter((i) => i.questionId === q.id).map((i) => i.score)
+      const qAvg = qScores.length > 0 ? qScores.reduce((a, b) => a + b, 0) / qScores.length : null
+      const distribution = [1, 2, 3, 4, 5].map((s) => ({
+        score: s,
+        count: qScores.filter((v) => v === s).length,
+      }))
+      return { ...q, avgScore: qAvg, distribution }
+    })
+    return {
+      id: data.id,
+      departmentId: data.departmentId,
+      status: data.status,
+      scheduledAt: data.scheduledAt,
+      dispatchedAt: data.dispatchedAt,
+      departmentName: data.departmentName,
+      frequency: data.frequency,
+      totalRecipients: data.totalRecipients,
+      totalResponses: data.totalResponses,
+      notResponded,
+      adherenceRate,
+      avgScore,
+      questions,
+    }
+  })
 }
 
 export async function submitSurveyResponse(input: SubmitSurveyInput): Promise<void> {
