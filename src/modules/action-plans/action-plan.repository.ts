@@ -48,9 +48,10 @@ export function updateActionPlan(
   })
 }
 
-export function createActionPlanTask(actionPlanId: string, data: CreateActionPlanTaskInput): Promise<ActionPlanTask> {
+export function createActionPlanTask(tenantId: string, actionPlanId: string, data: CreateActionPlanTaskInput): Promise<ActionPlanTask> {
   return prisma.actionPlanTask.create({
     data: {
+      tenantId,
       actionPlanId,
       title: data.title,
       ...(data.assigneeId !== undefined && { assigneeId: data.assigneeId }),
@@ -59,9 +60,9 @@ export function createActionPlanTask(actionPlanId: string, data: CreateActionPla
   })
 }
 
-export function completeActionPlanTask(taskId: string): Promise<ActionPlanTask> {
+export function completeActionPlanTask(tenantId: string, taskId: string): Promise<ActionPlanTask> {
   return prisma.actionPlanTask.update({
-    where: { id: taskId },
+    where: { id: taskId, tenantId },
     data: { completedAt: new Date() },
   })
 }

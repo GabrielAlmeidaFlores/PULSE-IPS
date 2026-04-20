@@ -1,3 +1,5 @@
+export type ScoreDirection = "higher_is_better" | "lower_is_better"
+
 export interface DispatchDashboardStats {
   id: string
   departmentId: string
@@ -15,6 +17,7 @@ export interface DispatchDashboardStats {
     id: string
     text: string
     order: number
+    scoreDirection: ScoreDirection
     avgScore: number | null
     distribution: { score: number; count: number }[]
   }[]
@@ -63,7 +66,7 @@ export interface CreateSurveyConfigInput {
   workStartTime: string
   workEndTime: string
   workDays: number[]
-  questions: { text: string; order: number }[]
+  questions: { text: string; order: number; scoreDirection: ScoreDirection }[]
 }
 
 export interface SubmitSurveyInput {

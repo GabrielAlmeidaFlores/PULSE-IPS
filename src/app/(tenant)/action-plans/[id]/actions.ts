@@ -10,7 +10,7 @@ export async function completeTaskAction(taskId: string, planId: string): Promis
   const session = await getSession()
   if (!session) return { error: "Sessão expirada." }
   try {
-    await completeTask(taskId)
+    await completeTask(session.tenantId, taskId)
     revalidatePath(`/action-plans/${planId}`)
     return {}
   } catch (err) {
@@ -24,7 +24,7 @@ export async function addTaskAction(planId: string, title: string): Promise<Acti
   if (!session) return { error: "Sessão expirada." }
   if (!title.trim()) return { error: "Título é obrigatório." }
   try {
-    await addTask(planId, { title: title.trim() })
+    await addTask(session.tenantId, planId, { title: title.trim() })
     revalidatePath(`/action-plans/${planId}`)
     return {}
   } catch (err) {

@@ -58,6 +58,10 @@ function roundTwo(n: number): number {
   return Math.round(n * 100) / 100
 }
 
+function normalizeScore(score: number, scoreDirection: string): number {
+  return scoreDirection === "lower_is_better" ? 6 - score : score
+}
+
 function monthLabel(date: Date): string {
   return format(startOfMonth(date), "MMM/yy")
 }
@@ -131,7 +135,9 @@ function processDispatches(
       for (const item of response.items) {
         if (filterActive && !orderSet.has(item.question.order)) continue
 
-        overall.totalScore += item.score
+        const normalizedScore = normalizeScore(item.score, item.question.scoreDirection)
+
+        overall.totalScore += normalizedScore
         overall.scoreCount++
 
         const deptMonthData = info.monthMap.get(key) ?? {
@@ -139,11 +145,11 @@ function processDispatches(
           scoreCount: 0,
           monthDate,
         }
-        deptMonthData.totalScore += item.score
+        deptMonthData.totalScore += normalizedScore
         deptMonthData.scoreCount++
         info.monthMap.set(key, deptMonthData)
 
-        if (isRecent) recentScores.push(item.score)
+        if (isRecent) recentScores.push(normalizedScore)
       }
     }
 

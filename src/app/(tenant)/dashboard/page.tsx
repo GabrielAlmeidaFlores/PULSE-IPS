@@ -4,15 +4,18 @@ import { getSession } from "@/modules/auth/session"
 import { getAlerts } from "@/modules/alerts/alert.service"
 import { getDashboardData, getAvailableQuestions } from "@/modules/dashboard/dashboard.service"
 import { PageHelp } from "@/components/page-help"
+import { ChartCard } from "@/components/chart-card"
 import { ScoreTrendChart } from "@/app/(tenant)/dashboard/components/score-trend-chart"
 import { DeptComparisonChart, AdherenceChart, DeptMultiLineChart } from "@/app/(tenant)/dashboard/components/dept-charts"
 import { DeptScoreCards } from "@/app/(tenant)/dashboard/components/dept-score-cards"
 import { QuestionFilter } from "@/app/(tenant)/dashboard/components/question-filter"
-import { Activity, Users, AlertTriangle, BarChart2 } from "lucide-react"
+import { Activity, Users, AlertTriangle, BarChart2, TrendingUp, TrendingDown, Minus } from "lucide-react"
 import { AlertTypeInfo } from "@/components/alert-type-info"
 import { format } from "date-fns"
+import Link from "next/link"
 
 const BADGE_DEFAULT = "bg-muted text-muted-foreground border-border"
+const BADGE_RED = "bg-red-100 text-red-800 border-red-300"
 const BADGE_BASE = "inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border"
 
 const SEVERITY_LABELS: Record<string, string> = {
@@ -24,7 +27,7 @@ const SEVERITY_LABELS: Record<string, string> = {
 const SEVERITY_STYLE: Record<string, string> = {
   info: "bg-blue-100 text-blue-800 border-blue-300",
   warning: "bg-yellow-100 text-yellow-800 border-yellow-300",
-  critical: "bg-red-100 text-red-800 border-red-300",
+  critical: BADGE_RED,
 }
 
 const SEVERITY_DOT: Record<string, string> = {
@@ -34,27 +37,29 @@ const SEVERITY_DOT: Record<string, string> = {
 }
 
 const TYPE_LABELS: Record<string, string> = {
-  score_drop: "Queda de score",
-  low_score: "Score baixo",
+  score_drop: "Queda no bem-estar",
+  low_score: "Bem-estar abaixo do esperado",
   pgr_review_due: "Revisão PGR pendente",
-  negative_trend: "Tendência negativa",
+  negative_trend: "Tendência de piora persistente",
   low_adherence: "Adesão baixa",
   no_response: "Sem resposta",
   consent_expired: "Consentimento expirado",
   billing: "Cobrança",
   system: "Sistema",
+  crisis_report: "Relato de crise",
 }
 
 const TYPE_STYLE: Record<string, string> = {
-  score_drop: "bg-red-100 text-red-800 border-red-300",
+  score_drop: BADGE_RED,
   low_score: "bg-amber-100 text-amber-800 border-amber-300",
   pgr_review_due: "bg-blue-100 text-blue-800 border-blue-300",
-  negative_trend: "bg-amber-100 text-amber-800 border-amber-300",
+  negative_trend: BADGE_RED,
   low_adherence: "bg-yellow-100 text-yellow-800 border-yellow-300",
-  no_response: "bg-red-100 text-red-800 border-red-300",
+  no_response: BADGE_RED,
   consent_expired: BADGE_DEFAULT,
   billing: "bg-blue-100 text-blue-800 border-blue-300",
   system: BADGE_DEFAULT,
+  crisis_report: BADGE_RED,
 }
 
 interface Props {
@@ -78,6 +83,12 @@ export default async function DashboardPage({ searchParams }: Props): Promise<Re
 
   const { kpis, overallTrend, deptMonthlyChart, deptNames, deptComparison, adherenceChart, deptCards } = dashboard
   const criticalAlerts = recentAlerts.filter((a) => a.severity === "critical" && !a.resolvedAt)
+
+  const healthyDeptCount = deptCards.filter((c) => c.avg >= 3.5).length
+  const warningDeptCount = deptCards.filter((c) => c.avg >= 2.5 && c.avg < 3.5).length
+  const criticalDeptCount = deptCards.filter((c) => c.avg > 0 && c.avg < 2.5).length
+  const topDept = [...deptCards].filter((c) => c.avg > 0).sort((a, b) => b.avg - a.avg)[0] ?? null
+  const bottomDept = [...deptCards].filter((c) => c.avg > 0).sort((a, b) => a.avg - b.avg)[0] ?? null
 
   function resolveSubtitle(): string {
     if (selectedOrders.length === 0) return "Insights sobre saúde ocupacional"
@@ -163,60 +174,115 @@ export default async function DashboardPage({ searchParams }: Props): Promise<Re
           </div>
         )}
 
-        {hasEnoughData && (
-          <div className="border border-border bg-card">
-            <div className="border-b border-border px-4 py-2.5">
-              <span className="text-[11px] font-bold uppercase tracking-widest">Evolução do score geral</span>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Média de todas as pesquisas por mês</p>
+        {deptCards.length > 0 && (
+          <div className="grid grid-cols-3 gap-3">
+            <div className="border border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-900/50 p-4 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center shrink-0">
+                <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-500" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-green-700 dark:text-green-500">Saudáveis</p>
+                <p className="text-2xl font-black font-mono text-green-700 dark:text-green-500">{healthyDeptCount}</p>
+                <p className="text-[10px] text-green-600/70 dark:text-green-500/70">setores</p>
+              </div>
             </div>
-            <div className="px-4 py-4">
-              <ScoreTrendChart data={overallTrend} />
+            <div className="border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900/50 p-4 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
+                <Minus className="w-4 h-4 text-amber-600 dark:text-amber-500" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-500">Atenção</p>
+                <p className="text-2xl font-black font-mono text-amber-700 dark:text-amber-500">{warningDeptCount}</p>
+                <p className="text-[10px] text-amber-600/70 dark:text-amber-500/70">setores</p>
+              </div>
+            </div>
+            <div className="border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900/50 p-4 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+                <TrendingDown className="w-4 h-4 text-red-600 dark:text-red-500" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-red-700 dark:text-red-500">Críticos</p>
+                <p className="text-2xl font-black font-mono text-red-700 dark:text-red-500">{criticalDeptCount}</p>
+                <p className="text-[10px] text-red-600/70 dark:text-red-500/70">setores</p>
+              </div>
             </div>
           </div>
         )}
 
+        {(topDept ?? bottomDept) && topDept?.deptId !== bottomDept?.deptId && (
+          <div className="grid grid-cols-2 gap-3">
+            {topDept && (
+              <div className="border border-border bg-card p-4">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Setor em destaque</p>
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-bold text-foreground truncate">{topDept.dept}</p>
+                  <div className="shrink-0 flex items-center gap-2">
+                    <TrendingUp className="w-3.5 h-3.5 text-green-600" />
+                    <p className="text-xl font-black font-mono text-green-600">{topDept.avg.toFixed(2)}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+            {bottomDept && (
+              <div className="border border-border bg-card p-4">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
+                  {bottomDept.avg < 2.5 ? "Setor crítico" : "Setor com menor score"}
+                </p>
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-bold text-foreground truncate">{bottomDept.dept}</p>
+                  <div className="shrink-0 flex items-center gap-2">
+                    {bottomDept.avg < 2.5 ? (
+                      <TrendingDown className="w-3.5 h-3.5 text-red-600" />
+                    ) : (
+                      <Minus className="w-3.5 h-3.5 text-amber-600" />
+                    )}
+                    <p className={`text-xl font-black font-mono ${bottomDept.avg < 2.5 ? "text-red-600" : "text-amber-600"}`}>{bottomDept.avg.toFixed(2)}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {hasEnoughData && (
+          <ChartCard title="Evolução do score geral" subtitle="Média de todas as pesquisas por mês (últimos 6 meses)">
+            <ScoreTrendChart data={overallTrend} />
+          </ChartCard>
+        )}
+
         <div className="grid grid-cols-2 gap-6">
           {deptComparison.length > 0 && (
-            <div className="border border-border bg-card">
-              <div className="border-b border-border px-4 py-2.5">
-                <span className="text-[11px] font-bold uppercase tracking-widest">Score por setor</span>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Comparação do período mais recente</p>
-              </div>
-              <div className="px-2 py-4">
+            <ChartCard title="Score por setor" subtitle="Comparação do período mais recente">
+              <div className="px-0">
                 <DeptComparisonChart data={deptComparison} />
               </div>
-            </div>
+            </ChartCard>
           )}
           {adherenceChart.length > 0 && (
-            <div className="border border-border bg-card">
-              <div className="border-b border-border px-4 py-2.5">
-                <span className="text-[11px] font-bold uppercase tracking-widest">Taxa de adesão</span>
-                <p className="text-[10px] text-muted-foreground mt-0.5">% de colaboradores que responderam</p>
-              </div>
-              <div className="px-2 py-4">
+            <ChartCard title="Taxa de adesão" subtitle="% de colaboradores que responderam por setor">
+              <div className="px-0">
                 <AdherenceChart data={adherenceChart} />
               </div>
-            </div>
+            </ChartCard>
           )}
         </div>
 
         {deptMonthlyChart.length > 0 && deptNames.length > 0 && (
-          <div className="border border-border bg-card">
-            <div className="border-b border-border px-4 py-2.5">
-              <span className="text-[11px] font-bold uppercase tracking-widest">Evolução por setor</span>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Score médio de cada setor ao longo dos meses</p>
-            </div>
-            <div className="px-4 py-4">
-              <DeptMultiLineChart data={deptMonthlyChart} deptNames={deptNames} />
-            </div>
-          </div>
+          <ChartCard title="Evolução por setor" subtitle="Score médio de cada setor ao longo dos últimos 6 meses">
+            <DeptMultiLineChart data={deptMonthlyChart} deptNames={deptNames} />
+          </ChartCard>
         )}
 
         {recentAlerts.length > 0 && (
           <div className="border border-border bg-card overflow-hidden">
             <div className="border-b border-border px-4 py-2.5 flex items-center justify-between bg-muted/40">
               <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Alertas recentes</span>
-              <span className="text-[10px] text-muted-foreground">{criticalAlerts.length} crítico{criticalAlerts.length !== 1 ? "s" : ""}</span>
+              <div className="flex items-center gap-3">
+                {criticalAlerts.length > 0 && (
+                  <span className="text-[10px] font-bold text-destructive">{criticalAlerts.length} crítico{criticalAlerts.length !== 1 ? "s" : ""}</span>
+                )}
+                <Link href="/alerts" className="text-[10px] text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2">Ver todos</Link>
+              </div>
             </div>
             <table className="w-full text-sm">
               <thead>

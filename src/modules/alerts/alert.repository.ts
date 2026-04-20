@@ -47,11 +47,12 @@ export function resolveAlert(tenantId: string, alertId: string): Promise<{ count
 
 export interface SurveyResponseWithItems {
   tenantId: string
-  items: { score: number }[]
+  items: { score: number; question: { scoreDirection: string } }[]
   dispatch: {
     surveyConfiguration: {
       department: {
         id: string
+        name: string
       }
     }
   }
@@ -61,8 +62,12 @@ export function findRecentSurveyResponsesForAlerts(since: Date): Promise<SurveyR
   return prisma.surveyResponse.findMany({
     where: { createdAt: { gte: since } },
     include: {
-      items: true,
-      dispatch: { include: { surveyConfiguration: { include: { department: true } } } },
+      items: { include: { question: { select: { scoreDirection: true } } } },
+      dispatch: {
+        include: {
+          surveyConfiguration: { include: { department: { select: { id: true, name: true } } } },
+        },
+      },
     },
   })
 }

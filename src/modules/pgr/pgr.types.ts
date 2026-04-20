@@ -1,3 +1,5 @@
+import type { ScoreDirection } from "@/modules/surveys/survey.types"
+
 export interface CreatePgrReviewInput {
   tenantId: string
   period: string
@@ -21,6 +23,7 @@ export interface CreatePgrQuestionResultInput {
   questionId: string
   questionText: string
   questionOrder: number
+  scoreDirection: ScoreDirection
   avgScore: number
   responseCount: number
 }

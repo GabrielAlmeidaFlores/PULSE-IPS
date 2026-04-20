@@ -34,10 +34,10 @@ export function updatePlan(
   return updateActionPlan(tenantId, planId, data)
 }
 
-export function addTask(actionPlanId: string, input: CreateActionPlanTaskInput): Promise<ActionPlanTask> {
-  return createActionPlanTask(actionPlanId, input)
+export function addTask(tenantId: string, actionPlanId: string, input: CreateActionPlanTaskInput): Promise<ActionPlanTask> {
+  return createActionPlanTask(tenantId, actionPlanId, input)
 }
 
-export function completeTask(taskId: string): Promise<ActionPlanTask> {
-  return completeActionPlanTask(taskId)
+export function completeTask(tenantId: string, taskId: string): Promise<ActionPlanTask> {
+  return completeActionPlanTask(tenantId, taskId)
 }

@@ -8,7 +8,7 @@ import type {
   SurveyQuestion,
 } from "@prisma/client"
 
-export type ItemWithQuestion = SurveyResponseItem & { question: Pick<SurveyQuestion, "order" | "text"> }
+export type ItemWithQuestion = SurveyResponseItem & { question: Pick<SurveyQuestion, "order" | "text" | "scoreDirection"> }
 
 export type DispatchWithData = SurveyDispatch & {
   surveyConfiguration: SurveyConfiguration & { department: Department }
@@ -30,7 +30,7 @@ export function findDispatchesWithData(tenantId: string, since: Date): Promise<D
       surveyConfiguration: { include: { department: true } },
       responses: {
         include: {
-          items: { include: { question: { select: { order: true, text: true } } } },
+          items: { include: { question: { select: { order: true, text: true, scoreDirection: true } } } },
         },
       },
     },

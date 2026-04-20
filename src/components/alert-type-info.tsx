@@ -11,13 +11,13 @@ interface AlertTypeDetail {
 
 const ALERT_DETAILS: Record<string, AlertTypeDetail> = {
   score_drop: {
-    label: "Queda de score",
-    description: "O score médio do setor caiu mais de 1 ponto em relação ao período anterior.",
+    label: "Queda no bem-estar",
+    description: "O índice de bem-estar ocupacional do setor caiu mais de 1 ponto em relação ao período anterior.",
     action: "Revise as respostas das pesquisas, identifique qual fator piorou e crie um plano de ação para endereçar a causa.",
   },
   low_score: {
-    label: "Score baixo",
-    description: "O score médio do setor está abaixo do limiar de atenção (2,5 em 5,0).",
+    label: "Bem-estar abaixo do esperado",
+    description: "O índice de bem-estar ocupacional do setor está abaixo do limiar de atenção (2,5 de 5,0).",
     action: "Investigue a causa raiz, converse com a equipe e elabore um plano de ação para melhorar o clima ocupacional.",
   },
   pgr_review_due: {
@@ -26,8 +26,8 @@ const ALERT_DETAILS: Record<string, AlertTypeDetail> = {
     action: "Agende a reunião de revisão com os responsáveis e atualize o documento do PGR dentro do prazo exigido pela NR-1.",
   },
   negative_trend: {
-    label: "Tendência negativa",
-    description: "O score do setor ficou abaixo da média histórica por 3 períodos consecutivos — sinal de problema persistente.",
+    label: "Tendência de piora persistente",
+    description: "O índice de bem-estar do setor ficou abaixo da média histórica por 3 períodos consecutivos — sinal de problema persistente.",
     action: "Situação requer atenção urgente. Revise o contexto da equipe, aplique pesquisas qualitativas e implemente planos de ação estruturados.",
   },
   low_adherence: {

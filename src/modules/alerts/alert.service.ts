@@ -13,25 +13,29 @@ export function resolve(tenantId: string, alertId: string): Promise<{ count: num
   return resolveAlert(tenantId, alertId)
 }
 
+function normalizeItemScore(score: number, scoreDirection: string): number {
+  return scoreDirection === "lower_is_better" ? 6 - score : score
+}
+
 export async function detectLowScoreAlerts(): Promise<void> {
   const LOW_SCORE_THRESHOLD = 3
   const LOOKBACK_HOURS = 48
 
   const since = new Date(Date.now() - LOOKBACK_HOURS * 60 * 60 * 1000)
-
   const responses = await findRecentSurveyResponsesForAlerts(since)
 
-  const deptScores = new Map<string, { tenantId: string; departmentId: string; scores: number[] }>()
+  const deptScores = new Map<string, { tenantId: string; departmentId: string; departmentName: string; scores: number[] }>()
 
   for (const response of responses) {
     const dept = response.dispatch.surveyConfiguration.department
     const key = `${response.tenantId}:${dept.id}`
     const existing = deptScores.get(key)
-    const avg = response.items.reduce((sum, item) => sum + item.score, 0) / (response.items.length || 1)
+    const normalizedScores = response.items.map((item) => normalizeItemScore(item.score, item.question.scoreDirection))
+    const avg = normalizedScores.reduce((sum, s) => sum + s, 0) / (normalizedScores.length || 1)
     if (existing) {
       existing.scores.push(avg)
     } else {
-      deptScores.set(key, { tenantId: response.tenantId, departmentId: dept.id, scores: [avg] })
+      deptScores.set(key, { tenantId: response.tenantId, departmentId: dept.id, departmentName: dept.name, scores: [avg] })
     }
   }
 
@@ -43,7 +47,7 @@ export async function detectLowScoreAlerts(): Promise<void> {
         departmentId: data.departmentId,
         type: "low_score",
         severity: avgScore < 2 ? "critical" : "warning",
-        message: `Average survey score for department is ${avgScore.toFixed(1)} (below threshold of ${LOW_SCORE_THRESHOLD})`,
+        message: `O índice de bem-estar ocupacional do setor ${data.departmentName} está abaixo do esperado: ${avgScore.toFixed(1)} de 5,0.`,
       })
     }
   }

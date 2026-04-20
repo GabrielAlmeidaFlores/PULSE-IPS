@@ -23,6 +23,9 @@ import {
   type DeptOverviewData,
   type QuestionChartData,
 } from "@/app/(tenant)/pgr/[id]/pgr-charts"
+import { PgrTabsLayout } from "@/app/(tenant)/pgr/[id]/pgr-tabs"
+import { ChartCard } from "@/components/chart-card"
+import type { ScoreDirection } from "@/modules/surveys/survey.types"
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -33,6 +36,10 @@ function scoreLabel(avg: number): string {
   if (avg >= 2.5) return "Atenção"
   if (avg > 0) return "Crítico"
   return "Sem dados"
+}
+
+function rawDisplayScore(normalizedAvg: number, direction: ScoreDirection): number {
+  return direction === "lower_is_better" ? 6 - normalizedAvg : normalizedAvg
 }
 
 function scoreColor(avg: number): string {
@@ -70,7 +77,7 @@ function adherenceColor(pct: number): string {
 
 interface ScoreTrendIconProps { avg: number }
 interface ScoreGaugeProps { score: number }
-interface QuestionAggEntry { text: string; order: number; totalWeighted: number; totalCount: number }
+interface QuestionAggEntry { text: string; order: number; scoreDirection: ScoreDirection; totalWeighted: number; totalCount: number }
 
 function ScoreTrendIcon({ avg }: ScoreTrendIconProps): React.ReactElement {
   if (avg >= 3.5) return <TrendingUp className="w-4 h-4 text-green-500" />
@@ -147,7 +154,7 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
   const questionAggMap = new Map<string, QuestionAggEntry>()
   for (const q of allQuestions) {
     if (!questionAggMap.has(q.questionId)) {
-      questionAggMap.set(q.questionId, { text: q.questionText, order: q.questionOrder, totalWeighted: 0, totalCount: 0 })
+      questionAggMap.set(q.questionId, { text: q.questionText, order: q.questionOrder, scoreDirection: q.scoreDirection as ScoreDirection, totalWeighted: 0, totalCount: 0 })
     }
     const entry = questionAggMap.get(q.questionId)
     if (entry) {
@@ -160,6 +167,7 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
       id: qId,
       text: v.text,
       order: v.order,
+      scoreDirection: v.scoreDirection,
       avgScore: v.totalCount > 0 ? v.totalWeighted / v.totalCount : 0,
       responseCount: v.totalCount,
     }))
@@ -211,293 +219,292 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        {!hasData ? (
+      {!hasData ? (
+        <div className="flex-1 overflow-y-auto p-6">
           <div className="border border-border bg-card p-12 text-center">
             <p className="text-sm text-muted-foreground">Nenhuma resposta encontrada para este período.</p>
             <p className="text-xs text-muted-foreground mt-1">Verifique se há pesquisas concluídas no período selecionado.</p>
           </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-5 gap-3">
-              <div className="border border-border bg-card p-4 flex items-start gap-3">
-                <div className="w-8 h-8 rounded border border-border bg-muted/40 flex items-center justify-center shrink-0">
-                  <Activity className="w-4 h-4 text-muted-foreground" />
+        </div>
+      ) : (
+        <PgrTabsLayout
+          tabs={[
+            { id: "overview", label: "Visão Geral" },
+            { id: "byDept", label: "Por Setor", badge: depts.length },
+            { id: "consolidated", label: "Consolidado" },
+          ]}
+          overview={
+            <>
+              <div className="grid grid-cols-5 gap-3">
+                <div className="border border-border bg-card p-4 flex items-start gap-3">
+                  <div className="w-8 h-8 rounded border border-border bg-muted/40 flex items-center justify-center shrink-0">
+                    <Activity className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Score Global</p>
+                    <p className={`text-2xl font-black font-mono mt-0.5 ${scoreColor(globalAvg)}`}>{globalAvg.toFixed(2)}</p>
+                    <p className="text-[10px] text-muted-foreground">escala 1–5</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Score Global</p>
-                  <p className={`text-2xl font-black font-mono mt-0.5 ${scoreColor(globalAvg)}`}>{globalAvg.toFixed(2)}</p>
-                  <p className="text-[10px] text-muted-foreground">escala 1–5</p>
+
+                <div className="border border-border bg-card p-4 flex items-start gap-3">
+                  <div className="w-8 h-8 rounded border border-border bg-muted/40 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Adesão Global</p>
+                    <p className={`text-2xl font-black font-mono mt-0.5 ${adherenceColor(adherencePct)}`}>{adherencePct}%</p>
+                    <p className="text-[10px] text-muted-foreground">{totalResponses}/{totalRecipients} resp.</p>
+                  </div>
+                </div>
+
+                <div className="border border-border bg-card p-4 flex items-start gap-3">
+                  <div className="w-8 h-8 rounded border border-border bg-muted/40 flex items-center justify-center shrink-0">
+                    <Users className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Funcionários</p>
+                    <p className="text-2xl font-black font-mono mt-0.5">{totalEmployees}</p>
+                    <p className="text-[10px] text-muted-foreground">monitorados</p>
+                  </div>
+                </div>
+
+                <div className="border border-border bg-card p-4 flex items-start gap-3">
+                  <div className="w-8 h-8 rounded border border-border bg-muted/40 flex items-center justify-center shrink-0">
+                    <Building2 className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Departamentos</p>
+                    <p className="text-2xl font-black font-mono mt-0.5">{depts.length}</p>
+                    <p className="text-[10px] text-muted-foreground">avaliados</p>
+                  </div>
+                </div>
+
+                <div className="border border-border bg-card p-4 flex items-start gap-3">
+                  <div className="w-8 h-8 rounded border border-border bg-muted/40 flex items-center justify-center shrink-0">
+                    <BarChart2 className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Perguntas</p>
+                    <p className="text-2xl font-black font-mono mt-0.5">{aggregatedQuestions.length}</p>
+                    <p className="text-[10px] text-muted-foreground">avaliadas</p>
+                  </div>
                 </div>
               </div>
 
-              <div className="border border-border bg-card p-4 flex items-start gap-3">
-                <div className="w-8 h-8 rounded border border-border bg-muted/40 flex items-center justify-center shrink-0">
-                  <CheckCircle2 className="w-4 h-4 text-muted-foreground" />
+              <div className="grid grid-cols-3 gap-3">
+                <div className="border border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-900/50 p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center shrink-0">
+                    <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-500" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-green-700 dark:text-green-500">Saudáveis</p>
+                    <p className="text-3xl font-black font-mono text-green-700 dark:text-green-500">{healthyDepts}</p>
+                    <p className="text-[10px] text-green-600/70 dark:text-green-500/70">departamentos</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Adesão Global</p>
-                  <p className={`text-2xl font-black font-mono mt-0.5 ${adherenceColor(adherencePct)}`}>{adherencePct}%</p>
-                  <p className="text-[10px] text-muted-foreground">{totalResponses}/{totalRecipients} resp.</p>
+                <div className="border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900/50 p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
+                    <Minus className="w-5 h-5 text-amber-600 dark:text-amber-500" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-500">Atenção</p>
+                    <p className="text-3xl font-black font-mono text-amber-700 dark:text-amber-500">{warningDepts}</p>
+                    <p className="text-[10px] text-amber-600/70 dark:text-amber-500/70">departamentos</p>
+                  </div>
+                </div>
+                <div className="border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900/50 p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+                    <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-500" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-red-700 dark:text-red-500">Críticos</p>
+                    <p className="text-3xl font-black font-mono text-red-700 dark:text-red-500">{criticalDepts}</p>
+                    <p className="text-[10px] text-red-600/70 dark:text-red-500/70">departamentos</p>
+                  </div>
                 </div>
               </div>
 
-              <div className="border border-border bg-card p-4 flex items-start gap-3">
-                <div className="w-8 h-8 rounded border border-border bg-muted/40 flex items-center justify-center shrink-0">
-                  <Users className="w-4 h-4 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Funcionários</p>
-                  <p className="text-2xl font-black font-mono mt-0.5">{totalEmployees}</p>
-                  <p className="text-[10px] text-muted-foreground">monitorados</p>
-                </div>
-              </div>
-
-              <div className="border border-border bg-card p-4 flex items-start gap-3">
-                <div className="w-8 h-8 rounded border border-border bg-muted/40 flex items-center justify-center shrink-0">
-                  <Building2 className="w-4 h-4 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Departamentos</p>
-                  <p className="text-2xl font-black font-mono mt-0.5">{depts.length}</p>
-                  <p className="text-[10px] text-muted-foreground">avaliados</p>
-                </div>
-              </div>
-
-              <div className="border border-border bg-card p-4 flex items-start gap-3">
-                <div className="w-8 h-8 rounded border border-border bg-muted/40 flex items-center justify-center shrink-0">
-                  <BarChart2 className="w-4 h-4 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Perguntas</p>
-                  <p className="text-2xl font-black font-mono mt-0.5">{aggregatedQuestions.length}</p>
-                  <p className="text-[10px] text-muted-foreground">avaliadas</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <div className="border border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-900/50 p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center shrink-0">
-                  <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-500" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-green-700 dark:text-green-500">Saudáveis</p>
-                  <p className="text-3xl font-black font-mono text-green-700 dark:text-green-500">{healthyDepts}</p>
-                  <p className="text-[10px] text-green-600/70 dark:text-green-500/70">departamentos</p>
-                </div>
-              </div>
-              <div className="border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900/50 p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
-                  <Minus className="w-5 h-5 text-amber-600 dark:text-amber-500" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-500">Atenção</p>
-                  <p className="text-3xl font-black font-mono text-amber-700 dark:text-amber-500">{warningDepts}</p>
-                  <p className="text-[10px] text-amber-600/70 dark:text-amber-500/70">departamentos</p>
-                </div>
-              </div>
-              <div className="border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900/50 p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
-                  <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-500" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-red-700 dark:text-red-500">Críticos</p>
-                  <p className="text-3xl font-black font-mono text-red-700 dark:text-red-500">{criticalDepts}</p>
-                  <p className="text-[10px] text-red-600/70 dark:text-red-500/70">departamentos</p>
-                </div>
-              </div>
-            </div>
-
-            {(bestQuestion ?? worstQuestion) && (
-              <div className="grid grid-cols-2 gap-3">
-                {bestQuestion && (
-                  <div className="border border-border bg-card p-4">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Melhor Indicador</p>
-                    <div className="flex items-start gap-3">
-                      <div className="shrink-0 mt-0.5">
-                        <span className="text-[10px] font-black text-muted-foreground border border-border px-1.5 py-0.5">P{bestQuestion.order}</span>
-                      </div>
-                      <p className="text-xs text-foreground leading-relaxed flex-1">{bestQuestion.text}</p>
-                      <div className="shrink-0 text-right">
-                        <p className={`text-xl font-black font-mono ${scoreColor(bestQuestion.avgScore)}`}>{bestQuestion.avgScore.toFixed(2)}</p>
-                        <p className={`text-[9px] font-bold uppercase tracking-wider ${scoreColor(bestQuestion.avgScore)}`}>{scoreLabel(bestQuestion.avgScore)}</p>
+              {(bestQuestion ?? worstQuestion) && (
+                <div className="grid grid-cols-2 gap-3">
+                  {bestQuestion && (
+                    <div className="border border-border bg-card p-4">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Melhor Indicador</p>
+                      <div className="flex items-start gap-3">
+                        <div className="shrink-0 mt-0.5">
+                          <span className="text-[10px] font-black text-muted-foreground border border-border px-1.5 py-0.5">P{bestQuestion.order}</span>
+                        </div>
+                        <p className="text-xs text-foreground leading-relaxed flex-1">{bestQuestion.text}</p>
+                        <div className="shrink-0 text-right">
+                          <p className={`text-xl font-black font-mono ${scoreColor(bestQuestion.avgScore)}`}>{bestQuestion.avgScore.toFixed(2)}</p>
+                          <p className={`text-[9px] font-bold uppercase tracking-wider ${scoreColor(bestQuestion.avgScore)}`}>{scoreLabel(bestQuestion.avgScore)}</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-                {worstQuestion && (
-                  <div className="border border-border bg-card p-4">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Indicador com Maior Risco</p>
-                    <div className="flex items-start gap-3">
-                      <div className="shrink-0 mt-0.5">
-                        <span className="text-[10px] font-black text-muted-foreground border border-border px-1.5 py-0.5">P{worstQuestion.order}</span>
-                      </div>
-                      <p className="text-xs text-foreground leading-relaxed flex-1">{worstQuestion.text}</p>
-                      <div className="shrink-0 text-right">
-                        <p className={`text-xl font-black font-mono ${scoreColor(worstQuestion.avgScore)}`}>{worstQuestion.avgScore.toFixed(2)}</p>
-                        <p className={`text-[9px] font-bold uppercase tracking-wider ${scoreColor(worstQuestion.avgScore)}`}>{scoreLabel(worstQuestion.avgScore)}</p>
+                  )}
+                  {worstQuestion && (
+                    <div className="border border-border bg-card p-4">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Indicador com Maior Risco</p>
+                      <div className="flex items-start gap-3">
+                        <div className="shrink-0 mt-0.5">
+                          <span className="text-[10px] font-black text-muted-foreground border border-border px-1.5 py-0.5">P{worstQuestion.order}</span>
+                        </div>
+                        <p className="text-xs text-foreground leading-relaxed flex-1">{worstQuestion.text}</p>
+                        <div className="shrink-0 text-right">
+                          <p className={`text-xl font-black font-mono ${scoreColor(worstQuestion.avgScore)}`}>{worstQuestion.avgScore.toFixed(2)}</p>
+                          <p className={`text-[9px] font-bold uppercase tracking-wider ${scoreColor(worstQuestion.avgScore)}`}>{scoreLabel(worstQuestion.avgScore)}</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="border border-border bg-card p-5">
-                <div className="mb-4">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Score por Departamento</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Linhas tracejadas: saudável (3.5) e crítico (2.5)</p>
+                  )}
                 </div>
-                <PgrScoreComparisonChart depts={deptOverviewData} />
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <ChartCard title="Score por Departamento" subtitle="Linhas de referência: saudável (3.5) e crítico (2.5)">
+                  <PgrScoreComparisonChart depts={deptOverviewData} />
+                </ChartCard>
+                <ChartCard title="Adesão por Departamento" subtitle="Linha de referência: meta mínima (80%)">
+                  <PgrAdherenceComparisonChart depts={deptOverviewData} />
+                </ChartCard>
               </div>
-              <div className="border border-border bg-card p-5">
-                <div className="mb-4">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Adesão por Departamento</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Linha tracejada: meta mínima (80%)</p>
-                </div>
-                <PgrAdherenceComparisonChart depts={deptOverviewData} />
-              </div>
-            </div>
+            </>
+          }
+          byDept={
+            <div className="space-y-4">
+              {deptsSortedByScore.map((dept) => {
+                const deptQuestions: QuestionChartData[] = allQuestions
+                  .filter((q) => q.departmentId === dept.departmentId)
+                  .map((q) => ({
+                    id: q.id,
+                    text: q.questionText,
+                    avgScore: q.avgScore,
+                    scoreDirection: q.scoreDirection as ScoreDirection,
+                    order: q.questionOrder,
+                    responseCount: q.responseCount,
+                  }))
 
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
-                Análise por Departamento
-                <span className="ml-2 font-normal normal-case tracking-normal text-muted-foreground/70">— ordenado por score (menor primeiro)</span>
-              </p>
-              <div className="space-y-4">
-                {deptsSortedByScore.map((dept) => {
-                  const deptQuestions: QuestionChartData[] = allQuestions
-                    .filter((q) => q.departmentId === dept.departmentId)
-                    .map((q) => ({
-                      id: q.id,
-                      text: q.questionText,
-                      avgScore: q.avgScore,
-                      order: q.questionOrder,
-                      responseCount: q.responseCount,
-                    }))
+                const deptAdherencePct =
+                  dept.totalRecipients > 0 ? Math.round((dept.responseCount / dept.totalRecipients) * 100) : 0
 
-                  const deptAdherencePct =
-                    dept.totalRecipients > 0 ? Math.round((dept.responseCount / dept.totalRecipients) * 100) : 0
+                const healthyQs = deptQuestions.filter((q) => q.avgScore >= 3.5).length
+                const warningQs = deptQuestions.filter((q) => q.avgScore >= 2.5 && q.avgScore < 3.5).length
+                const criticalQs = deptQuestions.filter((q) => q.avgScore > 0 && q.avgScore < 2.5).length
 
-                  const healthyQs = deptQuestions.filter((q) => q.avgScore >= 3.5).length
-                  const warningQs = deptQuestions.filter((q) => q.avgScore >= 2.5 && q.avgScore < 3.5).length
-                  const criticalQs = deptQuestions.filter((q) => q.avgScore > 0 && q.avgScore < 2.5).length
+                const bestDeptQuestion = deptQuestions.length > 0
+                  ? [...deptQuestions].sort((a, b) => b.avgScore - a.avgScore)[0]
+                  : null
+                const worstDeptQuestion = deptQuestions.length > 0
+                  ? [...deptQuestions].sort((a, b) => a.avgScore - b.avgScore)[0]
+                  : null
 
-                  const bestDeptQuestion = deptQuestions.length > 0
-                    ? [...deptQuestions].sort((a, b) => b.avgScore - a.avgScore)[0]
-                    : null
-                  const worstDeptQuestion = deptQuestions.length > 0
-                    ? [...deptQuestions].sort((a, b) => a.avgScore - b.avgScore)[0]
-                    : null
+                return (
+                  <div key={dept.id} className="border border-border bg-card overflow-hidden">
+                    <div className="px-5 py-4 border-b border-border bg-muted/30 flex items-center gap-4">
+                      <div className="flex-1 flex items-center gap-3 min-w-0">
+                        <Building2 className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <h2 className="text-sm font-bold truncate">{dept.departmentName}</h2>
+                        <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border shrink-0 ${scoreBadge(dept.avgScore)}`}>
+                          {scoreLabel(dept.avgScore)}
+                        </span>
+                      </div>
+                      <ScoreGauge score={dept.avgScore} />
+                    </div>
 
-                  return (
-                    <div key={dept.id} className="border border-border bg-card overflow-hidden">
-                      <div className="px-5 py-4 border-b border-border bg-muted/30 flex items-center gap-4">
-                        <div className="flex-1 flex items-center gap-3 min-w-0">
-                          <Building2 className="w-4 h-4 text-muted-foreground shrink-0" />
-                          <h2 className="text-sm font-bold truncate">{dept.departmentName}</h2>
-                          <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border shrink-0 ${scoreBadge(dept.avgScore)}`}>
-                            {scoreLabel(dept.avgScore)}
+                    <div className="grid grid-cols-3 divide-x divide-border border-b border-border">
+                      <div className="px-5 py-3">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Funcionários</p>
+                        <p className="text-lg font-black font-mono mt-0.5">{dept.employeeCount}</p>
+                      </div>
+                      <div className="px-5 py-3">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Respostas</p>
+                        <p className="text-lg font-black font-mono mt-0.5">{dept.responseCount}<span className="text-xs font-normal text-muted-foreground">/{dept.totalRecipients}</span></p>
+                      </div>
+                      <div className="px-5 py-3">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Adesão</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className={`text-lg font-black font-mono ${adherenceColor(deptAdherencePct)}`}>{deptAdherencePct}%</p>
+                          <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full ${adherenceBg(deptAdherencePct)}`} style={{ width: `${Math.min(deptAdherencePct, 100)}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {deptQuestions.length > 0 && (
+                      <div className="px-5 py-3 border-b border-border bg-muted/10 flex items-center gap-6">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground shrink-0">Distribuição:</p>
+                        <div className="flex items-center gap-4">
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium">
+                            <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
+                            <span className="text-green-700 dark:text-green-400 font-bold">{healthyQs}</span>
+                            <span className="text-muted-foreground">saudáveis</span>
+                          </span>
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium">
+                            <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                            <span className="text-amber-700 dark:text-amber-400 font-bold">{warningQs}</span>
+                            <span className="text-muted-foreground">atenção</span>
+                          </span>
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium">
+                            <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+                            <span className="text-red-700 dark:text-red-400 font-bold">{criticalQs}</span>
+                            <span className="text-muted-foreground">críticos</span>
                           </span>
                         </div>
-                        <ScoreGauge score={dept.avgScore} />
+                        {(bestDeptQuestion ?? worstDeptQuestion) && (
+                          <div className="ml-auto flex items-center gap-4">
+                            {bestDeptQuestion && (
+                              <span className="text-[10px] text-muted-foreground">
+                                Melhor: <span className="font-bold text-green-600 dark:text-green-500">P{bestDeptQuestion.order} ({rawDisplayScore(bestDeptQuestion.avgScore, bestDeptQuestion.scoreDirection).toFixed(1)})</span>
+                              </span>
+                            )}
+                            {worstDeptQuestion && (
+                              <span className="text-[10px] text-muted-foreground">
+                                Pior: <span className={`font-bold ${scoreColor(worstDeptQuestion.avgScore)}`}>P{worstDeptQuestion.order} ({rawDisplayScore(worstDeptQuestion.avgScore, worstDeptQuestion.scoreDirection).toFixed(1)})</span>
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
+                    )}
 
-                      <div className="grid grid-cols-3 divide-x divide-border border-b border-border">
-                        <div className="px-5 py-3">
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Funcionários</p>
-                          <p className="text-lg font-black font-mono mt-0.5">{dept.employeeCount}</p>
+                    {deptQuestions.length > 0 && (
+                      <div className="grid grid-cols-2 divide-x divide-border">
+                        <div className="p-5">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Score por Pergunta</p>
+                          <PgrDeptQuestionsChart questions={deptQuestions} />
                         </div>
-                        <div className="px-5 py-3">
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Respostas</p>
-                          <p className="text-lg font-black font-mono mt-0.5">{dept.responseCount}<span className="text-xs font-normal text-muted-foreground">/{dept.totalRecipients}</span></p>
-                        </div>
-                        <div className="px-5 py-3">
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Adesão</p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <p className={`text-lg font-black font-mono ${adherenceColor(deptAdherencePct)}`}>{deptAdherencePct}%</p>
-                            <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                              <div className={`h-full rounded-full ${adherenceBg(deptAdherencePct)}`} style={{ width: `${Math.min(deptAdherencePct, 100)}%` }} />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {deptQuestions.length > 0 && (
-                        <div className="px-5 py-3 border-b border-border bg-muted/10 flex items-center gap-6">
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground shrink-0">Distribuição:</p>
-                          <div className="flex items-center gap-4">
-                            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium">
-                              <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
-                              <span className="text-green-700 dark:text-green-400 font-bold">{healthyQs}</span>
-                              <span className="text-muted-foreground">saudáveis</span>
-                            </span>
-                            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium">
-                              <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
-                              <span className="text-amber-700 dark:text-amber-400 font-bold">{warningQs}</span>
-                              <span className="text-muted-foreground">atenção</span>
-                            </span>
-                            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium">
-                              <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
-                              <span className="text-red-700 dark:text-red-400 font-bold">{criticalQs}</span>
-                              <span className="text-muted-foreground">críticos</span>
-                            </span>
-                          </div>
-                          {(bestDeptQuestion ?? worstDeptQuestion) && (
-                            <div className="ml-auto flex items-center gap-4">
-                              {bestDeptQuestion && (
-                                <span className="text-[10px] text-muted-foreground">
-                                  Melhor: <span className="font-bold text-green-600 dark:text-green-500">P{bestDeptQuestion.order} ({bestDeptQuestion.avgScore.toFixed(1)})</span>
-                                </span>
-                              )}
-                              {worstDeptQuestion && (
-                                <span className="text-[10px] text-muted-foreground">
-                                  Pior: <span className={`font-bold ${scoreColor(worstDeptQuestion.avgScore)}`}>P{worstDeptQuestion.order} ({worstDeptQuestion.avgScore.toFixed(1)})</span>
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {deptQuestions.length > 0 && (
-                        <div className="grid grid-cols-2 divide-x divide-border">
-                          <div className="p-5">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Score por Pergunta</p>
-                            <PgrDeptQuestionsChart questions={deptQuestions} />
-                          </div>
-                          <div className="divide-y divide-border">
-                            {[...deptQuestions].sort((a, b) => a.order - b.order).map((q, i) => (
-                              <div key={q.id} className={`px-4 py-3 grid grid-cols-[24px_1fr_auto] gap-3 items-center ${i % 2 !== 0 ? "bg-muted/10" : ""}`}>
-                                <span className="text-[10px] font-black text-muted-foreground">P{q.order}</span>
-                                <p className="text-xs text-foreground leading-snug">{q.text}</p>
-                                <div className="flex flex-col items-end gap-0.5 shrink-0">
-                                  <span className={`text-base font-black font-mono ${scoreColor(q.avgScore)}`}>{q.avgScore.toFixed(1)}</span>
-                                  <span className={`text-[9px] font-bold uppercase tracking-wide ${scoreColor(q.avgScore)}`}>{scoreLabel(q.avgScore)}</span>
-                                  <span className="text-[9px] text-muted-foreground">{q.responseCount} resp.</span>
-                                </div>
+                        <div className="divide-y divide-border">
+                          {[...deptQuestions].sort((a, b) => a.order - b.order).map((q, i) => (
+                            <div key={q.id} className={`px-4 py-3 grid grid-cols-[24px_1fr_auto] gap-3 items-center ${i % 2 !== 0 ? "bg-muted/10" : ""}`}>
+                              <span className="text-[10px] font-black text-muted-foreground">P{q.order}</span>
+                              <p className="text-xs text-foreground leading-snug">{q.text}</p>
+                              <div className="flex flex-col items-end gap-0.5 shrink-0">
+                                <span className={`text-base font-black font-mono ${scoreColor(q.avgScore)}`}>{rawDisplayScore(q.avgScore, q.scoreDirection).toFixed(1)}</span>
+                                <span className={`text-[9px] font-bold uppercase tracking-wide ${scoreColor(q.avgScore)}`}>{scoreLabel(q.avgScore)}</span>
+                                <span className="text-[9px] text-muted-foreground">{q.responseCount} resp.</span>
                               </div>
-                            ))}
-                          </div>
+                            </div>
+                          ))}
                         </div>
-                      )}
+                      </div>
+                    )}
 
-                      {deptQuestions.length === 0 && (
-                        <div className="px-5 py-6 text-center">
-                          <p className="text-xs text-muted-foreground">Nenhuma resposta para este departamento neste período.</p>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
+                    {deptQuestions.length === 0 && (
+                      <div className="px-5 py-6 text-center">
+                        <p className="text-xs text-muted-foreground">Nenhuma resposta para este departamento neste período.</p>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
-
+          }
+          consolidated={
             <div className="border border-border bg-card overflow-hidden">
               <div className="px-5 py-3 border-b border-border bg-muted/30">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Consolidado de Departamentos</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Todos os {depts.length} departamentos — ordenado por score (menor primeiro)</p>
               </div>
               <table className="w-full text-sm">
                 <thead>
@@ -557,9 +564,9 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                 </tbody>
               </table>
             </div>
-          </>
-        )}
-      </div>
+          }
+        />
+      )}
     </div>
   )
 }

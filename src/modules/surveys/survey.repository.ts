@@ -13,7 +13,7 @@ export function findSurveyConfigsByTenant(tenantId: string): Promise<SurveyConfi
     where: { tenantId, isActive: true },
     include: {
       department: true,
-      questions: { orderBy: { order: "asc" } },
+      questions: { where: { isActive: true }, orderBy: { order: "asc" } },
       workDays: true,
     },
     orderBy: { createdAt: "desc" },
@@ -23,7 +23,7 @@ export function findSurveyConfigsByTenant(tenantId: string): Promise<SurveyConfi
 export function findSurveyConfigById(tenantId: string, configId: string): Promise<SurveyConfigWithDetails | null> {
   return prisma.surveyConfiguration.findFirst({
     where: { id: configId, tenantId },
-    include: { department: true, questions: { orderBy: { order: "asc" } }, workDays: true },
+    include: { department: true, questions: { where: { isActive: true }, orderBy: { order: "asc" } }, workDays: true },
   })
 }
 
@@ -33,9 +33,24 @@ export async function upsertSurveyConfig(tenantId: string, input: CreateSurveyCo
   })
 
   if (existing) {
-    await prisma.surveyQuestion.deleteMany({
-      where: { surveyConfigurationId: existing.id, tenantId },
+    const usedItems = await prisma.surveyResponseItem.findMany({
+      where: { question: { surveyConfigurationId: existing.id } },
+      select: { questionId: true },
+      distinct: ["questionId"],
     })
+    const usedQuestionIds = new Set(usedItems.map((r) => r.questionId))
+
+    if (usedQuestionIds.size > 0) {
+      await prisma.surveyQuestion.updateMany({
+        where: { surveyConfigurationId: existing.id, id: { in: [...usedQuestionIds] } },
+        data: { isActive: false },
+      })
+    }
+
+    await prisma.surveyQuestion.deleteMany({
+      where: { surveyConfigurationId: existing.id, id: { notIn: [...usedQuestionIds] } },
+    })
+
     return prisma.surveyConfiguration.update({
       where: { id: existing.id },
       data: {
@@ -50,7 +65,7 @@ export async function upsertSurveyConfig(tenantId: string, input: CreateSurveyCo
           create: input.questions.map((q) => ({ ...q, tenantId })),
         },
       },
-      include: { questions: { orderBy: { order: "asc" } } },
+      include: { questions: { where: { isActive: true }, orderBy: { order: "asc" } } },
     })
   }
 
@@ -77,7 +92,7 @@ export function findDispatchesByTenant(tenantId: string): Promise<DispatchWithCo
     where: { tenantId },
     include: { surveyConfiguration: { include: { department: true } } },
     orderBy: { scheduledAt: "desc" },
-    take: 50,
+    take: 300,
   })
 }
 
@@ -97,8 +112,26 @@ export interface DispatchDashboardData {
   totalResponses: number
   departmentName: string
   frequency: string
-  questions: { id: string; text: string; order: number }[]
+  questions: { id: string; text: string; order: number; scoreDirection: string }[]
   responseItems: DispatchResponseItem[]
+}
+
+interface QuestionSnapshot { id: string; text: string; order: number; scoreDirection: string }
+
+function extractQuestionsFromResponses(
+  responses: { items: { questionId: string; score: number; question: QuestionSnapshot }[] }[],
+  fallbackQuestions: QuestionSnapshot[],
+): QuestionSnapshot[] {
+  const seen = new Map<string, QuestionSnapshot>()
+  for (const response of responses) {
+    for (const item of response.items) {
+      if (!seen.has(item.questionId)) {
+        seen.set(item.questionId, { id: item.question.id, text: item.question.text, order: item.question.order, scoreDirection: item.question.scoreDirection })
+      }
+    }
+  }
+  if (seen.size === 0) return fallbackQuestions
+  return Array.from(seen.values()).sort((a, b) => a.order - b.order)
 }
 
 export async function findDispatchWithDashboard(tenantId: string, dispatchId: string): Promise<DispatchDashboardData | null> {
@@ -108,18 +141,21 @@ export async function findDispatchWithDashboard(tenantId: string, dispatchId: st
       surveyConfiguration: {
         include: {
           department: true,
-          questions: { orderBy: { order: "asc" } },
+          questions: { where: { isActive: true }, orderBy: { order: "asc" } },
         },
       },
       responses: {
         include: {
-          items: true,
+          items: { include: { question: true } },
         },
       },
     },
   })
 
   if (!dispatch) return null
+
+  const configQuestions = dispatch.surveyConfiguration.questions.map((q) => ({ id: q.id, text: q.text, order: q.order, scoreDirection: q.scoreDirection }))
+  const questions = extractQuestionsFromResponses(dispatch.responses, configQuestions)
 
   const responseItems: DispatchResponseItem[] = dispatch.responses.flatMap((r) =>
     r.items.map((item) => ({ questionId: item.questionId, score: item.score })),
@@ -132,11 +168,11 @@ export async function findDispatchWithDashboard(tenantId: string, dispatchId: st
     scheduledAt: dispatch.scheduledAt,
     dispatchedAt: dispatch.dispatchedAt,
     totalRecipients: dispatch.totalRecipients,
-    totalResponses: dispatch.totalResponses,
+    totalResponses: dispatch.responses.length,
     departmentId: dispatch.surveyConfiguration.departmentId,
     departmentName: dispatch.surveyConfiguration.department.name,
     frequency: dispatch.surveyConfiguration.frequency,
-    questions: dispatch.surveyConfiguration.questions.map((q) => ({ id: q.id, text: q.text, order: q.order })),
+    questions,
     responseItems,
   }
 }
@@ -152,28 +188,32 @@ export async function findMultipleDispatchesWithDashboard(
       surveyConfiguration: {
         include: {
           department: true,
-          questions: { orderBy: { order: "asc" } },
+          questions: { where: { isActive: true }, orderBy: { order: "asc" } },
         },
       },
-      responses: { include: { items: true } },
+      responses: { include: { items: { include: { question: true } } } },
     },
   })
-  return dispatches.map((dispatch) => ({
-    id: dispatch.id,
-    tenantId: dispatch.tenantId,
-    status: dispatch.status,
-    scheduledAt: dispatch.scheduledAt,
-    dispatchedAt: dispatch.dispatchedAt,
-    totalRecipients: dispatch.totalRecipients,
-    totalResponses: dispatch.totalResponses,
-    departmentId: dispatch.surveyConfiguration.departmentId,
-    departmentName: dispatch.surveyConfiguration.department.name,
-    frequency: dispatch.surveyConfiguration.frequency,
-    questions: dispatch.surveyConfiguration.questions.map((q) => ({ id: q.id, text: q.text, order: q.order })),
-    responseItems: dispatch.responses.flatMap((r) =>
-      r.items.map((item) => ({ questionId: item.questionId, score: item.score })),
-    ),
-  }))
+  return dispatches.map((dispatch) => {
+    const configQuestions = dispatch.surveyConfiguration.questions.map((q) => ({ id: q.id, text: q.text, order: q.order, scoreDirection: q.scoreDirection }))
+    const questions = extractQuestionsFromResponses(dispatch.responses, configQuestions)
+    return {
+      id: dispatch.id,
+      tenantId: dispatch.tenantId,
+      status: dispatch.status,
+      scheduledAt: dispatch.scheduledAt,
+      dispatchedAt: dispatch.dispatchedAt,
+      totalRecipients: dispatch.totalRecipients,
+      totalResponses: dispatch.responses.length,
+      departmentId: dispatch.surveyConfiguration.departmentId,
+      departmentName: dispatch.surveyConfiguration.department.name,
+      frequency: dispatch.surveyConfiguration.frequency,
+      questions,
+      responseItems: dispatch.responses.flatMap((r) =>
+        r.items.map((item) => ({ questionId: item.questionId, score: item.score })),
+      ),
+    }
+  })
 }
 
 export function findDispatchById(tenantId: string, dispatchId: string): Promise<DispatchWithDetails | null> {

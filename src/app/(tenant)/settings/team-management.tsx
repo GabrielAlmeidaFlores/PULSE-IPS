@@ -7,6 +7,11 @@ import { Label } from "@/components/ui/label"
 import { inviteUserAction } from "@/app/(tenant)/settings/actions"
 import type { OrganizationUser } from "@prisma/client"
 
+const ROLE_LABELS: Record<string, string> = {
+  admin: "Admin",
+  rh: "RH",
+}
+
 interface Props {
   users: OrganizationUser[]
 }
@@ -61,7 +66,7 @@ export function TeamManagement({ users }: Props): React.ReactElement {
             </div>
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border border-border text-muted-foreground bg-muted">
-                {user.role}
+                {ROLE_LABELS[user.role] ?? user.role}
               </span>
               {!user.isActive && (
                 <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border border-destructive/30 text-destructive bg-destructive/10">

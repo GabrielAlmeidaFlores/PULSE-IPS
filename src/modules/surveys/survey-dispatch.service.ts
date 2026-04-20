@@ -26,7 +26,7 @@ const FREQUENCY_INTERVAL_DAYS: Record<string, number> = {
 function getDayOfWeekInTimezone(timezone: string): number {
   const dayName = new Intl.DateTimeFormat("en-US", { timeZone: timezone, weekday: "short" }).format(new Date())
   const dayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
-  return dayMap[dayName] ?? new Date().getDay()
+  return dayMap[dayName] ?? 0
 }
 
 function isWorkDay(workDays: number[], timezone: string): boolean {

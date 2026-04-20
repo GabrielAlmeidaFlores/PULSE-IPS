@@ -13,8 +13,16 @@ import {
   deleteExpiredTokens,
   createSurveyResponseWithItems,
 } from "@/modules/surveys/survey.repository"
-import type { CreateSurveyConfigInput, SubmitSurveyInput, SurveyTokenValidation, DispatchDashboardStats } from "@/modules/surveys/survey.types"
+import type { CreateSurveyConfigInput, SubmitSurveyInput, SurveyTokenValidation, DispatchDashboardStats, ScoreDirection } from "@/modules/surveys/survey.types"
 export type { DispatchWithConfig } from "@/modules/surveys/survey.repository"
+
+function normalizeScore(raw: number, direction: string): number {
+  return direction === "lower_is_better" ? 6 - raw : raw
+}
+
+function toScoreDirection(value: string): ScoreDirection {
+  return value === "lower_is_better" ? "lower_is_better" : "higher_is_better"
+}
 
 export function getSurveyConfigs(tenantId: string): ReturnType<typeof findSurveyConfigsByTenant> {
   return findSurveyConfigsByTenant(tenantId)
@@ -84,17 +92,21 @@ export async function getMultipleDispatchDashboards(
   return dataList.map((data) => {
     const notResponded = Math.max(0, data.totalRecipients - data.totalResponses)
     const adherenceRate = data.totalRecipients > 0 ? data.totalResponses / data.totalRecipients : 0
-    const allScores = data.responseItems.map((i) => i.score)
-    const avgScore = allScores.length > 0 ? allScores.reduce((a, b) => a + b, 0) / allScores.length : null
     const questions = data.questions.map((q) => {
-      const qScores = data.responseItems.filter((i) => i.questionId === q.id).map((i) => i.score)
+      const direction = toScoreDirection(q.scoreDirection)
+      const qScores = data.responseItems.filter((i) => i.questionId === q.id).map((i) => normalizeScore(i.score, direction))
       const qAvg = qScores.length > 0 ? qScores.reduce((a, b) => a + b, 0) / qScores.length : null
+      const rawScores = data.responseItems.filter((i) => i.questionId === q.id).map((i) => i.score)
       const distribution = [1, 2, 3, 4, 5].map((s) => ({
         score: s,
-        count: qScores.filter((v) => v === s).length,
+        count: rawScores.filter((v) => v === s).length,
       }))
-      return { ...q, avgScore: qAvg, distribution }
+      return { ...q, scoreDirection: direction, avgScore: qAvg, distribution }
     })
+    const allNormalizedScores = questions.flatMap((q) =>
+      data.responseItems.filter((i) => i.questionId === q.id).map((i) => normalizeScore(i.score, q.scoreDirection)),
+    )
+    const avgScore = allNormalizedScores.length > 0 ? allNormalizedScores.reduce((a, b) => a + b, 0) / allNormalizedScores.length : null
     return {
       id: data.id,
       departmentId: data.departmentId,
@@ -134,18 +146,22 @@ export async function getDispatchDashboard(tenantId: string, dispatchId: string)
   const notResponded = Math.max(0, data.totalRecipients - data.totalResponses)
   const adherenceRate = data.totalRecipients > 0 ? data.totalResponses / data.totalRecipients : 0
 
-  const allScores = data.responseItems.map((i) => i.score)
-  const avgScore = allScores.length > 0 ? allScores.reduce((a, b) => a + b, 0) / allScores.length : null
-
   const questions = data.questions.map((q) => {
-    const qScores = data.responseItems.filter((i) => i.questionId === q.id).map((i) => i.score)
+    const direction = toScoreDirection(q.scoreDirection)
+    const qScores = data.responseItems.filter((i) => i.questionId === q.id).map((i) => normalizeScore(i.score, direction))
     const qAvg = qScores.length > 0 ? qScores.reduce((a, b) => a + b, 0) / qScores.length : null
+    const rawScores = data.responseItems.filter((i) => i.questionId === q.id).map((i) => i.score)
     const distribution = [1, 2, 3, 4, 5].map((s) => ({
       score: s,
-      count: qScores.filter((v) => v === s).length,
+      count: rawScores.filter((v) => v === s).length,
     }))
-    return { ...q, avgScore: qAvg, distribution }
+    return { ...q, scoreDirection: direction, avgScore: qAvg, distribution }
   })
+
+  const allNormalizedScores = questions.flatMap((q) =>
+    data.responseItems.filter((i) => i.questionId === q.id).map((i) => normalizeScore(i.score, q.scoreDirection)),
+  )
+  const avgScore = allNormalizedScores.length > 0 ? allNormalizedScores.reduce((a, b) => a + b, 0) / allNormalizedScores.length : null
 
   return {
     id: data.id,

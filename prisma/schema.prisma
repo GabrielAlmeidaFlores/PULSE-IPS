@@ -89,6 +89,7 @@ model Organization {
   surveyConfigs    SurveyConfiguration[]
   documents        Document[]
   actionPlans      ActionPlan[]
+  actionPlanTasks  ActionPlanTask[]
   reports          AnonymousReport[]
   alerts           Alert[]
   auditLogs        AuditLog[]
@@ -308,11 +309,13 @@ model SurveyConfiguration {
 }
 
 model SurveyQuestion {
-  id                    String @id @default(uuid())
-  tenantId              String @map("tenant_id")
-  surveyConfigurationId String @map("survey_configuration_id")
+  id                    String  @id @default(uuid())
+  tenantId              String  @map("tenant_id")
+  surveyConfigurationId String  @map("survey_configuration_id")
   text                  String
   order                 Int
+  scoreDirection        String  @default("higher_is_better") @map("score_direction")
+  isActive              Boolean @default(true) @map("is_active")
 
   organization        Organization        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   surveyConfiguration SurveyConfiguration @relation(fields: [surveyConfigurationId], references: [id], onDelete: Cascade)
@@ -430,6 +433,7 @@ model ActionPlan {
 
 model ActionPlanTask {
   id           String    @id @default(uuid())
+  tenantId     String    @map("tenant_id")
   actionPlanId String    @map("action_plan_id")
   title        String
   assigneeId   String?   @map("assignee_id")
@@ -437,8 +441,10 @@ model ActionPlanTask {
   completedAt  DateTime? @map("completed_at")
   createdAt    DateTime  @default(now()) @map("created_at")
 
-  actionPlan ActionPlan @relation(fields: [actionPlanId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actionPlan   ActionPlan   @relation(fields: [actionPlanId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId])
   @@index([actionPlanId])
   @@map("action_plan_tasks")
 }
@@ -562,15 +568,16 @@ model PgrDeptResult {
 }
 
 model PgrQuestionResult {
-  id            String  @id @default(uuid())
-  pgrReviewId   String  @map("pgr_review_id")
-  departmentId  String  @map("department_id")
-  questionId    String  @map("question_id")
-  questionText  String  @map("question_text")
-  questionOrder Int     @map("question_order")
-  avgScore      Float   @map("avg_score")
-  responseCount Int     @map("response_count")
-  createdAt     DateTime @default(now()) @map("created_at")
+  id             String  @id @default(uuid())
+  pgrReviewId    String  @map("pgr_review_id")
+  departmentId   String  @map("department_id")
+  questionId     String  @map("question_id")
+  questionText   String  @map("question_text")
+  questionOrder  Int     @map("question_order")
+  scoreDirection String  @default("higher_is_better") @map("score_direction")
+  avgScore       Float   @map("avg_score")
+  responseCount  Int     @map("response_count")
+  createdAt      DateTime @default(now()) @map("created_at")
 
   pgrReview  PgrReview  @relation(fields: [pgrReviewId], references: [id], onDelete: Cascade)
   department Department @relation(fields: [departmentId], references: [id])

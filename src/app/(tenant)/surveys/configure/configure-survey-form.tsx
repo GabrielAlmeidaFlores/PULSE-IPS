@@ -2,11 +2,12 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { Plus, Trash2 } from "lucide-react"
+import { Plus, Trash2, HelpCircle } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
 import { configureSurveyAction } from "@/app/(tenant)/surveys/configure/actions"
 import { PageHelp } from "@/components/page-help"
+import type { ScoreDirection } from "@/modules/surveys/survey.types"
 
 interface Department {
   id: string
@@ -15,6 +16,12 @@ interface Department {
 
 interface Props {
   departments: Department[]
+}
+
+interface QuestionItem {
+  text: string
+  order: number
+  scoreDirection: ScoreDirection
 }
 
 const inputCls =
@@ -33,6 +40,11 @@ const WEEK_DAYS = [
   { value: 0, label: "Dom" },
 ]
 
+const DIRECTION_LABELS: Record<ScoreDirection, string> = {
+  higher_is_better: "1 = ruim · 5 = bom",
+  lower_is_better: "1 = bom · 5 = ruim",
+}
+
 export function ConfigureSurveyForm({ departments }: Props): React.ReactElement {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -42,10 +54,10 @@ export function ConfigureSurveyForm({ departments }: Props): React.ReactElement 
   const [workStartTime, setWorkStartTime] = useState("09:00")
   const [workEndTime, setWorkEndTime] = useState("18:00")
   const [workDays, setWorkDays] = useState(new Set([1, 2, 3, 4, 5]))
-  const [questions, setQuestions] = useState([
-    { text: "Como você se sente em relação ao seu bem-estar no trabalho hoje?", order: 1 },
-    { text: "Você se sente sobrecarregado com as demandas do trabalho?", order: 2 },
-    { text: "Você tem recebido suporte adequado da sua liderança?", order: 3 },
+  const [questions, setQuestions] = useState<QuestionItem[]>([
+    { text: "Como você se sente em relação ao seu bem-estar no trabalho hoje?", order: 1, scoreDirection: "higher_is_better" },
+    { text: "Você se sente sobrecarregado com as demandas do trabalho?", order: 2, scoreDirection: "lower_is_better" },
+    { text: "Você tem recebido suporte adequado da sua liderança?", order: 3, scoreDirection: "higher_is_better" },
   ])
   const [newQuestion, setNewQuestion] = useState("")
 
@@ -63,7 +75,7 @@ export function ConfigureSurveyForm({ departments }: Props): React.ReactElement 
 
   function addQuestion(): void {
     if (!newQuestion.trim()) return
-    setQuestions((prev) => [...prev, { text: newQuestion.trim(), order: prev.length + 1 }])
+    setQuestions((prev) => [...prev, { text: newQuestion.trim(), order: prev.length + 1, scoreDirection: "higher_is_better" }])
     setNewQuestion("")
   }
 
@@ -72,6 +84,16 @@ export function ConfigureSurveyForm({ departments }: Props): React.ReactElement 
       prev
         .filter((_, i) => i !== index)
         .map((q, i) => ({ ...q, order: i + 1 }))
+    )
+  }
+
+  function toggleDirection(index: number): void {
+    setQuestions((prev) =>
+      prev.map((q, i) =>
+        i === index
+          ? { ...q, scoreDirection: q.scoreDirection === "higher_is_better" ? "lower_is_better" : "higher_is_better" }
+          : q,
+      ),
     )
   }
 
@@ -216,43 +238,96 @@ export function ConfigureSurveyForm({ departments }: Props): React.ReactElement 
       </div>
 
       <div className="border border-border bg-card" style={{ borderRadius: 0 }}>
-        <div className="border-b border-border px-4 py-2.5 bg-muted">
+        <div className="border-b border-border px-4 py-2.5 bg-muted flex items-center gap-1.5">
           <span className="text-[10px] font-black tracking-widest uppercase text-foreground">Perguntas ({questions.length})</span>
+          <PageHelp content={
+            <div className="space-y-3 text-[12px] leading-relaxed">
+              <div>
+                <p className="font-bold uppercase tracking-widest text-[10px] text-primary mb-1">Escala de resposta</p>
+                <p className="text-foreground">Cada pergunta usa uma escala de <strong>1 a 5</strong>. O funcionário escolhe a nota que melhor representa sua percepção.</p>
+              </div>
+              <div>
+                <p className="font-bold uppercase tracking-widest text-[10px] text-primary mb-1">Direção da escala</p>
+                <p className="text-foreground">
+                  Perguntas podem ter sentidos opostos — por isso você define a direção de cada uma:
+                </p>
+                <ul className="mt-2 space-y-2 text-foreground">
+                  <li className="flex items-start gap-2">
+                    <span className="mt-0.5 font-bold text-green-600">1→5 bom</span>
+                    <span className="text-muted-foreground">Nota alta é positiva. Ex: <em>&ldquo;Qual seu nível de entusiasmo?&rdquo;</em> — 5 = muito entusiasmado (bom)</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="mt-0.5 font-bold text-red-500 whitespace-nowrap">1→5 ruim</span>
+                    <span className="text-muted-foreground">Nota alta é negativa. Ex: <em>&ldquo;Qual seu nível de estresse?&rdquo;</em> — 5 = muito estressado (ruim)</span>
+                  </li>
+                </ul>
+              </div>
+              <div>
+                <p className="font-bold uppercase tracking-widest text-[10px] text-primary mb-1">Como o sistema usa isso</p>
+                <p className="text-muted-foreground">
+                  O sistema normaliza automaticamente as notas. Independente da direção, scores altos nos gráficos sempre significam situação positiva — facilitando a comparação entre perguntas.
+                </p>
+              </div>
+            </div>
+          } />
         </div>
         <div className="divide-y divide-border">
           {questions.map((q, i) => (
-            <div key={q.order} className="flex items-start gap-3 px-4 py-3">
-              <span className="text-[10px] font-mono font-bold text-muted-foreground mt-0.5 shrink-0 w-4">{q.order}.</span>
-              <span className="flex-1 text-[13px] text-foreground">{q.text}</span>
+            <div key={q.order} className="px-4 py-3 space-y-2">
+              <div className="flex items-start gap-3">
+                <span className="text-[10px] font-mono font-bold text-muted-foreground mt-1 shrink-0 w-4">{q.order}.</span>
+                <span className="flex-1 text-[13px] text-foreground">{q.text}</span>
+                <button
+                  onClick={() => removeQuestion(i)}
+                  className="shrink-0 p-1 text-muted-foreground hover:text-destructive transition-colors"
+                  style={{ borderRadius: 0 }}
+                  type="button"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <div className="flex items-center gap-2 pl-7">
+                <HelpCircle className="w-3 h-3 text-muted-foreground shrink-0" />
+                <span className="text-[10px] text-muted-foreground">Direção da escala:</span>
+                <button
+                  type="button"
+                  onClick={() => toggleDirection(i)}
+                  className={`px-2 py-0.5 text-[10px] font-bold border transition-colors ${
+                    q.scoreDirection === "higher_is_better"
+                      ? "border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/40 dark:text-green-400"
+                      : "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400"
+                  }`}
+                  style={{ borderRadius: 0 }}
+                >
+                  {DIRECTION_LABELS[q.scoreDirection]}
+                </button>
+              </div>
+            </div>
+          ))}
+          <div className="px-4 py-3 space-y-2">
+            <div className="flex gap-2">
+              <input
+                value={newQuestion}
+                onChange={(e) => setNewQuestion(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addQuestion())}
+                placeholder="Nova pergunta..."
+                className={`${inputCls} flex-1`}
+                style={{ borderRadius: 0 }}
+              />
               <button
-                onClick={() => removeQuestion(i)}
-                className="shrink-0 p-1 text-muted-foreground hover:text-destructive transition-colors"
+                onClick={addQuestion}
+                disabled={!newQuestion.trim()}
+                className="flex items-center gap-1.5 px-3 py-2 text-[10px] font-bold uppercase tracking-wider border border-border text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 style={{ borderRadius: 0 }}
                 type="button"
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Plus className="h-3.5 w-3.5" />
+                Adicionar
               </button>
             </div>
-          ))}
-          <div className="flex gap-2 px-4 py-3">
-            <input
-              value={newQuestion}
-              onChange={(e) => setNewQuestion(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addQuestion())}
-              placeholder="Nova pergunta..."
-              className={`${inputCls  } flex-1`}
-              style={{ borderRadius: 0 }}
-            />
-            <button
-              onClick={addQuestion}
-              disabled={!newQuestion.trim()}
-              className="flex items-center gap-1.5 px-3 py-2 text-[10px] font-bold uppercase tracking-wider border border-border text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              style={{ borderRadius: 0 }}
-              type="button"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Adicionar
-            </button>
+            <p className="text-[10px] text-muted-foreground">
+              Nova pergunta será adicionada com <strong>1 = ruim · 5 = bom</strong>. Você pode alterar a direção após adicionar.
+            </p>
           </div>
         </div>
       </div>

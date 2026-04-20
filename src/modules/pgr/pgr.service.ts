@@ -1,6 +1,7 @@
 import { addDays } from "date-fns"
 import type { PgrReview } from "@prisma/client"
 import type { CreatePgrDeptResultInput, CreatePgrQuestionResultInput } from "@/modules/pgr/pgr.types"
+import type { ScoreDirection } from "@/modules/surveys/survey.types"
 import {
   type PgrReviewWithResults,
   findPgrReviewsByTenant,
@@ -28,9 +29,35 @@ export function getPgrReviewById(id: string, tenantId: string): Promise<PgrRevie
 interface DispatchLike {
   surveyConfiguration: {
     departmentId: string
-    questions?: { id: string; text: string; order: number }[] | null
+    questions?: { id: string; text: string; order: number; scoreDirection?: string | null }[] | null
   }
   responses: { items: { questionId: string; score: number }[] }[]
+}
+
+interface QuestionMapEntry { text: string; order: number; scoreDirection: ScoreDirection; scores: number[] }
+
+function normalizeItemScore(score: number, direction: string): number {
+  return direction === "lower_is_better" ? 6 - score : score
+}
+
+function registerQuestionsInMap(
+  qMap: Map<string, QuestionMapEntry>,
+  questions: { id: string; text: string; order: number; scoreDirection?: string | null }[],
+): void {
+  for (const q of questions) {
+    if (!qMap.has(q.id)) {
+      qMap.set(q.id, { text: q.text, order: q.order, scoreDirection: (q.scoreDirection ?? "higher_is_better") as ScoreDirection, scores: [] })
+    }
+  }
+}
+
+function collectResponseScores(qMap: Map<string, QuestionMapEntry>, responses: DispatchLike["responses"]): void {
+  for (const response of responses) {
+    for (const item of response.items) {
+      const entry = qMap.get(item.questionId)
+      if (entry) entry.scores.push(normalizeItemScore(item.score, entry.scoreDirection))
+    }
+  }
 }
 
 function buildDeptQuestionResults(
@@ -38,16 +65,10 @@ function buildDeptQuestionResults(
   deptId: string,
   deptDispatches: DispatchLike[],
 ): CreatePgrQuestionResultInput[] {
-  const qMap = new Map<string, { text: string; order: number; scores: number[] }>()
+  const qMap: Map<string, QuestionMapEntry> = new Map()
   for (const dispatch of deptDispatches) {
-    for (const q of dispatch.surveyConfiguration.questions ?? []) {
-      if (!qMap.has(q.id)) qMap.set(q.id, { text: q.text, order: q.order, scores: [] })
-    }
-    for (const response of dispatch.responses) {
-      for (const item of response.items) {
-        qMap.get(item.questionId)?.scores.push(item.score)
-      }
-    }
+    registerQuestionsInMap(qMap, dispatch.surveyConfiguration.questions ?? [])
+    collectResponseScores(qMap, dispatch.responses)
   }
   const results: CreatePgrQuestionResultInput[] = []
   for (const [questionId, v] of qMap.entries()) {
@@ -58,6 +79,7 @@ function buildDeptQuestionResults(
         questionId,
         questionText: v.text,
         questionOrder: v.order,
+        scoreDirection: v.scoreDirection,
         avgScore: v.scores.reduce((s, x) => s + x, 0) / v.scores.length,
         responseCount: v.scores.length,
       })
@@ -90,10 +112,16 @@ export async function generatePgrReport(tenantId: string, period: string): Promi
       (d) => d.surveyConfiguration.departmentId === dept.id,
     )
     const allResponses = deptDispatches.flatMap((d) => d.responses)
+    const questionDirections = new Map(
+      deptDispatches.flatMap((d) => d.surveyConfiguration.questions.map((q) => [q.id, q.scoreDirection ?? "higher_is_better"])),
+    )
     const allItems = allResponses.flatMap((r) => r.items)
     const avgScore =
       allItems.length > 0
-        ? allItems.reduce((sum, item) => sum + item.score, 0) / allItems.length
+        ? allItems.reduce((sum, item) => {
+            const dir = questionDirections.get(item.questionId) ?? "higher_is_better"
+            return sum + (dir === "lower_is_better" ? 6 - item.score : item.score)
+          }, 0) / allItems.length
         : 0
     const totalRecipients = deptDispatches.reduce((sum, d) => sum + d.totalRecipients, 0)
 

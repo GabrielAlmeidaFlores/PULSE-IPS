@@ -15,9 +15,9 @@ import {
   Area,
   ReferenceDot,
 } from "recharts"
-import type { DispatchDashboardStats } from "@/modules/surveys/survey.types"
+import type { DispatchDashboardStats, ScoreDirection } from "@/modules/surveys/survey.types"
 
-const SCORE_COLORS: Record<number, string> = {
+const SCORE_COLORS_NORMAL: Record<number, string> = {
   1: "#dc2626",
   2: "#f97316",
   3: "#d97706",
@@ -25,21 +25,38 @@ const SCORE_COLORS: Record<number, string> = {
   5: "#16a34a",
 }
 
-function scoreColor(avg: number | null): string {
-  if (avg === null) return "#94a3b8"
-  if (avg >= 3.5) return "#16a34a"
-  if (avg >= 2.5) return "#d97706"
+const SCORE_COLORS_INVERTED: Record<number, string> = {
+  1: "#16a34a",
+  2: "#65a30d",
+  3: "#d97706",
+  4: "#f97316",
+  5: "#dc2626",
+}
+
+function scoreColor(normalizedAvg: number | null): string {
+  if (normalizedAvg === null) return "#94a3b8"
+  if (normalizedAvg >= 3.5) return "#16a34a"
+  if (normalizedAvg >= 2.5) return "#d97706"
   return "#dc2626"
+}
+
+function rawAvgFromNormalized(normalizedAvg: number, direction: ScoreDirection): number {
+  return direction === "lower_is_better" ? 6 - normalizedAvg : normalizedAvg
 }
 
 interface QuestionTooltipPayload {
   value: number
-  payload: { text: string; avg: number | null }
+  payload: { text: string; normalizedAvg: number; scoreDirection: ScoreDirection }
 }
 
 interface QuestionTooltipProps {
   active?: boolean
   payload?: QuestionTooltipPayload[]
+}
+
+const DIRECTION_LABELS: Record<ScoreDirection, string> = {
+  higher_is_better: "1 = ruim · 5 = bom",
+  lower_is_better: "1 = bom · 5 = ruim",
 }
 
 function QuestionTooltip({ active, payload }: QuestionTooltipProps): React.ReactElement | null {
@@ -50,6 +67,7 @@ function QuestionTooltip({ active, payload }: QuestionTooltipProps): React.React
     <div className="bg-card border border-border px-3 py-2 text-xs shadow-lg max-w-xs">
       <p className="font-bold text-foreground mb-1 break-words">{item.payload.text}</p>
       <p className="text-muted-foreground">Score médio: <span className="font-bold text-foreground">{item.value.toFixed(2)}</span></p>
+      <p className="text-[10px] text-muted-foreground mt-0.5">{DIRECTION_LABELS[item.payload.scoreDirection]}</p>
     </div>
   )
 }
@@ -61,11 +79,16 @@ interface Props {
 export function QuestionScoreChart({ stats }: Props): React.ReactElement {
   const data = stats.questions
     .filter((q) => q.avgScore !== null)
-    .map((q) => ({
-      name: `P${q.order}`,
-      text: q.text,
-      avg: q.avgScore ?? 0,
-    }))
+    .map((q) => {
+      const normalizedAvg = q.avgScore ?? 0
+      return {
+        name: `P${q.order}`,
+        text: q.text,
+        avg: rawAvgFromNormalized(normalizedAvg, q.scoreDirection),
+        normalizedAvg,
+        scoreDirection: q.scoreDirection,
+      }
+    })
 
   if (data.length === 0) {
     return <p className="text-xs text-muted-foreground text-center py-8">Nenhuma resposta ainda.</p>
@@ -80,7 +103,7 @@ export function QuestionScoreChart({ stats }: Props): React.ReactElement {
         <Tooltip content={<QuestionTooltip />} />
         <Bar dataKey="avg" radius={0} maxBarSize={20} label={{ position: "right", fontSize: 10, fontWeight: 700, formatter: (v: unknown) => (typeof v === "number" ? v.toFixed(1) : "") }}>
           {data.map((entry) => (
-            <Cell key={entry.name} fill={scoreColor(entry.avg)} />
+            <Cell key={entry.name} fill={scoreColor(entry.normalizedAvg)} />
           ))}
         </Bar>
       </BarChart>
@@ -94,6 +117,7 @@ interface DistributionProps {
 
 export function ScoreDistributionBar({ question }: DistributionProps): React.ReactElement {
   const total = question.distribution.reduce((s, d) => s + d.count, 0)
+  const colorMap = question.scoreDirection === "lower_is_better" ? SCORE_COLORS_INVERTED : SCORE_COLORS_NORMAL
   if (total === 0) {
     return <p className="text-xs text-muted-foreground">Sem respostas</p>
   }
@@ -105,7 +129,7 @@ export function ScoreDistributionBar({ question }: DistributionProps): React.Rea
         return (
           <div
             key={d.score}
-            style={{ width: `${pct}%`, backgroundColor: SCORE_COLORS[d.score] ?? "#94a3b8" }}
+            style={{ width: `${pct}%`, backgroundColor: colorMap[d.score] ?? "#94a3b8" }}
             title={`Nota ${d.score}: ${d.count} (${pct.toFixed(0)}%)`}
             className="flex items-center justify-center text-[9px] font-bold text-white transition-all"
           >
