@@ -4,6 +4,7 @@ import { getAlerts } from "@/modules/alerts/alert.service"
 import { format } from "date-fns"
 import { AlertRowActions } from "@/app/(tenant)/alerts/alert-row-actions"
 import { PageHelp } from "@/components/page-help"
+import { AlertTypeInfo } from "@/components/alert-type-info"
 
 const BADGE_DEFAULT = "bg-muted text-muted-foreground border-border"
 const BADGE_BASE = "inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border"
@@ -98,9 +99,12 @@ export default async function AlertsPage(): Promise<React.ReactElement> {
                 return (
                   <tr key={alert.id} className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors ${i % 2 !== 0 ? "bg-muted/10" : ""}`}>
                     <td className="px-4 py-3">
-                      <span className={`${BADGE_BASE} ${TYPE_STYLE[alert.type] ?? BADGE_DEFAULT}`}>
-                        {TYPE_LABELS[alert.type] ?? alert.type}
-                      </span>
+                      <div className="inline-flex items-center gap-0.5">
+                        <span className={`${BADGE_BASE} ${TYPE_STYLE[alert.type] ?? BADGE_DEFAULT}`}>
+                          {TYPE_LABELS[alert.type] ?? alert.type}
+                        </span>
+                        <AlertTypeInfo type={alert.type} />
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${SEVERITY_STYLE[alert.severity] ?? BADGE_DEFAULT}`}>
