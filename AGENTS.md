@@ -993,6 +993,30 @@ Registro de todas as mensagens enviadas. Fonte dos dados de métricas do Super A
 | `Function` | `() => void`, `(x: T) => R` |
 | `[]` (array vazio sem tipo) | `Array<T>` ou `T[]` |
 
+### Proibido: colunas JSON no banco de dados
+
+**Nunca use `Json` (Prisma) ou `JSONB`/`JSON` (SQL) para armazenar dados relacionais estruturados.**  
+Qualquer dado que possa ser normalizado em linhas deve ser salvo em tabela própria.
+
+```prisma
+// ❌ PROIBIDO — dado estruturado como JSON
+model PgrReview {
+  reportJson Json? @map("report_json")
+}
+
+// ✅ CORRETO — tabela relacional própria
+model PgrDeptResult {
+  pgrReviewId  String @map("pgr_review_id")
+  avgScore     Float  @map("avg_score")
+  // ...
+  pgrReview PgrReview @relation(...)
+}
+```
+
+**Casos de uso aceitáveis para JSON** (raros, exige justificativa explícita):
+- Payload de webhook externo de terceiros (imutável, não consultado por campo)
+- Log de auditoria com estrutura variável definida externamente
+
 ```typescript
 // ❌ Proibido
 function process(data: any) { ... }

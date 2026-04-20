@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation"
+import Link from "next/link"
 import { getSession } from "@/modules/auth/session"
 import { getPgrReviews } from "@/modules/pgr/pgr.service"
 import { format } from "date-fns"
@@ -43,7 +44,7 @@ export default async function PgrPage(): Promise<React.ReactElement> {
                 <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Periodo</th>
                 <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Status</th>
                 <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Gerado em</th>
-                <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Arquivo</th>
+                <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -62,9 +63,12 @@ export default async function PgrPage(): Promise<React.ReactElement> {
                     {review.reviewedAt ? format(review.reviewedAt, "dd/MM/yyyy") : "—"}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {review.fileUrl ? (
-                      <a href={review.fileUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline text-xs font-medium">Download</a>
-                    ) : "—"}
+                    <Link
+                      href={`/pgr/${review.id}`}
+                      className="text-primary hover:underline text-xs font-medium"
+                    >
+                      Visualizar
+                    </Link>
                   </td>
                 </tr>
               ))}

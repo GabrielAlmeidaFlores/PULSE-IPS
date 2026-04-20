@@ -205,6 +205,8 @@ model Department {
   surveyConfigurations SurveyConfiguration[]
   alerts               Alert[]
   workDays             DepartmentWorkDay[]
+  pgrDeptResults       PgrDeptResult[]
+  pgrQuestionResults   PgrQuestionResult[]
 
   @@index([tenantId])
   @@map("departments")
@@ -533,10 +535,48 @@ model PgrReview {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  organization  Organization     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  deptResults   PgrDeptResult[]
+  questionResults PgrQuestionResult[]
 
   @@index([tenantId])
   @@map("pgr_reviews")
+}
+
+model PgrDeptResult {
+  id              String  @id @default(uuid())
+  pgrReviewId     String  @map("pgr_review_id")
+  departmentId    String  @map("department_id")
+  departmentName  String  @map("department_name")
+  employeeCount   Int     @map("employee_count")
+  avgScore        Float   @map("avg_score")
+  responseCount   Int     @map("response_count")
+  totalRecipients Int     @map("total_recipients")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  pgrReview  PgrReview  @relation(fields: [pgrReviewId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id])
+
+  @@index([pgrReviewId])
+  @@map("pgr_dept_results")
+}
+
+model PgrQuestionResult {
+  id            String  @id @default(uuid())
+  pgrReviewId   String  @map("pgr_review_id")
+  departmentId  String  @map("department_id")
+  questionId    String  @map("question_id")
+  questionText  String  @map("question_text")
+  questionOrder Int     @map("question_order")
+  avgScore      Float   @map("avg_score")
+  responseCount Int     @map("response_count")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  pgrReview  PgrReview  @relation(fields: [pgrReviewId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id])
+
+  @@index([pgrReviewId])
+  @@map("pgr_question_results")
 }
 
 model PlatformTermsVersion {
