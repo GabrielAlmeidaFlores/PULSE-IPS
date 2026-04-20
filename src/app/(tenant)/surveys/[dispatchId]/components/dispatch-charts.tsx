@@ -46,7 +46,7 @@ function rawAvgFromNormalized(normalizedAvg: number, direction: ScoreDirection):
 
 interface QuestionTooltipPayload {
   value: number
-  payload: { text: string; normalizedAvg: number; scoreDirection: ScoreDirection }
+  payload: { text: string; normalizedAvg: number; rawScore: number; scoreDirection: ScoreDirection }
 }
 
 interface QuestionTooltipProps {
@@ -66,7 +66,7 @@ function QuestionTooltip({ active, payload }: QuestionTooltipProps): React.React
   return (
     <div className="bg-card border border-border px-3 py-2 text-xs shadow-lg max-w-xs">
       <p className="font-bold text-foreground mb-1 break-words">{item.payload.text}</p>
-      <p className="text-muted-foreground">Score médio: <span className="font-bold text-foreground">{item.value.toFixed(2)}</span></p>
+      <p className="text-muted-foreground">Média: <span className="font-bold text-foreground">{item.payload.rawScore.toFixed(2)}</span></p>
       <p className="text-[10px] text-muted-foreground mt-0.5">{DIRECTION_LABELS[item.payload.scoreDirection]}</p>
     </div>
   )
@@ -84,7 +84,8 @@ export function QuestionScoreChart({ stats }: Props): React.ReactElement {
       return {
         name: `P${q.order}`,
         text: q.text,
-        avg: rawAvgFromNormalized(normalizedAvg, q.scoreDirection),
+        avg: normalizedAvg,
+        rawScore: rawAvgFromNormalized(normalizedAvg, q.scoreDirection),
         normalizedAvg,
         scoreDirection: q.scoreDirection,
       }
