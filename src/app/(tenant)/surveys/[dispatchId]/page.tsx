@@ -11,6 +11,7 @@ import { DeptBreakdownTable } from "@/app/(tenant)/surveys/[dispatchId]/componen
 import { adherenceClass } from "@/app/(tenant)/surveys/[dispatchId]/components/adherence-utils"
 import { ChartCard } from "@/components/chart-card"
 import type { DispatchDashboardStats, ScoreDirection } from "@/modules/surveys/survey.types"
+import { toHealthIndex, healthIndexAccent } from "@/libs/utils/health-index"
 
 interface Props {
   params: Promise<{ dispatchId: string }>
@@ -105,20 +106,7 @@ function computeMergedLabel(selectedIds: string[], aggrStats: DispatchDashboardS
 
 function scoreAccentClass(avg: number | null): string {
   if (avg === null) return "text-muted-foreground"
-  if (avg >= 3.5) return "text-green-600"
-  if (avg >= 2.5) return "text-yellow-600"
-  return "text-red-600"
-}
-
-function rawDisplayScore(normalizedAvg: number, direction: ScoreDirection): number {
-  return direction === "lower_is_better" ? 6 - normalizedAvg : normalizedAvg
-}
-
-function scoreLabel(avg: number | null): string {
-  if (avg === null) return "—"
-  if (avg >= 3.5) return "Saudável"
-  if (avg >= 2.5) return "Atenção"
-  return "Crítico"
+  return healthIndexAccent(toHealthIndex(avg))
 }
 
 interface DeptChartSectionProps {
@@ -134,18 +122,13 @@ function DeptChartSection({ deptStats }: DeptChartSectionProps): React.ReactElem
       <div className="px-5 py-3 border-b border-border bg-muted/30 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h2 className="text-sm font-bold">{deptStats.departmentName}</h2>
-          {deptStats.avgScore !== null && (
-            <span className={`text-[10px] font-bold uppercase tracking-wider ${scoreAccentClass(deptStats.avgScore)}`}>
-              {scoreLabel(deptStats.avgScore)}
-            </span>
-          )}
         </div>
         <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
           <span>{deptStats.totalResponses}/{deptStats.totalRecipients} respostas</span>
           <span className={`font-bold ${adherenceClass(deptAdherence)}`}>{deptAdherence}% adesão</span>
           {deptStats.avgScore !== null && (
             <span className={`font-black text-sm font-mono ${scoreAccentClass(deptStats.avgScore)}`}>
-              {deptStats.avgScore.toFixed(2)}
+              {toHealthIndex(deptStats.avgScore)}% <span className="text-[9px] font-normal text-muted-foreground">índice de saúde</span>
             </span>
           )}
         </div>
@@ -166,7 +149,7 @@ function DeptChartSection({ deptStats }: DeptChartSectionProps): React.ReactElem
         <div className="md:col-span-2 p-5">
           <div className="flex items-center gap-2 mb-3">
             <BarChart2 className="w-3.5 h-3.5 text-muted-foreground" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Score médio por pergunta</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Índice de Saúde por Pergunta</p>
           </div>
           {hasResponses ? (
             <QuestionScoreChart stats={deptStats} />
@@ -180,15 +163,15 @@ function DeptChartSection({ deptStats }: DeptChartSectionProps): React.ReactElem
         <div className="border-t border-border">
           <div className="px-5 py-3 border-b border-border flex items-center justify-between">
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Distribuição de notas</p>
-            <div className="flex items-baseline gap-2">
-              <p className={`text-sm font-black ${scoreAccentClass(deptStats.avgScore)}`}>{deptStats.avgScore?.toFixed(2) ?? "—"}</p>
-              <span className={`text-[10px] font-bold uppercase tracking-wider ${scoreAccentClass(deptStats.avgScore)}`}>{scoreLabel(deptStats.avgScore)}</span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-[9px] text-muted-foreground">Índice de Saúde:</span>
+              <p className={`text-sm font-black ${scoreAccentClass(deptStats.avgScore)}`}>{deptStats.avgScore !== null ? `${toHealthIndex(deptStats.avgScore)}%` : "—"}</p>
             </div>
           </div>
           <div className="divide-y divide-border">
             {deptStats.questions.map((q) => (
-              <div key={q.id} className="px-5 py-4 grid grid-cols-1 md:grid-cols-[auto_1fr_80px] gap-3 items-center">
-                <div className="flex items-start gap-3 md:max-w-xs">
+              <div key={q.id} className="px-5 py-4 grid grid-cols-1 md:grid-cols-[260px_1fr_80px] gap-3 items-center">
+                <div className="flex items-start gap-3">
                   <span className="text-[10px] font-black text-muted-foreground shrink-0 mt-0.5 w-6">P{q.order}</span>
                   <div className="space-y-1">
                     <p className="text-xs text-foreground leading-relaxed">{q.text}</p>
@@ -214,8 +197,8 @@ function DeptChartSection({ deptStats }: DeptChartSectionProps): React.ReactElem
                 <div className="text-right">
                   {q.avgScore !== null ? (
                     <>
-                      <p className={`text-xl font-black ${scoreAccentClass(q.avgScore)}`}>{rawDisplayScore(q.avgScore, q.scoreDirection).toFixed(1)}</p>
-                      <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{q.scoreDirection === "lower_is_better" ? "1=bom·5=ruim" : "1=ruim·5=bom"}</p>
+                      <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground mb-0.5">Índice de Saúde</p>
+                      <p className={`text-xl font-black ${scoreAccentClass(q.avgScore)}`}>{toHealthIndex(q.avgScore)}%</p>
                     </>
                   ) : (
                     <p className="text-xl font-black text-muted-foreground">—</p>
@@ -287,16 +270,6 @@ export default async function DispatchDetailPage({ params, searchParams }: Props
   }
   const mergedStats = mergeDispatchStats(aggrStats, mergedStatsBase)
 
-  const deptBreakdown = Array.from(sameDayPerDept.values())
-    .map((d) => ({
-      id: d.surveyConfiguration.departmentId,
-      name: d.surveyConfiguration.department.name,
-      recipients: d.totalRecipients,
-      responses: d.totalResponses,
-      adherence: d.totalRecipients > 0 ? Math.round((d.totalResponses / d.totalRecipients) * 100) : 0,
-    }))
-    .sort((a, b) => a.name.localeCompare(b.name))
-
   const showDeptBreakdown = sameDayPerDept.size > 1
 
   const historyDeptName = computeMergedLabel(selectedIds, aggrStats)
@@ -331,6 +304,30 @@ export default async function DispatchDetailPage({ params, searchParams }: Props
       })
     }
   }
+
+  const allDeptStatsForRanking: DispatchDashboardStats[] =
+    selectedIds.length === 0
+      ? aggrStats
+      : await getMultipleDispatchDashboards(
+          session.tenantId,
+          Array.from(sameDayPerDept.values()).map((d) => d.id),
+        )
+
+  const deptRanking = allDeptStatsForRanking
+    .map((d) => ({
+      id: d.departmentId,
+      name: d.departmentName,
+      healthIndex: d.avgScore !== null ? toHealthIndex(d.avgScore) : null,
+      adherence: Math.round(d.adherenceRate * 100),
+      responses: d.totalResponses,
+      recipients: d.totalRecipients,
+    }))
+    .sort((a, b) => {
+      if (a.healthIndex === null && b.healthIndex === null) return b.adherence - a.adherence
+      if (a.healthIndex === null) return 1
+      if (b.healthIndex === null) return -1
+      return b.healthIndex - a.healthIndex
+    })
 
   const deptsQuery =
     selectedIds.length > 0 ? `?${selectedIds.map((id) => `depts=${id}`).join("&")}` : ""
@@ -410,7 +407,7 @@ export default async function DispatchDetailPage({ params, searchParams }: Props
           </div>
         </div>
 
-        {showDeptBreakdown && <DeptBreakdownTable items={deptBreakdown} />}
+        {showDeptBreakdown && <DeptBreakdownTable items={deptRanking} />}
 
         <DeptChartSection deptStats={mergedStats} />
 

@@ -24,43 +24,21 @@ import {
   type QuestionChartData,
 } from "@/app/(tenant)/pgr/[id]/pgr-charts"
 import { PgrTabsLayout } from "@/app/(tenant)/pgr/[id]/pgr-tabs"
+import { PgrDeptAccordionItem } from "@/app/(tenant)/pgr/[id]/pgr-dept-accordion"
 import { ChartCard } from "@/components/chart-card"
 import type { ScoreDirection } from "@/modules/surveys/survey.types"
+import { toHealthIndex, healthIndexAccent, healthIndexBarColor, healthIndexChartColor } from "@/libs/utils/health-index"
 
 interface PageProps {
   params: Promise<{ id: string }>
 }
 
-function scoreLabel(avg: number): string {
-  if (avg >= 3.5) return "Saudável"
-  if (avg >= 2.5) return "Atenção"
-  if (avg > 0) return "Crítico"
-  return "Sem dados"
+function scoreColor(hi: number): string {
+  return healthIndexAccent(hi)
 }
 
-function rawDisplayScore(normalizedAvg: number, direction: ScoreDirection): number {
-  return direction === "lower_is_better" ? 6 - normalizedAvg : normalizedAvg
-}
-
-function scoreColor(avg: number): string {
-  if (avg >= 3.5) return "text-green-600 dark:text-green-500"
-  if (avg >= 2.5) return "text-amber-600 dark:text-amber-500"
-  if (avg > 0) return "text-red-600 dark:text-red-500"
-  return "text-muted-foreground"
-}
-
-function scoreBg(avg: number): string {
-  if (avg >= 3.5) return "bg-green-500"
-  if (avg >= 2.5) return "bg-amber-500"
-  if (avg > 0) return "bg-red-500"
-  return "bg-muted-foreground"
-}
-
-function scoreBadge(avg: number): string {
-  if (avg >= 3.5) return "bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700"
-  if (avg >= 2.5) return "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700"
-  if (avg > 0) return "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-700"
-  return "bg-muted text-muted-foreground border-border"
+function scoreBg(hi: number): string {
+  return healthIndexBarColor(hi)
 }
 
 function adherenceBg(pct: number): string {
@@ -75,47 +53,45 @@ function adherenceColor(pct: number): string {
   return "text-red-600 dark:text-red-500"
 }
 
-interface ScoreTrendIconProps { avg: number }
-interface ScoreGaugeProps { score: number }
+interface ScoreTrendIconProps { hi: number }
+interface ScoreGaugeProps { hi: number }
 interface QuestionAggEntry { text: string; order: number; scoreDirection: ScoreDirection; totalWeighted: number; totalCount: number }
 
-function ScoreTrendIcon({ avg }: ScoreTrendIconProps): React.ReactElement {
-  if (avg >= 3.5) return <TrendingUp className="w-4 h-4 text-green-500" />
-  if (avg >= 2.5) return <Minus className="w-4 h-4 text-amber-500" />
+function ScoreTrendIcon({ hi }: ScoreTrendIconProps): React.ReactElement {
+  if (hi >= 62) return <TrendingUp className="w-4 h-4 text-green-500" />
+  if (hi >= 37) return <Minus className="w-4 h-4 text-amber-500" />
   return <TrendingDown className="w-4 h-4 text-red-500" />
 }
 
-function ScoreGauge({ score }: ScoreGaugeProps): React.ReactElement {
-  const pct = Math.min((score / 5) * 100, 100)
+function ScoreGauge({ hi }: ScoreGaugeProps): React.ReactElement {
+  const pct = Math.min(hi, 100)
   const radius = 28
   const circumference = 2 * Math.PI * radius
   const dashOffset = circumference - (pct / 100) * circumference
-  const colorClass = (() => {
-    if (score >= 3.5) return "#16a34a"
-    if (score >= 2.5) return "#d97706"
-    if (score > 0) return "#dc2626"
-    return "#94a3b8"
-  })()
+  const color = healthIndexChartColor(hi)
 
   return (
-    <div className="relative inline-flex items-center justify-center">
-      <svg width="72" height="72" viewBox="0 0 72 72" className="-rotate-90">
-        <circle cx="36" cy="36" r={radius} fill="none" stroke="var(--border)" strokeWidth="5" />
-        <circle
-          cx="36"
-          cy="36"
-          r={radius}
-          fill="none"
-          stroke={colorClass}
-          strokeWidth="5"
-          strokeDasharray={circumference}
-          strokeDashoffset={dashOffset}
-          strokeLinecap="round"
-        />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-base font-black font-mono" style={{ color: colorClass }}>{score.toFixed(1)}</span>
+    <div className="relative inline-flex flex-col items-center gap-0.5">
+      <div className="relative inline-flex items-center justify-center">
+        <svg width="72" height="72" viewBox="0 0 72 72" className="-rotate-90">
+          <circle cx="36" cy="36" r={radius} fill="none" stroke="var(--border)" strokeWidth="5" />
+          <circle
+            cx="36"
+            cy="36"
+            r={radius}
+            fill="none"
+            stroke={color}
+            strokeWidth="5"
+            strokeDasharray={circumference}
+            strokeDashoffset={dashOffset}
+            strokeLinecap="round"
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-sm font-black font-mono" style={{ color }}>{hi}%</span>
+        </div>
       </div>
+      <span className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground">Índice de Saúde</span>
     </div>
   )
 }
@@ -142,14 +118,15 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
   const adherencePct = totalRecipients > 0 ? Math.round((totalResponses / totalRecipients) * 100) : 0
 
   const scoredDepts = depts.filter((d) => d.avgScore > 0)
-  const globalAvg =
+  const globalAvgRaw =
     scoredDepts.length > 0
       ? scoredDepts.reduce((s, d) => s + d.avgScore, 0) / scoredDepts.length
       : 0
+  const globalAvg = toHealthIndex(globalAvgRaw)
 
-  const healthyDepts = scoredDepts.filter((d) => d.avgScore >= 3.5).length
-  const warningDepts = scoredDepts.filter((d) => d.avgScore >= 2.5 && d.avgScore < 3.5).length
-  const criticalDepts = scoredDepts.filter((d) => d.avgScore > 0 && d.avgScore < 2.5).length
+  const healthyDepts = scoredDepts.filter((d) => toHealthIndex(d.avgScore) >= 62).length
+  const warningDepts = scoredDepts.filter((d) => { const hi = toHealthIndex(d.avgScore); return hi >= 37 && hi < 62 }).length
+  const criticalDepts = scoredDepts.filter((d) => toHealthIndex(d.avgScore) < 37).length
 
   const questionAggMap = new Map<string, QuestionAggEntry>()
   for (const q of allQuestions) {
@@ -168,7 +145,7 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
       text: v.text,
       order: v.order,
       scoreDirection: v.scoreDirection,
-      avgScore: v.totalCount > 0 ? v.totalWeighted / v.totalCount : 0,
+      avgScore: v.totalCount > 0 ? toHealthIndex(v.totalWeighted / v.totalCount) : 0,
       responseCount: v.totalCount,
     }))
     .sort((a, b) => a.avgScore - b.avgScore)
@@ -179,7 +156,7 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
   const deptOverviewData: DeptOverviewData[] = depts.map((d) => ({
     id: d.id,
     name: d.departmentName,
-    avgScore: d.avgScore,
+    avgScore: toHealthIndex(d.avgScore),
     adherencePct: d.totalRecipients > 0 ? Math.round((d.responseCount / d.totalRecipients) * 100) : 0,
     responseCount: d.responseCount,
     totalRecipients: d.totalRecipients,
@@ -210,10 +187,7 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
           </div>
           {hasData && (
             <div className="flex items-center gap-2">
-              <ScoreTrendIcon avg={globalAvg} />
-              <span className={`inline-flex items-center px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border ${scoreBadge(globalAvg)}`}>
-                {scoreLabel(globalAvg)}
-              </span>
+              <ScoreTrendIcon hi={globalAvg} />
             </div>
           )}
         </div>
@@ -241,9 +215,8 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                     <Activity className="w-4 h-4 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Score Global</p>
-                    <p className={`text-2xl font-black font-mono mt-0.5 ${scoreColor(globalAvg)}`}>{globalAvg.toFixed(2)}</p>
-                    <p className="text-[10px] text-muted-foreground">escala 1–5</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Índice de Saúde Global</p>
+                    <p className={`text-2xl font-black font-mono mt-0.5 ${scoreColor(globalAvg)}`}>{globalAvg}%</p>
                   </div>
                 </div>
 
@@ -336,8 +309,8 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                         </div>
                         <p className="text-xs text-foreground leading-relaxed flex-1">{bestQuestion.text}</p>
                         <div className="shrink-0 text-right">
-                          <p className={`text-xl font-black font-mono ${scoreColor(bestQuestion.avgScore)}`}>{rawDisplayScore(bestQuestion.avgScore, bestQuestion.scoreDirection).toFixed(2)}</p>
-                          <p className={`text-[9px] font-bold uppercase tracking-wider ${scoreColor(bestQuestion.avgScore)}`}>{scoreLabel(bestQuestion.avgScore)}</p>
+                          <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground mb-0.5">Índice de Saúde</p>
+                          <p className={`text-xl font-black font-mono ${scoreColor(bestQuestion.avgScore)}`}>{bestQuestion.avgScore}%</p>
                         </div>
                       </div>
                     </div>
@@ -351,8 +324,8 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                         </div>
                         <p className="text-xs text-foreground leading-relaxed flex-1">{worstQuestion.text}</p>
                         <div className="shrink-0 text-right">
-                          <p className={`text-xl font-black font-mono ${scoreColor(worstQuestion.avgScore)}`}>{rawDisplayScore(worstQuestion.avgScore, worstQuestion.scoreDirection).toFixed(2)}</p>
-                          <p className={`text-[9px] font-bold uppercase tracking-wider ${scoreColor(worstQuestion.avgScore)}`}>{scoreLabel(worstQuestion.avgScore)}</p>
+                          <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground mb-0.5">Índice de Saúde</p>
+                          <p className={`text-xl font-black font-mono ${scoreColor(worstQuestion.avgScore)}`}>{worstQuestion.avgScore}%</p>
                         </div>
                       </div>
                     </div>
@@ -361,7 +334,7 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
               )}
 
               <div className="grid grid-cols-2 gap-4">
-                <ChartCard title="Score por Departamento" subtitle="Linhas de referência: saudável (3.5) e crítico (2.5)">
+                <ChartCard title="Índice de Saúde por Departamento" subtitle="Linhas de referência: saudável (62%) e crítico (37%)">
                   <PgrScoreComparisonChart depts={deptOverviewData} />
                 </ChartCard>
                 <ChartCard title="Adesão por Departamento" subtitle="Linha de referência: meta mínima (80%)">
@@ -378,7 +351,7 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                   .map((q) => ({
                     id: q.id,
                     text: q.questionText,
-                    avgScore: q.avgScore,
+                    avgScore: toHealthIndex(q.avgScore),
                     scoreDirection: q.scoreDirection as ScoreDirection,
                     order: q.questionOrder,
                     responseCount: q.responseCount,
@@ -387,9 +360,10 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                 const deptAdherencePct =
                   dept.totalRecipients > 0 ? Math.round((dept.responseCount / dept.totalRecipients) * 100) : 0
 
-                const healthyQs = deptQuestions.filter((q) => q.avgScore >= 3.5).length
-                const warningQs = deptQuestions.filter((q) => q.avgScore >= 2.5 && q.avgScore < 3.5).length
-                const criticalQs = deptQuestions.filter((q) => q.avgScore > 0 && q.avgScore < 2.5).length
+                const deptHI = toHealthIndex(dept.avgScore)
+                const healthyQs = deptQuestions.filter((q) => q.avgScore >= 62).length
+                const warningQs = deptQuestions.filter((q) => q.avgScore >= 37 && q.avgScore < 62).length
+                const criticalQs = deptQuestions.filter((q) => q.avgScore > 0 && q.avgScore < 37).length
 
                 const bestDeptQuestion = deptQuestions.length > 0
                   ? [...deptQuestions].sort((a, b) => b.avgScore - a.avgScore)[0]
@@ -399,17 +373,13 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                   : null
 
                 return (
-                  <div key={dept.id} className="border border-border bg-card overflow-hidden">
-                    <div className="px-5 py-4 border-b border-border bg-muted/30 flex items-center gap-4">
-                      <div className="flex-1 flex items-center gap-3 min-w-0">
-                        <Building2 className="w-4 h-4 text-muted-foreground shrink-0" />
-                        <h2 className="text-sm font-bold truncate">{dept.departmentName}</h2>
-                        <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border shrink-0 ${scoreBadge(dept.avgScore)}`}>
-                          {scoreLabel(dept.avgScore)}
-                        </span>
-                      </div>
-                      <ScoreGauge score={dept.avgScore} />
-                    </div>
+                  <PgrDeptAccordionItem
+                    key={dept.id}
+                    id={dept.id}
+                    name={dept.departmentName}
+                    healthIndex={deptHI}
+                    gauge={<ScoreGauge hi={deptHI} />}
+                  >
 
                     <div className="grid grid-cols-3 divide-x divide-border border-b border-border">
                       <div className="px-5 py-3">
@@ -455,12 +425,12 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                           <div className="ml-auto flex items-center gap-4">
                             {bestDeptQuestion && (
                               <span className="text-[10px] text-muted-foreground">
-                                Melhor: <span className="font-bold text-green-600 dark:text-green-500">P{bestDeptQuestion.order} ({rawDisplayScore(bestDeptQuestion.avgScore, bestDeptQuestion.scoreDirection).toFixed(1)})</span>
+                                Melhor: <span className="font-bold text-green-600 dark:text-green-500">P{bestDeptQuestion.order} ({bestDeptQuestion.avgScore}%)</span>
                               </span>
                             )}
                             {worstDeptQuestion && (
                               <span className="text-[10px] text-muted-foreground">
-                                Pior: <span className={`font-bold ${scoreColor(worstDeptQuestion.avgScore)}`}>P{worstDeptQuestion.order} ({rawDisplayScore(worstDeptQuestion.avgScore, worstDeptQuestion.scoreDirection).toFixed(1)})</span>
+                                Pior: <span className={`font-bold ${scoreColor(worstDeptQuestion.avgScore)}`}>P{worstDeptQuestion.order} ({worstDeptQuestion.avgScore}%)</span>
                               </span>
                             )}
                           </div>
@@ -471,7 +441,7 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                     {deptQuestions.length > 0 && (
                       <div className="grid grid-cols-2 divide-x divide-border">
                         <div className="p-5">
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Score por Pergunta</p>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Índice de Saúde por Pergunta</p>
                           <PgrDeptQuestionsChart questions={deptQuestions} />
                         </div>
                         <div className="divide-y divide-border">
@@ -480,8 +450,8 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                               <span className="text-[10px] font-black text-muted-foreground">P{q.order}</span>
                               <p className="text-xs text-foreground leading-snug">{q.text}</p>
                               <div className="flex flex-col items-end gap-0.5 shrink-0">
-                                <span className={`text-base font-black font-mono ${scoreColor(q.avgScore)}`}>{rawDisplayScore(q.avgScore, q.scoreDirection).toFixed(1)}</span>
-                                <span className={`text-[9px] font-bold uppercase tracking-wide ${scoreColor(q.avgScore)}`}>{scoreLabel(q.avgScore)}</span>
+                                <span className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground">Índice de Saúde</span>
+                                <span className={`text-base font-black font-mono ${scoreColor(q.avgScore)}`}>{q.avgScore}%</span>
                                 <span className="text-[9px] text-muted-foreground">{q.responseCount} resp.</span>
                               </div>
                             </div>
@@ -495,7 +465,7 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                         <p className="text-xs text-muted-foreground">Nenhuma resposta para este departamento neste período.</p>
                       </div>
                     )}
-                  </div>
+                  </PgrDeptAccordionItem>
                 )
               })}
             </div>
@@ -504,32 +474,50 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
             <div className="border border-border bg-card overflow-hidden">
               <div className="px-5 py-3 border-b border-border bg-muted/30">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Consolidado de Departamentos</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Todos os {depts.length} departamentos — ordenado por score (menor primeiro)</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Todos os {depts.length} departamentos — ordenado por Índice de Saúde (menor primeiro)</p>
               </div>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/20">
                     <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Departamento</th>
                     <th className="px-4 py-2.5 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Funcionários</th>
-                    <th className="px-4 py-2.5 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Respostas</th>
+                    <th className="px-4 py-2.5 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap">
+                      Responderam
+                      <span className="block text-[8px] font-normal normal-case tracking-normal text-muted-foreground/70">de enviados</span>
+                    </th>
                     <th className="px-4 py-2.5 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Adesão</th>
-                    <th className="px-4 py-2.5 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Score</th>
-                    <th className="px-4 py-2.5 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Status</th>
-                    <th className="px-4 py-2.5 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Distribuição</th>
+                    <th className="px-4 py-2.5 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap">
+                      Índice de Saúde
+                      <span className="block text-[8px] font-normal normal-case tracking-normal text-muted-foreground/70">≥62% saud. · 37–61% aten. · &lt;37% crít.</span>
+                    </th>
+                    <th className="px-4 py-2.5 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap">
+                      Perguntas
+                      <span className="block text-[8px] font-normal normal-case tracking-normal text-muted-foreground/70">
+                        <span className="text-green-600 dark:text-green-500">saud.</span>
+                        {" · "}
+                        <span className="text-amber-600 dark:text-amber-500">aten.</span>
+                        {" · "}
+                        <span className="text-red-600 dark:text-red-500">crít.</span>
+                      </span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {[...depts].sort((a, b) => a.avgScore - b.avgScore).map((dept, i) => {
                     const rate = dept.totalRecipients > 0 ? Math.round((dept.responseCount / dept.totalRecipients) * 100) : 0
                     const dq = allQuestions.filter((q) => q.departmentId === dept.departmentId)
-                    const hq = dq.filter((q) => q.avgScore >= 3.5).length
-                    const wq = dq.filter((q) => q.avgScore >= 2.5 && q.avgScore < 3.5).length
-                    const cq = dq.filter((q) => q.avgScore > 0 && q.avgScore < 2.5).length
+                    const hq = dq.filter((q) => toHealthIndex(q.avgScore) >= 62).length
+                    const wq = dq.filter((q) => { const qhi = toHealthIndex(q.avgScore); return qhi >= 37 && qhi < 62 }).length
+                    const cq = dq.filter((q) => toHealthIndex(q.avgScore) < 37).length
+                    const hi = toHealthIndex(dept.avgScore)
                     return (
                       <tr key={dept.id} className={`border-b border-border last:border-0 hover:bg-muted/20 transition-colors ${i % 2 !== 0 ? "bg-muted/10" : ""}`}>
                         <td className="px-4 py-3 font-medium text-xs">{dept.departmentName}</td>
                         <td className="px-4 py-3 text-xs text-muted-foreground text-center font-mono">{dept.employeeCount}</td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground text-center font-mono">{dept.responseCount}/{dept.totalRecipients}</td>
+                        <td className="px-4 py-3 text-xs text-center font-mono">
+                          <span className="font-bold text-foreground">{dept.responseCount}</span>
+                          <span className="text-muted-foreground"> de {dept.totalRecipients}</span>
+                        </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center gap-2">
                             <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
@@ -539,23 +527,22 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                           </div>
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
-                              <div className={`h-full rounded-full ${scoreBg(dept.avgScore)}`} style={{ width: `${Math.min((dept.avgScore / 5) * 100, 100)}%` }} />
+                          <div className="flex flex-col items-center gap-1">
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-10 h-1.5 bg-muted rounded-full overflow-hidden">
+                                <div className={`h-full rounded-full ${scoreBg(hi)}`} style={{ width: `${Math.min(hi, 100)}%` }} />
+                              </div>
+                              <span className={`text-xs font-mono font-bold ${scoreColor(hi)}`}>{hi}%</span>
                             </div>
-                            <span className={`text-xs font-mono font-bold ${scoreColor(dept.avgScore)}`}>{dept.avgScore.toFixed(2)}</span>
                           </div>
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${scoreBadge(dept.avgScore)}`}>
-                            {scoreLabel(dept.avgScore)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <div className="inline-flex items-center gap-2 text-[10px]">
-                            <span className="text-green-600 dark:text-green-500 font-bold">{hq}🟢</span>
-                            <span className="text-amber-600 dark:text-amber-500 font-bold">{wq}🟡</span>
-                            <span className="text-red-600 dark:text-red-500 font-bold">{cq}🔴</span>
+                          <div className="inline-flex items-center gap-2 text-[11px] font-mono">
+                            <span className="text-green-600 dark:text-green-500 font-bold">{hq}</span>
+                            <span className="text-muted-foreground">·</span>
+                            <span className="text-amber-600 dark:text-amber-500 font-bold">{wq}</span>
+                            <span className="text-muted-foreground">·</span>
+                            <span className="text-red-600 dark:text-red-500 font-bold">{cq}</span>
                           </div>
                         </td>
                       </tr>
@@ -563,6 +550,14 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                   })}
                 </tbody>
               </table>
+              <div className="px-5 py-3 border-t border-border bg-muted/20 flex flex-wrap gap-x-6 gap-y-1">
+                <p className="text-[10px] text-muted-foreground">
+                  <span className="font-bold">Responderam de enviados:</span> quantidade de colaboradores que responderam a pesquisa em relação ao total que recebeu o link. Participação é voluntária, por isso o número pode ser menor.
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  <span className="font-bold">Perguntas</span> (<span className="text-green-600 dark:text-green-500 font-bold">saudável</span> · <span className="text-amber-600 dark:text-amber-500 font-bold">atenção</span> · <span className="text-red-600 dark:text-red-500 font-bold">crítico</span>): quantas perguntas do questionário deste setor estão em cada nível de saúde.
+                </p>
+              </div>
             </div>
           }
         />

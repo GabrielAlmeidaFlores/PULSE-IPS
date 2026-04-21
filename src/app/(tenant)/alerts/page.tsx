@@ -95,7 +95,7 @@ export default async function AlertsPage(): Promise<React.ReactElement> {
               {alerts.length === 0 && (
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-xs text-muted-foreground">Nenhum alerta.</td></tr>
               )}
-              {alerts.map((alert, i) => {
+              {alerts.map((alert) => {
                 let statusCls: string
                 let statusLabel: string
                 if (alert.resolvedAt) {
@@ -109,7 +109,7 @@ export default async function AlertsPage(): Promise<React.ReactElement> {
                   statusLabel = "novo"
                 }
                 return (
-                  <tr key={alert.id} className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors ${i % 2 !== 0 ? "bg-muted/10" : ""}`}>
+                  <tr key={alert.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3">
                       <div className="inline-flex items-center gap-0.5">
                         <span className={`${BADGE_BASE} ${TYPE_STYLE[alert.type] ?? BADGE_DEFAULT}`}>

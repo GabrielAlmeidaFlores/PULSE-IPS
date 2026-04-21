@@ -22,6 +22,7 @@ import {
   TYPE_LABELS,
   TYPE_STYLE,
 } from "@/libs/design-system/alert-labels"
+import { healthIndexAccent } from "@/libs/utils/health-index"
 
 interface Props {
   searchParams: Promise<Record<string, string | string[] | undefined>>
@@ -45,9 +46,9 @@ export default async function DashboardPage({ searchParams }: Props): Promise<Re
   const { kpis, overallTrend, deptMonthlyChart, deptNames, deptComparison, adherenceChart, deptCards } = dashboard
   const criticalAlerts = recentAlerts.filter((a) => a.severity === "critical" && !a.resolvedAt)
 
-  const healthyDeptCount = deptCards.filter((c) => c.avg >= 3.5).length
-  const warningDeptCount = deptCards.filter((c) => c.avg >= 2.5 && c.avg < 3.5).length
-  const criticalDeptCount = deptCards.filter((c) => c.avg > 0 && c.avg < 2.5).length
+  const healthyDeptCount = deptCards.filter((c) => c.avg >= 62).length
+  const warningDeptCount = deptCards.filter((c) => c.avg >= 37 && c.avg < 62).length
+  const criticalDeptCount = deptCards.filter((c) => c.avg > 0 && c.avg < 37).length
   const topDept = [...deptCards].filter((c) => c.avg > 0).sort((a, b) => b.avg - a.avg)[0] ?? null
   const bottomDept = [...deptCards].filter((c) => c.avg > 0).sort((a, b) => a.avg - b.avg)[0] ?? null
 
@@ -57,22 +58,7 @@ export default async function DashboardPage({ searchParams }: Props): Promise<Re
     return `Filtrado por ${label}: ${selectedOrders.map((o) => `P${o}`).join(", ")}`
   }
 
-  function resolveScoreLabel(avg: number | null): string {
-    if (avg === null) return "—"
-    if (avg >= 3.5) return "Saudável"
-    if (avg >= 2.5) return "Atenção"
-    return "Crítico"
-  }
-
-  function resolveScoreAccent(avg: number | null): string {
-    if (avg === null) return "text-muted-foreground"
-    if (avg >= 3.5) return "text-green-600"
-    if (avg >= 2.5) return "text-yellow-600"
-    return "text-red-600"
-  }
-
-  const scoreLabel = resolveScoreLabel(kpis.avgScore)
-  const scoreAccent = resolveScoreAccent(kpis.avgScore)
+  const hiAccent = healthIndexAccent(kpis.healthIndex)
   const hasEnoughData = overallTrend.length > 0
 
   return (
@@ -81,7 +67,7 @@ export default async function DashboardPage({ searchParams }: Props): Promise<Re
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <h1 className="text-sm font-bold uppercase tracking-widest">Dashboard</h1>
-            <PageHelp text="Painel de insights sobre saúde ocupacional. Mostra a evolução do score geral, comparação entre setores, taxa de adesão às pesquisas e performance individual de cada setor ao longo do tempo." />
+            <PageHelp text="Painel de insights sobre saúde ocupacional. Mostra a evolução do Índice de Saúde geral, comparação entre setores, taxa de adesão às pesquisas e performance individual de cada setor ao longo do tempo." />
           </div>
           {availableQuestions.length > 0 && (
             <Suspense>
@@ -105,11 +91,10 @@ export default async function DashboardPage({ searchParams }: Props): Promise<Re
           <div className="px-5 py-4 border-r border-border">
             <div className="flex items-center gap-2 mb-1">
               <Activity className="w-3.5 h-3.5 text-muted-foreground" />
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Score médio (30d)</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Índice de Saúde (30d)</p>
             </div>
             <div className="flex items-baseline gap-2">
-              <p className={`text-3xl font-black ${scoreAccent}`}>{kpis.avgScore?.toFixed(2) ?? "—"}</p>
-              <span className={`text-[10px] font-bold uppercase tracking-wider ${scoreAccent}`}>{scoreLabel}</span>
+              <p className={`text-3xl font-black ${hiAccent}`}>{kpis.healthIndex !== null ? `${kpis.healthIndex}%` : "—"}</p>
             </div>
           </div>
           <div className="px-5 py-4 border-r border-border">
@@ -179,7 +164,7 @@ export default async function DashboardPage({ searchParams }: Props): Promise<Re
                   <p className="text-sm font-bold text-foreground truncate">{topDept.dept}</p>
                   <div className="shrink-0 flex items-center gap-2">
                     <TrendingUp className="w-3.5 h-3.5 text-green-600" />
-                    <p className="text-xl font-black font-mono text-green-600">{topDept.avg.toFixed(2)}</p>
+                    <p className="text-xl font-black font-mono text-green-600">{topDept.avg}%</p>
                   </div>
                 </div>
               </div>
@@ -187,17 +172,17 @@ export default async function DashboardPage({ searchParams }: Props): Promise<Re
             {bottomDept && (
               <div className="border border-border bg-card p-4">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
-                  {bottomDept.avg < 2.5 ? "Setor crítico" : "Setor com menor score"}
+                  {bottomDept.avg < 37 ? "Setor crítico" : "Setor com menor índice"}
                 </p>
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm font-bold text-foreground truncate">{bottomDept.dept}</p>
                   <div className="shrink-0 flex items-center gap-2">
-                    {bottomDept.avg < 2.5 ? (
+                    {bottomDept.avg < 37 ? (
                       <TrendingDown className="w-3.5 h-3.5 text-red-600" />
                     ) : (
                       <Minus className="w-3.5 h-3.5 text-amber-600" />
                     )}
-                    <p className={`text-xl font-black font-mono ${bottomDept.avg < 2.5 ? "text-red-600" : "text-amber-600"}`}>{bottomDept.avg.toFixed(2)}</p>
+                    <p className={`text-xl font-black font-mono ${bottomDept.avg < 37 ? "text-red-600" : "text-amber-600"}`}>{bottomDept.avg}%</p>
                   </div>
                 </div>
               </div>
@@ -206,14 +191,14 @@ export default async function DashboardPage({ searchParams }: Props): Promise<Re
         )}
 
         {hasEnoughData && (
-          <ChartCard title="Evolução do score geral" subtitle="Média de todas as pesquisas por mês (últimos 6 meses)">
+          <ChartCard title="Evolução do Índice de Saúde" subtitle="Média de todas as pesquisas por mês (últimos 6 meses)">
             <ScoreTrendChart data={overallTrend} />
           </ChartCard>
         )}
 
         <div className="grid grid-cols-2 gap-6">
           {deptComparison.length > 0 && (
-            <ChartCard title="Score por setor" subtitle="Comparação do período mais recente">
+            <ChartCard title="Índice de Saúde por Setor" subtitle="Comparação do período mais recente">
               <div className="px-0">
                 <DeptComparisonChart data={deptComparison} />
               </div>
@@ -229,7 +214,7 @@ export default async function DashboardPage({ searchParams }: Props): Promise<Re
         </div>
 
         {deptMonthlyChart.length > 0 && deptNames.length > 0 && (
-          <ChartCard title="Evolução por setor" subtitle="Score médio de cada setor ao longo dos últimos 6 meses">
+          <ChartCard title="Evolução do Índice de Saúde por Setor" subtitle="Índice de saúde de cada setor ao longo dos últimos 6 meses">
             <DeptMultiLineChart data={deptMonthlyChart} deptNames={deptNames} />
           </ChartCard>
         )}
@@ -256,7 +241,7 @@ export default async function DashboardPage({ searchParams }: Props): Promise<Re
                 </tr>
               </thead>
               <tbody>
-                {recentAlerts.slice(0, 6).map((alert, i) => {
+                {recentAlerts.slice(0, 6).map((alert) => {
                   let statusCls: string
                   let statusLabel: string
                   if (alert.resolvedAt) {
@@ -270,7 +255,7 @@ export default async function DashboardPage({ searchParams }: Props): Promise<Re
                     statusLabel = "novo"
                   }
                   return (
-                    <tr key={alert.id} className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors ${i % 2 !== 0 ? "bg-muted/10" : ""}`}>
+                    <tr key={alert.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
                       <td className="px-4 py-3">
                         <div className="inline-flex items-center gap-0.5">
                           <span className={`${BADGE_BASE} ${TYPE_STYLE[alert.type] ?? BADGE_DEFAULT}`}>

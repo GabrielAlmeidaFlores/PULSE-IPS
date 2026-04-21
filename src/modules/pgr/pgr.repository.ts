@@ -38,7 +38,7 @@ export function findOrgWithDepartmentsForPgr(tenantId: string): Promise<Organiza
 
 export function findDispatchesForPgr(tenantId: string): Promise<(SurveyDispatch & { responses: (SurveyResponse & { items: SurveyResponseItem[] })[]; surveyConfiguration: SurveyConfiguration & { department: Department; departmentId: string; questions: SurveyQuestion[] } })[]> {
   return prisma.surveyDispatch.findMany({
-    where: { tenantId, status: { in: ["dispatched", "completed"] } },
+    where: { tenantId, status: "sent" },
     include: {
       responses: { include: { items: true } },
       surveyConfiguration: {

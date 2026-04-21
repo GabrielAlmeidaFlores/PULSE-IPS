@@ -297,7 +297,7 @@ CRON_SECRET="coloque-aqui-um-segredo-para-os-crons"
 MESSAGING_PROVIDER="console"
 TWILIO_ACCOUNT_SID="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 TWILIO_AUTH_TOKEN="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-TWILIO_PHONE_NUMBER="+5511999999999"
+TWILIO_FROM_NUMBER="+5511999999999"
 
 # ─── Provedor de e-mail ────────────────────────────────────────────
 # Opções: console | resend
@@ -358,12 +358,11 @@ Templates disponíveis (React Email): verificação de e-mail, convite de organi
 ```
 src/
 ├── app/                        # Rotas Next.js (App Router)
-│   ├── (auth)/                 # Login, logout, senha, checkout, termos
-│   ├── (onboarding)/           # Aceitar convite
+│   ├── (auth)/                 # Login, logout, senha, accept-terms
+│   ├── (onboarding)/           # Aceitar convite (/invite/[token])
 │   ├── (public)/               # Survey, consent, report anônimo (sem auth)
-│   ├── (tenant)/               # Área logada da organização
+│   ├── (tenant)/               # Área logada da organização (admin + rh)
 │   ├── (super-admin)/          # Área logada do super admin
-│   ├── (super-admin-public)/   # Login do super admin
 │   └── api/
 │       ├── jobs/               # Endpoints dos cron jobs
 │       └── webhooks/stripe/    # Webhook de pagamento
@@ -371,35 +370,37 @@ src/
 ├── modules/                    # Lógica de negócio por domínio
 │   ├── auth/                   # Autenticação, sessão, convites
 │   ├── billing/                # Assinaturas, planos, webhooks Stripe
-│   ├── employees/              # Funcionários, importação CSV
+│   ├── employees/              # Funcionários, importação Excel
 │   ├── surveys/                # Configuração, disparo, respostas
 │   ├── alerts/                 # Detecção e gestão de alertas
 │   ├── action-plans/           # Planos de ação e tarefas
 │   ├── documents/              # Documentos e versões
 │   ├── pgr/                    # Revisões do PGR
-│   ├── consent/                # Consentimento LGPD
+│   ├── consent/                # Consentimento LGPD (append-only)
 │   ├── anonymous-reports/      # Denúncias anônimas
 │   ├── organizations/          # Dados e configurações da organização
 │   ├── departments/            # Departamentos
 │   ├── plans/                  # Planos de assinatura
 │   ├── terms/                  # Termos da plataforma
-│   └── audit/                  # Logs de auditoria
+│   ├── platform-metrics/       # KPIs do Super Admin dashboard
+│   └── audit/                  # Logs de auditoria (append-only)
 │
 ├── libs/
-│   ├── db/                     # Instância singleton do Prisma
+│   ├── db/                     # Instância singleton do Prisma (com PG adapter)
 │   ├── auth/                   # Permissões e roles
 │   ├── queue/                  # BullMQ: criação de filas e workers
-│   ├── integrations/           # Adapters: email, messaging, billing, pdf
+│   ├── integrations/           # Adapters: email, messaging, billing, pdf, storage
 │   ├── email-templates/        # Templates React Email
-│   ├── design-system/          # Componentes, tokens de design
+│   ├── design-system/          # Componentes, tokens de design, alert-labels
 │   ├── errors/                 # AppError
-│   └── utils/                  # date, slug, pagination, action-result
+│   └── utils/                  # date, slug, pagination, action-result, health-index
 │
-├── components/ui/              # Componentes shadcn/ui
+├── components/                 # Componentes globais (PageHelp, AlertTypeInfo, ChartCard…)
+│   └── ui/                     # Componentes shadcn/ui
 ├── workers/                    # job-worker.ts e register-schedules.ts
 ├── cli/seed/                   # Seed do banco
 ├── env.ts                      # Validação de variáveis de ambiente (t3-env)
-└── proxy.ts                    # Middleware de autenticação (Next.js)
+└── proxy.ts                    # Proxy de autenticação (Next.js 16 — substitui middleware.ts)
 ```
 
 ### Padrão de camadas
@@ -476,16 +477,19 @@ O arquivo `src/proxy.ts` intercepta todas as requisições:
 
 ### 2. Onboarding de organização
 
-**Checkout (nova organização):**
-1. Usuário acessa `/checkout` e preenche nome da empresa, nome pessoal, e-mail, senha e seleciona um plano.
-2. A action `checkoutAction` verifica se o e-mail já está em uso.
-3. Cria a `Organization` (com slug gerado a partir do nome), o `OrganizationUser` como `admin` e uma sessão JWT.
-4. Se `BILLING_PROVIDER=stripe`, cria um customer no Stripe e inicia o fluxo de checkout (Stripe Checkout Session).
-5. Se `BILLING_PROVIDER=fake`, marca a organização como `active` diretamente.
-6. Após pagamento confirmado (webhook Stripe `checkout.session.completed`), a organização é ativada.
+**Criação de organização (pelo Super Admin):**
+1. Super Admin acessa `/super-admin/organizations` e cria a organização informando nome, slug, plano, e-mail do admin e CNPJ (opcional).
+2. Um `OrganizationInvitation` é criado e um e-mail de convite é enviado para o admin principal.
+3. O admin acessa `/invite/[token]`, define sua senha e é redirecionado para `/billing`.
+
+**Checkout (assinatura do plano):**
+1. Admin acessa `/billing`, escolhe um plano disponível e clica em "Assinar".
+2. A action `startCheckoutAction` busca o `external_price_id` do plano e cria uma Stripe Checkout Session.
+3. O admin é redirecionado para a página de pagamento do Stripe.
+4. Após pagamento confirmado (webhook `checkout.session.completed`), cria `OrganizationSubscription` com snapshot do plano e atualiza `billing_status = "active"`.
 
 **Aceitar Termos:**
-1. Na primeira vez que o usuário faz login, é redirecionado para `/accept-terms`.
+1. Na primeira vez que o usuário faz login (e sempre que uma nova versão for publicada), é redirecionado para `/accept-terms`.
 2. Exibe a versão ativa dos Termos de Uso (tabela `platform_terms_versions`).
 3. Ao aceitar, registra `PlatformTermsAcceptance` com `userId`, `termsVersionId`, IP e User-Agent.
 4. Redireciona para `/dashboard`.
@@ -542,7 +546,7 @@ A cada 15 min → job survey-dispatcher
   │     ├── Verifica intervalo desde o último disparo
   │     └── Para cada config elegível:
   │           ├── Cria SurveyDispatch (status: sent)
-  │           ├── Cria SurveyResponseToken por funcionário (expira em 24h)
+  │           ├── Cria SurveyResponseToken por funcionário (expira em 48h)
   │           └── Enfileira mensagem na fila pulse:messages
   │
   └── runSurveyDispatcher()
@@ -598,7 +602,7 @@ O job `adherence-checker` (a cada hora) verifica dispatches com mais de 48 horas
 1. Busca `SurveyDispatch` com `adherenceCheckedAt = null` e `dispatchedAt < now() - 48h`.
 2. Para cada dispatch, conta as respostas recebidas.
 3. Calcula: `adherenceRate = totalResponses / totalRecipients`.
-4. Se `adherenceRate < 0.5` (menos de 50% de respostas), cria um `Alert` do tipo `low_adherence` para o departamento.
+4. Se `adherenceRate < 0.8` (menos de 80% de respostas), cria um `Alert` do tipo `low_adherence` para o departamento.
 5. Marca o dispatch com `adherenceCheckedAt = now()` e `totalResponses` atualizado.
 
 ---
@@ -609,28 +613,44 @@ O job `alert-detector` (diariamente às 03:00) analisa respostas das últimas 48
 
 1. Busca `SurveyResponse` das últimas 48 horas com os itens e a direção de cada questão (`scoreDirection`).
 2. Para cada resposta, normaliza os scores: questões com `scoreDirection = "lower_is_better"` têm score invertido (`6 - raw`) antes de calcular a média. Isso garante que a escala seja sempre "maior = melhor bem-estar".
-3. Agrupa médias normalizadas por departamento.
-4. Para cada departamento com score médio normalizado abaixo de **3,0**, cria um `Alert` com:
+3. Agrega as médias por departamento e converte para **Índice de Saúde (0–100%)** usando a fórmula: `((média_normalizada - 1) / 4) × 100`.
+4. Para cada departamento com Índice de Saúde abaixo de **62%**, cria um `Alert` com:
    - `type = "low_score"`
-   - `severity = "critical"` se score < 2,0, caso contrário `severity = "warning"`
+   - `severity = "high"` se índice < 37%, caso contrário `severity = "medium"`
    - Mensagem em português descrevendo o índice de bem-estar ocupacional do setor.
 5. Alertas são exibidos na tela `/alerts` para o admin/RH.
 6. Admin pode marcar alertas como lidos ou resolvidos.
+
+**Faixas do Índice de Saúde:**
+
+| Faixa | Classificação |
+|---|---|
+| ≥ 62% | Saudável |
+| 37% – 61% | Atenção |
+| < 37% | Crítico |
 
 **Tipos de alerta disponíveis:**
 
 | Tipo | Gerado por | Significado |
 |---|---|---|
-| `low_score` | `alert-detector` (job) | Score de bem-estar normalizado abaixo de 3,0 |
+| `low_score` | `alert-detector` (job) | Índice de Saúde abaixo de 62% |
 | `low_adherence` | `adherence-checker` (job) | Menos de 80% de respostas em 48h após disparo |
-| `score_drop` | Manual/futuro job | Queda no índice de bem-estar em relação ao período anterior |
-| `negative_trend` | Manual/futuro job | 3 períodos consecutivos abaixo da média histórica |
+| `score_drop` | `alert-detector` (job) | Queda no índice de saúde em relação ao período anterior |
+| `negative_trend` | `alert-detector` (job) | 3 períodos consecutivos abaixo da média histórica |
 | `pgr_review_due` | `pgr-review-reminder` (job) | Revisão PGR vence em até 30 dias |
 | `crisis_report` | Detecção de palavras-chave | Relato anônimo com indicadores de crise |
 | `no_response` | Futuro job | Nenhuma resposta recebida no ciclo |
 | `consent_expired` | Futuro job | TCLE expirado ou pendente |
 | `billing` | Webhook Stripe | Pendência de pagamento |
 | `system` | Sistema interno | Notificações operacionais |
+
+**Severidades:**
+
+| Valor | Exibição | Significado |
+|---|---|---|
+| `high` | Crítico | Índice de Saúde < 37% ou crise |
+| `medium` | Atenção | Índice de Saúde entre 37% e 61% |
+| `low` | Informativo | Alertas operacionais não urgentes |
 
 ---
 
@@ -648,7 +668,7 @@ O job `alert-detector` (diariamente às 03:00) analisa respostas das últimas 48
 
 O fluxo de consentimento garante que a coleta de dados de saúde dos funcionários seja juridicamente válida:
 
-1. Ao cadastrar um funcionário, um registro de `EmployeeConsent` é criado com `event = "invite_sent"` e um token temporário.
+1. Ao cadastrar um funcionário, um registro de `EmployeeConsent` é criado com `event = "invited"` e um token temporário.
 2. O funcionário recebe um link `/consent/[token]` por SMS/WhatsApp.
 3. Ao acessar, vê o texto dos Termos de Consentimento (versão ativa de `consent_term_versions`).
 4. Pode aceitar ou recusar:
@@ -704,7 +724,7 @@ Checkout → Stripe Checkout Session
 |---|---|
 | `checkout.session.completed` | Ativa a assinatura |
 | `customer.subscription.updated` | Atualiza status e período |
-| `customer.subscription.deleted` | Marca como `canceled` |
+| `customer.subscription.deleted` | Marca como `cancelled` |
 | `invoice.payment_failed` | Marca como `past_due`, envia e-mail |
 | `invoice.payment_succeeded` | Atualiza período atual |
 

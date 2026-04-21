@@ -13,6 +13,7 @@ import {
 } from "recharts"
 
 import type { ScoreDirection } from "@/modules/surveys/survey.types"
+import { healthIndexChartColor } from "@/libs/utils/health-index"
 
 export interface DeptOverviewData {
   id: string
@@ -36,22 +37,6 @@ export interface QuestionChartData {
 const TICK_COLOR = "#94a3b8"
 const LABEL_MAX_LEN = 18
 
-function scoreColor(normalizedAvg: number): string {
-  if (normalizedAvg >= 3.5) return "#16a34a"
-  if (normalizedAvg >= 2.5) return "#d97706"
-  if (normalizedAvg > 0) return "#dc2626"
-  return "#94a3b8"
-}
-
-function rawAvg(normalizedAvg: number, direction: ScoreDirection): number {
-  return direction === "lower_is_better" ? 6 - normalizedAvg : normalizedAvg
-}
-
-const DIRECTION_LABELS: Record<ScoreDirection, string> = {
-  higher_is_better: "1 = ruim · 5 = bom",
-  lower_is_better: "1 = bom · 5 = ruim",
-}
-
 function truncate(s: string, max: number): string {
   return s.length > max ? `${s.slice(0, max - 1)}…` : s
 }
@@ -70,7 +55,7 @@ function ScoreTooltip({ active, payload }: ScoreTooltipProps): React.ReactElemen
     <div className="bg-card border border-border px-3 py-2 text-xs shadow-lg space-y-1 min-w-[160px]">
       <p className="font-bold text-foreground">{item.payload.name}</p>
       <p className="text-muted-foreground">
-        Score: <span className="font-bold" style={{ color: scoreColor(item.value) }}>{item.value.toFixed(2)}</span>
+        Índice de Saúde: <span className="font-bold" style={{ color: healthIndexChartColor(item.value) }}>{item.value}%</span>
       </p>
       <p className="text-muted-foreground">
         Adesão: <span className="font-bold text-foreground">{item.payload.adherencePct}%</span>
@@ -105,9 +90,14 @@ function AdherenceTooltip({ active, payload }: AdherenceTooltipProps): React.Rea
   )
 }
 
+const DIRECTION_LABELS: Record<ScoreDirection, string> = {
+  higher_is_better: "1 = ruim · 5 = bom",
+  lower_is_better: "1 = bom · 5 = ruim",
+}
+
 interface QuestionTooltipPayload {
   value: number
-  payload: QuestionChartData & { label: string; rawScore: number }
+  payload: QuestionChartData & { label: string }
 }
 interface QuestionTooltipProps { active?: boolean; payload?: QuestionTooltipPayload[] }
 
@@ -119,7 +109,7 @@ function QuestionTooltip({ active, payload }: QuestionTooltipProps): React.React
     <div className="bg-card border border-border px-3 py-2 text-xs shadow-lg max-w-[260px] space-y-1">
       <p className="font-bold text-foreground break-words leading-snug">{item.payload.text}</p>
       <p className="text-muted-foreground">
-        Média: <span className="font-bold" style={{ color: scoreColor(item.payload.avgScore) }}>{item.payload.rawScore.toFixed(2)}</span>
+        Índice de Saúde: <span className="font-bold" style={{ color: healthIndexChartColor(item.value) }}>{item.value}%</span>
       </p>
       <p className="text-[10px] text-muted-foreground">{DIRECTION_LABELS[item.payload.scoreDirection] ?? ""}</p>
       <p className="text-muted-foreground">{item.payload.responseCount} respostas</p>
@@ -145,8 +135,9 @@ export function PgrScoreComparisonChart({ depts }: PgrScoreComparisonChartProps)
         <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--border)" />
         <XAxis
           type="number"
-          domain={[0, 5]}
+          domain={[0, 100]}
           tickCount={6}
+          tickFormatter={(v: number) => `${v}%`}
           tick={{ fontSize: 10, fill: TICK_COLOR }}
           tickLine={false}
           axisLine={false}
@@ -160,11 +151,11 @@ export function PgrScoreComparisonChart({ depts }: PgrScoreComparisonChartProps)
           width={104}
         />
         <Tooltip content={<ScoreTooltip />} cursor={{ fill: "var(--muted)", opacity: 0.4 }} />
-        <ReferenceLine x={3.5} stroke="#16a34a" strokeDasharray="4 3" strokeWidth={1} opacity={0.5} />
-        <ReferenceLine x={2.5} stroke="#dc2626" strokeDasharray="4 3" strokeWidth={1} opacity={0.5} />
-        <Bar dataKey="avgScore" radius={[0, 3, 3, 0]} barSize={18} stroke="none" label={{ position: "right", fontSize: 10, fontWeight: 700, formatter: (v: unknown) => (typeof v === "number" ? v.toFixed(2) : String(v)) }}>
+        <ReferenceLine x={62} stroke="#16a34a" strokeDasharray="4 3" strokeWidth={1} opacity={0.5} />
+        <ReferenceLine x={37} stroke="#dc2626" strokeDasharray="4 3" strokeWidth={1} opacity={0.5} />
+        <Bar dataKey="avgScore" radius={[0, 3, 3, 0]} barSize={18} stroke="none" label={{ position: "right", fontSize: 10, fontWeight: 700, formatter: (v: unknown) => (typeof v === "number" ? `${v}%` : String(v)) }}>
           {data.map((d) => (
-            <Cell key={d.id} fill={scoreColor(d.avgScore)} />
+            <Cell key={d.id} fill={healthIndexChartColor(d.avgScore)} />
           ))}
         </Bar>
       </BarChart>
@@ -233,7 +224,6 @@ export function PgrDeptQuestionsChart({ questions }: PgrDeptQuestionsChartProps)
     .map((q) => ({
       ...q,
       label: `P${q.order}`,
-      rawScore: rawAvg(q.avgScore, q.scoreDirection),
     }))
 
   return (
@@ -242,8 +232,9 @@ export function PgrDeptQuestionsChart({ questions }: PgrDeptQuestionsChartProps)
         <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--border)" />
         <XAxis
           type="number"
-          domain={[0, 5]}
+          domain={[0, 100]}
           tickCount={6}
+          tickFormatter={(v: number) => `${v}%`}
           tick={{ fontSize: 10, fill: TICK_COLOR }}
           tickLine={false}
           axisLine={false}
@@ -257,11 +248,11 @@ export function PgrDeptQuestionsChart({ questions }: PgrDeptQuestionsChartProps)
           width={28}
         />
         <Tooltip content={<QuestionTooltip />} cursor={{ fill: "var(--muted)", opacity: 0.4 }} />
-        <ReferenceLine x={3.5} stroke="#16a34a" strokeDasharray="4 3" strokeWidth={1} opacity={0.5} />
-        <ReferenceLine x={2.5} stroke="#dc2626" strokeDasharray="4 3" strokeWidth={1} opacity={0.5} />
-        <Bar dataKey="avgScore" radius={[0, 3, 3, 0]} barSize={16} stroke="none" label={{ position: "right", fontSize: 10, fontWeight: 700, formatter: (v: unknown) => (typeof v === "number" ? v.toFixed(1) : String(v)) }}>
+        <ReferenceLine x={62} stroke="#16a34a" strokeDasharray="4 3" strokeWidth={1} opacity={0.5} />
+        <ReferenceLine x={37} stroke="#dc2626" strokeDasharray="4 3" strokeWidth={1} opacity={0.5} />
+        <Bar dataKey="avgScore" radius={[0, 3, 3, 0]} barSize={16} stroke="none" label={{ position: "right", fontSize: 10, fontWeight: 700, formatter: (v: unknown) => (typeof v === "number" ? `${v}%` : String(v)) }}>
           {data.map((q) => (
-            <Cell key={q.id} fill={scoreColor(q.avgScore)} />
+            <Cell key={q.id} fill={healthIndexChartColor(q.avgScore)} />
           ))}
         </Bar>
       </BarChart>

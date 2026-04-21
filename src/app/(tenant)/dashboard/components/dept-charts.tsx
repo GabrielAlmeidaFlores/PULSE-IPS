@@ -14,6 +14,7 @@ import {
   Legend,
 } from "recharts"
 import type { BarPoint, ChartMonthPoint } from "@/modules/dashboard/dashboard.service"
+import { healthIndexChartColor } from "@/libs/utils/health-index"
 
 export const CHART_PALETTE = [
   "#2563eb",
@@ -25,12 +26,6 @@ export const CHART_PALETTE = [
   "#db2777",
   "#65a30d",
 ]
-
-function scoreBarColor(avg: number): string {
-  if (avg >= 3.5) return "#16a34a"
-  if (avg >= 2.5) return "#d97706"
-  return "#dc2626"
-}
 
 function adherenceBarColor(adherence: number): string {
   if (adherence >= 70) return "#16a34a"
@@ -56,9 +51,9 @@ function DeptBarTooltip({ active, payload, label }: BarTooltipProps): React.Reac
   const item = payload[0]
   if (!item) return null
   const isAvg = item.name === "avg"
-  const metricLabel = isAvg ? "Score médio" : "Adesão"
-  const precision = isAvg ? 2 : 1
-  const suffix = item.name === "adherence" ? "%" : ""
+  const metricLabel = isAvg ? "Índice de Saúde" : "Adesão"
+  const suffix = isAvg ? "%" : "%"
+  const precision = 0
   return (
     <div className="bg-card border border-border px-3 py-2 text-xs shadow-lg">
       <p className="font-bold text-foreground mb-1">{label}</p>
@@ -87,11 +82,11 @@ export function DeptComparisonChart({ data }: DeptComparisonProps): React.ReactE
           textAnchor="end"
           interval={0}
         />
-        <YAxis domain={[0, 5]} ticks={[0, 1, 2, 3, 4, 5]} tick={{ fontSize: 10, fill: MUTED_FG }} axisLine={false} tickLine={false} />
+        <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tickFormatter={(v: number) => `${v}%`} tick={{ fontSize: 10, fill: MUTED_FG }} axisLine={false} tickLine={false} />
         <Tooltip content={<DeptBarTooltip />} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
         <Bar dataKey="avg" radius={[3, 3, 0, 0]} maxBarSize={48}>
           {data.map((entry) => (
-            <Cell key={entry.dept} fill={scoreBarColor(entry.avg ?? 0)} />
+            <Cell key={entry.dept} fill={healthIndexChartColor(entry.avg ?? 0)} />
           ))}
         </Bar>
       </BarChart>
@@ -162,7 +157,7 @@ function LineTooltip({ active, payload, label }: LineTooltipProps): React.ReactE
         <p key={item.name} className="flex items-center gap-1.5 mb-0.5">
           <span style={{ width: 8, height: 8, borderRadius: 2, background: item.color, display: "inline-block" }} />
           <span className="text-muted-foreground">{item.name}:</span>
-          <span className="font-bold text-foreground">{typeof item.value === "number" ? item.value.toFixed(2) : item.value}</span>
+          <span className="font-bold text-foreground">{typeof item.value === "number" ? `${item.value}%` : item.value}</span>
         </p>
       ))}
     </div>
@@ -175,7 +170,7 @@ export function DeptMultiLineChart({ data, deptNames }: MultiLineProps): React.R
       <LineChart data={data} margin={{ top: 8, right: 16, left: -16, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
         <XAxis dataKey="month" tick={{ fontSize: 11, fill: MUTED_FG }} axisLine={false} tickLine={false} />
-        <YAxis domain={[1, 5]} ticks={[1, 2, 3, 4, 5]} tick={{ fontSize: 11, fill: MUTED_FG }} axisLine={false} tickLine={false} />
+        <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tickFormatter={(v: number) => `${v}%`} tick={{ fontSize: 11, fill: MUTED_FG }} axisLine={false} tickLine={false} />
         <Tooltip content={<LineTooltip />} />
         <Legend wrapperStyle={{ fontSize: 11, paddingTop: 12 }} />
         {deptNames.map((name, i) => (

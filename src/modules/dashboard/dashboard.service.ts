@@ -8,6 +8,7 @@ import {
   type DispatchWithData,
   type UniqueQuestion,
 } from "@/modules/dashboard/dashboard.repository"
+import { toHealthIndex } from "@/libs/utils/health-index"
 
 export type { UniqueQuestion }
 
@@ -41,7 +42,7 @@ export interface DashboardKpis {
   totalEmployees: number
   totalResponses: number
   activeAlerts: number
-  avgScore: number | null
+  healthIndex: number | null
 }
 
 export interface DashboardData {
@@ -176,12 +177,14 @@ export async function getDashboardData(tenantId: string, selectedOrders: number[
 
   const { overallByMonth, deptInfo, recentScores } = processDispatches(dispatches, thirtyDaysAgo, selectedOrders)
 
-  const avgScore =
+  const rawAvg =
     recentScores.length > 0
       ? roundTwo(recentScores.reduce((a, b) => a + b, 0) / recentScores.length)
       : null
 
-  const kpis = { totalEmployees, totalResponses, activeAlerts, avgScore }
+  const healthIndex = rawAvg !== null ? toHealthIndex(rawAvg) : null
+
+  const kpis = { totalEmployees, totalResponses, activeAlerts, healthIndex }
 
   const sortedMonths = [...overallByMonth.values()].sort(
     (a, b) => a.monthDate.getTime() - b.monthDate.getTime(),
@@ -189,7 +192,7 @@ export async function getDashboardData(tenantId: string, selectedOrders: number[
 
   const overallTrend: TrendPoint[] = sortedMonths.map((m) => ({
     month: monthLabel(m.monthDate),
-    avg: m.scoreCount > 0 ? roundTwo(m.totalScore / m.scoreCount) : 0,
+    avg: m.scoreCount > 0 ? toHealthIndex(roundTwo(m.totalScore / m.scoreCount)) : 0,
     responses: m.responseCount,
   }))
 
@@ -201,7 +204,7 @@ export async function getDashboardData(tenantId: string, selectedOrders: number[
     for (const dept of deptNames) {
       const data = deptInfo.get(dept)?.monthMap.get(key)
       if (data && data.scoreCount > 0) {
-        point[dept] = roundTwo(data.totalScore / data.scoreCount)
+        point[dept] = toHealthIndex(roundTwo(data.totalScore / data.scoreCount))
       }
     }
     return point
@@ -216,7 +219,7 @@ export async function getDashboardData(tenantId: string, selectedOrders: number[
           const data = info.monthMap.get(latestMonthKey)
           return {
             dept,
-            avg: data && data.scoreCount > 0 ? roundTwo(data.totalScore / data.scoreCount) : 0,
+            avg: data && data.scoreCount > 0 ? toHealthIndex(roundTwo(data.totalScore / data.scoreCount)) : 0,
           }
         })
         .sort((a, b) => (b.avg ?? 0) - (a.avg ?? 0))
@@ -242,11 +245,11 @@ export async function getDashboardData(tenantId: string, selectedOrders: number[
 
       const avg =
         latestEntry && latestEntry[1].scoreCount > 0
-          ? roundTwo(latestEntry[1].totalScore / latestEntry[1].scoreCount)
+          ? toHealthIndex(roundTwo(latestEntry[1].totalScore / latestEntry[1].scoreCount))
           : 0
       const prevAvg =
         prevEntry && prevEntry[1].scoreCount > 0
-          ? roundTwo(prevEntry[1].totalScore / prevEntry[1].scoreCount)
+          ? toHealthIndex(roundTwo(prevEntry[1].totalScore / prevEntry[1].scoreCount))
           : null
 
       let trend: DeptCard["trend"] = "stable"
