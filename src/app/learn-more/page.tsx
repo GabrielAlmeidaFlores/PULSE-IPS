@@ -399,14 +399,14 @@ export default function LearnMorePage(): React.ReactElement {
               { actor: "voce", icon: <Shield className="w-5 h-5" />, title: "Você registra a ação que tomou", desc: "Uma conversa com o gestor, um treinamento, uma mudança de processo. Registra no sistema com responsável e prazo." },
               { actor: "pulse", icon: <FileText className="w-5 h-5" />, title: "Pulse documenta tudo permanentemente", desc: "Cada ação registrada, cada consentimento, cada resposta. O histórico é imutável — pronto para qualquer auditoria." },
               { actor: "voce", icon: <CheckCircle2 className="w-5 h-5" />, title: "Você gera o relatório com um clique", desc: "Quando precisar, abre a plataforma, seleciona o período e clica em gerar. O documento está pronto em segundos.", isLast: true },
-            ] as { actor: string; icon: React.ReactElement; title: string; desc: string; isLast?: boolean }[]).map((card, i) => (
+            ] as { actor: FlowActor; icon: React.ReactElement; title: string; desc: string; isLast?: true }[]).map((card, i) => (
               <AnimateIn key={card.title} delay={i * 50} animation="fade-in-up">
                 <FlowCard
                   actor={card.actor}
                   icon={card.icon}
                   title={card.title}
                   desc={card.desc}
-                  isLast={card.isLast}
+                  {...(card.isLast === true ? { isLast: true } : {})}
                 />
               </AnimateIn>
             ))}
