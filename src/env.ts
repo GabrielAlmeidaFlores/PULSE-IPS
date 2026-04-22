@@ -17,6 +17,10 @@ export const env = createEnv({
     TWILIO_ACCOUNT_SID: z.string().startsWith("AC").optional(),
     TWILIO_AUTH_TOKEN: z.string().min(1).optional(),
     TWILIO_FROM_NUMBER: z.string().startsWith("+").optional(),
+    WHATSAPP_PHONE_NUMBER_ID: z.string().min(1).optional(),
+    WHATSAPP_ACCESS_TOKEN: z.string().min(1).optional(),
+    WHATSAPP_API_VERSION: z.string().default("v20.0"),
+    WHATSAPP_API_BASE_URL: z.string().url().default("https://graph.facebook.com"),
 
     SURVEY_MESSAGE_TEMPLATE: z
       .string()
@@ -56,6 +60,10 @@ export const env = createEnv({
     TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID,
     TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN,
     TWILIO_FROM_NUMBER: process.env.TWILIO_FROM_NUMBER,
+    WHATSAPP_PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID,
+    WHATSAPP_ACCESS_TOKEN: process.env.WHATSAPP_ACCESS_TOKEN,
+    WHATSAPP_API_VERSION: process.env.WHATSAPP_API_VERSION,
+    WHATSAPP_API_BASE_URL: process.env.WHATSAPP_API_BASE_URL,
 
     SURVEY_MESSAGE_TEMPLATE: process.env.SURVEY_MESSAGE_TEMPLATE,
 
