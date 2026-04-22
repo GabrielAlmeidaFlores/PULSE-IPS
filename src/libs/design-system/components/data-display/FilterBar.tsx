@@ -110,13 +110,13 @@ export function FilterBar({ fields, values, title = "Filtros" }: FilterBarProps)
                   value={values[field.key] ?? "all"}
                   onValueChange={(v) => { updateFilter(field.key, v) }}
                 >
-                  <SelectTrigger className={`${field.width ?? "w-[130px]"} h-8 text-xs`} style={{ borderRadius: 0 }}>
+                  <SelectTrigger className={`h-8 text-xs ${field.width ?? "min-w-[130px]"}`} style={{ borderRadius: 0 }}>
                     <SelectValue placeholder={field.allLabel ?? "Todos"} />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{field.allLabel ?? "Todos"}</SelectItem>
+                  <SelectContent className="text-xs p-1" style={{ borderRadius: 4 }} align="start">
+                    <SelectItem value="all" className="text-xs py-1.5 px-2 rounded-sm whitespace-nowrap">{field.allLabel ?? "Todos"}</SelectItem>
                     {field.options.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      <SelectItem key={opt.value} value={opt.value} className="text-xs py-1.5 px-2 rounded-sm whitespace-nowrap">{opt.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

@@ -1,5 +1,5 @@
 import { Suspense } from "react"
-import { PageHeader, LoadingSpinner } from "@/libs/design-system"
+import { LoadingSpinner } from "@/libs/design-system"
 import { queueStatusService } from "@/modules/queue-status/queue-status.service"
 import { jobLogService } from "@/modules/job-logs/job-log.service"
 import type { JobLogFilters } from "@/modules/job-logs/job-log.types"
@@ -59,7 +59,12 @@ export default async function JobsPage({ searchParams }: PageProps): Promise<Rea
 
   return (
     <div className="flex flex-col h-full">
-      <PageHeader title="Monitoramento de Workers" />
+      <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-card shrink-0">
+        <div>
+          <h1 className="text-[13px] font-black tracking-[0.2em] uppercase text-foreground">Monitoramento de Workers</h1>
+          <p className="text-[11px] text-muted-foreground">Status das filas e histórico de execuções</p>
+        </div>
+      </div>
 
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-8">
         <section>

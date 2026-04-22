@@ -11,7 +11,7 @@ const JOB_LOG_FILTER_FIELDS: FilterField[] = [
     type: "select",
     key: "jobName",
     label: "Job",
-    width: "w-auto min-w-[180px]",
+    width: "min-w-[180px]",
     options: [
       { value: "survey-dispatcher",    label: "Disparo de Pesquisas" },
       { value: "adherence-checker",    label: "Verificador de Adesão" },
