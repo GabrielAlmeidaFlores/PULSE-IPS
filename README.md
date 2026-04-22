@@ -949,3 +949,46 @@ flowchart TD
     PUB --> ANON["Faz uma denúncia anônima\npelo link público da empresa"]
     ANON --> REPORTS
 ```
+
+## Fluxo de Pesquisas
+
+Cole o bloco abaixo no [Mermaid Live Editor](https://mermaid.live) para visualizar o ciclo de pesquisas do Pulse.
+
+```mermaid
+flowchart LR
+
+subgraph RH ["👤 RH / Admin"]
+    direction TB
+    SETUP["Configura a pesquisa\nde cada departamento:\nperguntas, frequência\ne horário de envio"]
+    SCHEDULE["Agenda o disparo\npara todos os departamentos"]
+    ALERT["⚠️ Recebe alerta no painel\nquando algo não vai bem"]
+    ACTION["Cria um Plano de Ação\ncom tarefas e responsáveis"]
+    SETUP --> SCHEDULE
+    SCHEDULE --> ALERT
+    ALERT --> ACTION
+end
+
+subgraph PULSE ["⚙️ Pulse — automático"]
+    direction TB
+    SEND["Envia SMS ou WhatsApp\npara os funcionários de\ncada departamento configurado"]
+    WAIT["Aguarda as respostas\npor até 48 horas"]
+    ANALYZE["Analisa os resultados:\nparticipação e notas do período"]
+    SEND --> WAIT --> ANALYZE
+end
+
+subgraph FUNC ["👤 Funcionário"]
+    direction TB
+    RECEIVE["Recebe o link\nno celular"]
+    CONSENT{"Primeira vez?\nPrecisa aceitar\nos termos"}
+    FORM["Responde as perguntas\ncom nota de 1 a 5\n(100% anônimo)"]
+    OPTOUT["Pede para não\nreceber mais pesquisas"]
+    RECEIVE --> CONSENT
+    CONSENT -->|"Aceita"| FORM
+    CONSENT -->|"Não aceita"| OPTOUT
+end
+
+SCHEDULE -->|"disparo agendado"| SEND
+SEND -->|"link no celular"| RECEIVE
+ANALYZE -->|"queda de notas\nou baixa participação"| ALERT
+ACTION -->|"próximo ciclo"| SCHEDULE
+```
