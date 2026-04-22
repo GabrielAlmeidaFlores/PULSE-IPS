@@ -1,6 +1,6 @@
 import { addDays } from "date-fns"
-import type { PgrReview } from "@prisma/client"
-import type { CreatePgrDeptResultInput, CreatePgrQuestionResultInput } from "@/modules/pgr/pgr.types"
+import type { PgrReview, PgrQuestionResult } from "@prisma/client"
+import type { CreatePgrDeptResultInput, CreatePgrQuestionResultInput, PgrScoreDistribution } from "@/modules/pgr/pgr.types"
 import type { ScoreDirection } from "@/modules/surveys/survey.types"
 import {
   type PgrReviewWithResults,
@@ -14,9 +14,10 @@ import {
   findUpcomingPgrReviews,
   findExistingPgrAlert,
   createPgrAlert,
+  findItemScoresForPeriod,
 } from "@/modules/pgr/pgr.repository"
 
-export type { PgrReviewWithResults }
+export type { PgrReviewWithResults, PgrScoreDistribution }
 
 export function getPgrReviews(tenantId: string): Promise<PgrReview[]> {
   return findPgrReviewsByTenant(tenantId)
@@ -174,4 +175,40 @@ export async function sendPgrReviewReminders(): Promise<{ remindersCreated: numb
   }
 
   return { remindersCreated }
+}
+
+export async function getPgrScoreDistributions(
+  tenantId: string,
+  period: string,
+  questionResults: PgrQuestionResult[],
+): Promise<PgrScoreDistribution[]> {
+  const [yearStr, monthStr] = period.split("-")
+  const startDate = new Date(Number(yearStr), Number(monthStr) - 1, 1)
+  const endDate = new Date(Number(yearStr), Number(monthStr), 1)
+
+  const rawItems = await findItemScoresForPeriod(tenantId, startDate, endDate)
+
+  const distMap = new Map<string, Map<number, number>>()
+  for (const item of rawItems) {
+    const key = `${item.questionId}||${item.departmentId}`
+    let scoreMap = distMap.get(key)
+    if (scoreMap === undefined) {
+      scoreMap = new Map<number, number>()
+      distMap.set(key, scoreMap)
+    }
+    scoreMap.set(item.score, (scoreMap.get(item.score) ?? 0) + 1)
+  }
+
+  return questionResults.map((qr) => {
+    const key = `${qr.questionId}||${qr.departmentId}`
+    const scoreMap = distMap.get(key) ?? new Map<number, number>()
+    return {
+      questionId: qr.questionId,
+      questionText: qr.questionText,
+      questionOrder: qr.questionOrder,
+      scoreDirection: qr.scoreDirection as ScoreDirection,
+      departmentId: qr.departmentId,
+      distribution: [1, 2, 3, 4, 5].map((s) => ({ score: s, count: scoreMap.get(s) ?? 0 })),
+    }
+  })
 }

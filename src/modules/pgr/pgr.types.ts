@@ -1,5 +1,14 @@
 import type { ScoreDirection } from "@/modules/surveys/survey.types"
 
+export interface PgrScoreDistribution {
+  questionId: string
+  questionText: string
+  questionOrder: number
+  scoreDirection: ScoreDirection
+  departmentId: string
+  distribution: { score: number; count: number }[]
+}
+
 export interface CreatePgrReviewInput {
   tenantId: string
   period: string

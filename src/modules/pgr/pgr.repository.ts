@@ -86,3 +86,40 @@ export function findExistingPgrAlert(tenantId: string): Promise<Alert | null> {
 export async function createPgrAlert(data: CreatePgrAlertInput): Promise<void> {
   await prisma.alert.create({ data })
 }
+
+interface RawItemScore {
+  questionId: string
+  score: number
+  departmentId: string
+}
+
+export async function findItemScoresForPeriod(
+  tenantId: string,
+  startDate: Date,
+  endDate: Date,
+): Promise<RawItemScore[]> {
+  const items = await prisma.surveyResponseItem.findMany({
+    where: {
+      surveyResponse: {
+        tenantId,
+        dispatch: { scheduledAt: { gte: startDate, lt: endDate } },
+      },
+    },
+    select: {
+      questionId: true,
+      score: true,
+      surveyResponse: {
+        select: {
+          dispatch: {
+            select: { surveyConfiguration: { select: { departmentId: true } } },
+          },
+        },
+      },
+    },
+  })
+  return items.map((item) => ({
+    questionId: item.questionId,
+    score: item.score,
+    departmentId: item.surveyResponse.dispatch.surveyConfiguration.departmentId,
+  }))
+}

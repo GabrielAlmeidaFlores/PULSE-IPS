@@ -66,7 +66,7 @@ export type SurveyTokenValidation =
       consentTermVersionId: string | null
       consentTermContent: string | null
       token: { id: string; dispatchId: string; employeeId: string; workStartTime: string; workEndTime: string; tenantId: string }
-      questions: { id: string; text: string; order: number }[]
+      questions: { id: string; text: string; order: number; scoreDirection: ScoreDirection }[]
       timezone: string
     }
   | { valid: false; error: string }

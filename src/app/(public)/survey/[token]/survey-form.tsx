@@ -10,6 +10,7 @@ interface Question {
   id: string
   text: string
   order: number
+  scoreDirection: "higher_is_better" | "lower_is_better"
 }
 
 interface Props {
@@ -87,18 +88,19 @@ export function SurveyForm({ token, employeeName, questions }: Props): React.Rea
         </p>
       </div>
       <div className="p-6 space-y-6">
-        {questions.map((q) => (
-          <div key={q.id} className="space-y-3">
-            <p className="text-sm font-medium">{q.text}</p>
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2">
-                <span className="text-xl shrink-0" role="img" aria-label="Muito ruim">😞</span>
-                <div className="flex gap-1.5 flex-1">
+        {questions.map((q) => {
+          const leftLabel = q.scoreDirection === "higher_is_better" ? "1 — Negativo" : "1 — Positivo"
+          const rightLabel = q.scoreDirection === "higher_is_better" ? "5 — Positivo" : "5 — Negativo"
+          return (
+            <div key={q.id} className="space-y-3">
+              <p className="text-sm font-medium">{q.text}</p>
+              <div className="space-y-1.5">
+                <div className="flex gap-1.5">
                   {[1, 2, 3, 4, 5].map((score) => (
                     <button
                       key={score}
                       type="button"
-                      aria-label={`Score ${score} de 5`}
+                      aria-label={`Nota ${score} de 5`}
                       aria-pressed={scores[q.id] === score}
                       onClick={() => setScores((prev) => ({ ...prev, [q.id]: score }))}
                       className={`flex-1 h-11 rounded-none border-2 font-bold text-sm transition-all ${
@@ -111,15 +113,14 @@ export function SurveyForm({ token, employeeName, questions }: Props): React.Rea
                     </button>
                   ))}
                 </div>
-                <span className="text-xl shrink-0" role="img" aria-label="Muito bom">😊</span>
-              </div>
-              <div className="flex justify-between text-[10px] text-muted-foreground pl-9 pr-9">
-                <span>Muito ruim</span>
-                <span>Muito bom</span>
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>{leftLabel}</span>
+                  <span>{rightLabel}</span>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
         <Button onClick={handleSubmit} disabled={submitting} className="w-full h-11">
           {submitting ? "Enviando..." : "Enviar resposta"}
         </Button>

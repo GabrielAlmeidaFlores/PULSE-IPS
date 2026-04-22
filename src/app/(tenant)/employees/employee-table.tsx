@@ -4,7 +4,7 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
-import { Pencil, UserX } from "lucide-react"
+import { Pencil, UserX, ChevronRight } from "lucide-react"
 import { ConfirmDeleteModal } from "@/components/confirm-delete-modal"
 import { EditEmployeeModal, type EmployeeEditData, type EmployeeFormValues } from "@/app/(tenant)/employees/edit-employee-modal"
 import { updateEmployeeAction, deactivateEmployeeAction } from "@/app/(tenant)/employees/[id]/actions"
@@ -99,12 +99,13 @@ export function EmployeeTable({ employees, total, departments }: Props): React.R
               <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Telefone</th>
               <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Status</th>
               <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-24">Ações</th>
+              <th className="px-4 py-2.5 w-8" />
             </tr>
           </thead>
           <tbody>
             {employees.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-xs text-muted-foreground">
+                <td colSpan={6} className="px-4 py-8 text-center text-xs text-muted-foreground">
                   Nenhum funcionario cadastrado.
                 </td>
               </tr>
@@ -112,13 +113,9 @@ export function EmployeeTable({ employees, total, departments }: Props): React.R
             {employees.map((emp, i) => (
               <tr
                 key={emp.id}
-                className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors ${i % 2 !== 0 ? "bg-muted/10" : ""}`}
+                className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors group ${i % 2 !== 0 ? "bg-muted/10" : ""}`}
               >
-                <td className="px-4 py-3 font-medium">
-                  <Link href={`/employees/${emp.id}`} className="hover:text-primary hover:underline transition-colors">
-                    {emp.name}
-                  </Link>
-                </td>
+                <td className="px-4 py-3 font-medium text-xs">{emp.name}</td>
                 <td className="px-4 py-3 text-muted-foreground">{emp.department.name}</td>
                 <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{emp.phone}</td>
                 <td className="px-4 py-3">
@@ -153,6 +150,11 @@ export function EmployeeTable({ employees, total, departments }: Props): React.R
                       </button>
                     )}
                   </div>
+                </td>
+                <td className="px-3 py-3 text-right">
+                  <Link href={`/employees/${emp.id}`} className="block">
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors ml-auto" />
+                  </Link>
                 </td>
               </tr>
             ))}

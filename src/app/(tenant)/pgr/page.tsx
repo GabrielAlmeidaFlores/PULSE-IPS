@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 import Link from "next/link"
+import { ChevronRight } from "lucide-react"
 import { getSession } from "@/modules/auth/session"
 import { getPgrReviews } from "@/modules/pgr/pgr.service"
 import { format } from "date-fns"
@@ -44,7 +45,7 @@ export default async function PgrPage(): Promise<React.ReactElement> {
                 <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Periodo</th>
                 <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Status</th>
                 <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Gerado em</th>
-                <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Ações</th>
+                <th className="px-4 py-2.5 w-8" />
               </tr>
             </thead>
             <tbody>
@@ -52,7 +53,7 @@ export default async function PgrPage(): Promise<React.ReactElement> {
                 <tr><td colSpan={4} className="px-4 py-8 text-center text-xs text-muted-foreground">Nenhuma revisao PGR.</td></tr>
               )}
               {reviews.map((review, i) => (
-                <tr key={review.id} className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors ${  i % 2 !== 0 ? "bg-muted/10" : ""}`}>
+                <tr key={review.id} className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors group ${  i % 2 !== 0 ? "bg-muted/10" : ""}`}>
                   <td className="px-4 py-3 font-mono text-xs">{review.period}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${PGR_STATUS_STYLE[review.status] ?? "bg-muted text-muted-foreground border-border"}`}>
@@ -62,12 +63,9 @@ export default async function PgrPage(): Promise<React.ReactElement> {
                   <td className="px-4 py-3 text-xs font-mono text-muted-foreground">
                     {review.reviewedAt ? format(review.reviewedAt, "dd/MM/yyyy") : "—"}
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <Link
-                      href={`/pgr/${review.id}`}
-                      className="text-primary hover:underline text-xs font-medium"
-                    >
-                      Visualizar
+                  <td className="px-3 py-3 text-right">
+                    <Link href={`/pgr/${review.id}`} className="block">
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors ml-auto" />
                     </Link>
                   </td>
                 </tr>

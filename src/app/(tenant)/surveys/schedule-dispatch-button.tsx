@@ -4,22 +4,16 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { CalendarClock } from "lucide-react"
 import { toast } from "sonner"
-import { scheduleDispatchAction } from "@/app/(tenant)/surveys/actions"
-
-interface SurveyConfig {
-  id: string
-  departmentName: string
-}
+import { scheduleAllDispatchesAction } from "@/app/(tenant)/surveys/actions"
 
 interface Props {
-  configs: SurveyConfig[]
+  hasConfigs: boolean
 }
 
-export function ScheduleDispatchButton({ configs }: Props): React.ReactElement {
+export function ScheduleDispatchButton({ hasConfigs }: Props): React.ReactElement {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [open, setOpen] = useState(false)
-  const [configId, setConfigId] = useState(configs[0]?.id ?? "")
   const [scheduledAt, setScheduledAt] = useState(() => {
     const now = new Date()
     now.setMinutes(0, 0, 0)
@@ -28,13 +22,12 @@ export function ScheduleDispatchButton({ configs }: Props): React.ReactElement {
   })
 
   function handleSubmit(): void {
-    if (!configId) { toast.error("Selecione um departamento configurado"); return }
     startTransition(async () => {
-      const result = await scheduleDispatchAction(configId, scheduledAt)
+      const result = await scheduleAllDispatchesAction(scheduledAt)
       if (result?.error) {
         toast.error(result.error)
       } else {
-        toast.success("Disparo agendado com sucesso")
+        toast.success("Disparo agendado para todos os departamentos")
         setOpen(false)
         router.refresh()
       }
@@ -45,8 +38,8 @@ export function ScheduleDispatchButton({ configs }: Props): React.ReactElement {
     <>
       <button
         onClick={() => setOpen(true)}
-        disabled={configs.length === 0}
-        title={configs.length === 0 ? "Configure uma pesquisa antes de agendar" : undefined}
+        disabled={!hasConfigs}
+        title={!hasConfigs ? "Configure uma pesquisa antes de agendar" : undefined}
         className="flex items-center gap-1.5 px-4 py-2 text-[11px] font-bold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors border border-primary"
         style={{ borderRadius: 0 }}
       >
@@ -68,21 +61,9 @@ export function ScheduleDispatchButton({ configs }: Props): React.ReactElement {
               </button>
             </div>
             <div className="p-4 space-y-3">
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">
-                  Departamento
-                </label>
-                <select
-                  value={configId}
-                  onChange={(e) => setConfigId(e.target.value)}
-                  className="w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 focus:outline-none focus:border-primary transition-colors appearance-none"
-                  style={{ borderRadius: 0 }}
-                >
-                  {configs.map((c) => (
-                    <option key={c.id} value={c.id}>{c.departmentName}</option>
-                  ))}
-                </select>
-              </div>
+              <p className="text-xs text-muted-foreground">
+                O disparo será enviado para todos os departamentos com pesquisa configurada.
+              </p>
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">
                   Data e hora

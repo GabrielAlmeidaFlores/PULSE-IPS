@@ -5,6 +5,7 @@ import {
   updateActionPlan,
   createActionPlanTask,
   completeActionPlanTask,
+  createActionPlanWithTasks,
   type ActionPlanWithTasks,
 } from "@/modules/action-plans/action-plan.repository"
 import type { CreateActionPlanInput, UpdateActionPlanInput, CreateActionPlanTaskInput } from "@/modules/action-plans/action-plan.types"
@@ -40,4 +41,12 @@ export function addTask(tenantId: string, actionPlanId: string, input: CreateAct
 
 export function completeTask(tenantId: string, taskId: string): Promise<ActionPlanTask> {
   return completeActionPlanTask(tenantId, taskId)
+}
+
+export function createPlanWithTasks(
+  tenantId: string,
+  input: CreateActionPlanInput,
+  taskTitles: string[],
+): Promise<ActionPlan> {
+  return createActionPlanWithTasks(tenantId, input, taskTitles)
 }

@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation"
 import Link from "next/link"
 import { getSession } from "@/modules/auth/session"
-import { getPgrReviewById } from "@/modules/pgr/pgr.service"
+import { getPgrReviewById, getPgrScoreDistributions } from "@/modules/pgr/pgr.service"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import {
@@ -25,6 +25,7 @@ import {
 } from "@/app/(tenant)/pgr/[id]/pgr-charts"
 import { PgrTabsLayout } from "@/app/(tenant)/pgr/[id]/pgr-tabs"
 import { PgrDeptAccordionItem } from "@/app/(tenant)/pgr/[id]/pgr-dept-accordion"
+import { PgrScoreDistributionWidget, type QuestionDistDisplay } from "@/app/(tenant)/pgr/[id]/pgr-score-distribution"
 import { ChartCard } from "@/components/chart-card"
 import type { ScoreDirection } from "@/modules/surveys/survey.types"
 import { toHealthIndex, healthIndexAccent, healthIndexBarColor, healthIndexChartColor } from "@/libs/utils/health-index"
@@ -104,6 +105,8 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
   const review = await getPgrReviewById(id, session.tenantId)
   if (!review) notFound()
 
+  const distributions = await getPgrScoreDistributions(session.tenantId, review.period, review.questionResults)
+
   const periodLabel = (() => {
     const [year, month] = review.period.split("-")
     return format(new Date(Number(year), Number(month) - 1, 1), "MMMM 'de' yyyy", { locale: ptBR })
@@ -166,6 +169,32 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
   const deptsSortedByScore = [...depts].sort((a, b) => a.avgScore - b.avgScore)
 
   const hasData = depts.length > 0 && totalResponses > 0
+
+  const globalDistributions: QuestionDistDisplay[] = (() => {
+    const map = new Map<number, QuestionDistDisplay>()
+    for (const d of distributions) {
+      const existing = map.get(d.questionOrder)
+      if (!existing) {
+        map.set(d.questionOrder, {
+          questionId: d.questionId,
+          questionText: d.questionText,
+          questionOrder: d.questionOrder,
+          scoreDirection: d.scoreDirection,
+          distribution: d.distribution.map((s) => ({ ...s })),
+        })
+      } else {
+        for (const s of d.distribution) {
+          const entry = existing.distribution.find((e) => e.score === s.score)
+          if (entry) {
+            entry.count += s.count
+          } else {
+            existing.distribution.push({ ...s })
+          }
+        }
+      }
+    }
+    return [...map.values()].sort((a, b) => a.questionOrder - b.questionOrder)
+  })()
 
   return (
     <div className="flex flex-col h-full">
@@ -341,6 +370,12 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                   <PgrAdherenceComparisonChart depts={deptOverviewData} />
                 </ChartCard>
               </div>
+
+              {globalDistributions.length > 0 && (
+                <ChartCard title="Distribuição de Notas — Visão Geral" subtitle="Frequência de cada nota (1–5) por pergunta, consolidado de todos os setores" bodyClassName="">
+                  <PgrScoreDistributionWidget distributions={globalDistributions} />
+                </ChartCard>
+              )}
             </>
           }
           byDept={
@@ -438,27 +473,48 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                       </div>
                     )}
 
-                    {deptQuestions.length > 0 && (
-                      <div className="grid grid-cols-2 divide-x divide-border">
-                        <div className="p-5">
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Índice de Saúde por Pergunta</p>
-                          <PgrDeptQuestionsChart questions={deptQuestions} />
-                        </div>
-                        <div className="divide-y divide-border">
-                          {[...deptQuestions].sort((a, b) => a.order - b.order).map((q, i) => (
-                            <div key={q.id} className={`px-4 py-3 grid grid-cols-[24px_1fr_auto] gap-3 items-center ${i % 2 !== 0 ? "bg-muted/10" : ""}`}>
-                              <span className="text-[10px] font-black text-muted-foreground">P{q.order}</span>
-                              <p className="text-xs text-foreground leading-snug">{q.text}</p>
-                              <div className="flex flex-col items-end gap-0.5 shrink-0">
-                                <span className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground">Índice de Saúde</span>
-                                <span className={`text-base font-black font-mono ${scoreColor(q.avgScore)}`}>{q.avgScore}%</span>
-                                <span className="text-[9px] text-muted-foreground">{q.responseCount} resp.</span>
-                              </div>
+                    {deptQuestions.length > 0 && (() => {
+                      const deptDistributions: QuestionDistDisplay[] = distributions
+                        .filter((d) => d.departmentId === dept.departmentId)
+                        .map((d) => ({
+                          questionId: d.questionId,
+                          questionText: d.questionText,
+                          questionOrder: d.questionOrder,
+                          scoreDirection: d.scoreDirection,
+                          distribution: d.distribution,
+                        }))
+                        .sort((a, b) => a.questionOrder - b.questionOrder)
+
+                      return (
+                        <>
+                          <div className="grid grid-cols-2 divide-x divide-border">
+                            <div className="p-5">
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Índice de Saúde por Pergunta</p>
+                              <PgrDeptQuestionsChart questions={deptQuestions} />
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                            <div className="divide-y divide-border">
+                              {[...deptQuestions].sort((a, b) => a.order - b.order).map((q, i) => (
+                                <div key={q.id} className={`px-4 py-3 grid grid-cols-[24px_1fr_auto] gap-3 items-center ${i % 2 !== 0 ? "bg-muted/10" : ""}`}>
+                                  <span className="text-[10px] font-black text-muted-foreground">P{q.order}</span>
+                                  <p className="text-xs text-foreground leading-snug">{q.text}</p>
+                                  <div className="flex flex-col items-end gap-0.5 shrink-0">
+                                    <span className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground">Índice de Saúde</span>
+                                    <span className={`text-base font-black font-mono ${scoreColor(q.avgScore)}`}>{q.avgScore}%</span>
+                                    <span className="text-[9px] text-muted-foreground">{q.responseCount} resp.</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {deptDistributions.length > 0 && (
+                            <div className="border-t border-border">
+                              <PgrScoreDistributionWidget distributions={deptDistributions} />
+                            </div>
+                          )}
+                        </>
+                      )
+                    })()}
 
                     {deptQuestions.length === 0 && (
                       <div className="px-5 py-6 text-center">

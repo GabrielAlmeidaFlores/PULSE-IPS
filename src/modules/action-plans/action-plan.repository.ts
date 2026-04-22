@@ -66,3 +66,26 @@ export function completeActionPlanTask(tenantId: string, taskId: string): Promis
     data: { completedAt: new Date() },
   })
 }
+
+export function createActionPlanWithTasks(
+  tenantId: string,
+  data: CreateActionPlanInput,
+  taskTitles: string[],
+): Promise<ActionPlan> {
+  return prisma.$transaction(async (tx) => {
+    const plan = await tx.actionPlan.create({
+      data: {
+        tenantId,
+        title: data.title,
+        ...(data.description !== undefined && { description: data.description }),
+        ...(data.priority !== undefined && { priority: data.priority }),
+      },
+    })
+    if (taskTitles.length > 0) {
+      await tx.actionPlanTask.createMany({
+        data: taskTitles.map((title) => ({ tenantId, actionPlanId: plan.id, title })),
+      })
+    }
+    return plan
+  })
+}

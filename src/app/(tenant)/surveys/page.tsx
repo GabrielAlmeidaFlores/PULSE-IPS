@@ -85,11 +85,6 @@ export default async function SurveysPage(): Promise<React.ReactElement> {
     getSurveyConfigs(session.tenantId),
   ])
 
-  const configOptions = configs.map((c) => ({
-    id: c.id,
-    departmentName: c.department.name,
-  }))
-
   const dayGroups = groupDispatchesByDay(dispatches)
   const totalResponses = dispatches.reduce((s, d) => s + d.totalResponses, 0)
   const totalSent = dispatches.reduce((s, d) => s + d.totalRecipients, 0)
@@ -114,7 +109,7 @@ export default async function SurveysPage(): Promise<React.ReactElement> {
           >
             Configurar
           </Link>
-          <ScheduleDispatchButton configs={configOptions} />
+          <ScheduleDispatchButton hasConfigs={configs.length > 0} />
         </div>
       </div>
 

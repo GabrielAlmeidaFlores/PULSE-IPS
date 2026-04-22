@@ -8,6 +8,7 @@ interface Question {
   id: string
   text: string
   order: number
+  scoreDirection: "higher_is_better" | "lower_is_better"
 }
 
 interface Props {

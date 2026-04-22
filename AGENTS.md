@@ -2495,3 +2495,44 @@ const BADGE_DEFAULT = "bg-muted text-muted-foreground border-border"  // neutro/
 
 **Não use inline `style={{ color, backgroundColor }}`** para badges — usar className garante consistência com o tema e o Tailwind JIT/oxide inclui as classes por serem literais no fonte.
 
+---
+
+## 25. Padrão de Navegação em Listagens
+
+### Botão de seta (ChevronRight) — obrigatório
+
+**Toda tabela de listagem que possui página de detalhe deve usar um `ChevronRight` como ação de navegação na última coluna da linha.** Nunca use texto "Visualizar", links no título/nome, ou qualquer outro padrão.
+
+#### Implementação obrigatória
+
+```tsx
+import { ChevronRight } from "lucide-react"
+import Link from "next/link"
+
+// Cabeçalho da coluna — sem texto, apenas reserva espaço
+<th className="px-4 py-2.5 w-8" />
+
+// A <tr> DEVE ter a classe `group` para o efeito hover funcionar
+<tr className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors group">
+  {/* demais células */}
+  <td className="px-3 py-3 text-right">
+    <Link href={`/rota/${item.id}`} className="block">
+      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors ml-auto" />
+    </Link>
+  </td>
+</tr>
+```
+
+#### Regras
+
+| Regra | Detalhe |
+|---|---|
+| Coluna de seta sempre por último | A coluna `<th className="w-8" />` é a última de toda tabela com detalhe |
+| `group` na `<tr>` | Obrigatório — sem ele, `group-hover:text-foreground` não funciona |
+| Título/nome da linha: texto puro | Não transforme o título ou nome em link clicável para navegação |
+| Sem botão "Visualizar" | Texto de ação de navegação é proibido — use apenas o ícone |
+| Tabelas sem página de detalhe | Não adicione a coluna de seta (ex: documentos, alertas, relatos anônimos) |
+
+#### Exceções — tabelas com ações inline mas SEM página de detalhe
+
+Tabelas como `documents`, `alerts` e `reports` gerenciam tudo inline (upload, status, resolução). **Não** adicionam coluna de seta.

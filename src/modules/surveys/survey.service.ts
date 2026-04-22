@@ -89,6 +89,7 @@ export async function validateSurveyToken(token: string): Promise<SurveyTokenVal
       id: q.id,
       text: q.text,
       order: q.order,
+      scoreDirection: q.scoreDirection as ScoreDirection,
     })),
     timezone,
   }
