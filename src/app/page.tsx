@@ -3,6 +3,7 @@ import { CheckCircle2, Shield, ClipboardList, Bell, FileText, Users, BarChart3, 
 import { Logo } from "@/libs/design-system/components/logo"
 import { getAllPlans } from "@/modules/plans/plan.service"
 import { env } from "@/env"
+import { AnimateIn } from "@/components/animate-in"
 
 export const dynamic = "force-dynamic"
 
@@ -67,10 +68,10 @@ export default async function LandingPage(): Promise<React.ReactElement> {
         />
         <div
           className="absolute -top-32 -right-32 w-[600px] h-[600px] rounded-full pointer-events-none"
-          style={{ background: "radial-gradient(circle, oklch(0.50 0.195 265 / 0.08) 0%, transparent 70%)" }}
+          style={{ background: "radial-gradient(circle, oklch(0.50 0.195 265 / 0.08) 0%, transparent 70%)", animation: "lp-float 8s ease-in-out infinite" }}
         />
         <div className="relative max-w-6xl mx-auto px-6 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-xs font-semibold text-primary mb-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-xs font-semibold text-primary mb-6" style={{ animation: "lp-fade-in 0.5s ease-out both" }}>
             <Shield className="w-3.5 h-3.5" />
             Conformidade com a NR-1 simplificada
           </div>
@@ -81,16 +82,17 @@ export default async function LandingPage(): Promise<React.ReactElement> {
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
               backgroundClip: "text",
+              animation: "lp-fade-in-up 0.7s 0.1s ease-out both",
             }}
           >
             Saúde ocupacional<br />sob controle.
           </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed" style={{ animation: "lp-fade-in-up 0.7s 0.2s ease-out both" }}>
             O Pulse é a plataforma que ajuda empresas a cumprir a{" "}
             <strong className="text-foreground font-semibold">NR-1</strong> de forma eficiente — gerenciando riscos,
             pesquisas de saúde e planos de ação em um único lugar.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center" style={{ animation: "lp-fade-in-up 0.7s 0.32s ease-out both" }}>
             <a
               href="#planos"
               className="inline-flex items-center justify-center gap-2 h-12 px-8 rounded-lg bg-primary text-white font-semibold text-base transition-all hover:-translate-y-px hover:shadow-[0_8px_24px_oklch(0.50_0.195_265/0.30)]"
@@ -106,7 +108,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
-          <div className="mt-16 flex flex-wrap justify-center gap-12 text-sm text-muted-foreground">
+          <div className="mt-16 flex flex-wrap justify-center gap-12 text-sm text-muted-foreground" style={{ animation: "lp-fade-in-up 0.7s 0.5s ease-out both" }}>
             {(
               [
                 ["mai/2026", "Prazo legal da nova NR-1"],
@@ -175,17 +177,16 @@ export default async function LandingPage(): Promise<React.ReactElement> {
               title: "Dashboard em Tempo Real",
               desc: "Indicadores consolidados por departamento. Visão executiva sempre atualizada.",
             },
-          ].map((feature) => (
-            <div
-              key={feature.title}
-              className="rounded-xl border border-border bg-white p-6 hover:border-primary/30 hover:shadow-[0_4px_20px_oklch(0.18_0.022_258/0.06)] transition-all"
-            >
-              <div className="w-10 h-10 rounded-lg bg-primary/8 flex items-center justify-center text-primary mb-4">
-                {feature.icon}
+          ].map((feature, i) => (
+            <AnimateIn key={feature.title} delay={i * 80}>
+              <div className="rounded-xl border border-border bg-white p-6 hover:border-primary/30 hover:shadow-[0_4px_20px_oklch(0.18_0.022_258/0.06)] transition-all h-full">
+                <div className="w-10 h-10 rounded-lg bg-primary/8 flex items-center justify-center text-primary mb-4">
+                  {feature.icon}
+                </div>
+                <h3 className="font-bold text-base mb-2">{feature.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{feature.desc}</p>
               </div>
-              <h3 className="font-bold text-base mb-2">{feature.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{feature.desc}</p>
-            </div>
+            </AnimateIn>
           ))}
         </div>
       </section>
@@ -213,12 +214,14 @@ export default async function LandingPage(): Promise<React.ReactElement> {
                 title: "Monitore e comprove",
                 desc: "Dispare pesquisas, acompanhe alertas, gere planos de ação e tenha o PGR sempre pronto.",
               },
-            ].map((item) => (
-              <div key={item.step} className="flex flex-col items-start">
-                <div className="text-5xl font-black text-primary/15 mb-4 leading-none">{item.step}</div>
-                <h3 className="font-bold text-lg mb-2">{item.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
-              </div>
+            ].map((item, i) => (
+              <AnimateIn key={item.step} delay={i * 110} animation="fade-in-up">
+                <div className="flex flex-col items-start">
+                  <div className="text-5xl font-black text-primary/15 mb-4 leading-none">{item.step}</div>
+                  <h3 className="font-bold text-lg mb-2">{item.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
+                </div>
+              </AnimateIn>
             ))}
           </div>
         </div>
@@ -262,9 +265,9 @@ export default async function LandingPage(): Promise<React.ReactElement> {
               const highlightSecondary = isHighlight ? "text-white/70" : "text-muted-foreground"
 
               return (
-                <div
-                  key={plan.id}
-                  className={`rounded-2xl border p-8 flex flex-col gap-6 transition-all relative ${
+                <AnimateIn key={plan.id} delay={index * 100} animation="scale-in">
+                  <div
+                    className={`rounded-2xl border p-8 flex flex-col gap-6 transition-all relative h-full ${
                     isHighlight
                       ? "border-primary bg-primary shadow-[0_8px_40px_oklch(0.50_0.195_265/0.25)] text-white"
                       : "border-border bg-white hover:border-primary/30 hover:shadow-[0_4px_20px_oklch(0.18_0.022_258/0.06)]"
@@ -343,6 +346,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
                     </a>
                   )}
                 </div>
+                </AnimateIn>
               )
             })}
           </div>
@@ -417,7 +421,8 @@ export default async function LandingPage(): Promise<React.ReactElement> {
         style={{ background: "linear-gradient(135deg, oklch(0.50 0.195 265) 0%, oklch(0.42 0.18 285) 100%)" }}
       >
         <div className="max-w-3xl mx-auto px-6 text-center text-white">
-          <Building2 className="w-10 h-10 mx-auto mb-6 opacity-80" />
+          <AnimateIn animation="fade-in">
+            <Building2 className="w-10 h-10 mx-auto mb-6 opacity-80" />
           <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">
             Sua empresa está em conformidade com a NR-1?
           </h2>
@@ -439,6 +444,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
               Falar com um consultor
             </a>
           </div>
+          </AnimateIn>
         </div>
       </section>
 

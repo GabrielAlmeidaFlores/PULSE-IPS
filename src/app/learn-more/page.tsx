@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react"
 import { Logo } from "@/libs/design-system/components/logo"
+import { AnimateIn } from "@/components/animate-in"
 
 function whatsappUrl(message: string): string {
   return `https://wa.me/5511999999999?text=${encodeURIComponent(message)}`
@@ -146,10 +147,10 @@ export default function LearnMorePage(): React.ReactElement {
         />
         <div
           className="absolute -top-32 -right-32 w-[600px] h-[600px] rounded-full pointer-events-none"
-          style={{ background: "radial-gradient(circle, oklch(0.50 0.195 265 / 0.07) 0%, transparent 70%)" }}
+          style={{ background: "radial-gradient(circle, oklch(0.50 0.195 265 / 0.07) 0%, transparent 70%)", animation: "lp-float 9s ease-in-out infinite" }}
         />
         <div className="relative max-w-5xl mx-auto px-6 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-amber-200 bg-amber-50 text-xs font-semibold text-amber-700 mb-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-amber-200 bg-amber-50 text-xs font-semibold text-amber-700 mb-6" style={{ animation: "lp-fade-in 0.5s ease-out both" }}>
             <AlertTriangle className="w-3.5 h-3.5" />
             Nova obrigação legal a partir de maio de 2026
           </div>
@@ -160,15 +161,16 @@ export default function LearnMorePage(): React.ReactElement {
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
               backgroundClip: "text",
+              animation: "lp-fade-in-up 0.7s 0.1s ease-out both",
             }}
           >
             Sua empresa em dia com a NR-1.<br />Sem dor de cabeça.
           </h1>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-10 leading-relaxed">
+          <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-10 leading-relaxed" style={{ animation: "lp-fade-in-up 0.7s 0.22s ease-out both" }}>
             O Pulse cuida de tudo que a lei exige — coleta de dados, consentimento dos colaboradores,
             alertas automáticos e relatórios prontos para auditoria. Você foca na sua empresa.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center" style={{ animation: "lp-fade-in-up 0.7s 0.34s ease-out both" }}>
             <Link
               href="/#planos"
               className="inline-flex items-center justify-center gap-2 h-12 px-8 rounded-lg bg-primary text-white font-semibold text-base transition-all hover:-translate-y-px hover:shadow-[0_8px_24px_oklch(0.50_0.195_265/0.30)]"
@@ -191,58 +193,70 @@ export default function LearnMorePage(): React.ReactElement {
       <section id="problema" className="py-24 border-b border-border">
         <div className="max-w-6xl mx-auto px-6">
           <div className="grid md:grid-cols-2 gap-16 items-center">
-            <div>
-              <SectionLabel>✦ O cenário atual</SectionLabel>
-              <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-6 leading-tight">
-                Gerenciar saúde ocupacional hoje é um pesadelo
-              </h2>
-              <p className="text-muted-foreground leading-relaxed mb-6">
-                A maioria das empresas ainda tenta cumprir a NR-1 com planilhas espalhadas, e-mails manuais
-                e documentos soltos. O resultado é sempre o mesmo: horas perdidas, prazos esquecidos e
-                nenhuma garantia de que está tudo correto se vier uma fiscalização.
-              </p>
-              <div className="space-y-3">
-                {[
-                  "Planilhas desatualizadas que ninguém sabe onde estão",
-                  "Nenhuma forma de provar que os colaboradores deram consentimento",
-                  "Relatório do PGR feito na correria, sem dados confiáveis",
-                  "RH gastando horas em tarefas que poderiam ser automáticas",
-                  "Risco real de multa se vier uma auditoria",
-                ].map((item) => (
-                  <div key={item} className="flex items-start gap-3 text-sm text-foreground">
-                    <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center shrink-0 mt-0.5">
-                      <X className="w-3 h-3 text-red-500" />
+            <AnimateIn animation="fade-in-up">
+              <div>
+                <SectionLabel>✦ O cenário atual</SectionLabel>
+                <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-6 leading-tight">
+                  Gerenciar saúde ocupacional hoje é um pesadelo
+                </h2>
+                <p className="text-muted-foreground leading-relaxed mb-6">
+                  A maioria das empresas ainda tenta cumprir a NR-1 com planilhas espalhadas, e-mails manuais
+                  e documentos soltos. O resultado é sempre o mesmo: horas perdidas, prazos esquecidos e
+                  nenhuma garantia de que está tudo correto se vier uma fiscalização.
+                </p>
+                <div className="space-y-3">
+                  {[
+                    "Planilhas desatualizadas que ninguém sabe onde estão",
+                    "Nenhuma forma de provar que os colaboradores deram consentimento",
+                    "Relatório do PGR feito na correria, sem dados confiáveis",
+                    "RH gastando horas em tarefas que poderiam ser automáticas",
+                    "Risco real de multa se vier uma auditoria",
+                  ].map((item) => (
+                    <div key={item} className="flex items-start gap-3 text-sm text-foreground">
+                      <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center shrink-0 mt-0.5">
+                        <X className="w-3 h-3 text-red-500" />
+                      </div>
+                      {item}
                     </div>
-                    {item}
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
+            </AnimateIn>
             <div className="space-y-4">
-              <div
-                className="rounded-2xl p-6 border border-red-100"
-                style={{ background: "linear-gradient(135deg, oklch(0.98 0.01 25) 0%, oklch(0.97 0.005 20) 100%)" }}
-              >
-                <div className="text-sm font-bold text-red-700 mb-2">Sem o Pulse</div>
-                <div className="text-2xl font-extrabold text-foreground mb-1">Horas por mês</div>
-                <p className="text-sm text-muted-foreground">gastas em tarefas manuais que deveriam ser automáticas</p>
-              </div>
-              <div
-                className="rounded-2xl p-6 border border-amber-100"
-                style={{ background: "linear-gradient(135deg, oklch(0.98 0.01 80) 0%, oklch(0.97 0.005 75) 100%)" }}
-              >
-                <div className="text-sm font-bold text-amber-700 mb-2">Risco de auditoria</div>
-                <div className="text-2xl font-extrabold text-foreground mb-1">Sem documentação</div>
-                <p className="text-sm text-muted-foreground">sua empresa não consegue provar que está cumprindo a lei</p>
-              </div>
-              <div
-                className="rounded-2xl p-6 border border-primary/20"
-                style={{ background: "linear-gradient(135deg, oklch(0.97 0.012 265) 0%, oklch(0.975 0.004 258) 100%)" }}
-              >
-                <div className="text-sm font-bold text-primary mb-2">Com o Pulse</div>
-                <div className="text-2xl font-extrabold text-foreground mb-1">Tudo automatizado</div>
-                <p className="text-sm text-muted-foreground">relatórios, alertas e consentimentos funcionando sozinhos</p>
-              </div>
+              {[
+                {
+                  border: "border-red-100",
+                  bg: "linear-gradient(135deg, oklch(0.98 0.01 25) 0%, oklch(0.97 0.005 20) 100%)",
+                  label: "Sem o Pulse",
+                  labelColor: "text-red-700",
+                  title: "Horas por mês",
+                  desc: "gastas em tarefas manuais que deveriam ser automáticas",
+                },
+                {
+                  border: "border-amber-100",
+                  bg: "linear-gradient(135deg, oklch(0.98 0.01 80) 0%, oklch(0.97 0.005 75) 100%)",
+                  label: "Risco de auditoria",
+                  labelColor: "text-amber-700",
+                  title: "Sem documentação",
+                  desc: "sua empresa não consegue provar que está cumprindo a lei",
+                },
+                {
+                  border: "border-primary/20",
+                  bg: "linear-gradient(135deg, oklch(0.97 0.012 265) 0%, oklch(0.975 0.004 258) 100%)",
+                  label: "Com o Pulse",
+                  labelColor: "text-primary",
+                  title: "Tudo automatizado",
+                  desc: "relatórios, alertas e consentimentos funcionando sozinhos",
+                },
+              ].map((card, i) => (
+                <AnimateIn key={card.title} delay={i * 90} animation="fade-in-up">
+                  <div className={`rounded-2xl p-6 border ${card.border}`} style={{ background: card.bg }}>
+                    <div className={`text-sm font-bold ${card.labelColor} mb-2`}>{card.label}</div>
+                    <div className="text-2xl font-extrabold text-foreground mb-1">{card.title}</div>
+                    <p className="text-sm text-muted-foreground">{card.desc}</p>
+                  </div>
+                </AnimateIn>
+              ))}
             </div>
           </div>
         </div>
@@ -324,21 +338,20 @@ export default function LearnMorePage(): React.ReactElement {
                 desc: "Documentação em dia, consentimentos registrados, ações documentadas. Sua empresa pode passar por uma fiscalização a qualquer momento sem preocupação.",
                 benefit: "Tranquilidade para o gestor",
               },
-            ].map((item) => (
-              <div
-                key={item.title}
-                className="rounded-xl border border-border bg-white p-6 hover:border-primary/30 hover:shadow-[0_4px_20px_oklch(0.18_0.022_258/0.06)] transition-all group"
-              >
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary mb-4">
-                  {item.icon}
+            ].map((item, i) => (
+              <AnimateIn key={item.title} delay={i * 60}>
+                <div className="rounded-xl border border-border bg-white p-6 hover:border-primary/30 hover:shadow-[0_4px_20px_oklch(0.18_0.022_258/0.06)] transition-all group h-full">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary mb-4">
+                    {item.icon}
+                  </div>
+                  <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 border border-green-200 text-green-700 text-xs font-semibold mb-3">
+                    <CheckCircle2 className="w-3 h-3" />
+                    {item.benefit}
+                  </div>
+                  <h3 className="font-bold text-base mb-2 text-foreground">{item.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
                 </div>
-                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 border border-green-200 text-green-700 text-xs font-semibold mb-3">
-                  <CheckCircle2 className="w-3 h-3" />
-                  {item.benefit}
-                </div>
-                <h3 className="font-bold text-base mb-2 text-foreground">{item.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
-              </div>
+              </AnimateIn>
             ))}
           </div>
         </div>
@@ -373,79 +386,30 @@ export default function LearnMorePage(): React.ReactElement {
           </div>
 
           <div className="max-w-xl mx-auto">
-            <FlowCard
-              actor="voce"
-              icon={<Users className="w-5 h-5" />}
-              title="Você cadastra sua equipe"
-              desc="Registra os colaboradores por setor — um a um ou importando uma planilha Excel. Leva minutos."
-            />
-            <FlowCard
-              actor="pulse"
-              icon={<MessageSquare className="w-5 h-5" />}
-              title="Pulse envia o convite pelo WhatsApp"
-              desc="Cada colaborador recebe automaticamente uma mensagem com o link para aceitar os termos de participação."
-            />
-            <FlowCard
-              actor="colaborador"
-              icon={<UserCheck className="w-5 h-5" />}
-              title="Colaborador aceita pelo celular"
-              desc="Em poucos cliques, no próprio celular. Sem papel, sem burocracia. O aceite fica registrado automaticamente."
-            />
-            <FlowCard
-              actor="voce"
-              icon={<ClipboardList className="w-5 h-5" />}
-              title="Você configura a pesquisa uma vez"
-              desc="Define as perguntas e com que frequência enviar — semanal, quinzenal, mensal. Feito isso, não precisa mais tocar."
-            />
-            <FlowCard
-              actor="voce"
-              icon={<Clock className="w-5 h-5" />}
-              title="Você define o expediente de cada equipe"
-              desc="Configura os dias da semana e o horário de trabalho de cada setor (ex: segunda a sexta, das 9h às 18h). Equipes com turnos diferentes, finais de semana ou horários especiais têm suas próprias configurações."
-            />
-            <FlowCard
-              actor="pulse"
-              icon={<Zap className="w-5 h-5" />}
-              title="Pulse dispara as pesquisas automaticamente"
-              desc="Só envia dentro do horário de expediente configurado — nunca madrugada, nunca fora do turno. O colaborador recebe a mensagem quando está trabalhando e pode responder na hora."
-            />
-            <FlowCard
-              actor="colaborador"
-              icon={<EyeOff className="w-5 h-5" />}
-              title="Colaborador responde — com total anonimato"
-              desc="Sem login, sem identificação. Só as respostas. Ninguém na empresa sabe quem disse o quê."
-            />
-            <FlowCard
-              actor="pulse"
-              icon={<BarChart3 className="w-5 h-5" />}
-              title="Pulse analisa e atualiza o painel"
-              desc="Os indicadores de cada setor são calculados automaticamente. Você vê tudo no painel em tempo real."
-            />
-            <FlowCard
-              actor="pulse"
-              icon={<Bell className="w-5 h-5" />}
-              title="Pulse avisa quando há algo a resolver"
-              desc="Se algum setor tiver queda nos resultados ou baixa participação, você recebe um alerta para agir."
-            />
-            <FlowCard
-              actor="voce"
-              icon={<Shield className="w-5 h-5" />}
-              title="Você registra a ação que tomou"
-              desc="Uma conversa com o gestor, um treinamento, uma mudança de processo. Registra no sistema com responsável e prazo."
-            />
-            <FlowCard
-              actor="pulse"
-              icon={<FileText className="w-5 h-5" />}
-              title="Pulse documenta tudo permanentemente"
-              desc="Cada ação registrada, cada consentimento, cada resposta. O histórico é imutável — pronto para qualquer auditoria."
-            />
-            <FlowCard
-              actor="voce"
-              icon={<CheckCircle2 className="w-5 h-5" />}
-              title="Você gera o relatório com um clique"
-              desc="Quando precisar, abre a plataforma, seleciona o período e clica em gerar. O documento está pronto em segundos."
-              isLast
-            />
+            {([
+              { actor: "voce", icon: <Users className="w-5 h-5" />, title: "Você cadastra sua equipe", desc: "Registra os colaboradores por setor — um a um ou importando uma planilha Excel. Leva minutos." },
+              { actor: "pulse", icon: <MessageSquare className="w-5 h-5" />, title: "Pulse envia o convite pelo WhatsApp", desc: "Cada colaborador recebe automaticamente uma mensagem com o link para aceitar os termos de participação." },
+              { actor: "colaborador", icon: <UserCheck className="w-5 h-5" />, title: "Colaborador aceita pelo celular", desc: "Em poucos cliques, no próprio celular. Sem papel, sem burocracia. O aceite fica registrado automaticamente." },
+              { actor: "voce", icon: <ClipboardList className="w-5 h-5" />, title: "Você configura a pesquisa uma vez", desc: "Define as perguntas e com que frequência enviar — semanal, quinzenal, mensal. Feito isso, não precisa mais tocar." },
+              { actor: "voce", icon: <Clock className="w-5 h-5" />, title: "Você define o expediente de cada equipe", desc: "Configura os dias da semana e o horário de trabalho de cada setor (ex: segunda a sexta, das 9h às 18h). Equipes com turnos diferentes, finais de semana ou horários especiais têm suas próprias configurações." },
+              { actor: "pulse", icon: <Zap className="w-5 h-5" />, title: "Pulse dispara as pesquisas automaticamente", desc: "Só envia dentro do horário de expediente configurado — nunca madrugada, nunca fora do turno. O colaborador recebe a mensagem quando está trabalhando e pode responder na hora." },
+              { actor: "colaborador", icon: <EyeOff className="w-5 h-5" />, title: "Colaborador responde — com total anonimato", desc: "Sem login, sem identificação. Só as respostas. Ninguém na empresa sabe quem disse o quê." },
+              { actor: "pulse", icon: <BarChart3 className="w-5 h-5" />, title: "Pulse analisa e atualiza o painel", desc: "Os indicadores de cada setor são calculados automaticamente. Você vê tudo no painel em tempo real." },
+              { actor: "pulse", icon: <Bell className="w-5 h-5" />, title: "Pulse avisa quando há algo a resolver", desc: "Se algum setor tiver queda nos resultados ou baixa participação, você recebe um alerta para agir." },
+              { actor: "voce", icon: <Shield className="w-5 h-5" />, title: "Você registra a ação que tomou", desc: "Uma conversa com o gestor, um treinamento, uma mudança de processo. Registra no sistema com responsável e prazo." },
+              { actor: "pulse", icon: <FileText className="w-5 h-5" />, title: "Pulse documenta tudo permanentemente", desc: "Cada ação registrada, cada consentimento, cada resposta. O histórico é imutável — pronto para qualquer auditoria." },
+              { actor: "voce", icon: <CheckCircle2 className="w-5 h-5" />, title: "Você gera o relatório com um clique", desc: "Quando precisar, abre a plataforma, seleciona o período e clica em gerar. O documento está pronto em segundos.", isLast: true },
+            ] as { actor: string; icon: React.ReactElement; title: string; desc: string; isLast?: boolean }[]).map((card, i) => (
+              <AnimateIn key={card.title} delay={i * 50} animation="fade-in-up">
+                <FlowCard
+                  actor={card.actor}
+                  icon={card.icon}
+                  title={card.title}
+                  desc={card.desc}
+                  isLast={card.isLast}
+                />
+              </AnimateIn>
+            ))}
           </div>
 
           <div className="mt-12 rounded-2xl border border-primary/20 bg-primary/5 p-8 text-center">
@@ -865,29 +829,31 @@ export default function LearnMorePage(): React.ReactElement {
         style={{ background: "linear-gradient(135deg, oklch(0.50 0.195 265) 0%, oklch(0.42 0.18 285) 100%)" }}
       >
         <div className="max-w-3xl mx-auto px-6 text-center text-white">
-          <Globe className="w-10 h-10 mx-auto mb-6 opacity-80" />
-          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">
-            Comece hoje. A fiscalização não espera.
-          </h2>
-          <p className="text-lg opacity-80 mb-10 leading-relaxed">
-            Cada dia sem o Pulse é um dia com risco de auditoria, documentação incompleta e horas de trabalho
-            manual que poderiam ser automáticas. Configure em minutos e durma tranquilo.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href="/#planos"
-              className="inline-flex items-center justify-center gap-2 h-12 px-8 rounded-lg bg-white text-primary font-bold text-base transition-all hover:bg-white/90"
-            >
-              Ver planos e começar
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center h-12 px-8 rounded-lg border-2 border-white/40 text-white font-semibold text-base hover:bg-white/10 transition-all"
-            >
-              Já tenho uma conta
-            </Link>
-          </div>
+          <AnimateIn animation="fade-in">
+            <Globe className="w-10 h-10 mx-auto mb-6 opacity-80" />
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">
+              Comece hoje. A fiscalização não espera.
+            </h2>
+            <p className="text-lg opacity-80 mb-10 leading-relaxed">
+              Cada dia sem o Pulse é um dia com risco de auditoria, documentação incompleta e horas de trabalho
+              manual que poderiam ser automáticas. Configure em minutos e durma tranquilo.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                href="/#planos"
+                className="inline-flex items-center justify-center gap-2 h-12 px-8 rounded-lg bg-white text-primary font-bold text-base transition-all hover:bg-white/90"
+              >
+                Ver planos e começar
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link
+                href="/login"
+                className="inline-flex items-center justify-center h-12 px-8 rounded-lg border-2 border-white/40 text-white font-semibold text-base hover:bg-white/10 transition-all"
+              >
+                Já tenho uma conta
+              </Link>
+            </div>
+          </AnimateIn>
         </div>
       </section>
 
