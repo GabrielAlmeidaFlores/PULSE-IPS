@@ -16,6 +16,8 @@ CREATE TABLE "request_logs" (
     "user_type" TEXT,
     "is_redirect" BOOLEAN NOT NULL DEFAULT false,
     "redirect_to" TEXT,
+    "error_message" TEXT,
+    "error_stack" TEXT,
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "request_logs_pkey" PRIMARY KEY ("id")

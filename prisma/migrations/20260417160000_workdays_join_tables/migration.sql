@@ -19,10 +19,18 @@ CREATE TABLE "survey_config_work_days" (
   CONSTRAINT "survey_config_work_days_config_id_fkey" FOREIGN KEY ("config_id") REFERENCES "survey_configurations"("id") ON DELETE CASCADE
 );
 
-INSERT INTO "department_work_days" ("department_id", "day_of_week")
-SELECT id, unnest(string_to_array(work_days, ','))::integer
-FROM "departments"
-WHERE work_days IS NOT NULL AND work_days != '';
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'departments' AND column_name = 'work_days'
+  ) THEN
+    INSERT INTO "department_work_days" ("department_id", "day_of_week")
+    SELECT id, unnest(string_to_array(work_days, ','))::integer
+    FROM "departments"
+    WHERE work_days IS NOT NULL AND work_days != '';
+  END IF;
+END$$;
 
 INSERT INTO "survey_config_work_days" ("config_id", "day_of_week")
 SELECT id, unnest(string_to_array(work_days, ','))::integer

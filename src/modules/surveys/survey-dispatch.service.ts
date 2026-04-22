@@ -2,6 +2,7 @@ import { randomUUID } from "crypto"
 import { addHours } from "date-fns"
 import { getMessageQueue } from "@/libs/queue"
 import { env } from "@/env"
+import { logger } from "@/libs/logger"
 import {
   findPendingDispatches,
   findActiveConfigsForAutoDispatch,
@@ -63,7 +64,6 @@ async function fireDispatch(
   if (eligibleEmployees.length === 0) return
 
   const dispatch = await createDispatch(tenantId, configId, new Date())
-  const messageQueue = getMessageQueue()
 
   const tokens = eligibleEmployees.map((emp) => ({
     tenantId,
@@ -78,19 +78,27 @@ async function fireDispatch(
   await createSurveyTokens(tokens)
   await markDispatchSent(tenantId, dispatch.id, eligibleEmployees.length)
 
-  for (const empToken of tokens) {
-    const employee = eligibleEmployees.find((e) => e.id === empToken.employeeId)
-    if (!employee) continue
-    const surveyUrl = `${env.NEXT_PUBLIC_APP_URL}/survey/${empToken.token}`
-    await messageQueue.add("send-message", {
-      to: employee.phone,
-      body: buildSurveyMessage(env.SURVEY_MESSAGE_TEMPLATE, employee.name, surveyUrl),
-      tenantId,
-      employeeId: employee.id,
-      provider: env.MESSAGING_PROVIDER,
-      type: "survey_dispatch",
+  const messageQueue = getMessageQueue()
+  const bulkJobs = tokens
+    .map((empToken) => {
+      const employee = eligibleEmployees.find((e) => e.id === empToken.employeeId)
+      if (!employee) return null
+      const surveyUrl = `${env.NEXT_PUBLIC_APP_URL}/survey/${empToken.token}`
+      return {
+        name: "send-message" as const,
+        data: {
+          to: employee.phone,
+          body: buildSurveyMessage(env.SURVEY_MESSAGE_TEMPLATE, employee.name, surveyUrl),
+          tenantId,
+          employeeId: employee.id,
+          provider: env.MESSAGING_PROVIDER,
+          type: "survey_dispatch" as const,
+        },
+      }
     })
-  }
+    .filter((job): job is NonNullable<typeof job> => job !== null)
+
+  await messageQueue.addBulk(bulkJobs)
 }
 
 export async function runSurveyDispatcher(): Promise<{ dispatched: number; errors: number }> {
@@ -129,8 +137,9 @@ export async function runSurveyDispatcher(): Promise<{ dispatched: number; error
       )
 
       dispatched++
-    } catch {
+    } catch (err) {
       errors++
+      logger.error({ err, configId: config.id }, "survey-dispatcher: error processing dispatch")
     }
   }
 
@@ -170,8 +179,9 @@ export async function runAutoDispatchScheduler(): Promise<{ triggered: number; s
         timezone,
       )
       triggered++
-    } catch {
+    } catch (err) {
       skipped++
+      logger.error({ err, configId: config.id }, "auto-dispatcher: error triggering dispatch")
     }
   }
 

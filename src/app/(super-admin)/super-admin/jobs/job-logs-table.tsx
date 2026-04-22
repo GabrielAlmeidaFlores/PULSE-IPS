@@ -1,0 +1,169 @@
+"use client"
+
+import { Fragment, useState } from "react"
+import type { JobLogRow } from "@/modules/job-logs/job-log.types"
+import { TablePagination } from "@/libs/design-system"
+import { Badge } from "@/components/ui/badge"
+
+interface Props {
+  rows: JobLogRow[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  completed: "bg-green-100 text-green-800 border-green-300",
+  failed:    "bg-red-100 text-red-800 border-red-300",
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  completed: "Concluído",
+  failed:    "Falhou",
+}
+
+const QUEUE_LABELS: Record<string, string> = {
+  "pulse-jobs":     "Jobs",
+  "pulse-messages": "Mensagens",
+}
+
+const JOB_NAME_LABELS: Record<string, string> = {
+  "survey-dispatcher":    "Disparo de Pesquisas",
+  "adherence-checker":    "Verificador de Adesão",
+  "alert-detector":       "Detector de Alertas",
+  "employee-unpause":     "Reativação de Colaboradores",
+  "pgr-review-reminder":  "Lembrete de Revisão PGR",
+  "stripe-webhook-retry": "Reprocessamento de Webhooks",
+  "token-cleanup":        "Limpeza de Tokens",
+  "send-message":         "Envio de Mensagem",
+}
+
+function formatDate(date: Date | null): string {
+  if (date === null) return "—"
+  return new Date(date).toLocaleString("pt-BR", {
+    day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit",
+  })
+}
+
+function formatDuration(ms: number | null): string {
+  if (ms === null) return "—"
+  if (ms < 1_000) return `${ms}ms`
+  return `${(ms / 1_000).toFixed(1)}s`
+}
+
+export function JobLogsTable({ rows, total, page, pageSize, totalPages }: Props): React.ReactElement {
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="overflow-x-auto rounded-md border border-border">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="bg-muted/40 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <th className="px-3 py-2">Data</th>
+              <th className="px-3 py-2">Job</th>
+              <th className="px-3 py-2">Fila</th>
+              <th className="px-3 py-2">Status</th>
+              <th className="px-3 py-2">Tentativa</th>
+              <th className="px-3 py-2">Duração</th>
+              <th className="px-3 py-2">Erro</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">
+                  Nenhum registro encontrado.
+                </td>
+              </tr>
+            )}
+            {rows.map((row) => (
+              <Fragment key={row.id}>
+                <tr
+                  className={`cursor-pointer text-xs hover:bg-muted/30 ${Boolean(row.errorMessage) ? "bg-red-50 dark:bg-red-950/20" : ""}`}
+                  style={{ borderBottom: "1px solid var(--border)" }}
+                  onClick={() => { setExpandedId(expandedId === row.id ? null : row.id) }}
+                >
+                  <td className="px-3 py-2 font-mono text-[11px] text-muted-foreground whitespace-nowrap">
+                    {formatDate(row.createdAt)}
+                  </td>
+                  <td className="px-3 py-2 font-medium">{JOB_NAME_LABELS[row.jobName] ?? row.jobName}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{QUEUE_LABELS[row.queueName] ?? row.queueName}</td>
+                  <td className="px-3 py-2">
+                    <Badge className={`${STATUS_COLORS[row.status] ?? "bg-muted text-muted-foreground border-border"} border text-[10px] font-semibold`}>
+                      {STATUS_LABELS[row.status] ?? row.status}
+                    </Badge>
+                  </td>
+                  <td className="px-3 py-2 text-muted-foreground">
+                    {row.attemptNumber}/{row.maxAttempts}
+                  </td>
+                  <td className="px-3 py-2 font-mono">{formatDuration(row.durationMs)}</td>
+                  <td className="px-3 py-2 text-red-600 max-w-[220px] truncate" title={row.errorMessage ?? undefined}>
+                    {row.errorMessage ?? "—"}
+                  </td>
+                </tr>
+                {expandedId === row.id && (
+                  <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                    <td colSpan={7} className="bg-muted/20 px-4 py-3 space-y-3">
+                      <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
+                        <div>
+                          <span className="font-semibold text-foreground">Job ID:</span>{" "}
+                          <span className="font-mono">{row.jobId}</span>
+                        </div>
+                        <div>
+                          <span className="font-semibold text-foreground">Iniciado em:</span>{" "}
+                          {formatDate(row.startedAt)}
+                        </div>
+                        <div>
+                          <span className="font-semibold text-foreground">Concluído em:</span>{" "}
+                          {formatDate(row.finishedAt)}
+                        </div>
+                        <div>
+                          <span className="font-semibold text-foreground">Enfileirado em:</span>{" "}
+                          {formatDate(row.queuedAt)}
+                        </div>
+                      </div>
+                      {row.payload !== null && row.payload !== undefined && (
+                        <div>
+                          <div className="text-xs font-semibold text-foreground mb-1">Payload:</div>
+                          <pre className="text-[11px] bg-muted p-2 rounded overflow-x-auto max-h-40">
+                            {JSON.stringify(row.payload, null, 2)}
+                          </pre>
+                        </div>
+                      )}
+                      {row.result !== null && row.result !== undefined && (
+                        <div>
+                          <div className="text-xs font-semibold text-foreground mb-1">Resultado:</div>
+                          <pre className="text-[11px] bg-muted p-2 rounded overflow-x-auto max-h-40">
+                            {JSON.stringify(row.result, null, 2)}
+                          </pre>
+                        </div>
+                      )}
+                      {Boolean(row.errorStack) && (
+                        <div>
+                          <div className="text-xs font-semibold text-red-600 mb-1">Stack trace:</div>
+                          <pre className="text-[11px] bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 p-2 rounded overflow-x-auto max-h-52 whitespace-pre-wrap">
+                            {row.errorStack}
+                          </pre>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <TablePagination
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        pageSize={pageSize}
+        pageSizeOptions={[10, 20, 30, 50]}
+      />
+    </div>
+  )
+}

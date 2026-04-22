@@ -1,4 +1,4 @@
-import { createJobWorker, createMessageWorker, type JobName, type SendMessageJobData } from "@/libs/queue"
+import { createJobWorker, createMessageWorker, QUEUE_NAME, MESSAGE_QUEUE_NAME, type JobName, type SendMessageJobData } from "@/libs/queue"
 import { getMessagingService } from "@/libs/integrations"
 import { prisma } from "@/libs/db"
 import { runSurveyDispatcher, checkDispatchAdherence, runAutoDispatchScheduler } from "@/modules/surveys/survey-dispatch.service"
@@ -7,6 +7,8 @@ import { unpauseDueEmployees } from "@/modules/employees/employee.service"
 import { sendPgrReviewReminders } from "@/modules/pgr/pgr.service"
 import { retryFailedWebhookEvents } from "@/modules/billing/webhook.handler"
 import { createMessageLog, deleteExpiredTokens } from "@/modules/surveys/survey.repository"
+import { jobLogService } from "@/modules/job-logs/job-log.service"
+import type { InsertJobLogInput } from "@/modules/job-logs/job-log.types"
 
 async function processJob(jobName: JobName): Promise<void> {
   console.log(`[worker] starting job: ${jobName}`)
@@ -62,15 +64,52 @@ async function processMessageJob(data: SendMessageJobData): Promise<void> {
   })
 }
 
+function buildJobLogInput(
+  job: { id?: string | null; name: string; data: unknown; attemptsMade: number; opts: { attempts?: number }; timestamp: number; processedOn?: number | null; finishedOn?: number | null },
+  queueName: string,
+  status: "completed" | "failed",
+  result?: unknown,
+  error?: Error,
+): InsertJobLogInput {
+  const finishedAt = new Date()
+  const startedAt = job.processedOn !== null && job.processedOn !== undefined ? new Date(job.processedOn) : undefined
+  const durationMs = startedAt !== undefined ? finishedAt.getTime() - startedAt.getTime() : undefined
+
+  return {
+    jobId: job.id ?? "",
+    jobName: job.name,
+    queueName,
+    status,
+    attemptNumber: job.attemptsMade,
+    maxAttempts: job.opts.attempts ?? 1,
+    payload: job.data,
+    queuedAt: new Date(job.timestamp),
+    finishedAt,
+    ...(result !== undefined ? { result } : {}),
+    ...(startedAt !== undefined ? { startedAt } : {}),
+    ...(durationMs !== undefined ? { durationMs } : {}),
+    ...(error?.message !== undefined ? { errorMessage: error.message } : {}),
+    ...(error?.stack !== undefined ? { errorStack: error.stack } : {}),
+  }
+}
+
 const jobWorker = createJobWorker(processJob)
 const messageWorker = createMessageWorker(processMessageJob)
 
-jobWorker.on("completed", (job) => {
+jobWorker.on("completed", (job, result) => {
   console.log(`[job-worker] completed: ${job.name} (id: ${job.id})`)
+  jobLogService.insertJobLog(buildJobLogInput(job, QUEUE_NAME, "completed", result)).catch((err: Error) => {
+    console.error(`[job-worker] failed to write job log: ${err.message}`)
+  })
 })
 
 jobWorker.on("failed", (job, err) => {
   console.error(`[job-worker] failed: ${job?.name} (id: ${job?.id}) — ${err.message}`)
+  if (job !== undefined) {
+    jobLogService.insertJobLog(buildJobLogInput(job, QUEUE_NAME, "failed", undefined, err)).catch((logErr: Error) => {
+      console.error(`[job-worker] failed to write job log: ${logErr.message}`)
+    })
+  }
 })
 
 jobWorker.on("error", (err) => {
@@ -79,10 +118,18 @@ jobWorker.on("error", (err) => {
 
 messageWorker.on("completed", (job) => {
   console.log(`[msg-worker] sent to ${job.data.to} (id: ${job.id})`)
+  jobLogService.insertJobLog(buildJobLogInput(job, MESSAGE_QUEUE_NAME, "completed", { to: job.data.to, type: job.data.type })).catch((err: Error) => {
+    console.error(`[msg-worker] failed to write job log: ${err.message}`)
+  })
 })
 
 messageWorker.on("failed", (job, err) => {
   console.error(`[msg-worker] failed to ${job?.data.to} (attempt ${job?.attemptsMade ?? 0}) — ${err.message}`)
+  if (job !== undefined) {
+    jobLogService.insertJobLog(buildJobLogInput(job, MESSAGE_QUEUE_NAME, "failed", undefined, err)).catch((logErr: Error) => {
+      console.error(`[msg-worker] failed to write job log: ${logErr.message}`)
+    })
+  }
 })
 
 messageWorker.on("error", (err) => {

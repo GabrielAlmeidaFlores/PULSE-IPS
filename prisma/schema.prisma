@@ -646,3 +646,28 @@ model RequestLog {
   @@index([userId])
   @@map("request_logs")
 }
+
+model JobLog {
+  id            String    @id @default(uuid())
+  jobId         String    @map("job_id")
+  jobName       String    @map("job_name")
+  queueName     String    @map("queue_name")
+  status        String
+  attemptNumber Int       @default(1) @map("attempt_number")
+  maxAttempts   Int       @default(1) @map("max_attempts")
+  payload       Json?
+  result        Json?
+  errorMessage  String?   @map("error_message")
+  errorStack    String?   @map("error_stack")
+  queuedAt      DateTime? @map("queued_at")
+  startedAt     DateTime? @map("started_at")
+  finishedAt    DateTime? @map("finished_at")
+  durationMs    Int?      @map("duration_ms")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@index([createdAt(sort: Desc)])
+  @@index([jobName])
+  @@index([status])
+  @@index([queueName])
+  @@map("job_logs")
+}

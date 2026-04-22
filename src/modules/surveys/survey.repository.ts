@@ -331,7 +331,7 @@ export async function createSurveyTokens(tokens: CreateSurveyTokenInput[]): Prom
 export async function markDispatchSent(tenantId: string, dispatchId: string, totalRecipients: number): Promise<void> {
   await prisma.surveyDispatch.updateMany({
     where: { id: dispatchId, tenantId },
-    data: { status: "dispatched", dispatchedAt: new Date(), totalRecipients },
+    data: { status: "sent", dispatchedAt: new Date(), totalRecipients },
   })
 }
 
@@ -378,7 +378,7 @@ export async function findActiveConfigsForAutoDispatch(): Promise<ActiveConfigFo
         },
       },
       dispatches: {
-        where: { status: "dispatched" },
+        where: { status: "sent" },
         orderBy: { dispatchedAt: "desc" },
         take: 1,
         select: { dispatchedAt: true },
@@ -423,7 +423,7 @@ export interface PendingAdherenceDispatch {
 export function findDispatches48hAgo(): Promise<PendingAdherenceDispatch[]> {
   const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000)
   return prisma.surveyDispatch.findMany({
-    where: { status: "dispatched", dispatchedAt: { lte: cutoff }, adherenceCheckedAt: null },
+    where: { status: "sent", dispatchedAt: { lte: cutoff }, adherenceCheckedAt: null },
     include: { surveyConfiguration: true },
   })
 }
