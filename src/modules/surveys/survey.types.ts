@@ -56,8 +56,19 @@ export interface SurveyDispatchType {
   createdAt: Date
 }
 
+export type ConsentStatus = "accepted" | "needs_consent"
+
 export type SurveyTokenValidation =
-  | { valid: true; token: { id: string; dispatchId: string; employeeId: string; workStartTime: string; workEndTime: string; tenantId: string }; questions: { id: string; text: string; order: number }[]; timezone: string }
+  | {
+      valid: true
+      employeeName: string
+      consentStatus: ConsentStatus
+      consentTermVersionId: string | null
+      consentTermContent: string | null
+      token: { id: string; dispatchId: string; employeeId: string; workStartTime: string; workEndTime: string; tenantId: string }
+      questions: { id: string; text: string; order: number }[]
+      timezone: string
+    }
   | { valid: false; error: string }
 
 export interface CreateSurveyConfigInput {

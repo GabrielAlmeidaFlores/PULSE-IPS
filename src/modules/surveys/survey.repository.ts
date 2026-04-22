@@ -6,7 +6,7 @@ type SurveyConfigWithWorkDays = Prisma.SurveyConfigurationGetPayload<{ include: 
 export type SurveyConfigWithDetails = SurveyConfigWithWorkDays & { department: Department; questions: SurveyQuestion[] }
 export type DispatchWithConfig = SurveyDispatch & { surveyConfiguration: SurveyConfiguration & { department: Department } }
 export type DispatchWithDetails = SurveyDispatch & { surveyConfiguration: SurveyConfiguration & { questions: SurveyQuestion[] }; responses: SurveyResponse[] }
-export type TokenWithDispatch = SurveyResponseToken & { dispatch: SurveyDispatch & { surveyConfiguration: SurveyConfiguration & { questions: SurveyQuestion[]; organization: Organization } } }
+export type TokenWithDispatch = SurveyResponseToken & { employee: Employee; dispatch: SurveyDispatch & { surveyConfiguration: SurveyConfiguration & { questions: SurveyQuestion[]; organization: Organization } } }
 
 export function findSurveyConfigsByTenant(tenantId: string): Promise<SurveyConfigWithDetails[]> {
   return prisma.surveyConfiguration.findMany({
@@ -263,7 +263,10 @@ export function findPendingDispatches(): Promise<
 export function findTokenByValue(token: string): Promise<TokenWithDispatch | null> {
   return prisma.surveyResponseToken.findUnique({
     where: { token },
-    include: { dispatch: { include: { surveyConfiguration: { include: { questions: { orderBy: { order: "asc" } }, organization: true } } } } },
+    include: {
+      employee: true,
+      dispatch: { include: { surveyConfiguration: { include: { questions: { orderBy: { order: "asc" } }, organization: true } } } },
+    },
   })
 }
 
@@ -334,6 +337,7 @@ export async function markDispatchSent(tenantId: string, dispatchId: string, tot
 
 export interface DispatchEmployee {
   id: string
+  name: string
   phone: string
   workStartTime: string | null
   workEndTime: string | null
@@ -397,6 +401,7 @@ export async function findActiveConfigsForAutoDispatch(): Promise<ActiveConfigFo
         workDays: c.department.workDays.map((w) => w.dayOfWeek),
         employees: c.department.employees.map((emp) => ({
           id: emp.id,
+          name: emp.name,
           phone: emp.phone,
           workStartTime: emp.workStartTime,
           workEndTime: emp.workEndTime,

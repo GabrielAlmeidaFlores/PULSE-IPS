@@ -2,8 +2,10 @@
 
 import type { ActionResult } from "@/libs/utils/action-result"
 import { submitSurveyResponse } from "@/modules/surveys/survey.service"
-import { optOutFromSurvey } from "@/modules/consent/consent.service"
+import { optOutFromSurveyToken, acceptConsentFromSurveyToken, refuseConsentFromSurveyToken } from "@/modules/consent/consent.service"
 
+
+const UNEXPECTED_ERROR_MESSAGE = "Ocorreu um erro inesperado."
 
 export async function submitSurveyAction(
   token: string,
@@ -13,15 +15,33 @@ export async function submitSurveyAction(
     await submitSurveyResponse({ token, answers })
     return {}
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Ocorreu um erro inesperado." }
+    return { error: error instanceof Error ? error.message : UNEXPECTED_ERROR_MESSAGE }
   }
 }
 
 export async function optOutSurveyAction(token: string): Promise<ActionResult> {
   try {
-    await optOutFromSurvey(token)
+    await optOutFromSurveyToken(token)
     return {}
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Ocorreu um erro inesperado." }
+    return { error: error instanceof Error ? error.message : UNEXPECTED_ERROR_MESSAGE }
+  }
+}
+
+export async function acceptConsentAction(token: string): Promise<ActionResult> {
+  try {
+    await acceptConsentFromSurveyToken(token)
+    return {}
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : UNEXPECTED_ERROR_MESSAGE }
+  }
+}
+
+export async function refuseConsentAction(token: string): Promise<ActionResult> {
+  try {
+    await refuseConsentFromSurveyToken(token)
+    return {}
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : UNEXPECTED_ERROR_MESSAGE }
   }
 }

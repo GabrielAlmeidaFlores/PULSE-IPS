@@ -12,13 +12,13 @@ export class TwilioSmsAdapter implements IMessagingService {
   private client = Twilio(env.TWILIO_ACCOUNT_SID ?? "", env.TWILIO_AUTH_TOKEN ?? "")
 
   async send(params: SendMessageParams): Promise<SendMessageResult> {
-    if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN || !env.TWILIO_PHONE_NUMBER) {
-      throw new Error("Twilio não configurado: defina TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN e TWILIO_PHONE_NUMBER")
+    if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN || !env.TWILIO_FROM_NUMBER) {
+      throw new Error("Twilio não configurado: defina TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN e TWILIO_FROM_NUMBER")
     }
     try {
       const message = await this.client.messages.create({
         body: params.body,
-        from: env.TWILIO_PHONE_NUMBER,
+        from: env.TWILIO_FROM_NUMBER,
         to: params.to,
       })
       return { externalId: message.sid, status: "queued" }

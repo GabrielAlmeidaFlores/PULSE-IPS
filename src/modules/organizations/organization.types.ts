@@ -25,3 +25,60 @@ export interface UpdateOrganizationInput {
   isActive?: boolean
   maxEmployeesOverride?: number | null
 }
+
+export interface OrgUserSummary {
+  id: string
+  name: string
+  email: string
+  role: string
+  createdAt: Date
+}
+
+export interface OrgAuditEntry {
+  id: string
+  userId: string | null
+  action: string
+  resource: string
+  createdAt: Date
+}
+
+export interface OrgFullDetail {
+  id: string
+  name: string
+  slug: string
+  externalCustomerId: string | null
+  billingStatus: string
+  maxEmployeesOverride: number | null
+  timezone: string
+  isActive: boolean
+  createdAt: Date
+  updatedAt: Date
+  plan: { id: string; name: string; maxEmployees: number | null } | null
+  subscription: {
+    id: string
+    status: string
+    snapshotPlanName: string
+    snapshotMaxEmployees: number
+    snapshotPriceInCents: number
+    snapshotInterval: string
+    currentPeriodStart: Date
+    currentPeriodEnd: Date
+    cancelAtPeriodEnd: boolean
+    createdAt: Date
+  } | null
+  users: OrgUserSummary[]
+  recentAuditLogs: OrgAuditEntry[]
+  employeeCounts: { active: number; inactive: number; paused: number }
+  departmentCount: number
+  dispatchCount: number
+  responseCount: number
+  openAlertCount: number
+  totalAlertCount: number
+  reportCount: number
+  openReportCount: number
+  documentCount: number
+  actionPlanCount: number
+  openActionPlanCount: number
+  messagesThisMonth: number
+  lastPgrReview: { reviewedAt: Date | null; nextReviewAt: Date | null } | null
+}

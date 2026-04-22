@@ -1,5 +1,5 @@
 import { validateSurveyToken } from "@/modules/surveys/survey.service"
-import { SurveyForm } from "@/app/(public)/survey/[token]/survey-form"
+import { SurveyPageClient } from "@/app/(public)/survey/[token]/survey-page-client"
 
 interface Props {
   params: Promise<{ token: string }>
@@ -24,8 +24,11 @@ export default async function SurveyPage({ params }: Props): Promise<React.React
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 py-12">
-      <SurveyForm
+      <SurveyPageClient
         token={token}
+        employeeName={validation.employeeName}
+        consentStatus={validation.consentStatus}
+        consentTermContent={validation.consentTermContent}
         questions={validation.questions}
       />
     </div>

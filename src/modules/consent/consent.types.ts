@@ -14,6 +14,11 @@ export interface ConsentRecord {
   createdAt: Date
 }
 
+export interface CreateConsentTermVersionInput {
+  version: string
+  content: string
+}
+
 export interface CreateConsentRecordInput {
   tenantId: string
   employeeId: string
@@ -24,3 +29,4 @@ export interface CreateConsentRecordInput {
   token?: string | undefined
   tokenExpiresAt?: Date | undefined
 }
+

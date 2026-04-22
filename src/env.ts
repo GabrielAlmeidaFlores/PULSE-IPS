@@ -16,7 +16,11 @@ export const env = createEnv({
       .default("console"),
     TWILIO_ACCOUNT_SID: z.string().startsWith("AC").optional(),
     TWILIO_AUTH_TOKEN: z.string().min(1).optional(),
-    TWILIO_PHONE_NUMBER: z.string().startsWith("+").optional(),
+    TWILIO_FROM_NUMBER: z.string().startsWith("+").optional(),
+
+    SURVEY_MESSAGE_TEMPLATE: z
+      .string()
+      .default("Oi, {nome}! 👋 Tudo bem por aí? Sua opinião faz a diferença para a gente 🌱 Quando tiver um momento, aqui está o seu formulário de bem-estar: {link}"),
 
     EMAIL_PROVIDER: z.enum(["resend", "console"]).default("console"),
     RESEND_API_KEY: z.string().startsWith("re_").optional(),
@@ -51,7 +55,9 @@ export const env = createEnv({
     MESSAGING_PROVIDER: process.env.MESSAGING_PROVIDER,
     TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID,
     TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN,
-    TWILIO_PHONE_NUMBER: process.env.TWILIO_PHONE_NUMBER,
+    TWILIO_FROM_NUMBER: process.env.TWILIO_FROM_NUMBER,
+
+    SURVEY_MESSAGE_TEMPLATE: process.env.SURVEY_MESSAGE_TEMPLATE,
 
     EMAIL_PROVIDER: process.env.EMAIL_PROVIDER,
     RESEND_API_KEY: process.env.RESEND_API_KEY,

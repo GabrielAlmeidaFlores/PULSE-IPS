@@ -9,6 +9,7 @@ import {
   findOrganizationForAdmin,
   findOrganizationBilling,
   findAllOrganizationsForExport,
+  findOrganizationFullDetail,
 } from "@/modules/organizations/organization.repository"
 import type { CreateOrganizationInput, UpdateOrganizationInput } from "@/modules/organizations/organization.types"
 import type { Organization } from "@prisma/client"
@@ -51,5 +52,9 @@ export function getOrganizationBilling(id: string): ReturnType<typeof findOrgani
 
 export function getOrganizationsForExport(): ReturnType<typeof findAllOrganizationsForExport> {
   return findAllOrganizationsForExport()
+}
+
+export function getOrganizationFullDetail(id: string): ReturnType<typeof findOrganizationFullDetail> {
+  return findOrganizationFullDetail(id)
 }
 

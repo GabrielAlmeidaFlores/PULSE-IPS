@@ -1,6 +1,7 @@
+import { createHash } from "crypto"
 import { prisma } from "@/libs/db"
 import type { EmployeeConsent, ConsentTermVersion } from "@prisma/client"
-import type { CreateConsentRecordInput } from "@/modules/consent/consent.types"
+import type { CreateConsentRecordInput, CreateConsentTermVersionInput } from "@/modules/consent/consent.types"
 
 export type ConsentWithTermVersion = EmployeeConsent & { consentTermVersion: ConsentTermVersion }
 
@@ -55,4 +56,36 @@ export function getActiveConsentTermVersion(): Promise<ConsentTermVersion | null
 
 export function findEmployeeForConsent(tenantId: string, employeeId: string): Promise<import("@prisma/client").Employee | null> {
   return prisma.employee.findFirst({ where: { id: employeeId, tenantId } })
+}
+
+export function getAllConsentTermVersions(): Promise<ConsentTermVersion[]> {
+  return prisma.consentTermVersion.findMany({ orderBy: { createdAt: "desc" } })
+}
+
+export function createConsentTermVersion(data: CreateConsentTermVersionInput): Promise<ConsentTermVersion> {
+  const contentHash = createHash("sha256").update(data.content).digest("hex")
+  return prisma.$transaction(async (tx) => {
+    await tx.consentTermVersion.updateMany({ where: { isActive: true }, data: { isActive: false } })
+    return tx.consentTermVersion.create({
+      data: {
+        version: data.version,
+        content: data.content,
+        contentHash,
+        isActive: true,
+      },
+    })
+  })
+}
+
+export async function findEmployeeIdsWithAcceptedConsent(tenantId: string, employeeIds: string[]): Promise<string[]> {
+  if (employeeIds.length === 0) return []
+  const latestConsents = await prisma.employeeConsent.findMany({
+    where: { tenantId, employeeId: { in: employeeIds } },
+    orderBy: { createdAt: "desc" },
+    distinct: ["employeeId"],
+    select: { employeeId: true, event: true },
+  })
+  return latestConsents
+    .filter((c) => c.event === "accepted")
+    .map((c) => c.employeeId)
 }

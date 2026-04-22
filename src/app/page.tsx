@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { CheckCircle2, Shield, ClipboardList, Bell, FileText, Users, BarChart3, ArrowRight, Building2, Star } from "lucide-react"
+import { CheckCircle2, Shield, ClipboardList, Bell, FileText, Users, BarChart3, ArrowRight, Building2, Star, AlertTriangle, ChevronDown } from "lucide-react"
 import { Logo } from "@/libs/design-system/components/logo"
 import { getAllPlans } from "@/modules/plans/plan.service"
 import { env } from "@/env"
@@ -31,6 +31,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
             <a href="#recursos" className="hover:text-foreground transition-colors">Recursos</a>
             <a href="#como-funciona" className="hover:text-foreground transition-colors">Como funciona</a>
             <a href="#planos" className="hover:text-foreground transition-colors">Planos</a>
+            <a href="#faq" className="hover:text-foreground transition-colors">Dúvidas</a>
             <Link href="/learn-more" className="hover:text-foreground transition-colors">Saiba mais</Link>
           </nav>
           <div className="flex items-center gap-3">
@@ -46,6 +47,12 @@ export default async function LandingPage(): Promise<React.ReactElement> {
           </div>
         </div>
       </header>
+
+      <div className="bg-amber-500 text-white text-center py-2.5 px-4 text-xs font-semibold tracking-wide">
+        <AlertTriangle className="inline w-3.5 h-3.5 mr-1.5 -mt-0.5" />
+        NR-1 obrigatória a partir de <strong>maio de 2026</strong> — sua empresa já está preparada?{" "}
+        <Link href="/learn-more" className="underline underline-offset-2 hover:no-underline">Entenda o risco</Link>
+      </div>
 
       <section
         className="relative overflow-hidden pt-24 pb-20"
@@ -102,9 +109,9 @@ export default async function LandingPage(): Promise<React.ReactElement> {
           <div className="mt-16 flex flex-wrap justify-center gap-12 text-sm text-muted-foreground">
             {(
               [
-                ["+500", "Funcionários monitorados"],
-                ["98%", "Taxa de conformidade"],
-                ["3x", "Mais rápido que planilhas"],
+                ["mai/2026", "Prazo legal da nova NR-1"],
+                ["< 30 min", "Para configurar e estar pronto"],
+                ["100%", "Anonimato nas respostas"],
               ] as [string, string][]
             ).map(([num, label]) => (
               <div key={label} className="text-center">
@@ -342,6 +349,67 @@ export default async function LandingPage(): Promise<React.ReactElement> {
               )
             })()} </>
         )}
+      </section>
+
+      <section id="faq" className="py-24 bg-muted/30 border-y border-border">
+        <div className="max-w-3xl mx-auto px-6">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">Dúvidas frequentes</h2>
+            <p className="text-lg text-muted-foreground max-w-xl mx-auto">
+              Tudo o que você precisa saber antes de começar.
+            </p>
+          </div>
+          <div className="space-y-4">
+            {[
+              {
+                q: "O que acontece se minha empresa não cumprir a NR-1?",
+                a: "A fiscalização pelo Ministério do Trabalho pode resultar em multas, interdição de atividades e processos trabalhistas. A partir de maio de 2026, o monitoramento de riscos psicossociais passa a ser exigência expressa — empresas sem documentação comprobatória ficam expostas.",
+              },
+              {
+                q: "Quanto tempo leva para configurar e começar?",
+                a: "Em média 20 a 30 minutos. Você cria a conta, importa sua equipe via planilha Excel, configura a frequência das pesquisas e está pronto. O sistema cuida do resto automaticamente.",
+              },
+              {
+                q: "Os colaboradores precisam criar uma conta ou instalar algum app?",
+                a: "Não. Eles recebem um link pelo WhatsApp ou SMS e respondem diretamente no navegador do celular. Sem cadastro, sem download, sem fricção.",
+              },
+              {
+                q: "As respostas são realmente anônimas?",
+                a: "Sim, por design técnico. Após o colaborador abrir o link da pesquisa, qualquer vínculo entre o token e a resposta é eliminado. Nem o RH, nem o gestor, nem nenhum administrador consegue saber quem respondeu o quê.",
+              },
+              {
+                q: "E se o colaborador não quiser participar?",
+                a: "Participação é sempre voluntária. O colaborador pode recusar o consentimento ou optar por sair a qualquer momento. A recusa é registrada formalmente, protegendo a empresa e respeitando os direitos do trabalhador.",
+              },
+              {
+                q: "Posso cancelar quando quiser?",
+                a: "Sim. Sem fidelidade, sem multa. Você pode cancelar a qualquer momento pelo próprio painel da plataforma. Seus dados ficam disponíveis para exportação por 30 dias após o cancelamento.",
+              },
+            ].map((item) => (
+              <details
+                key={item.q}
+                className="group rounded-xl border border-border bg-white overflow-hidden"
+              >
+                <summary className="flex items-center justify-between gap-4 px-6 py-5 cursor-pointer list-none font-semibold text-sm text-foreground hover:bg-muted/30 transition-colors">
+                  {item.q}
+                  <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 transition-transform group-open:rotate-180" />
+                </summary>
+                <div className="px-6 pb-5 text-sm text-muted-foreground leading-relaxed border-t border-border pt-4">
+                  {item.a}
+                </div>
+              </details>
+            ))}
+          </div>
+          <div className="mt-10 text-center">
+            <p className="text-sm text-muted-foreground mb-4">Ainda tem dúvidas?</p>
+            <a
+              href={whatsappUrl("Olá! Tenho algumas dúvidas sobre o Pulse antes de contratar.")}
+              className="inline-flex items-center justify-center h-10 px-6 rounded-lg border border-border text-sm font-semibold text-foreground hover:border-primary/40 hover:bg-primary/5 transition-all"
+            >
+              Falar com a equipe no WhatsApp
+            </a>
+          </div>
+        </div>
       </section>
 
       <section

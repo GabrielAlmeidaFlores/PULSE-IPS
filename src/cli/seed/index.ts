@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { createHash } from "crypto";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -258,6 +259,274 @@ const TERMS_V1 = {
 </p>`,
 };
 
+const CONSENT_TERM_V1 = {
+  version: "1.0.0",
+  content: `<h2>Termo de Consentimento Livre e Esclarecido (TCLE)</h2>
+<p><strong>Versão:</strong> 1.0.0 &nbsp;|&nbsp; <strong>Vigência:</strong> 01 de janeiro de 2026</p>
+<p>
+  Este documento é um Termo de Consentimento Livre e Esclarecido (TCLE), elaborado em conformidade
+  com a <strong>Lei Geral de Proteção de Dados Pessoais (Lei nº 13.709/2018 — LGPD)</strong> e com as
+  exigências da <strong>Norma Regulamentadora NR-1 (Portaria MTE nº 1.419/2024)</strong>, que passou a exigir
+  o gerenciamento de riscos psicossociais no ambiente de trabalho a partir de maio de 2026.
+</p>
+<p>
+  <strong>Leia com atenção antes de aceitar.</strong> Sua participação é completamente voluntária.
+  Aceitar ou recusar não gera qualquer consequência trabalhista, funcional ou disciplinar.
+</p>
+
+<hr/>
+
+<h2>1. Quem somos — Identificação das Partes</h2>
+<p>
+  A plataforma <strong>Pulse</strong> ("Pulse" ou "plataforma") é operada pela
+  <strong>Pulse Tecnologia em Saúde Ocupacional</strong>, e contratada pela sua empregadora
+  ("Organização" ou "empresa") para auxiliar no monitoramento do bem-estar dos colaboradores,
+  em atendimento às obrigações legais de saúde e segurança do trabalho.
+</p>
+<p>Nesta relação:</p>
+<ul>
+  <li><strong>Você</strong> (colaborador) é o <strong>titular dos dados pessoais</strong>;</li>
+  <li><strong>Sua empresa</strong> é a <strong>controladora dos dados</strong> — ela define a finalidade da coleta;</li>
+  <li><strong>Pulse</strong> é a <strong>operadora dos dados</strong> — trata os dados conforme instruções da controladora.</li>
+</ul>
+
+<h2>2. Para que seus dados serão usados — Finalidade</h2>
+<p>
+  Ao aceitar este termo, você autoriza a coleta e o tratamento das seguintes informações,
+  exclusivamente para as finalidades abaixo:
+</p>
+<ul>
+  <li>
+    <strong>Respostas às pesquisas de bem-estar:</strong> avaliações periódicas sobre fatores como
+    clima organizacional, carga de trabalho, relacionamentos interpessoais e condições físicas do
+    ambiente. As respostas são utilizadas para calcular indicadores agregados por setor, identificar
+    riscos psicossociais e apoiar ações de melhoria — em cumprimento à NR-1.
+  </li>
+  <li>
+    <strong>Registro de consentimento:</strong> data, hora e versão do termo aceito, para fins de
+    auditoria legal e comprovação de conformidade com a LGPD.
+  </li>
+  <li>
+    <strong>Relatos anônimos (opcional):</strong> caso você utilize o canal de relatos, o conteúdo
+    será tratado de forma anônima para apoiar ações corretivas pela empresa.
+  </li>
+</ul>
+<p>
+  <strong>Seus dados não serão utilizados para:</strong> avaliação de desempenho individual,
+  decisões de promoção ou demissão, punições disciplinares, ou qualquer finalidade distinta
+  das descritas acima.
+</p>
+
+<h2>3. Garantia de Anonimato — Como protegemos sua identidade</h2>
+<p>O sistema foi projetado com <strong>dupla camada de anonimato</strong>:</p>
+<ul>
+  <li>
+    <strong>Desvinculamento no envio:</strong> quando você responde uma pesquisa, suas respostas são
+    registradas <em>sem qualquer identificador pessoal</em> — sem nome, sem matrícula, sem e-mail.
+    O link de acesso é descartado após o uso e não pode ser rastreado de volta a você.
+  </li>
+  <li>
+    <strong>Mínimo de 5 respondentes:</strong> métricas e médias de um setor só são exibidas para a
+    empresa quando ao menos 5 colaboradores responderam naquele período. Se menos de 5 pessoas
+    responderam, nenhum resultado é exibido — tornando impossível a identificação por eliminação.
+  </li>
+  <li>
+    <strong>Data sem hora:</strong> apenas a data da resposta (sem horário) é armazenada, impedindo
+    cruzamento com registros de acesso.
+  </li>
+  <li>
+    <strong>Relatos anônimos:</strong> o canal de relatos não coleta IP, identificador de dispositivo
+    ou qualquer metadado que permita identificar o autor.
+  </li>
+</ul>
+<p>
+  <strong>Nem o RH, nem a gestão, nem a Pulse conseguem identificar quem respondeu o quê.</strong>
+  Isso é uma garantia técnica, não apenas uma promessa.
+</p>
+
+<h2>4. Dados que NÃO são coletados</h2>
+<p>A plataforma <strong>não coleta e não armazena</strong>:</p>
+<ul>
+  <li>Respostas individuais vinculadas ao seu nome ou identificação;</li>
+  <li>Localização geográfica ou endereço IP no momento da resposta;</li>
+  <li>Dados biométricos de qualquer natureza;</li>
+  <li>Informações médicas, diagnósticos ou prontuários;</li>
+  <li>Histórico de navegação ou dados de outros aplicativos;</li>
+  <li>
+    Número de CPF em texto puro — caso coletado para verificação pontual de identidade,
+    é armazenado exclusivamente como <em>hash</em> criptográfico irreversível (SHA-256),
+    impossível de reverter ao CPF original.
+  </li>
+</ul>
+
+<h2>5. Base Legal — Fundamento jurídico do tratamento</h2>
+<p>
+  O tratamento dos seus dados nesta plataforma está fundamentado no
+  <strong>Art. 7º, inciso I, da LGPD</strong>: <em>consentimento do titular</em>.
+</p>
+<p>O consentimento é:</p>
+<ul>
+  <li><strong>Livre:</strong> não há qualquer obrigação, pressão ou consequência por recusar;</li>
+  <li><strong>Informado:</strong> você está lendo agora todas as informações necessárias;</li>
+  <li><strong>Inequívoco:</strong> sua aceitação é um ato positivo e expresso — não há aceitação por omissão;</li>
+  <li><strong>Específico:</strong> válido apenas para as finalidades descritas neste termo.</li>
+</ul>
+
+<h2>6. Compartilhamento de Dados</h2>
+<p>Seus dados <strong>não são vendidos, alugados ou compartilhados comercialmente</strong>.</p>
+<p>O acesso aos dados é restrito a:</p>
+<ul>
+  <li>
+    <strong>Sua empresa (controladora):</strong> acessa apenas métricas agregadas e anônimas por setor.
+    Não tem acesso a respostas individuais identificadas;
+  </li>
+  <li>
+    <strong>Pulse (operadora):</strong> acessa dados técnicos necessários para operar a plataforma,
+    sem interesse comercial nos dados pessoais e sem capacidade técnica de identificar respostas individuais;
+  </li>
+  <li>
+    <strong>Fornecedores de infraestrutura:</strong> serviços de hospedagem e envio de mensagens
+    (SMS/WhatsApp), sujeitos a acordos de confidencialidade e adequação à LGPD;
+  </li>
+  <li>
+    <strong>Autoridades competentes:</strong> apenas quando exigido por lei, regulamentação ou ordem judicial válida.
+  </li>
+</ul>
+
+<h2>7. Armazenamento, Segurança e Retenção</h2>
+<p>
+  Os dados são armazenados em servidores com criptografia em repouso e em trânsito (TLS 1.2+),
+  localizados no Brasil ou em jurisdições com nível de proteção equivalente reconhecido pela ANPD.
+</p>
+<p>
+  O registro deste consentimento é mantido pelo prazo mínimo de <strong>5 anos</strong> após
+  o encerramento do vínculo empregatício, para fins de comprovação legal conforme exigência da
+  NR-1 e da LGPD.
+</p>
+<p>
+  Respostas às pesquisas são retidas pelo período de vigência do contrato entre sua empresa e a Pulse,
+  sendo anonimizadas ou excluídas após o encerramento, conforme solicitação da empresa.
+</p>
+<p>
+  A Pulse adota medidas técnicas e administrativas de segurança adequadas, incluindo: controle de
+  acesso por perfil de usuário, logs de auditoria imutáveis, criptografia de dados sensíveis e
+  monitoramento contínuo de vulnerabilidades.
+</p>
+
+<h2>8. Seus Direitos como Titular — Art. 18 da LGPD</h2>
+<p>Você tem os seguintes direitos em relação aos seus dados pessoais:</p>
+<ul>
+  <li><strong>Confirmação e acesso:</strong> saber quais dados seus estão sendo tratados;</li>
+  <li><strong>Correção:</strong> solicitar a correção de dados incompletos ou incorretos;</li>
+  <li>
+    <strong>Anonimização ou exclusão:</strong> solicitar a anonimização ou exclusão de dados
+    desnecessários ou tratados em desconformidade com a LGPD;
+  </li>
+  <li><strong>Portabilidade:</strong> receber seus dados em formato estruturado e interoperável;</li>
+  <li>
+    <strong>Revogação do consentimento:</strong> cancelar sua participação a qualquer momento,
+    sem qualquer penalidade (ver cláusula 9);
+  </li>
+  <li><strong>Oposição:</strong> opor-se ao tratamento realizado em desconformidade com a lei;</li>
+  <li><strong>Informação sobre compartilhamento:</strong> saber com quem seus dados foram compartilhados;</li>
+  <li>
+    <strong>Revisão de decisões automatizadas:</strong> solicitar revisão humana de decisões tomadas
+    exclusivamente por algoritmos que afetem seus interesses.
+  </li>
+</ul>
+<p>
+  Para exercer qualquer um desses direitos, entre em contato com o RH da sua empresa ou pelo e-mail
+  de privacidade da Pulse: <strong>privacidade@usepulse.com.br</strong>
+</p>
+
+<h2>9. Como Revogar seu Consentimento</h2>
+<p>Você pode revogar seu consentimento a qualquer momento, de duas formas:</p>
+<ul>
+  <li>
+    <strong>Pelo formulário de pesquisa:</strong> ao receber um link de pesquisa, clique em
+    "Não quero mais participar" — sua solicitação será registrada imediatamente;
+  </li>
+  <li>
+    <strong>Pelo RH da sua empresa:</strong> solicite ao setor de Recursos Humanos que registre
+    sua saída da plataforma.
+  </li>
+</ul>
+<p>
+  Após a revogação, você não receberá mais pesquisas. Respostas já fornecidas permanecem nos
+  registros de forma anônima — não é possível excluí-las individualmente pois não há como
+  identificar quais respostas foram suas.
+</p>
+<p>
+  A revogação do consentimento <strong>não gera nenhuma consequência trabalhista, funcional ou disciplinar</strong>.
+</p>
+
+<h2>10. Proteção da Empresa — Uso correto dos dados</h2>
+<p>
+  A empresa contratante da Pulse assume, perante seus colaboradores e perante a lei, as seguintes
+  obrigações irrenunciáveis:
+</p>
+<ul>
+  <li>
+    Não utilizar os dados da plataforma para tomar decisões individuais de contratação, promoção,
+    punição ou demissão;
+  </li>
+  <li>
+    Não tentar identificar respondentes individuais a partir de métricas agregadas, mesmo por
+    cruzamento de informações externas;
+  </li>
+  <li>
+    Garantir que apenas usuários autorizados (RH e gestores designados) acessem os relatórios
+    da plataforma;
+  </li>
+  <li>
+    Utilizar os dados exclusivamente para as finalidades previstas: diagnóstico organizacional,
+    cumprimento da NR-1 e implementação de planos de melhoria coletiva.
+  </li>
+</ul>
+<p>
+  O descumprimento dessas obrigações pela empresa pode ensejar responsabilidade civil e
+  administrativa nos termos da LGPD e da legislação trabalhista.
+</p>
+
+<h2>11. Atualizações deste Termo</h2>
+<p>
+  Este termo pode ser atualizado periodicamente para refletir mudanças no serviço, na legislação
+  ou nas melhores práticas de proteção de dados. Quando isso ocorrer:
+</p>
+<ul>
+  <li>Você será notificado por SMS ou WhatsApp com um novo link de consentimento;</li>
+  <li>A participação nas pesquisas ficará suspensa até que você aceite o novo termo;</li>
+  <li>Você sempre poderá recusar o novo termo sem qualquer consequência.</li>
+</ul>
+
+<h2>12. Canais de Contato e Encarregado de Dados (DPO)</h2>
+<p>Para dúvidas, solicitações ou reclamações relacionadas a este termo ou ao tratamento dos seus dados:</p>
+<ul>
+  <li><strong>RH da sua empresa:</strong> canal preferencial para solicitações do dia a dia;</li>
+  <li><strong>Pulse — Encarregado de Proteção de Dados (DPO):</strong> privacidade@usepulse.com.br</li>
+  <li>
+    <strong>Autoridade Nacional de Proteção de Dados (ANPD):</strong>
+    caso acredite que seus direitos foram violados —
+    <strong>www.gov.br/anpd</strong>
+  </li>
+</ul>
+
+<hr/>
+
+<p><strong>Ao aceitar este termo, você declara que:</strong></p>
+<ul>
+  <li>Leu e compreendeu todas as informações acima;</li>
+  <li>Aceita voluntariamente participar das pesquisas periódicas de bem-estar;</li>
+  <li>Está ciente de que suas respostas são anônimas e não podem ser vinculadas à sua identidade;</li>
+  <li>Sabe que pode revogar este consentimento a qualquer momento sem qualquer penalidade;</li>
+  <li>Tem ciência dos seus direitos como titular de dados pessoais conforme a LGPD.</li>
+</ul>
+<p style="font-size:11px;color:#64748b;margin-top:16px;">
+  Pulse Tecnologia em Saúde Ocupacional · privacidade@usepulse.com.br ·
+  Versão 1.0.0 — Vigente a partir de 01/01/2026
+</p>`,
+};
+
 async function seedSuperAdmin() {
   const existing = await prisma.superAdmin.findUnique({
     where: { email: SUPER_ADMIN.email },
@@ -306,11 +575,40 @@ async function seedTerms() {
   console.log(`✅ Terms v${TERMS_V1.version} created`);
 }
 
+async function seedConsentTerms() {
+  const existing = await prisma.consentTermVersion.findUnique({
+    where: { version: CONSENT_TERM_V1.version },
+  });
+  if (existing) {
+    console.log(`⏭  Consent term v${CONSENT_TERM_V1.version} already exists`);
+    return;
+  }
+
+  const contentHash = createHash("sha256").update(CONSENT_TERM_V1.content).digest("hex");
+  await prisma.$transaction(async (tx) => {
+    await tx.consentTermVersion.updateMany({
+      where: { isActive: true },
+      data: { isActive: false },
+    });
+    await tx.consentTermVersion.create({
+      data: {
+        version: CONSENT_TERM_V1.version,
+        content: CONSENT_TERM_V1.content,
+        contentHash,
+        isActive: true,
+      },
+    });
+  });
+
+  console.log(`✅ Consent term v${CONSENT_TERM_V1.version} created`);
+}
+
 async function main() {
   console.log("\n🌱 Starting seed...\n");
 
   await seedSuperAdmin();
   await seedTerms();
+  await seedConsentTerms();
 
   console.log("\n🎉 Seed complete!\n");
 }

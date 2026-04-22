@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { toast } from "sonner"
+import { EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { submitSurveyAction, optOutSurveyAction } from "@/app/(public)/survey/[token]/actions"
 
@@ -13,10 +14,11 @@ interface Question {
 
 interface Props {
   token: string
+  employeeName: string
   questions: Question[]
 }
 
-export function SurveyForm({ token, questions }: Props): React.ReactElement {
+export function SurveyForm({ token, employeeName, questions }: Props): React.ReactElement {
   const [scores, setScores] = useState<Record<string, number>>({})
   const [submitted, setSubmitted] = useState(false)
   const [optedOut, setOptedOut] = useState(false)
@@ -52,7 +54,7 @@ export function SurveyForm({ token, questions }: Props): React.ReactElement {
 
   if (submitted) {
     return (
-      <div className="w-full max-w-lg border border-border bg-card p-8 text-center">
+      <div className="w-full max-w-lg border border-border bg-card p-8 text-center" style={{ borderRadius: 0 }}>
         <h2 className="text-lg font-bold uppercase tracking-wide mb-2">Obrigado!</h2>
         <p className="text-sm text-muted-foreground">Sua resposta foi registrada com sucesso.</p>
       </div>
@@ -61,36 +63,60 @@ export function SurveyForm({ token, questions }: Props): React.ReactElement {
 
   if (optedOut) {
     return (
-      <div className="w-full max-w-lg border border-border bg-card p-8 text-center">
-        <h2 className="text-lg font-bold uppercase tracking-wide mb-2">Solicitacao registrada</h2>
+      <div className="w-full max-w-lg border border-border bg-card p-8 text-center" style={{ borderRadius: 0 }}>
+        <h2 className="text-lg font-bold uppercase tracking-wide mb-2">Solicitação registrada</h2>
         <p className="text-sm text-muted-foreground">
-          Voce nao recebera mais formularios. Caso mude de ideia, entre em contato com o RH.
+          Você não receberá mais formulários. Caso mude de ideia, entre em contato com o RH.
         </p>
       </div>
     )
   }
 
   return (
-    <div className="w-full max-w-lg border border-border bg-card">
+    <div className="w-full max-w-lg border border-border bg-card" style={{ borderRadius: 0 }}>
       <div className="border-b border-border px-6 py-4">
         <h1 className="text-sm font-bold uppercase tracking-widest">Pesquisa de Bem-Estar</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">Avalie cada item de 1 (muito ruim) a 5 (excelente)</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Olá, {employeeName.split(" ")[0]}! Avalie cada item de 1 a 5.
+        </p>
+      </div>
+      <div className="flex items-start gap-2 px-6 py-3 bg-green-50 border-b border-green-200">
+        <EyeOff className="w-4 h-4 text-green-700 shrink-0 mt-0.5" />
+        <p className="text-xs text-green-800 leading-relaxed">
+          <strong>100% anônimo.</strong> Suas respostas não são vinculadas ao seu nome — ninguém sabe quem respondeu o quê.
+        </p>
       </div>
       <div className="p-6 space-y-6">
         {questions.map((q) => (
           <div key={q.id} className="space-y-3">
             <p className="text-sm font-medium">{q.text}</p>
-            <div className="flex gap-2">
-              {[1, 2, 3, 4, 5].map((score) => (
-                <button
-                  key={score}
-                  type="button"
-                  onClick={() => setScores((prev) => ({ ...prev, [q.id]: score }))}
-                  className={`w-11 h-11 border-2 font-bold text-sm transition-colors ${  scores[q.id] === score ? "bg-primary text-primary-foreground border-primary" : "border-border hover:border-primary hover:text-primary"}`}
-                >
-                  {score}
-                </button>
-              ))}
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="text-xl shrink-0" role="img" aria-label="Muito ruim">😞</span>
+                <div className="flex gap-1.5 flex-1">
+                  {[1, 2, 3, 4, 5].map((score) => (
+                    <button
+                      key={score}
+                      type="button"
+                      aria-label={`Score ${score} de 5`}
+                      aria-pressed={scores[q.id] === score}
+                      onClick={() => setScores((prev) => ({ ...prev, [q.id]: score }))}
+                      className={`flex-1 h-11 rounded-none border-2 font-bold text-sm transition-all ${
+                        scores[q.id] === score
+                          ? "bg-primary text-primary-foreground border-primary scale-105 shadow-sm"
+                          : "border-border bg-background hover:border-primary hover:text-primary"
+                      }`}
+                    >
+                      {score}
+                    </button>
+                  ))}
+                </div>
+                <span className="text-xl shrink-0" role="img" aria-label="Muito bom">😊</span>
+              </div>
+              <div className="flex justify-between text-[10px] text-muted-foreground pl-9 pr-9">
+                <span>Muito ruim</span>
+                <span>Muito bom</span>
+              </div>
             </div>
           </div>
         ))}
@@ -104,7 +130,7 @@ export function SurveyForm({ token, questions }: Props): React.ReactElement {
             disabled={optingOut}
             className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground transition-colors disabled:opacity-50"
           >
-            {optingOut ? "Processando..." : "Nao quero mais participar"}
+            {optingOut ? "Processando..." : "Não quero mais participar"}
           </button>
         </div>
       </div>

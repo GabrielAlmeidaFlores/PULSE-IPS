@@ -15,12 +15,17 @@ import {
   AlertTriangle,
   Clock,
   ChevronRight,
+  ChevronDown,
   Globe,
   Smile,
   TrendingUp,
   X,
 } from "lucide-react"
 import { Logo } from "@/libs/design-system/components/logo"
+
+function whatsappUrl(message: string): string {
+  return `https://wa.me/5511999999999?text=${encodeURIComponent(message)}`
+}
 
 export const metadata = {
   title: "Como o Pulse funciona — Saiba mais",
@@ -116,6 +121,7 @@ export default function LearnMorePage(): React.ReactElement {
             <a href="#fluxo" className="hover:text-foreground transition-colors">Como funciona</a>
             <a href="#privacidade" className="hover:text-foreground transition-colors">Privacidade</a>
             <a href="#para-quem" className="hover:text-foreground transition-colors">Para quem é</a>
+            <a href="#faq" className="hover:text-foreground transition-colors">Dúvidas</a>
           </nav>
           <Link
             href="/login"
@@ -492,6 +498,33 @@ export default function LearnMorePage(): React.ReactElement {
       </section>
 
 
+      <section className="py-16 border-b border-border bg-primary/5">
+        <div className="max-w-3xl mx-auto px-6 text-center">
+          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-3">
+            Pronto para automatizar o compliance da sua empresa?
+          </h2>
+          <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
+            Configure o Pulse em menos de 30 minutos e tenha sua empresa em conformidade com a NR-1 antes de maio de 2026.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link
+              href="/#planos"
+              className="inline-flex items-center justify-center gap-2 h-11 px-7 rounded-lg bg-primary text-white font-semibold text-sm transition-all hover:-translate-y-px hover:shadow-[0_8px_24px_oklch(0.50_0.195_265/0.30)]"
+            >
+              Ver planos e preços
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+            <a
+              href={whatsappUrl("Olá! Tenho dúvidas sobre o Pulse para NR-1.")}
+              className="inline-flex items-center justify-center h-11 px-7 rounded-lg border border-border bg-white font-semibold text-sm text-foreground hover:border-primary/30 hover:bg-primary/5 transition-all"
+            >
+              Falar com a equipe
+            </a>
+          </div>
+        </div>
+      </section>
+
+
       <section id="privacidade" className="py-24 border-b border-border bg-muted/20">
         <div className="max-w-6xl mx-auto px-6">
           <div className="grid md:grid-cols-2 gap-16 items-center">
@@ -655,6 +688,173 @@ export default function LearnMorePage(): React.ReactElement {
                 <p className="text-xs text-muted-foreground leading-tight">{item.label}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+
+      <section className="py-24 border-b border-border bg-red-50/60">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="grid md:grid-cols-2 gap-16 items-start">
+            <div>
+              <SectionLabel>⚠ Consequências reais</SectionLabel>
+              <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-6 leading-tight">
+                O que acontece se minha empresa não cumprir a NR-1?
+              </h2>
+              <p className="text-muted-foreground leading-relaxed mb-8">
+                A nova versão da NR-1 entrou em vigor e o prazo para adequação encerra em maio de 2026.
+                A partir daí, o Ministério do Trabalho e Emprego tem base legal para fiscalizar e autuar
+                empresas que não demonstrarem monitoramento dos riscos psicossociais.
+              </p>
+              <div className="space-y-4">
+                {[
+                  {
+                    title: "Multas do MTE",
+                    desc: "O descumprimento de normas regulamentadoras pode resultar em multas que variam de R$ 2.200 até R$ 22.000 por irregularidade, conforme o art. 201 da CLT. Reincidências dobram o valor.",
+                    color: "red",
+                  },
+                  {
+                    title: "Interdição de atividades",
+                    desc: "Em casos graves, o fiscal do trabalho pode interditar setores ou até a empresa inteira até que as condições sejam sanadas — causando prejuízo operacional imediato.",
+                    color: "red",
+                  },
+                  {
+                    title: "Passivo trabalhista",
+                    desc: "Colaboradores que desenvolverem problemas de saúde mental no trabalho podem acionar a empresa na Justiça do Trabalho por negligência. Sem documentação, a empresa não tem como se defender.",
+                    color: "amber",
+                  },
+                  {
+                    title: "Dano à reputação",
+                    desc: "Autuações públicas do MTE aparecem em registros oficiais. Isso afeta a imagem da empresa com clientes, parceiros e candidatos a emprego.",
+                    color: "amber",
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.title}
+                    className={`rounded-xl border p-4 ${item.color === "red" ? "border-red-200 bg-white" : "border-amber-200 bg-white"}`}
+                  >
+                    <div className={`font-semibold text-sm mb-1 ${item.color === "red" ? "text-red-800" : "text-amber-800"}`}>
+                      {item.title}
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-6">
+              <div className="rounded-2xl border border-green-200 bg-green-50 p-7">
+                <CheckCircle2 className="w-8 h-8 text-green-600 mb-4" />
+                <div className="font-bold text-xl text-green-900 mb-3">Com o Pulse, você tem prova</div>
+                <p className="text-sm text-green-800 leading-relaxed mb-5">
+                  O Pulse gera automaticamente toda a documentação que o fiscal exige: termos de
+                  consentimento assinados, histórico de pesquisas enviadas, respostas agregadas por setor,
+                  planos de ação com responsáveis e prazos, e o relatório consolidado do PGR — tudo com
+                  data, hora e trilha de auditoria imutável.
+                </p>
+                <div className="space-y-2">
+                  {[
+                    "Consentimento formal de cada colaborador",
+                    "Histórico imutável de todas as pesquisas",
+                    "Alertas e planos de ação documentados",
+                    "Relatório PGR gerado em 1 clique",
+                  ].map((item) => (
+                    <div key={item} className="flex items-center gap-2 text-sm text-green-900">
+                      <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-border bg-white p-7">
+                <div className="text-sm font-semibold text-muted-foreground mb-2">Quanto custa não se adequar?</div>
+                <div className="grid grid-cols-2 gap-4">
+                  {[
+                    { label: "Multa mínima MTE", value: "R$ 2.200" },
+                    { label: "Multa máxima MTE", value: "R$ 22.000" },
+                    { label: "Reincidência", value: "+100%" },
+                    { label: "Custo de adequação", value: "A partir de R$ 0" },
+                  ].map((item) => (
+                    <div key={item.label} className="text-center">
+                      <div className="text-xl font-extrabold text-foreground">{item.value}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">{item.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <section id="faq" className="py-24 border-b border-border bg-muted/30">
+        <div className="max-w-3xl mx-auto px-6">
+          <div className="text-center mb-14">
+            <SectionLabel>✦ Dúvidas frequentes</SectionLabel>
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">
+              Respostas para as perguntas mais comuns
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-xl mx-auto">
+              Tudo o que você precisa saber antes de começar.
+            </p>
+          </div>
+          <div className="space-y-4">
+            {[
+              {
+                q: "A NR-1 se aplica a todos os tamanhos de empresa?",
+                a: "Sim. A NR-1 se aplica a qualquer empresa que tenha empregados com carteira assinada (CLT), independentemente do número de colaboradores ou do setor de atuação. Microempresas e empresas de pequeno porte não estão isentas — mas podem ter obrigações simplificadas dependendo do grau de risco.",
+              },
+              {
+                q: "Preciso contratar um consultor de segurança do trabalho para usar o Pulse?",
+                a: "Não necessariamente. O Pulse automatiza a coleta de dados, o consentimento e a geração de relatórios — o que costuma ser feito manualmente por consultores. Dependendo do porte e risco da sua empresa, um técnico ou engenheiro de segurança do trabalho pode ser necessário para o PCMSO e PPRA, mas o monitoramento contínuo de fatores psicossociais fica com o Pulse.",
+              },
+              {
+                q: "Quanto tempo leva para colocar o Pulse em funcionamento?",
+                a: "Em média 20 a 30 minutos para a configuração inicial: criar a conta, importar os colaboradores via planilha, configurar os setores e a frequência das pesquisas. Depois disso, o sistema funciona automaticamente.",
+              },
+              {
+                q: "Os colaboradores precisam baixar algum aplicativo?",
+                a: "Não. Eles recebem um link pelo WhatsApp ou SMS e respondem diretamente no navegador do celular. Sem cadastro, sem download, sem atrito.",
+              },
+              {
+                q: "Meus colaboradores podem ser identificados pelas respostas?",
+                a: "Não, por design técnico. O link de pesquisa é desvinculado da resposta no momento em que o colaborador a envia. Nem o RH, nem o gestor, nem os administradores da plataforma conseguem saber quem respondeu o quê. As métricas só são exibidas quando há ao menos 5 respondentes — mais uma camada de proteção ao anonimato.",
+              },
+              {
+                q: "E se um colaborador não quiser participar?",
+                a: "Participação é totalmente voluntária. O colaborador pode recusar o consentimento ou pedir para sair a qualquer momento. Essa recusa é registrada formalmente no sistema — o que também protege a empresa de eventuais alegações de que o monitoramento foi feito sem consentimento.",
+              },
+              {
+                q: "Posso cancelar a qualquer momento?",
+                a: "Sim. Sem fidelidade, sem multa de saída. Você pode cancelar pelo próprio painel da plataforma. Seus dados ficam disponíveis para exportação por 30 dias após o cancelamento.",
+              },
+              {
+                q: "O Pulse está em conformidade com a LGPD?",
+                a: "Sim. O sistema coleta consentimento explícito antes de qualquer dado, armazena apenas as informações necessárias, garante anonimato técnico nas respostas e mantém trilha de auditoria de todas as operações. Dados de diferentes empresas são completamente isolados entre si.",
+              },
+            ].map((item) => (
+              <details
+                key={item.q}
+                className="group rounded-xl border border-border bg-white overflow-hidden"
+              >
+                <summary className="flex items-center justify-between gap-4 px-6 py-5 cursor-pointer list-none font-semibold text-sm text-foreground hover:bg-muted/30 transition-colors">
+                  {item.q}
+                  <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 transition-transform group-open:rotate-180" />
+                </summary>
+                <div className="px-6 pb-5 text-sm text-muted-foreground leading-relaxed border-t border-border pt-4">
+                  {item.a}
+                </div>
+              </details>
+            ))}
+          </div>
+          <div className="mt-10 text-center">
+            <p className="text-sm text-muted-foreground mb-4">Ainda tem dúvidas?</p>
+            <a
+              href={whatsappUrl("Olá! Tenho algumas dúvidas sobre o Pulse antes de contratar.")}
+              className="inline-flex items-center justify-center h-10 px-6 rounded-lg border border-border text-sm font-semibold text-foreground hover:border-primary/40 hover:bg-primary/5 transition-all"
+            >
+              Falar com a equipe no WhatsApp
+            </a>
           </div>
         </div>
       </section>

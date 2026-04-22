@@ -14,6 +14,7 @@ import {
   markDispatchAdherenceChecked,
   type DispatchEmployee,
 } from "@/modules/surveys/survey.repository"
+import { findEmployeeIdsWithAcceptedConsent } from "@/modules/consent/consent.repository"
 
 const FREQUENCY_INTERVAL_DAYS: Record<string, number> = {
   daily: 1,
@@ -21,6 +22,10 @@ const FREQUENCY_INTERVAL_DAYS: Record<string, number> = {
   weekly: 7,
   biweekly: 14,
   monthly: 28,
+}
+
+function buildSurveyMessage(template: string, employeeName: string, surveyUrl: string): string {
+  return template.replace("{nome}", employeeName).replace("{link}", surveyUrl)
 }
 
 function getDayOfWeekInTimezone(timezone: string): number {
@@ -45,10 +50,15 @@ async function fireDispatch(
 ): Promise<void> {
   const today = getDayOfWeekInTimezone(timezone)
 
-  const eligibleEmployees = employees.filter((emp) => {
+  const workDayFiltered = employees.filter((emp) => {
     const effectiveDays = emp.workDays.length > 0 ? emp.workDays : department.workDays
     return effectiveDays.includes(today)
   })
+
+  if (workDayFiltered.length === 0) return
+
+  const acceptedIds = await findEmployeeIdsWithAcceptedConsent(tenantId, workDayFiltered.map((e) => e.id))
+  const eligibleEmployees = workDayFiltered.filter((emp) => acceptedIds.includes(emp.id))
 
   if (eligibleEmployees.length === 0) return
 
@@ -74,7 +84,7 @@ async function fireDispatch(
     const surveyUrl = `${env.NEXT_PUBLIC_APP_URL}/survey/${empToken.token}`
     await messageQueue.add("send-message", {
       to: employee.phone,
-      body: `Pulse: Seu check-in diário está pronto. Por favor, responda em 2 minutos: ${surveyUrl}`,
+      body: buildSurveyMessage(env.SURVEY_MESSAGE_TEMPLATE, employee.name, surveyUrl),
       tenantId,
       employeeId: employee.id,
       provider: env.MESSAGING_PROVIDER,
@@ -101,6 +111,7 @@ export async function runSurveyDispatcher(): Promise<{ dispatched: number; error
       const deptWorkDays = dept.workDays.map((w) => w.dayOfWeek)
       const employees: DispatchEmployee[] = dept.employees.map((emp) => ({
         id: emp.id,
+        name: emp.name,
         phone: emp.phone,
         workStartTime: emp.workStartTime,
         workEndTime: emp.workEndTime,

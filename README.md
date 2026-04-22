@@ -299,6 +299,10 @@ TWILIO_ACCOUNT_SID="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 TWILIO_AUTH_TOKEN="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 TWILIO_FROM_NUMBER="+5511999999999"
 
+# Template da mensagem enviada ao funcionário com o link da pesquisa
+# {nome} é substituído pelo primeiro nome do colaborador; {link} pelo link único da pesquisa
+SURVEY_MESSAGE_TEMPLATE="Oi, {nome}! 👋 Tudo bem por aí? Sua opinião faz a diferença para a gente 🌱 Quando tiver um momento, aqui está o seu formulário de bem-estar: {link}"
+
 # ─── Provedor de e-mail ────────────────────────────────────────────
 # Opções: console | resend
 EMAIL_PROVIDER="console"
@@ -501,7 +505,7 @@ O arquivo `src/proxy.ts` intercepta todas as requisições:
 **Cadastro manual:**
 1. Usuário preenche nome, telefone, e-mail (opcional), departamento e horário de trabalho (`workStartTime`, `workEndTime`).
 2. A action `createEmployeeAction` lê `tenantId` da sessão e cria o funcionário no banco.
-3. Dispara a action de consentimento: cria um `EmployeeConsent` com `event = "invite_sent"` e um token temporário.
+3. Dispara a action de consentimento: cria um `EmployeeConsent` com `event = "invited"` e um token temporário.
 4. Envia SMS/WhatsApp para o funcionário com o link de consentimento `/consent/[token]`.
 
 **Importação por planilha Excel:**
@@ -572,10 +576,14 @@ Fila pulse:messages
 ```
 
 **Conteúdo da mensagem:**
+
+O texto da mensagem é configurado via `SURVEY_MESSAGE_TEMPLATE` no `.env`. Os placeholders `{nome}` e `{link}` são substituídos automaticamente antes do envio:
+
 ```
-Pulse: Seu check-in diário está pronto. Por favor, responda em 2 minutos:
-https://app.usepulse.com.br/survey/[token]
+Oi, {nome}! 👋 Tudo bem por aí? Sua opinião faz a diferença para a gente 🌱 Quando tiver um momento, aqui está o seu formulário de bem-estar: {link}
 ```
+
+O link aponta para `/survey/[token]`, que também serve como ponto de entrada para o consentimento (ver seção 6).
 
 ---
 
@@ -584,12 +592,13 @@ https://app.usepulse.com.br/survey/[token]
 1. Funcionário recebe o link `/survey/[token]` por SMS/WhatsApp.
 2. A página valida o token: verifica existência, `usedAt = null`, `expiresAt > now()`.
 3. Verifica se o funcionário está dentro do horário de expediente configurado (usando `workStartTime`/`workEndTime` salvos no token no momento do disparo).
-4. Exibe as perguntas da pesquisa (scores de 1 a 5).
-5. Ao submeter, a action:
+4. **Consent gate:** se o funcionário ainda não aceitou os termos de consentimento (TCLE), exibe o texto dos termos inline para aceite antes de mostrar o formulário. Ao aceitar, cria um `EmployeeConsent` com `event = "accepted"`. Ao recusar, cria `event = "refused"` e encerra o fluxo.
+5. Exibe as perguntas da pesquisa (scores de 1 a 5).
+6. Ao submeter, a action:
    - Cria `SurveyResponse` com os itens.
    - Marca o token como usado (`usedAt = now()`).
    - Atualiza `SurveyDispatch.totalResponses++`.
-6. O funcionário vê uma tela de agradecimento.
+7. O funcionário vê uma tela de agradecimento.
 
 > O horário verificado no momento da resposta usa o `workStartTime`/`workEndTime` **snapshot** salvo no token, não a configuração atual. Isso garante consistência mesmo que a config seja alterada após o disparo.
 

@@ -13,6 +13,7 @@ import {
   deleteExpiredTokens,
   createSurveyResponseWithItems,
 } from "@/modules/surveys/survey.repository"
+import { getCurrentConsent, getActiveConsentTermVersion } from "@/modules/consent/consent.repository"
 import type { CreateSurveyConfigInput, SubmitSurveyInput, SurveyTokenValidation, DispatchDashboardStats, ScoreDirection } from "@/modules/surveys/survey.types"
 export type { DispatchWithConfig } from "@/modules/surveys/survey.repository"
 
@@ -46,23 +47,36 @@ export function scheduleDispatch(tenantId: string, configId: string, scheduledAt
 
 export async function validateSurveyToken(token: string): Promise<SurveyTokenValidation> {
   const tokenRecord = await findTokenByValue(token)
-  if (!tokenRecord) return { valid: false, error: "Token inválido" }
-  if (tokenRecord.usedAt) return { valid: false, error: "Esta pesquisa já foi respondida" }
-  if (tokenRecord.expiresAt < new Date()) return { valid: false, error: "Este link expirou" }
+  if (!tokenRecord) return { valid: false, error: "Link inválido ou expirado." }
+  if (tokenRecord.usedAt) return { valid: false, error: "Esta pesquisa já foi respondida." }
+  if (tokenRecord.expiresAt < new Date()) return { valid: false, error: "Este link expirou." }
 
   const timezone = tokenRecord.dispatch.surveyConfiguration.organization.timezone ?? "America/Sao_Paulo"
   const now = toZonedTime(new Date(), timezone)
   const currentTime = format(now, "HH:mm")
   if (currentTime < tokenRecord.workStartTime || currentTime > tokenRecord.workEndTime) {
-    return { valid: false, error: "Pesquisa disponível apenas no horário de trabalho" }
+    return { valid: false, error: "Pesquisa disponível apenas no horário de trabalho." }
   }
 
-  if (tokenRecord.dispatch.status !== "dispatched") {
-    return { valid: false, error: "Esta pesquisa não está ativa" }
+  if (tokenRecord.dispatch.status !== "sent") {
+    return { valid: false, error: "Esta pesquisa não está ativa." }
   }
+
+  const [currentConsent, activeTermVersion] = await Promise.all([
+    getCurrentConsent(tokenRecord.tenantId, tokenRecord.employeeId),
+    getActiveConsentTermVersion(),
+  ])
+
+  const hasAcceptedCurrentVersion =
+    currentConsent?.event === "accepted" &&
+    currentConsent?.consentTermVersionId === activeTermVersion?.id
 
   return {
     valid: true,
+    employeeName: tokenRecord.employee.name,
+    consentStatus: hasAcceptedCurrentVersion ? "accepted" : "needs_consent",
+    consentTermVersionId: activeTermVersion?.id ?? null,
+    consentTermContent: hasAcceptedCurrentVersion ? null : (activeTermVersion?.content ?? null),
     token: {
       id: tokenRecord.id,
       dispatchId: tokenRecord.dispatchId,
