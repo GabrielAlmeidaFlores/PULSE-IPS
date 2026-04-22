@@ -1,4 +1,5 @@
 "use client"
+import { sanitizeRichHtml } from "@/libs/utils/sanitize"
 
 import { useState } from "react"
 import { toast } from "sonner"
@@ -61,7 +62,7 @@ export function ConsentForm({ token, content }: Props): React.ReactElement {
         <div className="max-h-96 overflow-y-auto border border-border p-4 bg-muted/20">
           <div
             className="text-xs text-foreground leading-relaxed [&_h1]:text-sm [&_h1]:font-bold [&_h1]:mb-2 [&_h2]:text-sm [&_h2]:font-bold [&_h2]:mb-2 [&_h3]:text-xs [&_h3]:font-semibold [&_h3]:mb-1 [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-4 [&_ul]:mb-2 [&_li]:mb-0.5 [&_strong]:font-semibold"
-            dangerouslySetInnerHTML={{ __html: content }}
+            dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(content) }}
           />
         </div>
         <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200">

@@ -2,6 +2,7 @@ import { countEmployees, createEmployee, findEmployeeById, findEmployeesByTenant
 import { findOrganizationById } from "@/modules/organizations/organization.repository"
 import { findPlanById } from "@/modules/plans/plan.repository"
 import { findActiveSubscription } from "@/modules/billing/billing.repository"
+import { createAuditLog } from "@/modules/audit/audit.repository"
 import type { CreateEmployeeInput, UpdateEmployeeInput } from "@/modules/employees/employee.types"
 import { AppError } from "@/libs/errors/app-error"
 
@@ -13,7 +14,7 @@ export function getEmployee(tenantId: string, employeeId: string): ReturnType<ty
   return findEmployeeById(tenantId, employeeId)
 }
 
-export async function createNewEmployee(tenantId: string, input: CreateEmployeeInput): ReturnType<typeof createEmployee> {
+export async function createNewEmployee(tenantId: string, input: CreateEmployeeInput, actorId?: string): ReturnType<typeof createEmployee> {
   const org = await findOrganizationById(tenantId)
   if (!org) throw new AppError("ORG_NOT_FOUND", "Organization not found")
 
@@ -31,7 +32,9 @@ export async function createNewEmployee(tenantId: string, input: CreateEmployeeI
     }
   }
 
-  return createEmployee(tenantId, input)
+  const employee = await createEmployee(tenantId, input)
+  await createAuditLog({ tenantId, ...(actorId !== undefined ? { userId: actorId } : {}), action: "employee.created", resource: "employees", resourceId: employee.id })
+  return employee
 }
 
 export function updateExistingEmployee(
@@ -42,8 +45,9 @@ export function updateExistingEmployee(
   return updateEmployee(tenantId, employeeId, input)
 }
 
-export function deactivateExistingEmployee(tenantId: string, employeeId: string): ReturnType<typeof deactivateEmployee> {
-  return deactivateEmployee(tenantId, employeeId)
+export async function deactivateExistingEmployee(tenantId: string, employeeId: string, actorId?: string): Promise<void> {
+  await deactivateEmployee(tenantId, employeeId)
+  await createAuditLog({ tenantId, ...(actorId !== undefined ? { userId: actorId } : {}), action: "employee.deactivated", resource: "employees", resourceId: employeeId })
 }
 
 export function getTotalEmployeeCount(tenantId: string): Promise<number> {

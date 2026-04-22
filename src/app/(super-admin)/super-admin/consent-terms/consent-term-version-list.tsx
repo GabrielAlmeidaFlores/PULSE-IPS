@@ -1,4 +1,5 @@
 "use client"
+import { sanitizeRichHtml } from "@/libs/utils/sanitize"
 
 import { useState } from "react"
 import { Shield, CheckCircle, Clock, Eye } from "lucide-react"
@@ -90,7 +91,7 @@ export function ConsentTermVersionList({ versions }: Props): React.ReactElement 
             {preview && (
               <div
                 className="text-[13px] text-foreground leading-relaxed [&_h1]:text-base [&_h1]:font-bold [&_h1]:mb-3 [&_h2]:text-sm [&_h2]:font-bold [&_h2]:mb-2 [&_h2]:mt-4 [&_h3]:text-xs [&_h3]:font-semibold [&_h3]:mb-1 [&_h3]:mt-3 [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-2 [&_li]:mb-1 [&_strong]:font-semibold [&_hr]:border-border [&_hr]:my-4"
-                dangerouslySetInnerHTML={{ __html: preview.content }}
+                dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(preview.content) }}
               />
             )}
           </div>

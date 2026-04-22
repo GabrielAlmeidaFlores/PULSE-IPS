@@ -1,6 +1,6 @@
 import { prisma } from "@/libs/db"
 import type { Organization, OrganizationUser, AuthToken, SuperAdmin, OrganizationInvitation } from "@prisma/client"
-import type { CreateOrgInvitationInput, AcceptInviteInput } from "@/modules/auth/auth.types"
+import type { CreateOrgInvitationInput, AcceptInviteInput, SafeOrgUser, SafeSuperAdmin } from "@/modules/auth/auth.types"
 
 export function findOrgBySlug(slug: string): Promise<Organization | null> {
   return prisma.organization.findUnique({ where: { slug, isActive: true } })
@@ -90,13 +90,27 @@ export async function acceptInviteTransaction(data: AcceptInviteInput): Promise<
   ])
 }
 
-export function findOrgUsersByTenant(tenantId: string): Promise<OrganizationUser[]> {
+export function findOrgUsersByTenant(tenantId: string): Promise<SafeOrgUser[]> {
   return prisma.organizationUser.findMany({
     where: { tenantId },
+    select: {
+      id: true,
+      tenantId: true,
+      email: true,
+      name: true,
+      role: true,
+      isActive: true,
+      emailVerifiedAt: true,
+      createdAt: true,
+      updatedAt: true,
+    },
     orderBy: { createdAt: "asc" },
   })
 }
 
-export function findAllSuperAdmins(): Promise<SuperAdmin[]> {
-  return prisma.superAdmin.findMany({ orderBy: { createdAt: "asc" } })
+export function findAllSuperAdmins(): Promise<SafeSuperAdmin[]> {
+  return prisma.superAdmin.findMany({
+    select: { id: true, name: true, email: true, createdAt: true },
+    orderBy: { createdAt: "asc" },
+  })
 }

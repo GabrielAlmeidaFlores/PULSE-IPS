@@ -5,16 +5,18 @@ import { AppError } from "@/libs/errors/app-error"
 import type { ActionResult } from "@/libs/utils/action-result"
 import { getSession } from "@/modules/auth/session"
 import { createNewEmployee } from "@/modules/employees/employee.service"
-import type { CreateEmployeeInput } from "@/modules/employees/employee.types"
+import { createEmployeeSchema } from "@/modules/employees/employee.schema"
 
 
 export async function createEmployeeAction(
-  input: CreateEmployeeInput,
+  input: unknown,
 ): Promise<ActionResult> {
   const session = await getSession()
   if (!session) return { error: "Sessão expirada." }
+  const parsed = createEmployeeSchema.safeParse(input)
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
   try {
-    await createNewEmployee(session.tenantId, input)
+    await createNewEmployee(session.tenantId, parsed.data, session.userId)
     revalidatePath("/employees")
     return {}
   } catch (err) {

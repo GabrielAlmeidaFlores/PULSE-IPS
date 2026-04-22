@@ -15,9 +15,14 @@ function isDocType(value: unknown): value is DocType {
   return ALLOWED_TYPES.includes(value as DocType)
 }
 
+const ALLOWED_EXTENSIONS = new Set(["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "png", "jpg", "jpeg"])
+const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024
+
 async function uploadFile(tenantId: string, file: File): Promise<string> {
-  const ext = file.name.split(".").pop() ?? "bin"
-  const key = `tenants/${tenantId}/documents/${randomUUID()}.${ext}`
+  if (file.size > MAX_FILE_SIZE_BYTES) throw new AppError("FILE_TOO_LARGE", "O arquivo excede o limite de 20 MB.")
+  const rawExt = (file.name.split(".").pop() ?? "").toLowerCase()
+  if (!ALLOWED_EXTENSIONS.has(rawExt)) throw new AppError("FILE_TYPE_INVALID", "Tipo de arquivo não permitido.")
+  const key = `tenants/${tenantId}/documents/${randomUUID()}.${rawExt}`
   const { getStorageService } = await import("@/libs/integrations")
   await getStorageService().upload({ file, path: key })
   return key
@@ -35,6 +40,7 @@ export async function createDocumentAction(
   const file = formData.get("file") as File | null
 
   if (!title) return { error: "Título é obrigatório." }
+  if (title.length > 255) return { error: "Título deve ter no máximo 255 caracteres." }
   if (!type || !isDocType(type)) return { error: "Tipo inválido." }
   if (!file || file.size === 0) return { error: "Arquivo é obrigatório." }
 

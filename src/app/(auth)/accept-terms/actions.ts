@@ -1,5 +1,6 @@
 "use server"
 
+import { z } from "zod"
 import { redirect } from "next/navigation"
 import { headers } from "next/headers"
 import { isRedirectError } from "next/dist/client/components/redirect-error"
@@ -8,11 +9,15 @@ import { getSession, destroySession } from "@/modules/auth/session"
 import { acceptTerms } from "@/modules/terms/terms.service"
 import { getOrgUserById } from "@/modules/auth/auth.service"
 
+const termsVersionIdSchema = z.string().uuid()
 
 export async function acceptTermsAction(termsVersionId: string): Promise<ActionResult> {
   try {
     const session = await getSession()
     if (!session) return { error: "Sessão expirada. Faça login novamente." }
+
+    const idParsed = termsVersionIdSchema.safeParse(termsVersionId)
+    if (!idParsed.success) return { error: "Versão de termos inválida." }
 
     const userExists = await getOrgUserById(session.userId, session.tenantId)
     if (!userExists) {
@@ -29,7 +34,7 @@ export async function acceptTermsAction(termsVersionId: string): Promise<ActionR
 
     await acceptTerms({
       userId: session.userId,
-      termsVersionId,
+      termsVersionId: idParsed.data,
       ipAddress: ip,
       userAgent,
     })

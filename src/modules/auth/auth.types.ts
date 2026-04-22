@@ -1,5 +1,24 @@
 export type { OrganizationUser } from "@prisma/client"
 
+export interface SafeOrgUser {
+  id: string
+  tenantId: string
+  email: string
+  name: string
+  role: string
+  isActive: boolean
+  emailVerifiedAt: Date | null
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface SafeSuperAdmin {
+  id: string
+  name: string
+  email: string
+  createdAt: Date
+}
+
 export interface SessionPayload {
   userId: string
   tenantId: string

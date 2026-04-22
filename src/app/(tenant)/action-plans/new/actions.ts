@@ -1,4 +1,5 @@
 "use server"
+import { z } from "zod"
 import { redirect } from "next/navigation"
 import { isRedirectError } from "next/dist/client/components/redirect-error"
 import { revalidatePath } from "next/cache"
@@ -7,20 +8,29 @@ import { createPlan, createPlanWithTasks } from "@/modules/action-plans/action-p
 import { AppError } from "@/libs/errors/app-error"
 import type { ActionResult } from "@/libs/utils/action-result"
 
+const createPlanSchema = z.object({
+  title: z.string().min(1).max(255).trim(),
+  description: z.string().max(2000).optional(),
+  priority: z.enum(["low", "medium", "high"]),
+})
 
-export async function createActionPlanAction(input: {
-  title: string
-  description?: string
-  priority: "low" | "medium" | "high"
-}): Promise<ActionResult> {
+const createFromSuggestionSchema = z.object({
+  title: z.string().min(1).max(255).trim(),
+  description: z.string().min(1).max(2000),
+  priority: z.enum(["low", "medium", "high"]),
+  tasks: z.array(z.string().min(1).max(500)).min(1).max(50),
+})
+
+export async function createActionPlanAction(input: unknown): Promise<ActionResult> {
   const session = await getSession()
   if (!session) return { error: "Sessão expirada." }
-  if (!input.title.trim()) return { error: "Título é obrigatório." }
+  const parsed = createPlanSchema.safeParse(input)
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
   try {
     const plan = await createPlan(session.tenantId, {
-      title: input.title.trim(),
-      description: input.description?.trim() ?? undefined,
-      priority: input.priority,
+      title: parsed.data.title,
+      description: parsed.data.description?.trim() ?? undefined,
+      priority: parsed.data.priority,
     })
     revalidatePath("/action-plans")
     redirect(`/action-plans/${plan.id}`)
@@ -31,19 +41,16 @@ export async function createActionPlanAction(input: {
   }
 }
 
-export async function createFromSuggestionAction(input: {
-  title: string
-  description: string
-  priority: "low" | "medium" | "high"
-  tasks: string[]
-}): Promise<ActionResult & { id?: string }> {
+export async function createFromSuggestionAction(input: unknown): Promise<ActionResult & { id?: string }> {
   const session = await getSession()
   if (!session) return { error: "Sessão expirada." }
+  const parsed = createFromSuggestionSchema.safeParse(input)
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
   try {
     const plan = await createPlanWithTasks(
       session.tenantId,
-      { title: input.title, description: input.description, priority: input.priority },
-      input.tasks,
+      { title: parsed.data.title, description: parsed.data.description, priority: parsed.data.priority },
+      parsed.data.tasks,
     )
     revalidatePath("/action-plans")
     return { id: plan.id }

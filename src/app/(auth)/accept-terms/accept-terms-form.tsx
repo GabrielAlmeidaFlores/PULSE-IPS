@@ -1,4 +1,5 @@
 "use client"
+import { sanitizeRichHtml } from "@/libs/utils/sanitize"
 
 import { useState } from "react"
 import { toast } from "sonner"
@@ -39,7 +40,7 @@ export function AcceptTermsForm({ termsVersionId, title, version, content }: Pro
 
       <div className="px-8 py-6 flex-1 overflow-y-auto border-b border-border min-h-0">
         <div className="text-[14px] text-foreground leading-loose prose prose-sm max-w-none space-y-4"
-          dangerouslySetInnerHTML={{ __html: content }}
+          dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(content) }}
         />
       </div>
 

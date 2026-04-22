@@ -13,11 +13,13 @@ import {
   findOrgInviteByToken,
   acceptInviteTransaction,
 } from "@/modules/auth/auth.repository"
+import { createAuditLog } from "@/modules/audit/audit.repository"
 
 export async function sendInvite(
   tenantId: string,
   email: string,
   role: "admin" | "rh",
+  actorId?: string,
 ): Promise<void> {
   const existingUser = await findOrgUserByEmailInTenant(tenantId, email)
   if (existingUser) throw new AppError("USER_ALREADY_EXISTS", "Usuário já cadastrado")
@@ -39,6 +41,8 @@ export async function sendInvite(
       props: { orgName: org.name, inviteUrl, role },
     }),
   })
+
+  await createAuditLog({ tenantId, ...(actorId !== undefined ? { userId: actorId } : {}), action: "user.invited", resource: "organization_invitations", metadata: { email, role } })
 }
 
 export async function acceptInvite(

@@ -6,8 +6,7 @@ import { getEmailService } from "@/libs/integrations"
 import { renderEmailTemplate } from "@/libs/email-templates"
 import { AppError } from "@/libs/errors/app-error"
 import { createSession, createSuperAdminSession, destroySession, destroySuperAdminSession } from "@/modules/auth/session"
-import type { LoginInput, SuperAdminLoginInput, SessionPayload } from "@/modules/auth/auth.types"
-import type { SuperAdmin } from "@prisma/client"
+import type { LoginInput, SuperAdminLoginInput, SessionPayload, SafeSuperAdmin } from "@/modules/auth/auth.types"
 import {
   findOrgBySlug,
   findOrgUserByEmail,
@@ -21,6 +20,7 @@ import {
   consumeAuthToken,
   findAllSuperAdmins,
 } from "@/modules/auth/auth.repository"
+import { createAuditLog } from "@/modules/audit/audit.repository"
 
 const INVALID_CREDENTIALS_MSG = "Credenciais inválidas"
 
@@ -51,6 +51,7 @@ export async function login(input: LoginInput): Promise<SessionPayload> {
     email: user.email,
   }
   await createSession(sessionPayload)
+  await createAuditLog({ tenantId: org.id, userId: user.id, action: "user.login", resource: "organization_users", resourceId: user.id })
   return sessionPayload
 }
 
@@ -90,6 +91,7 @@ export async function changePassword(
 
   const newHash = await hashPassword(newPassword)
   await updateOrgUserPassword(userId, tenantId, newHash)
+  await createAuditLog({ tenantId, userId, action: "user.login", resource: "organization_users", resourceId: userId, metadata: { event: "password_changed" } })
 }
 
 export async function requestPasswordReset(email: string, orgSlug: string): Promise<void> {
@@ -116,15 +118,16 @@ export async function requestPasswordReset(email: string, orgSlug: string): Prom
 export async function resetPassword(token: string, newPassword: string): Promise<void> {
   const authToken = await findAuthToken(token)
 
-  if (authToken?.type !== "password_reset") throw new AppError("INVALID_TOKEN", "Link inválido ou expirado.")
-  if (authToken.usedAt) throw new AppError("TOKEN_USED", "Este link já foi utilizado.")
-  if (authToken.expiresAt < new Date()) throw new AppError("TOKEN_EXPIRED", "Este link expirou. Solicite um novo.")
+  if (authToken?.type !== "password_reset") throw new AppError("INVALID_TOKEN", "Link inválido ou expirado. Solicite um novo.")
+  if (authToken.usedAt) throw new AppError("INVALID_TOKEN", "Link inválido ou expirado. Solicite um novo.")
+  if (authToken.expiresAt < new Date()) throw new AppError("INVALID_TOKEN", "Link inválido ou expirado. Solicite um novo.")
 
   const user = await findOrgUserByIdOnly(authToken.userId)
   if (!user) throw new AppError("USER_NOT_FOUND", "Usuário não encontrado.")
 
   const newHash = await hashPassword(newPassword)
   await consumeAuthToken(authToken.id, authToken.userId, user.tenantId, newHash)
+  await createAuditLog({ tenantId: user.tenantId, userId: user.id, action: "user.login", resource: "organization_users", resourceId: user.id, metadata: { event: "password_reset" } })
 }
 
 export function getOrgUserById(userId: string, tenantId: string): ReturnType<typeof findOrgUserById> {
@@ -133,6 +136,6 @@ export function getOrgUserById(userId: string, tenantId: string): ReturnType<typ
 
 
 
-export function listSuperAdmins(): Promise<SuperAdmin[]> {
+export function listSuperAdmins(): Promise<SafeSuperAdmin[]> {
   return findAllSuperAdmins()
 }

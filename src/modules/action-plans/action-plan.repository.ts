@@ -15,7 +15,7 @@ export function findActionPlansByTenant(tenantId: string): Promise<ActionPlanWit
 export function findActionPlanById(tenantId: string, planId: string): Promise<ActionPlanWithTasks | null> {
   return prisma.actionPlan.findFirst({
     where: { id: planId, tenantId },
-    include: { tasks: { orderBy: { createdAt: "asc" } } },
+    include: { tasks: { where: { tenantId }, orderBy: { createdAt: "asc" } } },
   })
 }
 
@@ -48,7 +48,9 @@ export function updateActionPlan(
   })
 }
 
-export function createActionPlanTask(tenantId: string, actionPlanId: string, data: CreateActionPlanTaskInput): Promise<ActionPlanTask> {
+export async function createActionPlanTask(tenantId: string, actionPlanId: string, data: CreateActionPlanTaskInput): Promise<ActionPlanTask> {
+  const plan = await prisma.actionPlan.findFirst({ where: { id: actionPlanId, tenantId } })
+  if (!plan) throw new Error("Plano de ação não encontrado.")
   return prisma.actionPlanTask.create({
     data: {
       tenantId,

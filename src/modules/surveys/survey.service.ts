@@ -146,6 +146,17 @@ export async function submitSurveyResponse(input: SubmitSurveyInput): Promise<vo
   if (tokenRecord.usedAt) throw new AppError("SURVEY_ALREADY_ANSWERED", "Esta pesquisa já foi respondida.")
   if (tokenRecord.expiresAt < new Date()) throw new AppError("TOKEN_EXPIRED", "Este link expirou.")
 
+  const timezone = tokenRecord.dispatch.surveyConfiguration.organization.timezone ?? "America/Sao_Paulo"
+  const nowInTimezone = toZonedTime(new Date(), timezone)
+  const currentTime = format(nowInTimezone, "HH:mm")
+  const isNightShift = tokenRecord.workEndTime < tokenRecord.workStartTime
+  const withinWindow = isNightShift
+    ? currentTime >= tokenRecord.workStartTime || currentTime <= tokenRecord.workEndTime
+    : currentTime >= tokenRecord.workStartTime && currentTime <= tokenRecord.workEndTime
+  if (!withinWindow) {
+    throw new AppError("OUTSIDE_WORK_WINDOW", `Pesquisa disponível apenas entre ${tokenRecord.workStartTime} e ${tokenRecord.workEndTime}.`)
+  }
+
   await createSurveyResponseWithItems({
     tenantId: tokenRecord.tenantId,
     dispatchId: tokenRecord.dispatchId,

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { z } from "zod"
 import { env } from "@/env"
+import { verifyCronSecret } from "@/libs/utils/cron-auth"
 import { requestLogService } from "@/modules/request-logs/request-log.service"
 
 const insertLogSchema = z.object({
@@ -26,7 +27,7 @@ const insertLogSchema = z.object({
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const secret = request.headers.get("x-internal-secret")
-  if (secret !== env.CRON_SECRET) {
+  if (!verifyCronSecret(secret, env.CRON_SECRET)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 

@@ -22,7 +22,7 @@ export async function createSession(payload: SessionPayload): Promise<void> {
   cookieStore.set(SESSION_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: "strict",
     maxAge: SESSION_DURATION_SECONDS,
     path: "/",
   })
@@ -52,7 +52,7 @@ export async function createSuperAdminSession(payload: SuperAdminSessionPayload)
   cookieStore.set(SUPER_ADMIN_SESSION_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: "strict",
     maxAge: SESSION_DURATION_SECONDS,
     path: "/",
   })

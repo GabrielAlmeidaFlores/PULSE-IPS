@@ -1,16 +1,20 @@
 "use server"
 
+import { z } from "zod"
 import { revalidatePath } from "next/cache"
 import { getSession } from "@/modules/auth/session"
 import { scheduleDispatch, getSurveyConfigs } from "@/modules/surveys/survey.service"
 import { AppError } from "@/libs/errors/app-error"
 import type { ActionResult } from "@/libs/utils/action-result"
 
+const scheduledAtSchema = z.string().datetime()
+
 export async function scheduleAllDispatchesAction(scheduledAt: string): Promise<ActionResult> {
   const session = await getSession()
   if (!session) return { error: "Sessão expirada." }
-  const date = new Date(scheduledAt)
-  if (isNaN(date.getTime())) return { error: "Data/hora inválida." }
+  const parsed = scheduledAtSchema.safeParse(scheduledAt)
+  if (!parsed.success) return { error: "Data/hora inválida." }
+  const date = new Date(parsed.data)
   try {
     const configs = await getSurveyConfigs(session.tenantId)
     if (configs.length === 0) return { error: "Nenhuma pesquisa configurada." }
