@@ -616,3 +616,33 @@ model PlatformTermsAcceptance {
   @@index([userId])
   @@map("platform_terms_acceptances")
 }
+
+model RequestLog {
+  id              String   @id @default(uuid())
+  method          String
+  path            String
+  query           String?
+  ip              String?
+  userAgent       String?  @map("user_agent")
+  requestHeaders  Json     @map("request_headers")
+  requestBody     Json?    @map("request_body")
+  responseStatus  Int?     @map("response_status")
+  responseHeaders Json?    @map("response_headers")
+  responseBody    Json?    @map("response_body")
+  durationMs      Int?     @map("duration_ms")
+  tenantId        String?  @map("tenant_id")
+  userId          String?  @map("user_id")
+  userType        String?  @map("user_type")
+  isRedirect      Boolean  @default(false) @map("is_redirect")
+  redirectTo      String?  @map("redirect_to")
+  errorMessage    String?  @map("error_message")
+  errorStack      String?  @map("error_stack")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt(sort: Desc)])
+  @@index([method])
+  @@index([responseStatus])
+  @@index([tenantId])
+  @@index([userId])
+  @@map("request_logs")
+}

@@ -24,6 +24,7 @@ interface RichTextEditorProps {
   onChange: (html: string) => void
   placeholder?: string
   minHeight?: number
+  maxHeight?: number
 }
 
 interface ToolbarButtonProps {
@@ -57,7 +58,7 @@ function ToolbarDivider(): React.ReactElement {
   return <div className="w-px h-5 bg-border mx-0.5 self-center" />
 }
 
-export function RichTextEditor({ value, onChange, placeholder, minHeight = 320 }: RichTextEditorProps): React.ReactElement {
+export function RichTextEditor({ value, onChange, placeholder, minHeight = 320, maxHeight }: RichTextEditorProps): React.ReactElement {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -190,7 +191,7 @@ export function RichTextEditor({ value, onChange, placeholder, minHeight = 320 }
       <EditorContent
         editor={editor}
         className="flex-1 overflow-y-auto px-4 py-3 text-[13px] text-foreground prose-editor"
-        style={{ minHeight }}
+        style={{ minHeight, ...(maxHeight !== undefined ? { maxHeight, overflowY: "auto" } : {}) }}
       />
     </div>
   )

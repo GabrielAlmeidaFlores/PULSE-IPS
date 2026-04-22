@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Menu, X, LayoutDashboard, Building2, CreditCard, FileText, LogOut, Users } from "lucide-react"
+import { Menu, X, LayoutDashboard, Building2, CreditCard, FileText, LogOut, Users, ScrollText } from "lucide-react"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { superAdminLogoutAction } from "@/app/(super-admin-public)/super-admin/logout/actions"
 
@@ -19,6 +19,7 @@ const navItems: NavItem[] = [
   { href: "/super-admin/plans", label: "Planos", icon: <CreditCard className="h-4 w-4" /> },
   { href: "/super-admin/terms", label: "Termos de Uso", icon: <FileText className="h-4 w-4" /> },
   { href: "/super-admin/admins", label: "Admins", icon: <Users className="h-4 w-4" /> },
+  { href: "/super-admin/logs", label: "Logs", icon: <ScrollText className="h-4 w-4" /> },
 ]
 
 function NavLinks({ items, onNavigate }: { items: NavItem[]; onNavigate?: (() => void) | undefined }): React.ReactElement {

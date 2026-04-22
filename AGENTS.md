@@ -1778,6 +1778,29 @@ export function ThemeToggle() {
 
 **Regra:** nenhum componente usa cores hardcoded (`text-slate-900`, `bg-white`). Sempre usar variáveis semânticas do shadcn/ui (`bg-background`, `text-foreground`, `bg-card`, `text-muted-foreground`).
 
+### Bordas em controles de formulário — fonte única de verdade
+
+**Todos os controles interativos de formulário** (`Input`, `Select`/`SelectTrigger`, `Textarea`) devem ter borda claramente visível para comunicar ao usuário que o campo é interativo.
+
+**Implementação:** a borda é controlada pela variável CSS `--input-border` em `src/app/globals.css`. Não modifique bordas diretamente nos componentes — altere apenas essa variável.
+
+```css
+/* src/app/globals.css — única fonte de verdade para bordas de form controls */
+--input-border: oklch(0.74 0.022 258);   /* borda padrão — visível mas sutil */
+```
+
+Os estilos são aplicados via `data-slot` no `@layer base` de `globals.css`:
+
+```css
+[data-slot="input"]          { border-color: var(--input-border); }
+[data-slot="select-trigger"] { border-color: var(--input-border); }
+[data-slot="textarea"]       { border-color: var(--input-border); }
+```
+
+Focus e hover são centralizados no mesmo bloco — ao focar, a borda muda para `--primary` com shadow sutil.
+
+**Regra:** nunca sobrescreva a borda de um Input/Select/Textarea diretamente em um componente de página. Se um campo precisa de borda especial, discuta a alteração em `globals.css`.
+
 ### Identidade visual
 
 - **Primária:** azul corporativo `#2563eb` — confiança, seriedade

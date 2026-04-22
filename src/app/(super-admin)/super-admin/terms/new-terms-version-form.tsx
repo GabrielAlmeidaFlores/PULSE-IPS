@@ -89,6 +89,7 @@ export function NewTermsVersionForm({ initialContent }: { initialContent?: strin
             onChange={(html) => update("content", html)}
             placeholder="Escreva o conteúdo dos termos aqui. Use H1, H2, H3 para títulos e subtítulos, listas, negrito..."
             minHeight={340}
+            maxHeight={500}
           />
           <p className="text-[10px] text-muted-foreground">{form.content.length} caracteres</p>
         </div>
