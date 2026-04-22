@@ -2,7 +2,7 @@ import { randomUUID } from "crypto"
 import { addDays } from "date-fns"
 import type { EmployeeConsent, ConsentTermVersion } from "@prisma/client"
 import { env } from "@/env"
-import { getMessagingService } from "@/libs/integrations"
+import { getMessageQueue } from "@/libs/queue"
 import { AppError } from "@/libs/errors/app-error"
 import {
   createConsentRecord,
@@ -47,10 +47,14 @@ export async function sendConsentInvite(tenantId: string, employeeId: string): P
     tokenExpiresAt,
   })
 
-  const messaging = getMessagingService()
-  await messaging.send({
+  const messageQueue = getMessageQueue()
+  await messageQueue.add("send-message", {
     to: employee.phone,
     body: `Pulse: Acesse o link abaixo para revisar e aceitar os termos de participação nas pesquisas de bem-estar: ${consentUrl}`,
+    tenantId,
+    employeeId,
+    provider: env.MESSAGING_PROVIDER,
+    type: "consent_invite",
   })
 }
 

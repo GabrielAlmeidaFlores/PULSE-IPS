@@ -20,6 +20,17 @@ const QUEUE_LABELS: Record<string, string> = {
   "pulse-messages": "Mensagens",
 }
 
+const JOB_NAME_LABELS: Record<string, string> = {
+  "survey-dispatcher":    "Disparo de Pesquisas",
+  "adherence-checker":    "Verificador de Adesão",
+  "alert-detector":       "Detector de Alertas",
+  "employee-unpause":     "Reativação de Colaboradores",
+  "pgr-review-reminder":  "Lembrete de Revisão PGR",
+  "stripe-webhook-retry": "Reprocessamento de Webhooks",
+  "token-cleanup":        "Limpeza de Tokens",
+  "send-message":         "Envio de Mensagem",
+}
+
 function formatTimestamp(ts: number): string {
   return new Date(ts).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" })
 }
@@ -30,7 +41,7 @@ function LiveJobRow({ job }: { job: LiveJobSummary }): React.ReactElement {
       <Badge className={`${STATUS_COLORS[job.status] ?? "bg-muted text-muted-foreground"} border text-[10px] font-semibold`}>
         {job.status}
       </Badge>
-      <span className="font-mono font-medium">{job.name}</span>
+      <span className="font-mono font-medium">{JOB_NAME_LABELS[job.name] ?? job.name}</span>
       <span className="text-muted-foreground flex-1 truncate">id: {job.id}</span>
       <span className="text-muted-foreground text-xs">
         {formatTimestamp(job.timestamp)}
@@ -83,7 +94,7 @@ export function QueueOverviewSection({ queue }: Props): React.ReactElement {
             <div className="space-y-0">
               {queue.repeatableJobs.map((r) => (
                 <div key={r.key} className="flex items-center gap-3 py-2 text-sm" style={{ borderBottom: "1px solid var(--border)" }}>
-                  <span className="font-mono font-medium w-48">{r.name}</span>
+                  <span className="font-mono font-medium w-48">{JOB_NAME_LABELS[r.name] ?? r.name}</span>
                   <span className="text-muted-foreground font-mono text-xs">{r.cron}</span>
                   {r.nextRunAt !== null && (
                     <span className="text-muted-foreground text-xs ml-auto">

@@ -20,6 +20,7 @@ const JOB_LOG_FILTER_FIELDS: FilterField[] = [
       { value: "pgr-review-reminder",  label: "Lembrete de Revisão PGR" },
       { value: "stripe-webhook-retry", label: "Reprocessamento de Webhooks" },
       { value: "token-cleanup",        label: "Limpeza de Tokens" },
+      { value: "send-message",         label: "Envio de Mensagem" },
     ],
   },
   {
