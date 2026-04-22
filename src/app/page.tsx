@@ -125,18 +125,6 @@ export default async function LandingPage(): Promise<React.ReactElement> {
         </div>
       </section>
 
-      <section className="py-8 border-y border-border bg-muted/40">
-        <div className="max-w-5xl mx-auto px-6">
-          <p className="text-center text-xs font-semibold tracking-widest uppercase text-muted-foreground mb-6">
-            Confiado por empresas que levam a sério a saúde dos seus colaboradores
-          </p>
-          <div className="flex flex-wrap justify-center gap-10">
-            {["Indústrias Alfa", "Construtora Beta", "Logística Gamma", "Grupo Delta", "Metalúrgica Epsilon"].map((name) => (
-              <span key={name} className="text-sm font-semibold text-muted-foreground/60">{name}</span>
-            ))}
-          </div>
-        </div>
-      </section>
 
       <section id="recursos" className="py-24 max-w-6xl mx-auto px-6">
         <div className="text-center mb-16">
