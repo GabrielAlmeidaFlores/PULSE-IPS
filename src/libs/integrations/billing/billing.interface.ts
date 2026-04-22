@@ -1,3 +1,11 @@
+import type { JsonValue } from "@/libs/utils/json"
+
+export interface BillingWebhookEvent {
+  id: string
+  type: string
+  data: { object: JsonValue }
+}
+
 export interface CreateCheckoutSessionParams {
   externalPriceId: string
   externalCustomerId: string
@@ -39,5 +47,5 @@ export interface IBillingService {
     params: CreateBillingPortalSessionParams,
   ): Promise<CreateBillingPortalSessionResult>
   createCustomer(email: string, name: string): Promise<{ id: string }>
-  constructWebhookEvent(payload: string | Buffer, signature: string): unknown
+  constructWebhookEvent(payload: string | Buffer, signature: string): BillingWebhookEvent
 }

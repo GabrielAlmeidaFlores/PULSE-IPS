@@ -31,6 +31,10 @@
 20. [Fluxos de Negócio Críticos](#20-fluxos-de-negócio-críticos)
 21. [Variáveis de Ambiente](#21-variáveis-de-ambiente)
 22. [Comandos Úteis](#22-comandos-úteis)
+26. [Fronteiras de Camada](#26-fronteiras-de-camada)
+27. [Abstração de SDKs e ORM](#27-abstração-de-sdks-e-orm)
+28. [Queries Cross-tenant — Convenção de Naming para Jobs](#28-queries-cross-tenant--convenção-de-naming-para-jobs)
+29. [Checklist de Conformidade Pré-PR](#29-checklist-de-conformidade-pré-pr)
 
 ---
 
@@ -134,17 +138,19 @@ Feita exclusivamente pelo Super Admin. Campos:
 
 ```typescript
 // libs/auth/permissions.ts
-type Role = "super_admin" | "admin" | "rh"
-type Action = "create" | "read" | "update" | "delete"
-type Resource =
-  | "department" | "employee" | "survey_configuration"
-  | "anonymous_report" | "action_plan" | "document"
-  | "alert" | "pgr_review" | "audit_log"
+export type OrgUserRole = "admin" | "rh"
 
-export function can(role: Role, resource: Resource, action: Action): boolean
+export interface OrgSessionContext {
+  userId: string
+  tenantId: string
+  role: OrgUserRole
+}
+
+export function isOrgAdmin(context: OrgSessionContext): boolean
+export function isOrgRh(context: OrgSessionContext): boolean
+export function assertOrgAdmin(context: OrgSessionContext): void  // throws if not admin
+export function assertOrgMember(context: OrgSessionContext, tenantId: string): void  // throws if tenant mismatch
 ```
-
-`employee_consents` está **ausente** desta lista intencionalmente. Nenhuma permissão é concedida via aplicação para nenhum papel — acesso apenas interno via `consent.service.ts` e jobs.
 
 ---
 
@@ -193,7 +199,7 @@ Todo o projeto usa `"strict": true` mais flags adicionais (ver seção 9). `any`
 | PostgreSQL | 15+ | Banco de dados |
 | Prisma | v7 | ORM com `@prisma/adapter-pg` |
 | Tailwind CSS | v4 | Estilização |
-| shadcn/ui | latest | Componentes UI via Radix UI |
+| shadcn/ui | latest | Componentes UI via Radix UI / Base UI |
 
 ### Bibliotecas de suporte
 
@@ -215,6 +221,7 @@ Todo o projeto usa `"strict": true` mais flags adicionais (ver seção 9). `any`
 | `resend` | SDK Resend (e-mail) |
 | `twilio` | SDK Twilio (SMS) |
 | `bullmq` + `ioredis` | Fila de jobs com Redis |
+| `@base-ui/react` | Componentes primitivos de UI (Select usa Base UI, não Radix) |
 
 ---
 
@@ -247,7 +254,12 @@ src/
 │   ├── (onboarding)/                       # Primeiro acesso
 │   │   └── invite/[token]/page.tsx         # Admin define senha ao aceitar convite
 │   │
-│   ├── (super-admin)/                      # Painel Super Admin SaaS
+│   ├── (super-admin-public)/               # Login/Logout do Super Admin (sem sessão)
+│   │   └── super-admin/
+│   │       ├── login/page.tsx              # Login do Super Admin
+│   │       └── logout/actions.ts           # Server Action de logout
+│   │
+│   ├── (super-admin)/                      # Painel Super Admin SaaS (requer sessão super_admin)
 │   │   ├── layout.tsx
 │   │   ├── super-admin/
 │   │   │   ├── dashboard/page.tsx          # KPIs: orgs ativas, colaboradores, mensagens
@@ -264,7 +276,9 @@ src/
 │   │   │   │   ├── page.tsx                # Lista versões de termos + criar nova
 │   │   │   │   ├── new-terms-version-form.tsx
 │   │   │   │   └── actions.ts
-│   │   │   └── admins/page.tsx
+│   │   │   ├── admins/page.tsx
+│   │   │   ├── jobs/page.tsx               # Monitoramento de filas BullMQ (live + histórico)
+│   │   │   └── logs/page.tsx               # Logs de requests HTTP
 │   │
 │   ├── (tenant)/                           # Painel da empresa (Admin + RH)
 │   │   ├── layout.tsx                      # Guard: verifica termos pendentes → /accept-terms
@@ -335,8 +349,23 @@ src/
 │   │   ├── webhook.handler.ts              # Switch de eventos Stripe → ações internas
 │   │   └── billing.types.ts
 │   ├── platform-metrics/
-│   │   ├── metrics.repository.ts           # Queries agregadas para Super Admin dashboard
-│   │   └── metrics.types.ts
+│   │   ├── platform-metrics.repository.ts  # Queries agregadas para Super Admin dashboard
+│   │   ├── platform-metrics.service.ts
+│   │   └── platform-metrics.types.ts
+│   ├── dashboard/
+│   │   ├── dashboard.repository.ts         # Métricas do painel tenant
+│   │   └── dashboard.service.ts
+│   ├── job-logs/
+│   │   ├── job-log.repository.ts           # INSERT + listagem de logs de jobs
+│   │   ├── job-log.service.ts
+│   │   └── job-log.types.ts               # InsertJobLogInput, JobLogRow, JobLogFilters
+│   ├── queue-status/
+│   │   ├── queue-status.service.ts         # Leitura ao vivo das filas BullMQ (contagem, jobs ativos)
+│   │   └── queue-status.types.ts          # QueueStatus, LiveJobSummary
+│   ├── request-logs/
+│   │   ├── request-log.repository.ts       # Append-only — sem update/delete
+│   │   ├── request-log.service.ts
+│   │   └── request-log.types.ts
 │   └── audit/
 │       ├── audit.repository.ts             # Apenas INSERT — sem update/delete
 │       └── audit.types.ts
@@ -353,9 +382,9 @@ src/
 │   ├── integrations/
 │   │   ├── messaging/
 │   │   │   ├── messaging.interface.ts      # IMessagingService
-│   │   │   ├── twilio-sms.adapter.ts       # ✅ Implementação atual
-│   │   │   ├── whatsapp.adapter.ts         # 🔜 Implementação futura
-│   │   │   └── console-messaging.adapter.ts # Desenvolvimento local
+│   │   │   ├── twilio-sms.adapter.ts       # ✅ Implementação Twilio SMS
+│   │   │   ├── whatsapp.adapter.ts         # ✅ Implementação WhatsApp Cloud API
+│   │   │   └── console-sms.adapter.ts      # Desenvolvimento local
 │   │   ├── email/
 │   │   │   ├── email.interface.ts          # IEmailService
 │   │   │   ├── resend.adapter.ts           # ✅ Implementação atual
@@ -376,15 +405,18 @@ src/
 │   │   ├── payment-failed.tsx
 │   │   └── plan-cancelled.tsx
 │   ├── auth/
-│   │   └── permissions.ts                 # can(role, resource, action)
+│   │   └── permissions.ts                 # isOrgAdmin, isOrgRh, assertOrgAdmin, assertOrgMember
 │   └── utils/
+│       ├── action-result.ts               # ActionResult interface
+│       ├── json.ts                        # JsonValue — tipo JSON próprio da aplicação (não usa Prisma)
 │       ├── pagination.ts
 │       ├── date.ts
 │       └── slug.ts
 │
 ├── components/
-│   └── ui/                                 # shadcn/ui (Button, Input, Select, Dialog, Table…)
-│                                           # Instalados em src/components/ui/ pelo CLI do shadcn
+│   ├── ui/                                 # shadcn/ui (Button, Input, Select, Dialog, Table…)
+│   │                                       # Instalados em src/components/ui/ pelo CLI do shadcn
+│   └── animate-in.tsx                      # Wrapper de animação de entrada via IntersectionObserver
 ├── proxy.ts                                # Next.js 16 proxy (auth + tenant resolution)
 │                                           # ⚠️ Não é middleware.ts — Next.js 16 usa proxy.ts
 ├── env.ts                                  # Variáveis de ambiente tipadas (@t3-oss/env-nextjs + Zod)
@@ -566,14 +598,14 @@ Snapshot imutável das condições do plano no momento da contratação. Altera�
 | created_at | timestamptz | NOT NULL |
 | updated_at | timestamptz | NOT NULL |
 
-#### `stripe_webhook_events`
+#### `billing_webhook_events`
 
-Garante processamento idempotente. Antes de processar qualquer evento, verifica se `stripe_event_id` já existe.
+Garante processamento idempotente. Antes de processar qualquer evento, verifica se `external_event_id` já existe.
 
 | Coluna | Tipo | Constraints |
 |---|---|---|
 | id | uuid | PK |
-| stripe_event_id | varchar(255) | NOT NULL, UNIQUE |
+| external_event_id | varchar(255) | NOT NULL, UNIQUE — ID do evento no provedor de billing |
 | type | varchar(100) | NOT NULL |
 | processed | boolean | NOT NULL, default false |
 | processed_at | timestamptz | |
@@ -943,6 +975,78 @@ Registro de todas as mensagens enviadas. Fonte dos dados de métricas do Super A
 
 **Índices:** `(tenant_id, sent_at DESC)`, `(sent_at DESC)` — para contagem global no Super Admin
 
+#### `job_logs`
+
+Registro persistido de todas as execuções de jobs (completed/failed). **Append-only — sem update/delete.** Inserido pelos event listeners do BullMQ Worker no evento `completed` ou `failed`.
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| queue | varchar(50) | NOT NULL — `'jobs'` \| `'messages'` |
+| job_name | varchar(100) | NOT NULL — ex: `'survey-dispatcher'`, `'send-message'` |
+| job_id | varchar(255) | NOT NULL — ID do job no BullMQ |
+| status | varchar(20) | NOT NULL — `'completed'` \| `'failed'` |
+| duration_ms | integer | Duração da execução em ms |
+| payload | jsonb | Payload do job (input) |
+| result | jsonb | Resultado do job (output) |
+| error | text | Mensagem de erro (apenas `status = 'failed'`) |
+| attempts | integer | NOT NULL, default 1 |
+| started_at | timestamptz | NOT NULL |
+| finished_at | timestamptz | NOT NULL |
+| created_at | timestamptz | NOT NULL |
+
+**Índices:** `(queue, job_name, started_at DESC)`, `(status, started_at DESC)`
+
+#### `request_logs`
+
+Registro de requests HTTP recebidos pela aplicação. **Append-only — sem update/delete.** Inserido pelo proxy (`proxy.ts`) ou middleware de logging.
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| method | varchar(10) | NOT NULL — `'GET'`, `'POST'`, etc. |
+| path | varchar(500) | NOT NULL |
+| status_code | integer | NOT NULL |
+| duration_ms | integer | Duração total da request |
+| ip_address | varchar(45) | IP do cliente |
+| user_agent | text | |
+| tenant_id | uuid | FK → organizations.id — NULL para requests do super admin ou públicas |
+| user_id | uuid | ID do usuário autenticado (se houver) |
+| user_type | varchar(20) | `'org_user'` \| `'super_admin'` — NULL para requests públicas |
+| created_at | timestamptz | NOT NULL |
+
+**Índices:** `(tenant_id, created_at DESC)`, `(created_at DESC)` — para listagem no Super Admin
+
+#### `pgr_dept_results`
+
+Resultado por departamento gerado na revisão PGR. Normalizado para permitir queries por setor.
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| tenant_id | uuid | NOT NULL, FK → organizations.id |
+| pgr_review_id | uuid | NOT NULL, FK → pgr_reviews.id ON DELETE CASCADE |
+| department_id | uuid | NOT NULL, FK → departments.id |
+| avg_score | float | NOT NULL |
+| response_count | integer | NOT NULL |
+| alert_count | integer | NOT NULL, default 0 |
+| created_at | timestamptz | NOT NULL |
+
+#### `pgr_question_results`
+
+Resultado por pergunta gerado na revisão PGR. Permite análise de tendência por fator de risco.
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| tenant_id | uuid | NOT NULL, FK → organizations.id |
+| pgr_review_id | uuid | NOT NULL, FK → pgr_reviews.id ON DELETE CASCADE |
+| department_id | uuid | NOT NULL, FK → departments.id |
+| question_id | uuid | NOT NULL, FK → survey_questions.id |
+| avg_score | float | NOT NULL |
+| response_count | integer | NOT NULL |
+| created_at | timestamptz | NOT NULL |
+
 ---
 
 ### Resumo: Tabelas por Grupo
@@ -951,15 +1055,15 @@ Registro de todas as mensagens enviadas. Fonte dos dados de métricas do Super A
 |---|---|
 | **Sistêmicas** (sem tenant_id) | `plans`, `plan_prices`, `super_admin_users`, `consent_term_versions`, `report_categories`, `platform_terms_versions` |
 | **Auth / Onboarding** | `organization_invitations`, `auth_tokens` |
-| **Stripe** | `stripe_webhook_events` |
+| **Billing** | `billing_webhook_events` |
 | **Termos da plataforma** | `platform_terms_versions`, `platform_terms_acceptances` |
 | **Tenant — estrutura** | `organizations`, `organization_subscriptions`, `organization_users`, `departments` |
 | **Tenant — colaboradores** | `employees`, `employee_consents` |
 | **Tenant — pesquisas** | `survey_configurations`, `survey_questions`, `survey_dispatches`, `survey_response_tokens`, `survey_responses`, `survey_response_items` |
 | **Tenant — ocorrências** | `anonymous_reports`, `action_plans`, `action_tasks` |
-| **Tenant — documentos e PGR** | `documents`, `document_versions`, `pgr_reviews` |
+| **Tenant — documentos e PGR** | `documents`, `document_versions`, `pgr_reviews`, `pgr_dept_results`, `pgr_question_results` |
 | **Tenant — operacional** | `alerts`, `audit_logs` |
-| **Plataforma** | `message_logs` |
+| **Plataforma** | `message_logs`, `job_logs`, `request_logs` |
 
 ---
 
@@ -1016,6 +1120,37 @@ model PgrDeptResult {
 **Casos de uso aceitáveis para JSON** (raros, exige justificativa explícita):
 - Payload de webhook externo de terceiros (imutável, não consultado por campo)
 - Log de auditoria com estrutura variável definida externamente
+
+### Tipo JsonValue — proibido usar Prisma.InputJsonValue fora de repositórios
+
+Quando um campo aceita dados JSON arbitrários, use o tipo próprio da aplicação — nunca exponha tipos do Prisma ou de SDKs externos fora da camada de repositório.
+
+```typescript
+// ❌ Proibido — tipo Prisma vazando para o domínio
+import type { Prisma } from "@prisma/client"
+interface WebhookEventInput {
+  payload?: Prisma.InputJsonValue
+}
+
+// ✅ Correto — tipo próprio da aplicação
+import type { JsonValue } from "@/libs/utils/json"
+interface WebhookEventInput {
+  payload?: JsonValue
+}
+```
+
+O arquivo `src/libs/utils/json.ts` define `JsonValue` como tipo recursivo puro sem nenhuma dependência externa. **O cast para `Prisma.InputJsonValue` fica exclusivamente no repository**, que é a única camada que conhece o ORM.
+
+```typescript
+// src/libs/utils/json.ts
+type JsonPrimitive = string | number | boolean | null
+type JsonArray = JsonValue[]
+interface JsonObject { [key: string]: JsonValue }
+export type JsonValue = JsonPrimitive | JsonObject | JsonArray
+
+// src/modules/billing/billing.repository.ts — ÚNICO lugar com cast Prisma
+if (data.payload !== undefined) createData.payload = data.payload as Prisma.InputJsonValue
+```
 
 ```typescript
 // ❌ Proibido
@@ -1419,7 +1554,7 @@ O service usa a interface; nunca instancia o adapter diretamente:
 ```typescript
 // Correto — o service não sabe qual provedor está sendo usado
 const messaging = getMessagingService()
-await messaging.sendMessage({ to: employee.phone, body: surveyLink })
+await messaging.send({ to: employee.phone, body: surveyLink })
 ```
 
 ### Factory para integrações
@@ -1428,21 +1563,24 @@ await messaging.sendMessage({ to: employee.phone, body: surveyLink })
 // libs/integrations/index.ts
 export function getMessagingService(): IMessagingService {
   switch (env.MESSAGING_PROVIDER) {
-    case "whatsapp_cloud": return new WhatsAppCloudAdapter()
+    case "whatsapp_cloud": return new WhatsAppAdapter()
     case "twilio_sms":     return new TwilioSmsAdapter()
-    default:               return new ConsoleMessagingAdapter()  // desenvolvimento
+    default:               return new ConsoleSmsAdapter()
   }
 }
 
 export function getEmailService(): IEmailService {
   switch (env.EMAIL_PROVIDER) {
     case "resend": return new ResendAdapter()
-    default:       return new ConsoleEmailAdapter()  // desenvolvimento
+    default:       return new ConsoleEmailAdapter()
   }
 }
 
 export function getBillingService(): IBillingService {
-  return new StripeAdapter()  // única implementação em produção
+  switch (env.BILLING_PROVIDER) {
+    case "stripe": return new StripeAdapter()
+    default:       return new FakeBillingAdapter()
+  }
 }
 ```
 
@@ -1628,14 +1766,16 @@ O Super Admin **não possui** mecanismo de "login como organização". Não exis
 ```typescript
 // libs/integrations/messaging/messaging.interface.ts
 export interface IMessagingService {
-  sendMessage(params: SendMessageParams): Promise<SendMessageResult>
+  send(params: SendMessageParams): Promise<SendMessageResult>
   sendBulk(params: BulkMessageParams): Promise<BulkMessageResult>
 }
 ```
 
-**Implementação atual:** `MESSAGING_PROVIDER=twilio_sms` → `TwilioSmsAdapter`  
-**Futura:** `MESSAGING_PROVIDER=whatsapp_cloud` → `WhatsAppAdapter`  
-**Variáveis necessárias:** `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`
+**Implementação Twilio SMS:** `MESSAGING_PROVIDER=twilio_sms` → `TwilioSmsAdapter`  
+**Implementação WhatsApp Cloud:** `MESSAGING_PROVIDER=whatsapp_cloud` → `WhatsAppAdapter` ✅  
+**Desenvolvimento:** `MESSAGING_PROVIDER=console` → `ConsoleSmsAdapter` (imprime no terminal)  
+**Variáveis Twilio:** `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`  
+**Variáveis WhatsApp:** `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_API_VERSION` (default `"v20.0"`), `WHATSAPP_API_BASE_URL` (default `"https://graph.facebook.com"`)
 
 ### Email
 
@@ -1703,7 +1843,7 @@ export interface IPDFService {
 ### Stack visual
 
 - **Tailwind CSS v4** — sistema de tokens e utilitários
-- **shadcn/ui** — componentes acessíveis via Radix UI, instalados em `src/libs/design-system/components/ui/`
+- **shadcn/ui** — componentes acessíveis (maioria via Radix UI, `Select` via `@base-ui/react`), instalados em `src/libs/design-system/components/ui/`
 - **Lucide React** — ícones
 - **next-themes** — gerenciamento de tema (light/dark) SSR-safe
 
@@ -1884,7 +2024,7 @@ Stripe não permite editar `unit_amount`. Ao atualizar:
 | `invoice.payment_failed` | `billing_status = 'past_due'` |
 | `invoice.payment_succeeded` | `billing_status = 'active'` |
 
-**Idempotência:** antes de processar, verifica se `stripe_event_id` já existe em `stripe_webhook_events`.
+**Idempotência:** antes de processar, verifica se `external_event_id` já existe em `billing_webhook_events`.
 
 ### Adapter Stripe (implementação)
 
@@ -2113,7 +2253,7 @@ Processos recorrentes gerenciados pelo **BullMQ** com Redis como broker.
 | `alert-detector` | Diário (03:00) | Calcula quedas de score; cria alertas `score_drop` e `negative_trend` |
 | `employee-unpause` | Diário (01:00) | Reverte `status = 'active'` para colaboradores com `pause_end_at <= today` |
 | `pgr-review-reminder` | Diário (08:00) | 30 dias antes de `next_review_at`; cria alerta `pgr_review_due` |
-| `stripe-webhook-retry` | A cada hora | Reprocessa `stripe_webhook_events` com `error IS NOT NULL` e `processed = false` |
+| `stripe-webhook-retry` | A cada hora | Reprocessa `billing_webhook_events` com `error IS NOT NULL` e `processed = false` |
 | `token-cleanup` | Diário (02:00) | Remove `survey_response_tokens` expirados e não utilizados |
 
 ### Acionamento manual
@@ -2121,6 +2261,42 @@ Processos recorrentes gerenciados pelo **BullMQ** com Redis como broker.
 ```bash
 curl -X POST https://app.example.com/api/jobs/survey-dispatcher \
   -H "x-cron-secret: $CRON_SECRET"
+```
+
+### Monitoramento de Jobs (`/super-admin/jobs`)
+
+O Super Admin pode monitorar as filas em `/super-admin/jobs`:
+
+**Status ao vivo** — lido diretamente do BullMQ/Redis via `queue-status.service.ts`:
+- Contagem por estado: `waiting`, `active`, `delayed`, `failed`
+- Lista de jobs ativos no momento (nome, payload, duração parcial)
+- Schedules recorrentes registrados
+
+**Histórico persistido** — lido do banco via `job-log.service.ts`:
+- Tabela paginada com filtros por: queue, job_name, status, dateFrom, dateTo
+- Exibe duração, tentativas, payload resumido, mensagem de erro
+
+**Integração no Worker:** `job-worker.ts` registra listeners no evento `completed` e `failed` do BullMQ para inserir registros em `job_logs` via `jobLogRepository.insert()`.
+
+```typescript
+jobWorker.on("completed", async (job, result) => {
+  await jobLogRepository.insert({
+    queue: "jobs",
+    jobName: job.name,
+    jobId: job.id,
+    status: "completed",
+    durationMs: job.finishedOn - job.processedOn,
+    payload: job.data,
+    result,
+    attempts: job.attemptsMade,
+    startedAt: new Date(job.processedOn),
+    finishedAt: new Date(job.finishedOn),
+  })
+})
+
+jobWorker.on("failed", async (job, err) => {
+  await jobLogRepository.insert({ ... , status: "failed", error: err.message })
+})
 ```
 
 ---
@@ -2170,11 +2346,14 @@ Super Admin cria org → billing_status = 'pending'
 
 ```
 Employee cadastrado
-  → employee_consents criado (event: 'invited', token gerado)
-  → messagingService.sendMessage (link /consent/[token])
-    → Employee aceita: informa CPF → cpf_hash = SHA-256(cpf), event: 'accepted'
-    → Employee recusa: event: 'refused' (registrado para auditoria)
+  → consent.service.ts cria employee_consents (event: 'invited', token gerado)
+  → getMessageQueue().add("send-message", { type: "consent_invite", phone, link })
+    → Job Worker consome e chama getMessagingService().send(...)
+      → Employee aceita: informa CPF → cpf_hash = SHA-256(cpf), event: 'accepted'
+      → Employee recusa: event: 'refused' (registrado para auditoria)
 ```
+
+> **Nota:** o convite passa pela fila BullMQ (não chamada direta) para garantir retry em caso de falha, logging em `job_logs` e monitoramento no painel `/super-admin/jobs`.
 
 ### 20.3 Envio de pesquisa
 
@@ -2276,28 +2455,21 @@ const HEADER_MAP: Record<string, keyof ImportRow> = {
 ### 20.10 Métricas de plataforma (Super Admin Dashboard)
 
 ```typescript
-// modules/platform-metrics/metrics.repository.ts
+// modules/platform-metrics/platform-metrics.repository.ts
 
-async getPlatformMetrics() {
-  const [activeOrgs] = await db
-    .select({ count: count() })
-    .from(organizations)
-    .where(eq(organizations.isActive, true))
-
-  const [totalEmployees] = await db
-    .select({ count: count() })
-    .from(employees)
-    .where(eq(employees.status, "active"))
-
-  const [messagesSent] = await db
-    .select({ count: count() })
-    .from(messageLogs)
-    .where(gte(messageLogs.sentAt, startOfMonth(new Date())))
+async getPlatformMetrics(): Promise<PlatformMetrics> {
+  const [activeOrgs, totalEmployees, messagesSent] = await Promise.all([
+    prisma.organization.count({ where: { isActive: true } }),
+    prisma.employee.count({ where: { status: "active" } }),
+    prisma.messageLog.count({
+      where: { sentAt: { gte: startOfMonth(new Date()) } },
+    }),
+  ])
 
   return {
-    activeOrganizations: activeOrgs.count,
-    activeEmployees: totalEmployees.count,
-    messagesThisMonth: messagesSent.count,
+    activeOrganizations: activeOrgs,
+    activeEmployees: totalEmployees,
+    messagesThisMonth: messagesSent,
   }
 }
 ```
@@ -2323,6 +2495,7 @@ RESEND_API_KEY=re_...
 EMAIL_FROM=noreply@pulse.com
 
 # Billing
+BILLING_PROVIDER=stripe
 STRIPE_SECRET_KEY=sk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
@@ -2332,6 +2505,12 @@ MESSAGING_PROVIDER=twilio_sms
 TWILIO_ACCOUNT_SID=AC...
 TWILIO_AUTH_TOKEN=...
 TWILIO_FROM_NUMBER=+55...
+
+# WhatsApp Cloud API (quando MESSAGING_PROVIDER=whatsapp_cloud)
+WHATSAPP_PHONE_NUMBER_ID=...
+WHATSAPP_ACCESS_TOKEN=...
+WHATSAPP_API_VERSION=v20.0
+WHATSAPP_API_BASE_URL=https://graph.facebook.com
 
 # Jobs
 REDIS_HOST=localhost
@@ -2559,3 +2738,215 @@ import Link from "next/link"
 #### Exceções — tabelas com ações inline mas SEM página de detalhe
 
 Tabelas como `documents`, `alerts` e `reports` gerenciam tudo inline (upload, status, resolução). **Não** adicionam coluna de seta.
+
+---
+
+## 26. Fronteiras de Camada
+
+Esta é a regra de importação mais importante do projeto. **Cada camada só pode importar as camadas abaixo dela.** Violar essa hierarquia quebra o isolamento e cria acoplamento oculto.
+
+### Hierarquia de dependências
+
+```
+app/ (pages, Server Actions, layouts)
+  ↓ importa apenas
+modules/*/service.ts
+  ↓ importa apenas
+modules/*/repository.ts
+  ↓ importa apenas
+libs/db/index.ts (Prisma client)
+```
+
+Adicionalmente:
+
+```
+libs/integrations/*        ← services podem importar via factory (getEmailService(), etc.)
+libs/auth/permissions.ts   ← services e Server Actions podem importar
+libs/utils/*               ← qualquer camada pode importar
+modules/*/schema.ts        ← qualquer camada pode importar (validação pura)
+modules/*/types.ts         ← qualquer camada pode importar (tipos puros)
+```
+
+### Regras por camada
+
+| Camada | Pode importar | Proibido |
+|---|---|---|
+| `src/app/**` | services, schemas, types, libs/utils, libs/auth | Prisma diretamente, repositories, SDKs externos |
+| `src/modules/*/service.ts` | repositories, libs/integrations (via factory), libs/auth, libs/utils, types, schemas | Prisma diretamente, SDKs externos diretamente |
+| `src/modules/*/repository.ts` | libs/db (Prisma), libs/utils, types | services, SDKs externos que não sejam o ORM |
+| `src/libs/integrations/**` | SDKs externos (Twilio, Resend, Stripe), libs/utils | Prisma, modules |
+| `src/modules/*/types.ts` | libs/utils/json, outros types | `@prisma/client` (exceto re-export de entidade), SDKs externos |
+
+### Exemplos práticos
+
+```typescript
+// ❌ PROIBIDO — app layer acessando prisma diretamente
+// src/app/(tenant)/employees/page.tsx
+import { prisma } from "@/libs/db"
+const employees = await prisma.employee.findMany(...)
+
+// ✅ CORRETO — app layer chama service
+import { listEmployees } from "@/modules/employees/employee.service"
+const employees = await listEmployees(tenantId)
+
+// ❌ PROIBIDO — service acessando prisma diretamente
+// src/modules/employees/employee.service.ts
+import { prisma } from "@/libs/db"
+const emp = await prisma.employee.findFirst(...)
+
+// ✅ CORRETO — service chama repository
+import { findEmployeeById } from "@/modules/employees/employee.repository"
+const emp = await findEmployeeById(tenantId, id)
+
+// ❌ PROIBIDO — types file expondo tipo do Prisma
+// src/modules/billing/billing.types.ts
+import type { Prisma } from "@prisma/client"
+export interface WebhookEventInput { payload?: Prisma.InputJsonValue }
+
+// ✅ CORRETO — types file usa tipo próprio
+import type { JsonValue } from "@/libs/utils/json"
+export interface WebhookEventInput { payload?: JsonValue }
+```
+
+### Re-export de entidades Prisma em types.ts — regra
+
+O único uso aceitável de `@prisma/client` em arquivos `types.ts` é **re-exportar entidades** para que o app layer não precise importar diretamente:
+
+```typescript
+// src/modules/employees/employee.types.ts
+export type { Employee } from "@prisma/client"  // ✅ re-export aceitável
+
+// app layer usa:
+import type { Employee } from "@/modules/employees/employee.types"  // ✅ correto
+```
+
+---
+
+## 27. Abstração de SDKs e ORM
+
+O código de domínio (services, types, schemas) deve ser completamente agnóstico ao provedor. Stripe, Twilio, Resend e Prisma são detalhes de infraestrutura — **nenhum tipo, constante ou referência desses SDKs pode aparecer fora da camada de adaptação**.
+
+### Regras
+
+| Artefato | Onde fica | Proibido fora |
+|---|---|---|
+| `Prisma.*` (InputJsonValue, JsonValue, etc.) | `*.repository.ts` | Qualquer outro arquivo |
+| `Stripe.*` (Event, Subscription, Invoice, etc.) | `libs/integrations/billing/stripe.adapter.ts` | Qualquer outro arquivo |
+| `Twilio.*` | `libs/integrations/messaging/twilio-sms.adapter.ts` | Qualquer outro arquivo |
+| `Resend.*` | `libs/integrations/email/resend.adapter.ts` | Qualquer outro arquivo |
+| Constantes de URL/versão de SDK | `src/env.ts` ou o adapter correspondente | Qualquer outro arquivo |
+
+### Padrão de abstração
+
+Quando um adapter precisa retornar dados de um SDK, **sempre converte para tipo próprio** antes de retornar:
+
+```typescript
+// ❌ PROIBIDO — retornar tipo do SDK para fora do adapter
+async createCheckoutSession(...): Promise<Stripe.Checkout.Session> { ... }
+
+// ✅ CORRETO — converter para tipo da aplicação
+async createCheckoutSession(...): Promise<CreateCheckoutSessionResult> {
+  const session = await stripe.checkout.sessions.create(...)
+  return { sessionId: session.id, url: session.url! }
+}
+```
+
+### Constantes de SDK no `.env`
+
+Toda configuração de SDK (API version, base URL, region) vem do `.env` via `src/env.ts`. **Nunca hardcode** strings de configuração de provedores no código:
+
+```typescript
+// ❌ PROIBIDO — hardcoded no adapter
+const WHATSAPP_API_VERSION = "v20.0"
+const WHATSAPP_API_BASE = "https://graph.facebook.com"
+
+// ✅ CORRETO — via env
+const apiVersion = env.WHATSAPP_API_VERSION
+const apiBase = env.WHATSAPP_API_BASE_URL
+```
+
+---
+
+## 28. Queries Cross-tenant — Convenção de Naming para Jobs
+
+Jobs (BullMQ) precisam processar dados de **todos os tenants** de uma vez. Isso é uma **exceção intencional** ao tenant guard — não um bug. Para distinguir, é obrigatório usar o prefixo `findAllTenants` em qualquer função de repositório que omita o `tenantId` em tabelas que normalmente exigem esse filtro.
+
+### Regra
+
+```typescript
+// ❌ PROIBIDO — nome ambíguo, parece estar faltando tenantId
+async function findPendingDispatches(): Promise<SurveyDispatch[]> {
+  return prisma.surveyDispatch.findMany({ where: { status: "scheduled" } })
+}
+
+// ✅ CORRETO — nome deixa explícito que é cross-tenant intencional
+async function findAllTenantsPendingDispatches(): Promise<SurveyDispatch[]> {
+  return prisma.surveyDispatch.findMany({ where: { status: "scheduled" } })
+}
+```
+
+### Quando usar
+
+| Cenário | Naming obrigatório |
+|---|---|
+| Job que processa todos os tenants (survey-dispatcher, adherence-checker, etc.) | `findAllTenants*` |
+| Métricas de plataforma para Super Admin | `findAllTenants*` ou `getPlatform*` |
+| Manutenção / cleanup (token-cleanup, employee-unpause) | `findAllTenants*` |
+
+### Onde NÃO usar
+
+Toda query em contexto de tenant (Server Action, service chamado por Server Action, page RSC) **deve** ter `tenantId`. O prefixo `findAllTenants*` é exclusivo para jobs e agregações de plataforma.
+
+---
+
+## 29. Checklist de Conformidade Pré-PR
+
+Antes de considerar qualquer tarefa concluída, execute **todos** os itens abaixo. Zero tolerância para warnings.
+
+### Verificações automáticas (obrigatórias)
+
+```bash
+npx tsc --noEmit   # deve retornar 0 erros
+yarn lint          # deve retornar 0 erros e 0 warnings
+```
+
+### Verificações manuais (obrigatórias)
+
+Execute `grep` para confirmar cada item:
+
+| # | Verificação | Comando de grep |
+|---|---|---|
+| 1 | Nenhum `@prisma/client` importado em `src/app/**` | `grep -r "from \"@prisma/client\"" src/app/` |
+| 2 | Nenhum `@prisma/client` importado em `modules/*/types.ts` (exceto re-exports de entidade) | `grep -r "Prisma\." src/modules/` |
+| 3 | Nenhum `prisma` importado em `service.ts` | `grep -rn "from \"@/libs/db\"" src/modules/ \| grep service` |
+| 4 | Nenhum `$queryRaw` / `$executeRaw` em qualquer arquivo | `grep -r "\$queryRaw\|\$executeRaw" src/` |
+| 5 | Todas as queries em tabelas com `tenant_id` incluem `tenantId` no `where` | Revisar manualmente qualquer novo repository |
+| 6 | Mensagens de erro em pt-BR | `grep -rn '"[A-Z].*[a-z]"' src/modules/ \| grep "throw\|AppError"` |
+| 7 | Nenhum `console.*` fora de workers/integrations | `grep -rn "console\." src/app/ src/modules/` |
+| 8 | Queries cross-tenant de jobs nomeadas com `findAllTenants*` | Revisar `src/workers/` e jobs que chamam repositories sem `tenantId` |
+| 9 | Nenhum `enum` TypeScript (use union types ou const maps) | `grep -rn "^enum \|  enum " src/` |
+| 10 | `JsonValue` de `@/libs/utils/json` — nunca `Prisma.InputJsonValue` fora de repository | `grep -rn "Prisma\.InputJsonValue\|Prisma\.JsonValue" src/modules/ src/app/` |
+
+### Verificações de domínio (obrigatórias para funcionalidades novas)
+
+| # | Verificação |
+|---|---|
+| 11 | Nova tabela com `tenant_id`? Todos os repositórios recebem `tenantId` como 1º parâmetro |
+| 12 | Nova integração externa? Existe interface em `libs/integrations/*/interface.ts` e adapter separado |
+| 13 | Novos tipos JSON? Usam `JsonValue` de `@/libs/utils/json`, não tipos do ORM |
+| 14 | Novo evento de billing? Mapeado em `webhook.handler.ts` e na tabela de eventos da §15 |
+| 15 | Novos valores de enum no banco? Mapeados em `LABELS` Record antes de renderizar na UI (§24) |
+| 16 | Nova rota com dados sensíveis? Tenant guard ativo no `proxy.ts` ou no layout |
+| 17 | Novo módulo? Segue estrutura `repository + service + schema + types` (§10) |
+| 18 | Novos erros de negócio? Usam `AppError` com mensagem em pt-BR |
+| 19 | Server Action nova? Chama `getSession()`, valida com Zod, chama `revalidatePath` após mutação |
+| 20 | `employee_consents` modificado? `ConsentRepository` ainda é append-only (sem `update`/`delete`) |
+
+### Quando o PR pode ser considerado pronto
+
+- `tsc --noEmit` → **0 erros**
+- `yarn lint` → **0 erros, 0 warnings**
+- Todos os itens manuais acima verificados
+- Sem `TODO`, `FIXME` ou `@ts-ignore` introduzidos
+
+*Pulse — AGENTS.md | Documento interno | Abril de 2026*

@@ -12,6 +12,7 @@ import {
   findOrgBySlug,
   findOrgUserByEmail,
   findOrgUserById,
+  findOrgUserByIdOnly,
   updateOrgUserPassword,
   findSuperAdminByEmail,
   invalidatePreviousResetTokens,
@@ -88,7 +89,7 @@ export async function changePassword(
   if (!valid) throw new AppError("INVALID_PASSWORD", "Senha atual incorreta")
 
   const newHash = await hashPassword(newPassword)
-  await updateOrgUserPassword(userId, newHash)
+  await updateOrgUserPassword(userId, tenantId, newHash)
 }
 
 export async function requestPasswordReset(email: string, orgSlug: string): Promise<void> {
@@ -119,8 +120,11 @@ export async function resetPassword(token: string, newPassword: string): Promise
   if (authToken.usedAt) throw new AppError("TOKEN_USED", "Este link já foi utilizado.")
   if (authToken.expiresAt < new Date()) throw new AppError("TOKEN_EXPIRED", "Este link expirou. Solicite um novo.")
 
+  const user = await findOrgUserByIdOnly(authToken.userId)
+  if (!user) throw new AppError("USER_NOT_FOUND", "Usuário não encontrado.")
+
   const newHash = await hashPassword(newPassword)
-  await consumeAuthToken(authToken.id, authToken.userId, newHash)
+  await consumeAuthToken(authToken.id, authToken.userId, user.tenantId, newHash)
 }
 
 export function getOrgUserById(userId: string, tenantId: string): ReturnType<typeof findOrgUserById> {

@@ -1,4 +1,6 @@
-export type BillingStatus = "pending" | "active" | "past_due" | "canceled" | "trialing" | "paused" | "unpaid"
+import type { JsonValue } from "@/libs/utils/json"
+
+export type BillingStatus = "pending" | "active" | "past_due" | "cancelled" | "trialing" | "suspended" | "unpaid"
 
 export interface OrganizationSubscription {
   id: string
@@ -37,6 +39,6 @@ export interface WebhookEventInput {
   tenantId?: string | undefined
   externalEventId: string
   type: string
-  payload?: object | undefined
+  payload?: JsonValue | undefined
   processedAt?: Date | undefined
 }

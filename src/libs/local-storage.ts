@@ -18,7 +18,7 @@ function set(key: StorageKey, value: string): void {
   try {
     window.localStorage.setItem(key, value)
   } catch {
-    //
+    return
   }
 }
 
@@ -27,7 +27,7 @@ function remove(key: StorageKey): void {
   try {
     window.localStorage.removeItem(key)
   } catch {
-    //
+    return
   }
 }
 

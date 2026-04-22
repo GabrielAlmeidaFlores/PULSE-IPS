@@ -2,6 +2,7 @@ import Stripe from "stripe"
 import { env } from "@/env"
 import type {
   IBillingService,
+  BillingWebhookEvent,
   CreateCheckoutSessionParams,
   CreateCheckoutSessionResult,
   CreateBillingPortalSessionParams,
@@ -9,6 +10,7 @@ import type {
   CreateStripeProductParams,
   CreateStripePriceParams,
 } from "@/libs/integrations/billing/billing.interface"
+import type { JsonValue } from "@/libs/utils/json"
 
 export class StripeAdapter implements IBillingService {
   private stripe = new Stripe(env.STRIPE_SECRET_KEY ?? "")
@@ -60,7 +62,12 @@ export class StripeAdapter implements IBillingService {
     return { id: customer.id }
   }
 
-  constructWebhookEvent(payload: string | Buffer, signature: string): unknown {
-    return this.stripe.webhooks.constructEvent(payload, signature, env.STRIPE_WEBHOOK_SECRET ?? "")
+  constructWebhookEvent(payload: string | Buffer, signature: string): BillingWebhookEvent {
+    const raw = this.stripe.webhooks.constructEvent(payload, signature, env.STRIPE_WEBHOOK_SECRET ?? "")
+    return {
+      id: raw.id,
+      type: raw.type,
+      data: { object: raw.data.object as unknown as JsonValue },
+    }
   }
 }

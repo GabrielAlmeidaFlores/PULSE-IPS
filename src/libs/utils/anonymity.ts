@@ -1,0 +1,1 @@
+export const MINIMUM_RESPONDENTS_FOR_DISPLAY = 5

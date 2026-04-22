@@ -1,5 +1,6 @@
 import type {
   IBillingService,
+  BillingWebhookEvent,
   CreateCheckoutSessionParams,
   CreateCheckoutSessionResult,
   CreateBillingPortalSessionParams,
@@ -47,8 +48,8 @@ export class FakeBillingAdapter implements IBillingService {
     return { url: params.returnUrl }
   }
 
-  constructWebhookEvent(_payload: string | Buffer, _signature: string): unknown {
+  constructWebhookEvent(_payload: string | Buffer, _signature: string): BillingWebhookEvent {
     console.log(`\n💳 [FAKE BILLING] constructWebhookEvent (always valid in fake mode)\n`)
-    return { id: `fake_evt_${Date.now()}`, type: "checkout.session.completed" }
+    return { id: `fake_evt_${Date.now()}`, type: "checkout.session.completed", data: { object: {} } }
   }
 }

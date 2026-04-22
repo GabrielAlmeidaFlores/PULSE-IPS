@@ -25,7 +25,7 @@ export function getAllOrganizations(): ReturnType<typeof findAllOrganizations> {
 
 export async function createOrg(input: CreateOrganizationInput): Promise<Organization> {
   const existing = await findOrganizationBySlug(input.slug)
-  if (existing) throw new AppError("SLUG_TAKEN", "Slug already taken")
+  if (existing) throw new AppError("SLUG_TAKEN", "Este identificador já está em uso.")
 
   const billing = getBillingService()
   const customer = await billing.createCustomer(

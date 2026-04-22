@@ -4,7 +4,7 @@ import React, { useState, useTransition } from "react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { updateReportStatusAction } from "@/app/(tenant)/reports/actions"
-import type { AnonymousReport } from "@prisma/client"
+import type { AnonymousReport } from "@/modules/anonymous-reports/anonymous-report.types"
 
 const STATUS_LABELS: Record<string, string> = {
   open: "Aberto",

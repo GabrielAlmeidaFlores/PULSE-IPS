@@ -16,8 +16,12 @@ export function findOrgUserById(userId: string, tenantId: string): Promise<Organ
   return prisma.organizationUser.findFirst({ where: { id: userId, tenantId } })
 }
 
-export async function updateOrgUserPassword(userId: string, passwordHash: string): Promise<void> {
-  await prisma.organizationUser.update({ where: { id: userId }, data: { passwordHash } })
+export function findOrgUserByIdOnly(userId: string): Promise<OrganizationUser | null> {
+  return prisma.organizationUser.findFirst({ where: { id: userId } })
+}
+
+export async function updateOrgUserPassword(userId: string, tenantId: string, passwordHash: string): Promise<void> {
+  await prisma.organizationUser.update({ where: { id: userId, tenantId }, data: { passwordHash } })
 }
 
 export function findSuperAdminByEmail(email: string): Promise<SuperAdmin | null> {
@@ -41,9 +45,9 @@ export function findAuthToken(token: string): Promise<AuthToken | null> {
   return prisma.authToken.findUnique({ where: { token } })
 }
 
-export async function consumeAuthToken(tokenId: string, userId: string, newPasswordHash: string): Promise<void> {
+export async function consumeAuthToken(tokenId: string, userId: string, tenantId: string, newPasswordHash: string): Promise<void> {
   await prisma.$transaction([
-    prisma.organizationUser.update({ where: { id: userId }, data: { passwordHash: newPasswordHash } }),
+    prisma.organizationUser.update({ where: { id: userId, tenantId }, data: { passwordHash: newPasswordHash } }),
     prisma.authToken.update({ where: { id: tokenId }, data: { usedAt: new Date() } }),
   ])
 }

@@ -22,12 +22,12 @@ export function isOrgRh(context: OrgSessionContext): boolean {
 
 export function assertOrgAdmin(context: OrgSessionContext): void {
   if (context.role !== "admin") {
-    throw new Error("FORBIDDEN: requires admin role")
+    throw new Error("Acesso não permitido: requer perfil de administrador.")
   }
 }
 
 export function assertOrgMember(context: OrgSessionContext, tenantId: string): void {
   if (context.tenantId !== tenantId) {
-    throw new Error("FORBIDDEN: tenant mismatch")
+    throw new Error("Acesso não permitido: organização incompatível.")
   }
 }

@@ -41,12 +41,13 @@ export function findConsentByToken(token: string): Promise<EmployeeConsent | nul
 }
 
 export function findExistingConsentEvent(
+  tenantId: string,
   employeeId: string,
   consentTermVersionId: string,
   events: string[],
 ): Promise<EmployeeConsent | null> {
   return prisma.employeeConsent.findFirst({
-    where: { employeeId, consentTermVersionId, event: { in: events } },
+    where: { tenantId, employeeId, consentTermVersionId, event: { in: events } },
   })
 }
 

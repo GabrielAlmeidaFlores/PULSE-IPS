@@ -58,7 +58,7 @@ export interface SurveyResponseWithItems {
   }
 }
 
-export function findRecentSurveyResponsesForAlerts(since: Date): Promise<SurveyResponseWithItems[]> {
+export function findAllTenantsRecentSurveyResponsesForAlerts(since: Date): Promise<SurveyResponseWithItems[]> {
   return prisma.surveyResponse.findMany({
     where: { createdAt: { gte: since } },
     include: {

@@ -5,7 +5,7 @@ import { toast } from "sonner"
 import { Dialog, DialogClose, DialogContent, DialogOverlay, DialogPortal, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { inviteUserAction } from "@/app/(tenant)/settings/actions"
-import type { OrganizationUser } from "@prisma/client"
+import type { OrganizationUser } from "@/modules/auth/auth.types"
 
 const ROLE_LABELS: Record<string, string> = {
   admin: "Admin",

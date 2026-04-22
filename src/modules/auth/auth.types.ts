@@ -1,3 +1,5 @@
+export type { OrganizationUser } from "@prisma/client"
+
 export interface SessionPayload {
   userId: string
   tenantId: string

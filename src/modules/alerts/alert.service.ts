@@ -1,4 +1,4 @@
-import { findAlertsByTenant, createAlert, markAlertRead, resolveAlert, findRecentSurveyResponsesForAlerts } from "@/modules/alerts/alert.repository"
+import { findAlertsByTenant, createAlert, markAlertRead, resolveAlert, findAllTenantsRecentSurveyResponsesForAlerts } from "@/modules/alerts/alert.repository"
 import type { Alert, Department } from "@prisma/client"
 
 export function getAlerts(tenantId: string): Promise<(Alert & { department: Department | null })[]> {
@@ -22,7 +22,7 @@ export async function detectLowScoreAlerts(): Promise<void> {
   const LOOKBACK_HOURS = 48
 
   const since = new Date(Date.now() - LOOKBACK_HOURS * 60 * 60 * 1000)
-  const responses = await findRecentSurveyResponsesForAlerts(since)
+  const responses = await findAllTenantsRecentSurveyResponsesForAlerts(since)
 
   const deptScores = new Map<string, { tenantId: string; departmentId: string; departmentName: string; scores: number[] }>()
 

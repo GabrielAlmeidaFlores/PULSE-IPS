@@ -1,5 +1,5 @@
 import { prisma } from "@/libs/db"
-import type { OrganizationSubscription, Plan, BillingWebhookEvent } from "@prisma/client"
+import type { Prisma, OrganizationSubscription, Plan, BillingWebhookEvent } from "@prisma/client"
 import type { SubscriptionUpsertInput, WebhookEventInput } from "@/modules/billing/billing.types"
 
 export function findActiveSubscription(tenantId: string): Promise<(OrganizationSubscription & { plan: Plan }) | null> {
@@ -18,15 +18,14 @@ export function upsertSubscription(data: SubscriptionUpsertInput): Promise<Organ
 }
 
 export function recordWebhookEvent(data: WebhookEventInput): Promise<BillingWebhookEvent> {
-  return prisma.billingWebhookEvent.create({
-    data: {
-      externalEventId: data.externalEventId,
-      type: data.type,
-      ...(data.tenantId !== undefined && { tenantId: data.tenantId }),
-      ...(data.payload !== undefined && { payload: data.payload }),
-      ...(data.processedAt !== undefined && { processedAt: data.processedAt }),
-    },
-  })
+  const createData: Parameters<typeof prisma.billingWebhookEvent.create>[0]["data"] = {
+    externalEventId: data.externalEventId,
+    type: data.type,
+  }
+  if (data.tenantId !== undefined) createData.tenantId = data.tenantId
+  if (data.payload !== undefined) createData.payload = data.payload as Prisma.InputJsonValue
+  if (data.processedAt !== undefined) createData.processedAt = data.processedAt
+  return prisma.billingWebhookEvent.create({ data: createData })
 }
 
 export function findWebhookEvent(externalEventId: string): Promise<BillingWebhookEvent | null> {

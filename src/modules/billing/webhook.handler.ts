@@ -1,57 +1,69 @@
-import type Stripe from "stripe"
+import type { BillingWebhookEvent } from "@/libs/integrations/billing/billing.interface"
 import { upsertSubscription, recordWebhookEvent, findWebhookEvent, findFailedWebhookEvents, markWebhookEventProcessed, markWebhookEventFailed } from "@/modules/billing/billing.repository"
 import type { BillingStatus } from "@/modules/billing/billing.types"
 import { findOrganizationByCustomerId, updateOrganizationBillingStatus } from "@/modules/organizations/organization.repository"
 import { findPlanPriceById } from "@/modules/plans/plan.repository"
 
-export async function handleStripeWebhook(event: Stripe.Event): Promise<void> {
+interface WebhookSubscriptionData {
+  id: string
+  status: string
+  customer: string
+  cancel_at_period_end: boolean
+  current_period_start: number
+  current_period_end: number
+  items: { data: { price: { id: string } }[] }
+}
+
+interface WebhookInvoiceData {
+  customer: string
+}
+
+export async function handleStripeWebhook(event: BillingWebhookEvent): Promise<void> {
   const existing = await findWebhookEvent(event.id)
   if (existing) return
 
   switch (event.type) {
     case "customer.subscription.created":
     case "customer.subscription.updated": {
-      const subscription = event.data.object
+      const subscription = event.data.object as unknown as WebhookSubscriptionData
       await handleSubscriptionUpdate(subscription)
       break
     }
     case "customer.subscription.deleted": {
-      const subscription = event.data.object
+      const subscription = event.data.object as unknown as WebhookSubscriptionData
       await handleSubscriptionDeleted(subscription)
       break
     }
     case "invoice.payment_failed": {
-      const invoice = event.data.object
+      const invoice = event.data.object as unknown as WebhookInvoiceData
       await handlePaymentFailed(invoice)
       break
     }
     case "invoice.payment_succeeded": {
-      const invoice = event.data.object
+      const invoice = event.data.object as unknown as WebhookInvoiceData
       await handlePaymentSucceeded(invoice)
       break
     }
   }
 
-  await recordWebhookEvent({ externalEventId: event.id, type: event.type, payload: event as object, processedAt: new Date() })
+  await recordWebhookEvent({ externalEventId: event.id, type: event.type, payload: event as unknown as import("@/libs/utils/json").JsonValue, processedAt: new Date() })
 }
 
-async function handleSubscriptionUpdate(subscription: Stripe.Subscription): Promise<void> {
-  const customer = await findOrganizationByCustomerId(subscription.customer as string)
+async function handleSubscriptionUpdate(subscription: WebhookSubscriptionData): Promise<void> {
+  const customer = await findOrganizationByCustomerId(subscription.customer)
   if (!customer) return
 
   const priceId = subscription.items.data[0]?.price.id ?? ""
   const planPrice = await findPlanPriceById(priceId)
   if (!planPrice) return
 
-  const sub = subscription as Stripe.Subscription & { current_period_start: number; current_period_end: number }
-
   await upsertSubscription({
     tenantId: customer.id,
     planId: planPrice.planId,
     externalSubscriptionId: subscription.id,
     status: subscription.status as BillingStatus,
-    currentPeriodStart: new Date(sub.current_period_start * 1000),
-    currentPeriodEnd: new Date(sub.current_period_end * 1000),
+    currentPeriodStart: new Date(subscription.current_period_start * 1000),
+    currentPeriodEnd: new Date(subscription.current_period_end * 1000),
     cancelAtPeriodEnd: subscription.cancel_at_period_end,
     snapshotPlanName: planPrice.plan.name,
     snapshotMaxEmployees: planPrice.plan.maxEmployees,
@@ -63,20 +75,20 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription): Prom
   await updateOrganizationBillingStatus(customer.id, subscription.status as BillingStatus, planPrice.planId)
 }
 
-async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
-  const customer = await findOrganizationByCustomerId(subscription.customer as string)
+async function handleSubscriptionDeleted(subscription: WebhookSubscriptionData): Promise<void> {
+  const customer = await findOrganizationByCustomerId(subscription.customer)
   if (!customer) return
-  await updateOrganizationBillingStatus(customer.id, "canceled")
+  await updateOrganizationBillingStatus(customer.id, "cancelled")
 }
 
-async function handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
-  const customer = await findOrganizationByCustomerId(invoice.customer as string)
+async function handlePaymentFailed(invoice: WebhookInvoiceData): Promise<void> {
+  const customer = await findOrganizationByCustomerId(invoice.customer)
   if (!customer) return
   await updateOrganizationBillingStatus(customer.id, "past_due")
 }
 
-async function handlePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
-  const customer = await findOrganizationByCustomerId(invoice.customer as string)
+async function handlePaymentSucceeded(invoice: WebhookInvoiceData): Promise<void> {
+  const customer = await findOrganizationByCustomerId(invoice.customer)
   if (!customer) return
   await updateOrganizationBillingStatus(customer.id, "active")
 }
@@ -89,8 +101,8 @@ export async function retryFailedWebhookEvents(): Promise<{ retried: number; suc
 
   for (const event of failedEvents) {
     try {
-      const stripeEvent = event.payload as unknown as Stripe.Event
-      await handleStripeWebhook(stripeEvent)
+      const webhookEvent = event.payload as unknown as BillingWebhookEvent
+      await handleStripeWebhook(webhookEvent)
       await markWebhookEventProcessed(event.id)
       succeeded++
     } catch (err) {

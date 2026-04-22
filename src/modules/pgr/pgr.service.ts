@@ -1,4 +1,5 @@
 import { addDays } from "date-fns"
+import { MINIMUM_RESPONDENTS_FOR_DISPLAY } from "@/libs/utils/anonymity"
 import type { PgrReview, PgrQuestionResult } from "@prisma/client"
 import type { CreatePgrDeptResultInput, CreatePgrQuestionResultInput, PgrScoreDistribution } from "@/modules/pgr/pgr.types"
 import type { ScoreDirection } from "@/modules/surveys/survey.types"
@@ -73,7 +74,7 @@ function buildDeptQuestionResults(
   }
   const results: CreatePgrQuestionResultInput[] = []
   for (const [questionId, v] of qMap.entries()) {
-    if (v.scores.length > 0) {
+    if (v.scores.length >= MINIMUM_RESPONDENTS_FOR_DISPLAY) {
       results.push({
         pgrReviewId: reviewId,
         departmentId: deptId,

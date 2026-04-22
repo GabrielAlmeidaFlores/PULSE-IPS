@@ -223,7 +223,7 @@ export function findDispatchById(tenantId: string, dispatchId: string): Promise<
   })
 }
 
-export function findPendingDispatches(): Promise<
+export function findAllTenantsPendingDispatches(): Promise<
   (SurveyDispatch & {
     surveyConfiguration: SurveyConfiguration & {
       workDays: { dayOfWeek: number }[]
@@ -420,7 +420,7 @@ export interface PendingAdherenceDispatch {
   surveyConfiguration: { departmentId: string }
 }
 
-export function findDispatches48hAgo(): Promise<PendingAdherenceDispatch[]> {
+export function findAllTenantsDispatches48hAgo(): Promise<PendingAdherenceDispatch[]> {
   const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000)
   return prisma.surveyDispatch.findMany({
     where: { status: "sent", dispatchedAt: { lte: cutoff }, adherenceCheckedAt: null },

@@ -105,7 +105,7 @@ export async function deletePlanById(planId: string): Promise<void> {
 
 export async function addPriceToPlan(input: CreatePlanPriceInput): Promise<PlanPrice> {
   const plan = await findPlanById(input.planId)
-  if (!plan?.externalProductId) throw new AppError("PLAN_NO_PRODUCT", "Plan has no billing product")
+  if (!plan?.externalProductId) throw new AppError("PLAN_NO_PRODUCT", "Este plano não possui um produto de cobrança configurado.")
 
   const billing = getBillingService()
   const price = await billing.createPrice({

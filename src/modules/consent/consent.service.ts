@@ -64,7 +64,7 @@ export async function recordAcceptance(token: string, cpfHash?: string): Promise
   if (consentInvite.tokenExpiresAt && consentInvite.tokenExpiresAt < new Date()) {
     throw new AppError("TOKEN_EXPIRED", "Token expirado.")
   }
-  const existing = await findExistingConsentEvent(consentInvite.employeeId, consentInvite.consentTermVersionId, ["accepted", "refused"])
+  const existing = await findExistingConsentEvent(consentInvite.tenantId, consentInvite.employeeId, consentInvite.consentTermVersionId, ["accepted", "refused"])
   if (existing) throw new AppError("TOKEN_USED", LINK_ALREADY_USED_MSG)
 
   await createConsentRecord({
@@ -83,7 +83,7 @@ export async function recordRefusal(token: string): Promise<void> {
   if (consentInvite.tokenExpiresAt && consentInvite.tokenExpiresAt < new Date()) {
     throw new AppError("TOKEN_EXPIRED", "Token expirado.")
   }
-  const existing = await findExistingConsentEvent(consentInvite.employeeId, consentInvite.consentTermVersionId, ["accepted", "refused"])
+  const existing = await findExistingConsentEvent(consentInvite.tenantId, consentInvite.employeeId, consentInvite.consentTermVersionId, ["accepted", "refused"])
   if (existing) throw new AppError("TOKEN_USED", LINK_ALREADY_USED_MSG)
 
   await createConsentRecord({
@@ -116,7 +116,7 @@ export async function acceptConsentFromSurveyToken(surveyToken: string): Promise
   const activeVersion = await getActiveConsentTermVersion()
   if (!activeVersion) throw new AppError("NO_ACTIVE_TERMS", NO_ACTIVE_TERMS_MSG)
 
-  const existing = await findExistingConsentEvent(tokenRecord.employeeId, activeVersion.id, ["accepted"])
+  const existing = await findExistingConsentEvent(tokenRecord.tenantId, tokenRecord.employeeId, activeVersion.id, ["accepted"])
   if (!existing) {
     await createConsentRecord({
       tenantId: tokenRecord.tenantId,

@@ -4,12 +4,12 @@ import { getMessageQueue } from "@/libs/queue"
 import { env } from "@/env"
 import { logger } from "@/libs/logger"
 import {
-  findPendingDispatches,
+  findAllTenantsPendingDispatches,
   findActiveConfigsForAutoDispatch,
   createSurveyTokens,
   createDispatch,
   markDispatchSent,
-  findDispatches48hAgo,
+  findAllTenantsDispatches48hAgo,
   countResponsesForDispatch,
   createAdherenceAlert,
   markDispatchAdherenceChecked,
@@ -102,7 +102,7 @@ async function fireDispatch(
 }
 
 export async function runSurveyDispatcher(): Promise<{ dispatched: number; errors: number }> {
-  const pendingDispatches = await findPendingDispatches()
+  const pendingDispatches = await findAllTenantsPendingDispatches()
   let dispatched = 0
   let errors = 0
 
@@ -190,7 +190,7 @@ export async function runAutoDispatchScheduler(): Promise<{ triggered: number; s
 
 export async function checkDispatchAdherence(): Promise<{ processed: number; alertsCreated: number }> {
   const LOW_ADHERENCE_THRESHOLD = 0.5
-  const dispatches = await findDispatches48hAgo()
+  const dispatches = await findAllTenantsDispatches48hAgo()
   let alertsCreated = 0
 
   for (const dispatch of dispatches) {
