@@ -18,6 +18,7 @@ Plataforma SaaS multi-tenant de gestão de saúde e bem-estar ocupacional voltad
 - [Provedores de integração](#provedores-de-integração)
 - [Arquitetura do projeto](#arquitetura-do-projeto)
 - [Papéis e permissões](#papéis-e-permissões)
+- [Índice de Saúde Ocupacional](#índice-de-saúde-ocupacional)
 - [Fluxos da plataforma](#fluxos-da-plataforma)
   - [Autenticação](#1-autenticação)
   - [Onboarding de organização](#2-onboarding-de-organização)
@@ -28,14 +29,15 @@ Plataforma SaaS multi-tenant de gestão de saúde e bem-estar ocupacional voltad
   - [Verificação de aderência](#7-verificação-de-aderência)
   - [Detecção de alertas](#8-detecção-de-alertas)
   - [Planos de ação](#9-planos-de-ação)
-  - [Consentimento LGPD](#10-consentimento-lgpd)
-  - [Denúncias anônimas](#11-denúncias-anônimas)
-  - [Documentos](#12-documentos)
-  - [PGR](#13-pgr)
-  - [Faturamento e assinatura (Stripe)](#14-faturamento-e-assinatura-stripe)
-  - [Super Admin](#15-super-admin)
-  - [Convite de usuários](#16-convite-de-usuários)
-  - [Timezone e expediente](#17-timezone-e-expediente)
+  - [Sugestões de plano de ação](#10-sugestões-de-plano-de-ação)
+  - [Consentimento LGPD](#11-consentimento-lgpd)
+  - [Denúncias anônimas](#12-denúncias-anônimas)
+  - [Documentos](#13-documentos)
+  - [PGR](#14-pgr)
+  - [Faturamento e assinatura (Stripe)](#15-faturamento-e-assinatura-stripe)
+  - [Super Admin](#16-super-admin)
+  - [Convite de usuários](#17-convite-de-usuários)
+  - [Timezone e expediente](#18-timezone-e-expediente)
 
 ---
 
@@ -209,13 +211,14 @@ Processa os jobs agendados pelo cron. Cada job é identificado por nome:
 
 | Job | Descrição |
 |---|---|
-| `survey-dispatcher` | Dispara pesquisas para funcionários ativos |
-| `adherence-checker` | Verifica aderência de dispatches com 48h |
-| `alert-detector` | Detecta scores baixos e gera alertas |
-| `employee-unpause` | Despausa funcionários após o período de pausa |
-| `pgr-review-reminder` | Envia lembrete de revisão do PGR por e-mail |
+| `survey-dispatcher` | Dispara pesquisas para funcionários ativos (automático e manual) |
+| `survey-adherence-checker` | Verifica aderência de dispatches com mais de 48h |
+| `survey-score-alert-detector` | Detecta scores baixos e gera alertas de bem-estar |
+| `employee-unpause` | Despausa funcionários após o período de pausa expirar |
+| `pgr-review-reminder` | Cria alerta de revisão do PGR quando vence em até 30 dias |
 | `stripe-webhook-retry` | Reprocessa webhooks do Stripe que falharam |
-| `token-cleanup` | Remove tokens de resposta expirados |
+| `survey-response-token-cleanup` | Remove tokens de resposta expirados e não utilizados |
+| `action-plan-suggestion-generator` | Gera sugestões de plano de ação com base em alertas ativos e dados da plataforma |
 
 ### Fila de mensagens (`pulse:messages`)
 
@@ -233,15 +236,16 @@ yarn worker:schedules
 
 ### Schedules (frequência dos jobs)
 
-| Job | Cron |
-|---|---|
-| `survey-dispatcher` | A cada 15 minutos |
-| `adherence-checker` | A cada hora |
-| `alert-detector` | Diariamente às 03:00 |
-| `employee-unpause` | Diariamente às 01:00 |
-| `pgr-review-reminder` | Diariamente às 08:00 |
-| `stripe-webhook-retry` | A cada hora |
-| `token-cleanup` | Diariamente às 02:00 |
+| Job | Cron | Frequência |
+|---|---|---|
+| `survey-dispatcher` | `*/15 * * * *` | A cada 15 minutos |
+| `survey-adherence-checker` | `0 * * * *` | A cada hora |
+| `survey-score-alert-detector` | `0 3 * * *` | Diariamente às 03:00 |
+| `employee-unpause` | `0 1 * * *` | Diariamente às 01:00 |
+| `pgr-review-reminder` | `0 8 * * *` | Diariamente às 08:00 |
+| `stripe-webhook-retry` | `0 * * * *` | A cada hora |
+| `survey-response-token-cleanup` | `0 2 * * *` | Diariamente às 02:00 |
+| `action-plan-suggestion-generator` | `0 6 * * *` | Diariamente às 06:00 |
 
 ---
 
@@ -254,12 +258,13 @@ Todos os endpoints exigem o header `x-cron-secret: <CRON_SECRET>`.
 | Endpoint | Método | Descrição |
 |---|---|---|
 | `/api/jobs/survey-dispatcher` | POST | Dispara pesquisas agendadas |
-| `/api/jobs/adherence-checker` | POST | Verifica aderência de respostas |
-| `/api/jobs/alert-detector` | POST | Gera alertas de scores baixos |
+| `/api/jobs/survey-adherence-checker` | POST | Verifica aderência de respostas |
+| `/api/jobs/survey-score-alert-detector` | POST | Gera alertas de scores baixos |
 | `/api/jobs/employee-unpause` | POST | Despausa funcionários com data vencida |
-| `/api/jobs/pgr-review-reminder` | POST | Envia lembretes de revisão do PGR |
+| `/api/jobs/pgr-review-reminder` | POST | Cria alerta de revisão do PGR |
 | `/api/jobs/stripe-webhook-retry` | POST | Reprocessa webhooks Stripe com falha |
-| `/api/jobs/token-cleanup` | POST | Remove tokens expirados do banco |
+| `/api/jobs/survey-response-token-cleanup` | POST | Remove tokens expirados do banco |
+| `/api/jobs/action-plan-suggestion-generator` | POST | Gera sugestões de plano de ação |
 
 **Exemplo de chamada manual:**
 
@@ -454,6 +459,57 @@ O arquivo `src/proxy.ts` intercepta todas as requisições:
 
 ---
 
+## Índice de Saúde Ocupacional
+
+O **Índice de Saúde** é a métrica central do Pulse. Representa o bem-estar de um setor em uma escala de 0 a 100%, calculada a partir das respostas das pesquisas.
+
+### Fórmula
+
+```
+Índice de Saúde = round(((média_normalizada - 1) / 4) × 100)
+```
+
+A média normalizada é calculada sobre os scores individuais após aplicação da normalização de direção.
+
+### Normalização de direção (`scoreDirection`)
+
+Cada pergunta tem uma direção configurada:
+
+| `scoreDirection` | Significado | Normalização |
+|---|---|---|
+| `higher_is_better` | Nota alta = bem-estar alto (ex: "satisfação geral") | Score é usado diretamente |
+| `lower_is_better` | Nota alta = bem-estar baixo (ex: "nível de estresse") | Score invertido: `6 - score` |
+
+Exemplos:
+- Pergunta "Como está seu estresse?" com `lower_is_better`: nota 1 (ótimo) → normalizado como 5 → Índice de Saúde alto
+- Pergunta "Satisfação geral" com `higher_is_better`: nota 5 (ótimo) → normalizado como 5 → Índice de Saúde alto
+
+### Faixas de classificação
+
+| Faixa | Classificação | Cor |
+|---|---|---|
+| ≥ 62% | Saudável | Verde |
+| 37% – 61% | Atenção | Amarelo/Âmbar |
+| < 37% | Crítico | Vermelho |
+
+### Requisito mínimo de respondentes
+
+Métricas são exibidas apenas quando há **mínimo de 5 respondentes** no período. Abaixo desse limiar, o sistema retorna `{ available: false, reason: "insufficient_respondents" }` para proteger o anonimato individual.
+
+### Fonte única de verdade
+
+Todos os cálculos de Índice de Saúde passam pela função `toHealthIndex` em `src/libs/utils/health-index.ts`. **Nunca calcule o índice manualmente em outros arquivos** — importe sempre essa função.
+
+```typescript
+import { toHealthIndex, healthIndexLabel, healthIndexAccent } from "@/libs/utils/health-index"
+
+const hi = toHealthIndex(mediaNormalizada)   // → número 0–100
+const label = healthIndexLabel(hi)           // → "Saudável" | "Atenção" | "Crítico"
+const color = healthIndexAccent(hi)          // → classe CSS de cor
+```
+
+---
+
 ## Fluxos da plataforma
 
 ### 1. Autenticação
@@ -594,11 +650,16 @@ O link aponta para `/survey/[token]`, que também serve como ponto de entrada pa
 3. Verifica se o funcionário está dentro do horário de expediente configurado (usando `workStartTime`/`workEndTime` salvos no token no momento do disparo).
 4. **Consent gate:** se o funcionário ainda não aceitou os termos de consentimento (TCLE), exibe o texto dos termos inline para aceite antes de mostrar o formulário. Ao aceitar, cria um `EmployeeConsent` com `event = "accepted"`. Ao recusar, cria `event = "refused"` e encerra o fluxo.
 5. Exibe as perguntas da pesquisa (scores de 1 a 5).
-6. Ao submeter, a action:
-   - Cria `SurveyResponse` com os itens.
+6. O funcionário pode clicar em **"Não quero mais participar"** (opt-out) a qualquer momento antes de submeter. Isso:
+   - Cria um `EmployeeConsent` com `event = "opt_out"` e `source = "survey_form"`.
+   - Marca o token como usado.
+   - O job `survey-dispatcher` passa a excluir este funcionário de novos disparos até que seja re-convidado.
+7. Ao submeter, a action:
+   - Cria `SurveyResponse` **sem `employee_id`** — o desvinculamento garante anonimato completo.
+   - Cria `SurveyResponseItem` por questão com o score informado.
    - Marca o token como usado (`usedAt = now()`).
    - Atualiza `SurveyDispatch.totalResponses++`.
-7. O funcionário vê uma tela de agradecimento.
+8. O funcionário vê uma tela de agradecimento.
 
 > O horário verificado no momento da resposta usa o `workStartTime`/`workEndTime` **snapshot** salvo no token, não a configuração atual. Isso garante consistência mesmo que a config seja alterada após o disparo.
 
@@ -661,6 +722,14 @@ O job `alert-detector` (diariamente às 03:00) analisa respostas das últimas 48
 | `medium` | Atenção | Índice de Saúde entre 37% e 61% |
 | `low` | Informativo | Alertas operacionais não urgentes |
 
+**Detecção de crise em relatos anônimos:**
+
+Ao receber um relato, o sistema verifica a descrição contra uma lista de palavras-chave de crise (ex: "me matar", "quero morrer", "suicídio", "não quero mais viver"). Se detectado:
+1. O campo `isCrisis = true` é marcado no relato.
+2. Um `Alert` do tipo `crisis_report` com `severity = "high"` é criado para o setor.
+3. A tela exibida ao colaborador inclui o número do CVV (188 — gratuito, 24h).
+4. O admin/RH visualiza o alerta como crítico sem identificar o autor — apenas o setor.
+
 ---
 
 ### 9. Planos de ação
@@ -669,11 +738,88 @@ O job `alert-detector` (diariamente às 03:00) analisa respostas das últimas 48
 2. Dentro do plano, cria tarefas individuais com responsável e prazo.
 3. Status do plano: `open` → `in_progress` → `completed`.
 4. Ao marcar como concluído, `completedAt` é registrado automaticamente.
-5. Planos de ação costumam ser criados em resposta a alertas de saúde ou ao PGR.
+5. Planos de ação costumam ser criados em resposta a alertas de saúde, sugestões automáticas ou ao PGR.
 
 ---
 
-### 10. Consentimento LGPD
+### 10. Sugestões de plano de ação
+
+O job `action-plan-suggestion-generator` (diariamente às 06:00) analisa o estado de cada tenant e gera automaticamente sugestões de planos de ação exibidas na tela `/action-plans`.
+
+#### Como funciona
+
+O sistema coleta 6 fontes de dados em paralelo para cada tenant:
+
+| Fonte | O que analisa |
+|---|---|
+| Alertas abertos (`alerts`) | Tipo, severidade, setor e mensagem de cada alerta sem resolução |
+| Relatos em aberto (`anonymous_reports`) | Relatos com `status = "open"` ou `"analyzing"` |
+| Planos recentes (`action_plans`) | Títulos de planos criados nos últimos 30 dias (evita duplicatas) |
+| Colaboradores sem TCLE (`employees`) | Ativos sem nenhum `event = "accepted"` em `employee_consents` |
+| Última revisão PGR (`pgr_reviews`) | Data e período do PGR mais recente |
+| Dispatches recentes (`survey_dispatches`) | Enviados nos últimos 30 dias com adesão < 80% |
+
+#### Prioridade de geração
+
+As sugestões são geradas nesta ordem de prioridade, com no máximo 1 sugestão por tipo de alerta (o mais recente):
+
+```
+1. Alertas abertos (ordenados por tipo de risco):
+   a. crisis_report  → "Resposta a relato de crise — {setor}"            [prioridade: alta]
+   b. score_drop     → "Intervenção de bem-estar — {setor}"               [prioridade: alta]
+   c. low_score      → "Índice de bem-estar abaixo do esperado — {setor}" [prioridade: alta]
+   d. negative_trend → "Plano de melhoria contínua — {setor}"            [prioridade: alta]
+   e. low_adherence  → "Engajamento nas pesquisas — {setor}"              [prioridade: média]
+   f. no_response    → "Pesquisa sem respostas registradas — {setor}"     [prioridade: média]
+
+2. Relatos anônimos (≥ 3 relatos em aberto)
+   → "Tratamento de relatos anônimos pendentes"                           [prioridade: média]
+
+3. Dispatch com baixa adesão (< 80%, nos últimos 30 dias)
+   → "Aumentar adesão às pesquisas — {setor}"                            [prioridade: média]
+
+4. Colaboradores sem TCLE aceito
+   → "Engajamento no TCLE — colaboradores sem aceite"                     [prioridade: média]
+
+5. PGR não gerado no mês corrente
+   → "Geração do relatório PGR do mês"                                    [prioridade: baixa]
+```
+
+#### Deduplicação
+
+- Cada sugestão tem uma `suggestionKey` única (ex: `alert-score_drop-{departmentId}`, `open-reports`, `pgr-missing`).
+- Antes de criar, o job verifica se já existe uma sugestão com a mesma `suggestionKey` em `action_plan_suggestions` — se sim, pula (idempotente).
+- Sugestões com título igual a um plano de ação criado nos últimos 30 dias também são ignoradas.
+
+#### Conteúdo gerado
+
+Cada sugestão contém:
+
+| Campo | Descrição |
+|---|---|
+| `title` | Nome curto e direto do plano sugerido |
+| `description` | Contexto completo: dados que motivaram a sugestão, fator identificado, tempo decorrido, impacto esperado, referência à NR-1 quando aplicável |
+| `reason` | Frase resumida exibida no card colapsado na lista |
+| `priority` | `high`, `medium` ou `low` — derivado do tipo de alerta ou do contexto |
+| `tasks` | Lista de tarefas pré-definidas por tipo de situação |
+
+#### Ciclo de vida
+
+| Status | Significado |
+|---|---|
+| `pending` | Aguardando ação do admin/RH — exibida na lista |
+| `dismissed` | Ignorada pelo usuário via botão "×" — não aparece mais |
+| `converted` | Usuário clicou em "Criar este plano" — `ActionPlan` foi criado e a sugestão é removida da lista |
+
+#### Requisitos técnicos
+
+- Apenas tenants com `billing_status = "active"` recebem sugestões (via `findAllTenantsActiveOrganizationIds`).
+- A geração é **cross-tenant**: o job itera sobre todos os tenants ativos. Por convenção, funções de repositório que omitem `tenantId` para esse fim usam o prefixo `findAllTenants*`.
+- **Não altere `score_direction` de perguntas com respostas existentes** — isso distorceria os alertas e consequentemente as sugestões geradas. Veja a seção [Índice de Saúde Ocupacional](#índice-de-saúde-ocupacional) e as [Regras para mutação de `survey_questions`](AGENTS.md).
+
+---
+
+### 11. Consentimento LGPD
 
 O fluxo de consentimento garante que a coleta de dados de saúde dos funcionários seja juridicamente válida:
 
@@ -688,7 +834,7 @@ O fluxo de consentimento garante que a coleta de dados de saúde dos funcionári
 
 ---
 
-### 11. Denúncias anônimas
+### 12. Denúncias anônimas
 
 1. Qualquer pessoa com o slug da organização pode acessar `/report/[orgSlug]`.
 2. Preenche um formulário com categoria e descrição da denúncia.
@@ -697,7 +843,7 @@ O fluxo de consentimento garante que a coleta de dados de saúde dos funcionári
 
 ---
 
-### 12. Documentos
+### 13. Documentos
 
 1. Admin faz upload de documentos (SST, PPRA, PCMSO, etc.) em `/documents`.
 2. Cada documento tem um tipo e pode ter múltiplas versões (`DocumentVersion`).
@@ -706,7 +852,7 @@ O fluxo de consentimento garante que a coleta de dados de saúde dos funcionári
 
 ---
 
-### 13. PGR
+### 14. PGR
 
 1. Admin acessa `/pgr` para gerenciar as revisões do Programa de Gerenciamento de Riscos.
 2. Cada `PgrReview` tem um período, URL do arquivo, status (`pending` → `generated` → `reviewed`) e data da próxima revisão.
@@ -715,7 +861,7 @@ O fluxo de consentimento garante que a coleta de dados de saúde dos funcionári
 
 ---
 
-### 14. Faturamento e assinatura (Stripe)
+### 15. Faturamento e assinatura (Stripe)
 
 **Fluxo de assinatura:**
 
@@ -748,7 +894,7 @@ Checkout → Stripe Checkout Session
 
 ---
 
-### 15. Super Admin
+### 16. Super Admin
 
 O super admin acessa `/super-admin` com credenciais separadas e tem controle total da plataforma:
 
@@ -773,7 +919,7 @@ O super admin acessa `/super-admin` com credenciais separadas e tem controle tot
 
 ---
 
-### 16. Convite de usuários
+### 17. Convite de usuários
 
 1. Admin acessa `/settings` → Gerenciamento de equipe.
 2. Informa o e-mail e role (`admin` ou `rh`) do novo usuário.
@@ -783,7 +929,7 @@ O super admin acessa `/super-admin` com credenciais separadas e tem controle tot
 
 ---
 
-### 17. Timezone e expediente
+### 18. Timezone e expediente
 
 **Princípio:**
 - Todas as datas e horas são armazenadas no banco em **UTC+0**.
