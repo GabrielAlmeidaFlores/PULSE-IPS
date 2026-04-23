@@ -21,7 +21,31 @@ export default async function ReportsPage(): Promise<React.ReactElement> {
         <div>
           <div className="flex items-center gap-1.5">
             <h1 className="text-sm font-bold uppercase tracking-widest">Relatos Anonimos</h1>
-            <PageHelp text="Canal para que qualquer pessoa envie uma denúncia ou relato de forma completamente anônima, sem precisar se identificar. O link público pode ser compartilhado com os colaboradores. A equipe de RH visualiza e trata os relatos aqui, com opção de marcar cada um como resolvido." />
+            <PageHelp content={
+              <div className="space-y-3">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Canal de relato anônimo</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">Espaço seguro para colaboradores relatarem situações de assédio, conflito, sobrecarga ou qualquer desconforto no ambiente de trabalho. <strong>Totalmente anônimo</strong> — nenhuma informação do remetente é coletada ou armazenada.</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Como funciona</p>
+                  <ul className="text-[12px] text-foreground leading-relaxed space-y-1 list-none">
+                    <li>① Compartilhe o <strong>link público</strong> (botão "Copiar link") com seus colaboradores via e-mail, grupos ou murais</li>
+                    <li>② O colaborador acessa, escolhe uma categoria e descreve a situação</li>
+                    <li>③ O relato aparece aqui para o RH tratar, sem qualquer identificação</li>
+                    <li>④ Marque como <strong>Em análise → Resolvido</strong> à medida que age</li>
+                  </ul>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Relatos de crise</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">Quando o sistema detecta palavras-chave de saúde mental grave (ex: "quero desaparecer"), o relato é marcado automaticamente como <strong>crise</strong> e gera um alerta de alta severidade. O formulário público exibe o número do CVV (188) nesse caso.</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Importância legal</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">Manter um canal de escuta permanente e documentar o tratamento dos relatos é uma boa prática exigida indiretamente pela <strong>NR-1</strong> e pode ser apresentado como evidência do comprometimento da empresa com a saúde ocupacional.</p>
+                </div>
+              </div>
+            } />
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">{reports.length} total</p>
         </div>

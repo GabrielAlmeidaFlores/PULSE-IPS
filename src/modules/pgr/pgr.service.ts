@@ -5,6 +5,7 @@ import type { CreatePgrDeptResultInput, CreatePgrQuestionResultInput, PgrScoreDi
 import type { ScoreDirection } from "@/modules/surveys/survey.types"
 import {
   type PgrReviewWithResults,
+  type PgrReviewListItem,
   findPgrReviewsByTenant,
   findPgrReviewById,
   findOrgWithDepartmentsForPgr,
@@ -17,11 +18,29 @@ import {
   createPgrAlert,
   findItemScoresForPeriod,
 } from "@/modules/pgr/pgr.repository"
+import { toHealthIndex } from "@/libs/utils/health-index"
 
 export type { PgrReviewWithResults, PgrScoreDistribution }
 
-export function getPgrReviews(tenantId: string): Promise<PgrReview[]> {
-  return findPgrReviewsByTenant(tenantId)
+export interface PgrReviewSummary extends PgrReview {
+  overallHealthIndex: number | null
+}
+
+function computeOverallHealthIndex(deptResults: { avgScore: number; responseCount: number }[]): number | null {
+  const eligible = deptResults.filter((d) => d.responseCount >= MINIMUM_RESPONDENTS_FOR_DISPLAY)
+  if (eligible.length === 0) return null
+  const totalResponses = eligible.reduce((s, d) => s + d.responseCount, 0)
+  const weightedSum = eligible.reduce((s, d) => s + d.avgScore * d.responseCount, 0)
+  return toHealthIndex(weightedSum / totalResponses)
+}
+
+function toSummary(review: PgrReviewListItem): PgrReviewSummary {
+  const { deptResults, ...base } = review
+  return { ...base, overallHealthIndex: computeOverallHealthIndex(deptResults) }
+}
+
+export function getPgrReviews(tenantId: string): Promise<PgrReviewSummary[]> {
+  return findPgrReviewsByTenant(tenantId).then((list) => list.map(toSummary))
 }
 
 export function getPgrReviewById(id: string, tenantId: string): Promise<PgrReviewWithResults | null> {

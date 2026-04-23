@@ -41,7 +41,28 @@ export default async function BillingPage(): Promise<React.ReactElement> {
       <div className="border-b border-border bg-card px-6 py-4 shrink-0">
         <div className="flex items-center gap-1.5">
           <h1 className="text-sm font-bold uppercase tracking-widest">Assinatura</h1>
-          <PageHelp text="Gerencia o plano da sua empresa no Pulse. Exibe o plano atual, data de renovação e histórico de pagamentos. Você pode fazer upgrade, downgrade ou cancelar a assinatura a qualquer momento. Disponível apenas para o administrador da conta." />
+          <PageHelp content={
+              <div className="space-y-3">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Assinatura e faturamento</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">Gerenciamento completo da assinatura da sua empresa. Exibe o plano ativo, o limite de colaboradores incluídos, a data de renovação e o histórico de faturas. Disponível apenas para o <strong>administrador</strong> da conta.</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">O que você pode fazer</p>
+                  <ul className="text-[12px] text-foreground leading-relaxed space-y-1 list-none">
+                    <li>📋 <strong>Ver plano atual</strong> — limite de colaboradores, validade, valor</li>
+                    <li>⬆️ <strong>Upgrade/downgrade</strong> — mudar para outro plano</li>
+                    <li>💳 <strong>Atualizar cartão</strong> — trocar o método de pagamento</li>
+                    <li>🧾 <strong>Baixar faturas</strong> — exportar notas para o financeiro</li>
+                    <li>❌ <strong>Cancelar</strong> — encerrar a assinatura (acesso mantido até o fim do período pago)</li>
+                  </ul>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Status de pagamento</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">Se uma cobrança falhar, o status muda para <strong>Em atraso</strong> e aparece um aviso no painel. Após novo período sem pagamento, o acesso é suspenso até a regularização.</p>
+                </div>
+              </div>
+            } />
         </div>
         <p className="text-xs text-muted-foreground mt-0.5">Gerenciamento de plano e faturamento</p>
       </div>

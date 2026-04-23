@@ -67,7 +67,32 @@ export default async function DashboardPage({ searchParams }: Props): Promise<Re
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <h1 className="text-sm font-bold uppercase tracking-widest">Dashboard</h1>
-            <PageHelp text="Painel de insights sobre saúde ocupacional. Mostra a evolução do Índice de Saúde geral, comparação entre setores, taxa de adesão às pesquisas e performance individual de cada setor ao longo do tempo." />
+            <PageHelp content={
+              <div className="space-y-3">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">O que é este painel?</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">Visão consolidada da saúde ocupacional da empresa em tempo real. Agrega dados de todas as pesquisas enviadas e transforma as respostas anônimas em indicadores acionáveis para o RH e a gestão.</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Índice de saúde</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">Calculado a partir das notas de 1 a 5 das pesquisas, convertidas numa escala de 0% a 100%. <strong>≥ 62% = Saudável</strong>, <strong>37–61% = Atenção</strong>, <strong>&lt; 37% = Crítico</strong>. Exibido apenas quando há pelo menos 5 respostas no período (proteção ao anonimato).</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">O que você vê aqui</p>
+                  <ul className="text-[12px] text-foreground leading-relaxed space-y-1 list-none">
+                    <li>📈 <strong>Evolução temporal</strong> — tendência do índice ao longo dos últimos meses</li>
+                    <li>🏆 <strong>Setor em destaque</strong> — departamento com melhor índice no período</li>
+                    <li>⚠️ <strong>Setor crítico</strong> — departamento que mais precisa de atenção</li>
+                    <li>📊 <strong>Taxa de adesão</strong> — % de colaboradores que responderam</li>
+                    <li>🔔 <strong>Alertas ativos</strong> — problemas identificados automaticamente</li>
+                  </ul>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Dica</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">Use o seletor de período (canto superior direito) para comparar meses. Quedas consecutivas geram alertas automáticos e devem ser investigadas com um Plano de Ação.</p>
+                </div>
+              </div>
+            } />
           </div>
           {availableQuestions.length > 0 && (
             <Suspense>

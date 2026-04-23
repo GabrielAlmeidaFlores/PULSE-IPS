@@ -3,6 +3,7 @@ import { z } from "zod"
 import { revalidatePath } from "next/cache"
 import { getSession } from "@/modules/auth/session"
 import { generatePgrReport } from "@/modules/pgr/pgr.service"
+import { updatePgrReviewStatus } from "@/modules/pgr/pgr.repository"
 import { AppError } from "@/libs/errors/app-error"
 import type { ActionResult } from "@/libs/utils/action-result"
 
@@ -15,6 +16,24 @@ export async function generatePgrReportAction(period: string): Promise<ActionRes
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Período inválido." }
   try {
     await generatePgrReport(session.tenantId, parsed.data)
+    revalidatePath("/pgr")
+    return {}
+  } catch (err) {
+    if (err instanceof AppError) return { error: err.message }
+    throw err
+  }
+}
+
+const reviewIdSchema = z.string().uuid("ID inválido.")
+
+export async function markPgrAsReviewedAction(reviewId: string): Promise<ActionResult> {
+  const session = await getSession()
+  if (!session) return { error: "Sessão expirada." }
+  const parsed = reviewIdSchema.safeParse(reviewId)
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "ID inválido." }
+  try {
+    await updatePgrReviewStatus(parsed.data, session.tenantId, "reviewed")
+    revalidatePath(`/pgr/${parsed.data}`)
     revalidatePath("/pgr")
     return {}
   } catch (err) {

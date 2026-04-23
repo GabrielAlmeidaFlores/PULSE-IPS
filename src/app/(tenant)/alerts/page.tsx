@@ -38,7 +38,32 @@ export default async function AlertsPage(): Promise<React.ReactElement> {
       <div className="border-b border-border bg-card px-6 py-4 shrink-0">
         <div className="flex items-center gap-1.5">
           <h1 className="text-sm font-bold uppercase tracking-widest">Alertas</h1>
-          <PageHelp text="Notificações automáticas geradas quando o sistema detecta padrões preocupantes — como funcionários que nunca responderam pesquisas ou índices baixos de bem-estar. Cada alerta pode ser marcado como lido ou resolvido pela equipe de RH." />
+          <PageHelp content={
+              <div className="space-y-3">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">O que são alertas?</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">Notificações geradas automaticamente pelo sistema quando detecta padrões que requerem atenção do RH. Nenhuma configuração manual é necessária — o Pulse monitora continuamente os dados e cria alertas proativamente.</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Tipos de alerta</p>
+                  <ul className="text-[12px] text-foreground leading-relaxed space-y-1 list-none">
+                    <li>📉 <strong>Queda de score</strong> — índice caiu mais de 1 ponto em relação ao período anterior</li>
+                    <li>📊 <strong>Tendência negativa</strong> — 3 períodos consecutivos abaixo da média histórica</li>
+                    <li>👻 <strong>Baixa adesão</strong> — menos de 80% de respostas após 48h do disparo</li>
+                    <li>🚨 <strong>Relato de crise</strong> — relato anônimo com palavras-chave de saúde mental grave</li>
+                    <li>📋 <strong>Revisão PGR</strong> — 30 dias antes do vencimento da próxima revisão</li>
+                  </ul>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Severidade</p>
+                  <p className="text-[12px] text-foreground leading-relaxed"><strong className="text-red-600">Crítico</strong> — ação imediata recomendada. <strong className="text-yellow-600">Atenção</strong> — monitorar de perto. <strong className="text-blue-600">Informativo</strong> — ciência apenas. Alertas críticos envolvendo bem-estar mental devem gerar um Plano de Ação documentado.</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Como agir</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">Para cada alerta relevante, crie um <strong>Plano de Ação</strong> (menu lateral) descrevendo as medidas adotadas. Isso documenta a resposta da empresa e é evidência no PGR para a NR-1.</p>
+                </div>
+              </div>
+            } />
         </div>
         <p className="text-xs text-muted-foreground mt-0.5">{alerts.length} alertas</p>
       </div>

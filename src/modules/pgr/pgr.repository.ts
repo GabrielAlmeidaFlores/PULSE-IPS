@@ -2,15 +2,22 @@ import { prisma } from "@/libs/db"
 import type { PgrReview, PgrDeptResult, PgrQuestionResult, Organization, Department, Employee, SurveyDispatch, SurveyResponse, SurveyResponseItem, SurveyConfiguration, SurveyQuestion, Alert } from "@prisma/client"
 import type { CreatePgrReviewInput, CreatePgrDeptResultInput, CreatePgrQuestionResultInput, CreatePgrAlertInput } from "@/modules/pgr/pgr.types"
 
+export type PgrReviewListItem = PgrReview & {
+  deptResults: { avgScore: number; responseCount: number }[]
+}
+
 export type PgrReviewWithResults = PgrReview & {
   deptResults: PgrDeptResult[]
   questionResults: PgrQuestionResult[]
 }
 
-export function findPgrReviewsByTenant(tenantId: string): Promise<PgrReview[]> {
+export function findPgrReviewsByTenant(tenantId: string): Promise<PgrReviewListItem[]> {
   return prisma.pgrReview.findMany({
     where: { tenantId },
     orderBy: { createdAt: "desc" },
+    include: {
+      deptResults: { select: { avgScore: true, responseCount: true } },
+    },
   })
 }
 
@@ -85,6 +92,13 @@ export function findExistingPgrAlert(tenantId: string): Promise<Alert | null> {
 
 export async function createPgrAlert(data: CreatePgrAlertInput): Promise<void> {
   await prisma.alert.create({ data })
+}
+
+export function updatePgrReviewStatus(id: string, tenantId: string, status: "reviewed"): Promise<PgrReview> {
+  return prisma.pgrReview.update({
+    where: { id, tenantId },
+    data: { status },
+  })
 }
 
 interface RawItemScore {

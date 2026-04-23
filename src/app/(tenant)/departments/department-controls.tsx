@@ -221,7 +221,26 @@ export function DepartmentControls({ departments }: Props): React.ReactElement {
         <div>
           <div className="flex items-center gap-1.5">
             <h1 className="text-sm font-bold uppercase tracking-widest">Departamentos</h1>
-            <PageHelp text="Departamentos agrupam os funcionários da empresa. O horário e dias de trabalho do departamento são o padrão herdado pelos funcionários. Se um funcionário tiver horário próprio configurado, ele terá prioridade sobre o do departamento no momento do disparo das pesquisas." />
+            <PageHelp content={
+              <div className="space-y-3">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Para que servem os setores?</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">Setores agrupam colaboradores e são a unidade de análise do Pulse. Os resultados das pesquisas são apresentados <strong>por setor</strong> — nunca individualmente — garantindo o anonimato e permitindo identificar quais áreas precisam de atenção.</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Horário de trabalho padrão</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">Cada setor tem um horário padrão (ex: 09:00–18:00, seg–sex). Esse horário define <strong>quando as pesquisas podem ser enviadas</strong> aos colaboradores daquele setor. Colaboradores com horário próprio têm prioridade sobre o do setor.</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Cadeia de herança de horário</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">Na ordem de prioridade: <strong>colaborador → setor → configuração da pesquisa</strong>. O sistema sempre usa o horário mais específico disponível para garantir que o envio ocorre durante o expediente real de cada pessoa.</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Configuração de pesquisa por setor</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">Em <strong>Pesquisas → Configurar</strong> você define a frequência de envio para cada setor (diária, semanal, quinzenal etc.). Um setor sem configuração ativa não recebe pesquisas.</p>
+                </div>
+              </div>
+            } />
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">{departments.length} departamentos</p>
         </div>

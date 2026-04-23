@@ -26,6 +26,7 @@ import {
 import { PgrTabsLayout } from "@/app/(tenant)/pgr/[id]/pgr-tabs"
 import { PgrDeptAccordionItem } from "@/app/(tenant)/pgr/[id]/pgr-dept-accordion"
 import { PgrScoreDistributionWidget, type QuestionDistDisplay } from "@/app/(tenant)/pgr/[id]/pgr-score-distribution"
+import { PgrMarkReviewedButton } from "@/app/(tenant)/pgr/[id]/pgr-mark-reviewed-button"
 import { ChartCard } from "@/components/chart-card"
 import type { ScoreDirection } from "@/modules/surveys/survey.types"
 import { toHealthIndex, healthIndexAccent, healthIndexBarColor, healthIndexChartColor } from "@/libs/utils/health-index"
@@ -214,11 +215,16 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
               Gerado em {format(new Date(review.reviewedAt ?? review.createdAt), "dd/MM/yyyy 'às' HH:mm")}
             </p>
           </div>
-          {hasData && (
-            <div className="flex items-center gap-2">
-              <ScoreTrendIcon hi={globalAvg} />
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {review.status === "generated" && <PgrMarkReviewedButton reviewId={review.id} />}
+            {review.status === "reviewed" && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800">
+                <CheckCircle2 className="w-3 h-3" />
+                Revisado
+              </span>
+            )}
+            {hasData && <ScoreTrendIcon hi={globalAvg} />}
+          </div>
         </div>
       </div>
 

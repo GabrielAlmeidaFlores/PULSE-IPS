@@ -17,7 +17,26 @@ export default async function DocumentsPage(): Promise<React.ReactElement> {
         <div>
           <div className="flex items-center gap-1.5">
             <h1 className="text-sm font-bold uppercase tracking-widest">Documentos</h1>
-            <PageHelp text="Repositório de documentos da empresa — laudos, NRs, políticas internas e outros arquivos relevantes. Cada documento pode ter múltiplas versões, mantendo o histórico completo de atualizações. Os documentos ficam disponíveis para consulta interna da equipe." />
+            <PageHelp content={
+              <div className="space-y-3">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Para que serve?</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">Repositório centralizado de documentos relacionados à saúde ocupacional: laudos médicos, NRs aplicáveis à empresa, políticas internas, resultados de avaliações de risco, PCMSO e outros arquivos de conformidade.</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Versionamento</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">Cada edição de um documento cria uma <strong>nova versão</strong>, preservando o histórico completo. Nunca se perde uma versão anterior — ideal para documentos que precisam de audit trail (ex: PCMSO, PGR, políticas de RH).</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Vinculação a relatos e alertas</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">Um documento pode ser vinculado a um <strong>relato anônimo</strong> ou <strong>alerta</strong> como evidência de resposta da empresa. Isso fortalece a documentação do PGR e demonstra que o problema foi formalmente tratado.</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Permissões</p>
+                  <p className="text-[12px] text-foreground leading-relaxed"><strong>Admin</strong> pode criar, editar e excluir documentos. <strong>RH</strong> pode criar e visualizar. Exclusões são registradas no log de auditoria e geram uma versão arquivada antes da remoção definitiva.</p>
+                </div>
+              </div>
+            } />
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">{documents.length} documentos</p>
         </div>

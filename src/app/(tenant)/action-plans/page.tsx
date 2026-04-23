@@ -50,7 +50,30 @@ export default async function ActionPlansPage(): Promise<React.ReactElement> {
         <div>
           <div className="flex items-center gap-1.5">
             <h1 className="text-sm font-bold uppercase tracking-widest">Planos de Acao</h1>
-            <PageHelp text="Registro das medidas tomadas a partir de alertas ou pesquisas preocupantes. Cada plano tem título, responsável, prazo e status de acompanhamento (aberto, em andamento ou concluído). Serve para documentar e garantir que os problemas identificados sejam efetivamente tratados." />
+            <PageHelp content={
+              <div className="space-y-3">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">O que são planos de ação?</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">Documento formal que registra as medidas adotadas pela empresa diante de um problema identificado — seja um alerta de queda de índice, um relato anônimo ou uma revisão periódica. São a <strong>prova de que a empresa agiu</strong> ao identificar um risco psicossocial.</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Por que documentar?</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">A <strong>NR-1</strong> exige não apenas monitorar os riscos, mas <strong>controlar e mitigar</strong> os identificados. Sem planos de ação documentados, a empresa pode ser autuada mesmo que tenha tomado medidas — se não há registro, para o fiscal não aconteceu.</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Ciclo de vida</p>
+                  <ul className="text-[12px] text-foreground leading-relaxed space-y-1 list-none">
+                    <li>🔵 <strong>Aberto</strong> — problema identificado, ações ainda não iniciadas</li>
+                    <li>🟡 <strong>Em andamento</strong> — medidas sendo executadas</li>
+                    <li>🟢 <strong>Concluído</strong> — ações implementadas e situação normalizada</li>
+                  </ul>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Como criar</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">Clique em <strong>Novo plano</strong>, vincule ao alerta ou relato correspondente, defina as tarefas com responsável e prazo. Os planos são incluídos automaticamente no relatório do PGR do período.</p>
+                </div>
+              </div>
+            } />
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">{plans.length} planos</p>
         </div>
