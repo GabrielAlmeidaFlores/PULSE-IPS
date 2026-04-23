@@ -41,12 +41,12 @@ const ALERT_DETAILS: Record<string, AlertTypeDetail> = {
   low_adherence: {
     label: "Adesão baixa",
     description: "Menos de 80% dos colaboradores responderam à pesquisa dentro de 48 horas após o disparo.",
-    action: "Lembre os colaboradores de responder, use a função de reenvio ou revise se os canais de comunicação (SMS/WhatsApp) estão funcionando.",
+    action: "Reforce junto aos gestores a importância de responder e verifique se todos os colaboradores do setor têm dados de contato cadastrados.",
   },
   no_response: {
     label: "Sem resposta",
     description: "Nenhuma resposta foi recebida neste ciclo de pesquisa.",
-    action: "Verifique se os colaboradores receberam os links e se os números de telefone estão corretos. Reenvie a pesquisa se necessário.",
+    action: "Verifique se o disparo foi concluído sem erros nos logs de jobs e se os colaboradores do setor têm dados de contato cadastrados.",
   },
   consent_expired: {
     label: "Consentimento expirado",

@@ -270,7 +270,7 @@ function buildDispatchSuggestion(
       `Na pesquisa ${dateLabel} ao setor ${deptName}: ` +
       `${topDispatch.totalResponses} de ${topDispatch.totalRecipients} colaboradores responderam ` +
       `(${adherencePct}% de adesão — meta: ≥80%). ` +
-      `${missingCount} pessoas não foram alcançadas. ` +
+      `${missingCount} respostas não foram recebidas. ` +
       `Dados desrepresentativos comprometem a detecção precoce de riscos psicossociais e a evidência documental exigida pela NR-1.`,
     priority: "medium",
     reason: `Pesquisa ${dateLabel} no setor ${deptName}: ${adherencePct}% de adesão (${topDispatch.totalResponses}/${topDispatch.totalRecipients})`,
@@ -311,7 +311,7 @@ function buildConsentSuggestion(
     reason: `${totalWithoutConsent} colaborador${isPlural ? "es" : ""} sem TCLE aceito — ${deptBreakdownFormatted}`,
     tasks: [
       "Identificar colaboradores com aceite pendente por setor",
-      "Reenviar link do TCLE via WhatsApp/SMS para esses colaboradores",
+      "Reenviar o convite de aceite do TCLE para esses colaboradores",
       "Comunicar gestores sobre a importância do aceite nos seus setores",
       "Registrar colaboradores que recusaram explicitamente",
     ],
