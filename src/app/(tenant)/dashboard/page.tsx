@@ -162,9 +162,12 @@ export default async function DashboardPage({ searchParams }: Props): Promise<Re
                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Setor em destaque</p>
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm font-bold text-foreground truncate">{topDept.dept}</p>
-                  <div className="shrink-0 flex items-center gap-2">
-                    <TrendingUp className="w-3.5 h-3.5 text-green-600" />
-                    <p className="text-xl font-black font-mono text-green-600">{topDept.avg}%</p>
+                  <div className="shrink-0 flex flex-col items-end">
+                    <div className="flex items-center gap-1">
+                      <TrendingUp className="w-3.5 h-3.5 text-green-600" />
+                      <p className="text-xl font-black font-mono text-green-600">{topDept.avg}%</p>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">índice de saúde</p>
                   </div>
                 </div>
               </div>
@@ -176,13 +179,16 @@ export default async function DashboardPage({ searchParams }: Props): Promise<Re
                 </p>
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm font-bold text-foreground truncate">{bottomDept.dept}</p>
-                  <div className="shrink-0 flex items-center gap-2">
-                    {bottomDept.avg < 37 ? (
-                      <TrendingDown className="w-3.5 h-3.5 text-red-600" />
-                    ) : (
-                      <Minus className="w-3.5 h-3.5 text-amber-600" />
-                    )}
-                    <p className={`text-xl font-black font-mono ${bottomDept.avg < 37 ? "text-red-600" : "text-amber-600"}`}>{bottomDept.avg}%</p>
+                  <div className="shrink-0 flex flex-col items-end">
+                    <div className="flex items-center gap-1">
+                      {bottomDept.avg < 37 ? (
+                        <TrendingDown className="w-3.5 h-3.5 text-red-600" />
+                      ) : (
+                        <Minus className="w-3.5 h-3.5 text-amber-600" />
+                      )}
+                      <p className={`text-xl font-black font-mono ${bottomDept.avg < 37 ? "text-red-600" : "text-amber-600"}`}>{bottomDept.avg}%</p>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">índice de saúde</p>
                   </div>
                 </div>
               </div>
