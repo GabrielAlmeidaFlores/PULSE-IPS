@@ -679,90 +679,10 @@ O job `adherence-checker` (a cada hora) verifica dispatches com mais de 48 horas
 
 ### 8. Detecção de alertas
 
-Alertas são criados automaticamente por jobs agendados e exibidos na tela `/alerts` para admin e RH. Admin pode marcar como lido ou resolver.
+Alertas são criados automaticamente por jobs agendados e exibidos na tela `/alerts`. Admin pode marcar como resolvido.
 
-**Faixas do Índice de Saúde:**
-
-| Faixa | Classificação |
-|---|---|
-| ≥ 62% | Saudável |
-| 37% – 61% | Atenção |
-| < 37% | Crítico |
-
-**Severidades:**
-
-| Valor | Significado |
-|---|---|
-| `critical` | Situação grave — ação imediata necessária |
-| `warning` | Atenção recomendada |
-| `info` | Informativo |
-
----
-
-#### Alertas implementados (gerados automaticamente)
-
-**`low_score` — gerado pelo job `survey-score-alert-detector` (03:00 diário)**
-
-Analisa as respostas das últimas 48 horas. Para cada departamento:
-1. Normaliza os scores por `scoreDirection`: `lower_is_better` → `6 - score` antes de calcular a média.
-2. Calcula a média normalizada por departamento.
-3. Se a média < **3,0** (equivalente a HI < 50%), cria um alerta:
-   - `severity = "critical"` se média < 2,0 (HI < 25%)
-   - `severity = "warning"` se 2,0 ≤ média < 3,0 (25% ≤ HI < 50%)
-
-Mensagem exibida ao usuário:
-```
-O índice de saúde do setor {nome do setor} está abaixo do esperado: {HI}% ({classificação}).
-```
-Exemplos:
-- `O índice de saúde do setor Tecnologia está abaixo do esperado: 34% (Crítico).`
-- `O índice de saúde do setor Recursos Humanos está abaixo do esperado: 45% (Atenção).`
-
-**`no_response` — gerado pelo job `survey-adherence-checker` (a cada hora)**
-
-Verifica dispatches enviados há 48 horas que ainda não tiveram a aderência checada. Para cada um:
-1. Conta as respostas recebidas.
-2. Se a taxa de adesão < **50%**, cria um alerta:
-   - `severity = "critical"` se taxa < 25%
-   - `severity = "warning"` se 25% ≤ taxa < 50%
-3. Marca o dispatch como checado (`adherenceCheckedAt`) independentemente do resultado.
-
-Mensagem exibida ao usuário:
-```
-Taxa de adesão: {pct}% ({respostas}/{total})
-```
-Exemplos:
-- `Taxa de adesão: 42% (5/12)`
-- `Taxa de adesão: 0% (0/8)`
-
-**`pgr_review_due` — gerado pelo job `pgr-review-reminder` (08:00 diário)**
-
-Busca revisões PGR com `nextReviewAt` nos próximos 30 dias. Para cada tenant:
-1. Verifica se já existe um alerta `pgr_review_due` em aberto para o tenant.
-2. Se não existe, cria: `severity = "warning"`, mensagem com a data de vencimento.
-
-Mensagem exibida ao usuário:
-```
-Revisão PGR prevista para {data}.
-```
-Exemplo:
-- `Revisão PGR prevista para 23/05/2026.`
-
----
-
-#### Tipos definidos no schema mas não gerados automaticamente
-
-Esses tipos existem em `AlertType` para uso futuro ou criação manual:
-
-| Tipo | Condição prevista |
-|---|---|
-| `score_drop` | Queda > 1 ponto no HI em relação ao período anterior |
-| `low_adherence` | Taxa de adesão entre 50% e 80% (limiar inferior ao `no_response`) |
-| `negative_trend` | 3 períodos consecutivos com HI abaixo da média histórica |
-| `crisis_report` | Relato anônimo com palavras-chave de crise (ex: "me matar", "suicídio") — campo `isCrisis = true` é marcado no relato, mas o alerta ainda não é criado automaticamente |
-| `consent_expired` | Colaboradores com TCLE expirado ou pendente há muito tempo |
-| `billing` | Pendência de pagamento (atualmente gerenciado pelo `billing_status` da org) |
-| `system` | Notificações operacionais internas |
+**Faixas do Índice de Saúde:** ≥ 62% Saudável · 37–61% Atenção · < 37% Crítico  
+**Severidades:** `critical` = ação imediata · `warning` = atenção recomendada
 
 ---
 
@@ -776,177 +696,43 @@ Esses tipos existem em `AlertType` para uso futuro ou criação manual:
 
 ---
 
-### 10. Sugestões de plano de ação
+### 10. Alertas e sugestões de plano de ação
 
-O job `action-plan-suggestion-generator` (diariamente às 06:00) analisa o estado de cada tenant e gera automaticamente sugestões de planos de ação exibidas na tela `/action-plans`.
+A tabela abaixo é a referência única para todos os alertas e sugestões gerados automaticamente pelo sistema.
 
-#### Como funciona
+**Alertas** são exibidos em `/alerts`. **Sugestões** são exibidas em `/action-plans` e geradas pelo job `action-plan-suggestion-generator` (06:00 diário). Cada sugestão pode ser convertida em plano de ação ou descartada.
 
-O sistema coleta 6 fontes de dados em paralelo para cada tenant:
+| Tipo / Título | Categoria | Condição de geração | Job | Sev. / Prior. | Mensagem exibida ao usuário |
+|---|---|---|---|---|---|
+| `low_score` | Alerta | Score médio < 3,0 (HI < 50%) nas últimas 48h | `survey-score-alert-detector` · 03:00 diário | `critical` se HI < 25%, senão `warning` | `O índice de saúde do setor {X} está abaixo do esperado: {HI}% ({label}).` |
+| `no_response` | Alerta | Adesão < 50% em dispatch enviado há 48h | `survey-adherence-checker` · a cada hora | `critical` se adesão < 25%, senão `warning` | `Taxa de adesão: {pct}% ({respostas}/{total})` |
+| `pgr_review_due` | Alerta | `nextReviewAt` nos próximos 30 dias, sem alerta aberto | `pgr-review-reminder` · 08:00 diário | `warning` | `Revisão PGR prevista para {data}.` |
+| `score_drop` | Alerta *(não auto)* | Queda > 1 ponto no HI em relação ao período anterior | — | — | — |
+| `low_adherence` | Alerta *(não auto)* | Adesão entre 50% e 80% | — | — | — |
+| `negative_trend` | Alerta *(não auto)* | 3 períodos consecutivos abaixo da média histórica | — | — | — |
+| `crisis_report` | Alerta *(não auto)* | Relato com `isCrisis = true` (palavras-chave de crise) | — | — | — |
+| `consent_expired` | Alerta *(não auto)* | TCLE pendente ou expirado | — | — | — |
+| `billing` | Alerta *(não auto)* | Pendência financeira | — | — | — |
+| `system` | Alerta *(não auto)* | Notificações internas | — | — | — |
+| "Índice de bem-estar abaixo do esperado — {setor}" | Sugestão | Alerta `low_score` sem resolução | `action-plan-suggestion-generator` · 06:00 diário | `high` | **Motivo:** `Score abaixo do esperado — setor {X}: {alert.message}` · **Descrição:** alerta gerado em {data}, dado: "{alert.message}", contexto de impacto NR-1 |
+| "Pesquisa sem respostas registradas — {setor}" | Sugestão | Alerta `no_response` sem resolução | idem | `medium` | **Motivo:** `Pesquisa sem resposta no setor {X}: {alert.message}` · **Descrição:** alerta gerado em {data}, dado: "{alert.message}", contexto de impacto NR-1 |
+| "Intervenção de bem-estar — {setor}" | Sugestão | Alerta `score_drop` sem resolução | idem | `high` | **Motivo:** `score_drop no setor {X} — alerta ativo {há N dias}` · **Descrição:** alerta gerado em {data}, dado: "{alert.message}" |
+| "Plano de melhoria contínua — {setor}" | Sugestão | Alerta `negative_trend` sem resolução | idem | `high` | **Motivo:** `negative_trend no setor {X} — alerta ativo {há N dias}` |
+| "Engajamento nas pesquisas — {setor}" | Sugestão | Alerta `low_adherence` sem resolução | idem | `medium` | **Motivo:** `low_adherence no setor {X} — alerta ativo {há N dias}` |
+| "Resposta a relato de crise — {setor}" | Sugestão | Alerta `crisis_report` sem resolução | idem | `high` | **Motivo:** `crisis_report no setor {X} — alerta ativo {há N dias}` |
+| "Tratamento de relatos anônimos pendentes" | Sugestão | ≥ 3 relatos com status `open` ou `analyzing` | idem | `medium` | **Motivo:** `{N} relatos em aberto ou análise — mais antigo {há N dias}` · **Descrição:** {N} pendentes ({X} sem triagem, {Y} em análise), categorias: {lista} |
+| "Aumentar adesão às pesquisas — {setor}" | Sugestão | Dispatch dos últimos 30 dias com adesão < 80% | idem | `medium` | **Motivo:** `Pesquisa enviada em {data} no setor {X}: {pct}% de adesão ({r}/{total})` · **Descrição:** {r} de {total} responderam, {N} respostas não foram recebidas |
+| "Engajamento no TCLE — colaboradores sem aceite" | Sugestão | ≥ 1 colaborador ativo sem `event = "accepted"` em `employee_consents` | idem | `medium` | **Motivo:** `{N} colaborador(es) sem TCLE aceito — {setor1} ({n}), {setor2} ({n})` · **Descrição:** distribuição por setor, impacto na representatividade dos dados |
+| "Geração do relatório PGR do mês" | Sugestão | Nenhum `pgr_reviews` com `createdAt` no mês corrente | idem | `low` | **Motivo:** `Relatório PGR pendente para {mês/ano} — último: {período anterior}` (ou: `Nenhum relatório PGR registrado`) · **Descrição:** contexto NR-1 |
 
-| Fonte | O que analisa |
-|---|---|
-| Alertas abertos (`alerts`) | Tipo, severidade, setor e mensagem de cada alerta sem resolução |
-| Relatos em aberto (`anonymous_reports`) | Relatos com `status = "open"` ou `"analyzing"` |
-| Planos recentes (`action_plans`) | Títulos de planos criados nos últimos 30 dias (evita duplicatas) |
-| Colaboradores sem TCLE (`employees`) | Ativos sem nenhum `event = "accepted"` em `employee_consents` |
-| Última revisão PGR (`pgr_reviews`) | Data e período do PGR mais recente |
-| Dispatches recentes (`survey_dispatches`) | Enviados nos últimos 30 dias com adesão < 80% |
+**Notas sobre sugestões:**
 
-#### Tipos de sugestão e condições de geração
-
-**1. A partir de alertas abertos** — máximo 1 sugestão por tipo de alerta (pega o mais recente), ordenados por risco:
-
-| Tipo do alerta | Título gerado | Condição | Prioridade |
-|---|---|---|---|
-| `crisis_report` | "Resposta a relato de crise — {setor}" | Alerta do tipo `crisis_report` sem resolução | alta |
-| `score_drop` | "Intervenção de bem-estar — {setor}" | Alerta do tipo `score_drop` sem resolução | alta |
-| `low_score` | "Índice de bem-estar abaixo do esperado — {setor}" | Alerta do tipo `low_score` sem resolução | alta |
-| `negative_trend` | "Plano de melhoria contínua — {setor}" | Alerta do tipo `negative_trend` sem resolução | alta |
-| `low_adherence` | "Engajamento nas pesquisas — {setor}" | Alerta do tipo `low_adherence` sem resolução | média |
-| `no_response` | "Pesquisa sem respostas registradas — {setor}" | Alerta do tipo `no_response` sem resolução | média |
-
-Para cada sugestão gerada a partir de alerta, os campos exibidos ao usuário são:
-
-**Título:** `"{título base} — {setor}"`
-
-**Motivo (card colapsado):**
-```
-# low_score
-Score abaixo do esperado — setor {setor}: O índice de saúde do setor {setor} está abaixo do esperado: {HI}% ({classificação}).
-
-# no_response
-Pesquisa sem resposta no setor {setor}: Taxa de adesão: {pct}% ({respostas}/{total})
-
-# crisis_report / score_drop / negative_trend / low_adherence
-{Tipo de situação} no setor {setor} — alerta ativo {há X dias}
-```
-
-**Descrição (card expandido):**
-```
-Alerta gerado em {data} ({há X dias}) — setor: {setor}, severidade: {severidade}.
-Dado registrado pelo sistema: "{mensagem do alerta}".
-{contexto fixo por tipo: impacto, risco NR-1, etc.}
-```
-
-Exemplo real para `low_score` no setor Tecnologia:
-```
-Alerta gerado em 23/04/2026 (hoje) — setor: Tecnologia, severidade: crítica.
-Dado registrado pelo sistema: "O índice de saúde do setor Tecnologia está abaixo do esperado: 34% (Crítico).".
-Scores persistentemente baixos estão associados a burnout, queda de produtividade e aumento de turnover.
-É necessário investigar as causas e implementar ações estruturadas.
-```
-
-**2. Relatos anônimos acumulados**
-
-- Título: `"Tratamento de relatos anônimos pendentes"`
-- Condição: ≥ 3 relatos com `status = "open"` ou `"analyzing"`
-- Prioridade: média
-
-Motivo exibido:
-```
-{N} relatos em aberto ou análise — mais antigo {há X dias}
-```
-
-Descrição exibida:
-```
-Há {N} relatos anônimos pendentes ({X} sem triagem, {Y} em análise).
-O mais antigo foi registrado {há X dias}.
-Categorias identificadas: {categoria1} ({n}), {categoria2} ({n}).
-Cada relato representa um colaborador que buscou ajuda — a resposta ágil demonstra comprometimento e é exigida indiretamente pela NR-1.
-```
-
-**3. Dispatch com baixa adesão**
-
-- Título: `"Aumentar adesão às pesquisas — {setor}"`
-- Condição: dispatch enviado nos últimos 30 dias com taxa de adesão < 80% (`totalResponses / totalRecipients < 0.8`)
-- Prioridade: média
-
-Motivo exibido:
-```
-Pesquisa enviada em {data} no setor {setor}: {pct}% de adesão ({respostas}/{total})
-```
-
-Descrição exibida:
-```
-Na pesquisa enviada em {data} ao setor {setor}: {respostas} de {total} colaboradores responderam
-({pct}% de adesão — meta: ≥80%). {N} respostas não foram recebidas.
-Dados desrepresentativos comprometem a detecção precoce de riscos psicossociais e a evidência documental exigida pela NR-1.
-```
-
-**4. Colaboradores sem TCLE aceito**
-
-- Título: `"Engajamento no TCLE — colaboradores sem aceite"`
-- Condição: ≥ 1 colaborador ativo sem nenhum `event = "accepted"` em `employee_consents`
-- Prioridade: média
-
-Motivo exibido:
-```
-{N} colaborador(es) sem TCLE aceito — {setor1} ({n}), {setor2} ({n})
-```
-
-Descrição exibida:
-```
-{N} colaboradores ativos não aceitaram o Termo de Consentimento — distribuídos em: {setor1} ({n}), {setor2} ({n}).
-Sem o aceite, esses colaboradores ficam excluídos das pesquisas e das métricas de saúde ocupacional,
-reduzindo a representatividade dos dados e comprometendo a documentação de conformidade com a NR-1.
-```
-
-**5. PGR não gerado no mês**
-
-- Título: `"Geração do relatório PGR do mês"`
-- Condição: nenhum registro em `pgr_reviews` com `createdAt` no mês corrente
-- Prioridade: baixa
-
-Motivo exibido:
-```
-# Se há revisão anterior:
-Relatório PGR pendente para {mês/ano} — último: {período anterior}
-
-# Se nunca houve revisão:
-Nenhum relatório PGR registrado ({mês/ano})
-```
-
-Descrição exibida:
-```
-Nenhum relatório PGR foi gerado para {mês/ano}.
-O último relatório foi gerado em {data} (período: {período}). [ou: Nenhum relatório PGR foi gerado até o momento.]
-A NR-1 exige que as empresas documentem e revisem periodicamente os riscos psicossociais —
-o relatório mensal é a principal evidência de conformidade.
-```
-
-#### Deduplicação (duas camadas)
-
-1. **Por `suggestionKey`**: antes de inserir, o job busca todas as `suggestionKey` existentes em `action_plan_suggestions` para o tenant — se a chave já existe (pendente ou descartada), a sugestão é ignorada.
-2. **Por título de plano recente**: sugestões com título idêntico a um `ActionPlan` criado nos últimos 30 dias também são ignoradas.
-
-Chaves de exemplo: `alert-low_score-{departmentId}`, `open-reports`, `dispatch-low-adherence-{dispatchId}`, `consent-pending`, `pgr-missing`.
-
-#### Conteúdo gerado
-
-Cada sugestão contém:
-
-| Campo | Descrição |
-|---|---|
-| `title` | Nome curto e direto do plano sugerido |
-| `description` | Contexto baseado apenas em dados que o sistema possui: HI%, variação entre períodos, contagens — nunca nomes de fatores/perguntas individuais |
-| `reason` | Frase resumida exibida no card colapsado na lista |
-| `priority` | `high`, `medium` ou `low` — derivado do tipo de alerta ou do contexto |
-| `tasks` | Lista de tarefas pré-definidas por tipo de situação |
-
-#### Ciclo de vida
-
-| Status | Significado |
-|---|---|
-| `pending` | Aguardando ação do admin/RH — exibida na lista |
-| `dismissed` | Ignorada pelo usuário via botão "×" — não aparece mais |
-| `converted` | Usuário clicou em "Criar este plano" — `ActionPlan` foi criado e a sugestão sai da lista |
-
-#### Requisitos técnicos
-
-- Apenas tenants com `billing_status = "active"` recebem sugestões (via `findAllTenantsActiveOrganizationIds`).
-- A geração é **cross-tenant**: o job itera sobre todos os tenants ativos. Por convenção, funções de repositório que omitem `tenantId` para esse fim usam o prefixo `findAllTenants*`.
-- **Não altere `score_direction` de perguntas com respostas existentes** — isso distorceria os alertas e consequentemente as sugestões geradas. Veja a seção [Índice de Saúde Ocupacional](#índice-de-saúde-ocupacional) e as [Regras para mutação de `survey_questions`](AGENTS.md).
+- A `description` nunca inclui nomes de fatores ou perguntas individuais — apenas dados que o sistema possui: HI%, contagens, datas.
+- Deduplicação em 2 camadas: (1) `suggestionKey` existente em `action_plan_suggestions` (pendente ou descartada); (2) título idêntico a um `ActionPlan` criado nos últimos 30 dias.
+- Chaves de deduplicação: `alert-{type}-{departmentId}`, `open-reports`, `dispatch-low-adherence-{dispatchId}`, `consent-pending`, `pgr-missing`.
+- Status do ciclo de vida: `pending` (exibida) → `converted` (plano criado) ou `dismissed` (ignorada).
+- Apenas tenants com `billing_status = "active"` recebem sugestões.
+- **Não altere `score_direction` de perguntas com respostas existentes** — distorce alertas e sugestões geradas.
 
 ---
 
