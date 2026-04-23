@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from "next/server"
 import { jwtVerify } from "jose"
 import { env } from "@/env"
 
+const SUPER_ADMIN_LOGIN_PATH = "/super-admin/login"
+
 const PUBLIC_PATHS = [
   "/login",
   "/forgot-password",
@@ -14,7 +16,7 @@ const PUBLIC_PATHS = [
   "/accept-terms",
   "/learn-more",
   "/api/webhooks",
-  "/super-admin/login",
+  SUPER_ADMIN_LOGIN_PATH,
 ]
 
 const SUPER_ADMIN_PREFIX = "/super-admin"
@@ -89,6 +91,71 @@ interface SessionInfo {
   userType?: string | undefined
 }
 
+async function tryRedirectIfAlreadyLoggedIn(
+  pathname: string,
+  sessionCookie: string | undefined,
+  superAdminCookie: string | undefined,
+  request: NextRequest,
+): Promise<NextResponse | null> {
+  if (pathname === "/login" || pathname === "/") {
+    if (sessionCookie) {
+      try {
+        await jwtVerify(sessionCookie, getSecretKey())
+        return NextResponse.redirect(new URL("/dashboard", request.url))
+      } catch { return null }
+    }
+  }
+  if (pathname === SUPER_ADMIN_LOGIN_PATH && superAdminCookie) {
+    try {
+      await jwtVerify(superAdminCookie, getSecretKey())
+      return NextResponse.redirect(new URL("/super-admin/dashboard", request.url))
+    } catch { return null }
+  }
+  return null
+}
+
+async function handleSuperAdminRoute(
+  superAdminCookie: string | undefined,
+  request: NextRequest,
+  sessionInfo: SessionInfo,
+): Promise<NextResponse> {
+  if (!superAdminCookie) {
+    return NextResponse.redirect(new URL(SUPER_ADMIN_LOGIN_PATH, request.url))
+  }
+  try {
+    const { payload } = await jwtVerify(superAdminCookie, getSecretKey())
+    const userId = payload["userId"]
+    if (typeof userId === "string") sessionInfo.userId = userId
+    sessionInfo.userType = "super_admin"
+    return NextResponse.next()
+  } catch {
+    return NextResponse.redirect(new URL(SUPER_ADMIN_LOGIN_PATH, request.url))
+  }
+}
+
+async function handleTenantRoute(
+  sessionCookie: string | undefined,
+  request: NextRequest,
+  sessionInfo: SessionInfo,
+): Promise<NextResponse> {
+  if (!sessionCookie) {
+    return NextResponse.redirect(new URL("/login", request.url))
+  }
+  try {
+    const { payload } = await jwtVerify(sessionCookie, getSecretKey())
+    const tenantId = payload["tenantId"]
+    const userId = payload["userId"]
+    if (typeof tenantId === "string") sessionInfo.tenantId = tenantId
+    if (typeof userId === "string") sessionInfo.userId = userId
+    sessionInfo.userType = "org_user"
+    const response = NextResponse.next()
+    if (typeof tenantId === "string") response.headers.set("x-tenant-id", tenantId)
+    return response
+  } catch {
+    return NextResponse.redirect(new URL("/login", request.url))
+  }
+}
+
 export async function proxy(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl
   const startMs = Date.now()
@@ -118,62 +185,16 @@ async function processRequestWithSession(
   const sessionCookie = request.cookies.get("pulse_session")?.value
   const superAdminCookie = request.cookies.get("pulse_super_admin_session")?.value
 
-  if (pathname === "/login" || pathname === "/") {
-    if (sessionCookie) {
-      try {
-        await jwtVerify(sessionCookie, getSecretKey())
-        return NextResponse.redirect(new URL("/dashboard", request.url))
-      } catch {
-        /* session inválida — prossegue para a página de login */
-      }
-    }
-  }
-
-  if (pathname === "/super-admin/login") {
-    if (superAdminCookie) {
-      try {
-        await jwtVerify(superAdminCookie, getSecretKey())
-        return NextResponse.redirect(new URL("/super-admin/dashboard", request.url))
-      } catch {
-        /* session inválida — prossegue para a página de login */
-      }
-    }
-  }
+  const loginRedirect = await tryRedirectIfAlreadyLoggedIn(pathname, sessionCookie, superAdminCookie, request)
+  if (loginRedirect) return loginRedirect
 
   if (isPublicPath(pathname)) return NextResponse.next()
 
   if (pathname.startsWith(SUPER_ADMIN_PREFIX) || pathname.startsWith(SUPER_ADMIN_API_PREFIX)) {
-    if (!superAdminCookie) {
-      return NextResponse.redirect(new URL("/super-admin/login", request.url))
-    }
-    try {
-      const { payload } = await jwtVerify(superAdminCookie, getSecretKey())
-      const userId = payload["userId"]
-      if (typeof userId === "string") sessionInfo.userId = userId
-      sessionInfo.userType = "super_admin"
-      return NextResponse.next()
-    } catch {
-      return NextResponse.redirect(new URL("/super-admin/login", request.url))
-    }
+    return handleSuperAdminRoute(superAdminCookie, request, sessionInfo)
   }
 
-  if (!sessionCookie) {
-    return NextResponse.redirect(new URL("/login", request.url))
-  }
-
-  try {
-    const { payload } = await jwtVerify(sessionCookie, getSecretKey())
-    const tenantId = payload["tenantId"]
-    const userId = payload["userId"]
-    if (typeof tenantId === "string") sessionInfo.tenantId = tenantId
-    if (typeof userId === "string") sessionInfo.userId = userId
-    sessionInfo.userType = "org_user"
-    const response = NextResponse.next()
-    if (typeof tenantId === "string") response.headers.set("x-tenant-id", tenantId)
-    return response
-  } catch {
-    return NextResponse.redirect(new URL("/login", request.url))
-  }
+  return handleTenantRoute(sessionCookie, request, sessionInfo)
 }
 
 export const config = {

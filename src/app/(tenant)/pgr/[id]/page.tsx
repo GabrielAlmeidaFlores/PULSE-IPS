@@ -171,17 +171,23 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
 
   const hasData = depts.length > 0 && totalResponses > 0
 
+  const questionHealthIndexByQuestionId = new Map(
+    aggregatedQuestions.map((q) => [q.id, q.avgScore]),
+  )
+
   const globalDistributions: QuestionDistDisplay[] = (() => {
     const map = new Map<number, QuestionDistDisplay>()
     for (const d of distributions) {
       const existing = map.get(d.questionOrder)
       if (!existing) {
+        const storedHealthIndex = questionHealthIndexByQuestionId.get(d.questionId)
         map.set(d.questionOrder, {
           questionId: d.questionId,
           questionText: d.questionText,
           questionOrder: d.questionOrder,
           scoreDirection: d.scoreDirection,
           distribution: d.distribution.map((s) => ({ ...s })),
+          ...(storedHealthIndex !== undefined ? { storedHealthIndex } : {}),
         })
       } else {
         for (const s of d.distribution) {

@@ -2,7 +2,6 @@
 
 import { ScoreDistributionBar } from "@/app/(tenant)/surveys/[dispatchId]/components/dispatch-charts"
 import { toHealthIndex, healthIndexAccent } from "@/libs/utils/health-index"
-import type { PgrScoreDistribution } from "@/modules/pgr/pgr.types"
 
 interface QuestionDistDisplay {
   questionId: string
@@ -10,22 +9,30 @@ interface QuestionDistDisplay {
   questionOrder: number
   scoreDirection: "higher_is_better" | "lower_is_better"
   distribution: { score: number; count: number }[]
+  storedHealthIndex?: number
 }
 
 interface Props {
   distributions: QuestionDistDisplay[]
 }
 
-function calcAvgScore(distribution: { score: number; count: number }[]): number | null {
+function calcNormalizedAvgScore(
+  distribution: { score: number; count: number }[],
+  scoreDirection: "higher_is_better" | "lower_is_better",
+): number | null {
   const total = distribution.reduce((s, d) => s + d.count, 0)
   if (total === 0) return null
-  const weighted = distribution.reduce((s, d) => s + d.score * d.count, 0)
+  const weighted = distribution.reduce((s, d) => {
+    const normalizedScore = scoreDirection === "lower_is_better" ? 6 - d.score : d.score
+    return s + normalizedScore * d.count
+  }, 0)
   return weighted / total
 }
 
-function hiAccent(avg: number | null): string {
-  if (avg === null) return "text-muted-foreground"
-  return healthIndexAccent(toHealthIndex(avg))
+function resolveQuestionHealthIndex(d: QuestionDistDisplay): number | null {
+  if (d.storedHealthIndex !== undefined) return d.storedHealthIndex
+  const avg = calcNormalizedAvgScore(d.distribution, d.scoreDirection)
+  return avg !== null ? toHealthIndex(avg) : null
 }
 
 export function PgrScoreDistributionWidget({ distributions }: Props): React.ReactElement {
@@ -35,9 +42,8 @@ export function PgrScoreDistributionWidget({ distributions }: Props): React.Reac
     return <p className="text-xs text-muted-foreground text-center py-4">Sem dados de distribuição para este período.</p>
   }
 
-  const allAvgs = nonEmpty.map((d) => calcAvgScore(d.distribution)).filter((a): a is number => a !== null)
-  const globalAvgRaw = allAvgs.length > 0 ? allAvgs.reduce((s, a) => s + a, 0) / allAvgs.length : null
-  const globalHI = globalAvgRaw !== null ? toHealthIndex(globalAvgRaw) : null
+  const allHIs = nonEmpty.map(resolveQuestionHealthIndex).filter((a): a is number => a !== null)
+  const globalHI = allHIs.length > 0 ? Math.round(allHIs.reduce((s, a) => s + a, 0) / allHIs.length) : null
 
   return (
     <div>
@@ -46,20 +52,19 @@ export function PgrScoreDistributionWidget({ distributions }: Props): React.Reac
         {globalHI !== null && (
           <div className="flex items-baseline gap-1.5">
             <span className="text-[9px] text-muted-foreground">Índice de Saúde:</span>
-            <p className={`text-sm font-black ${hiAccent(globalAvgRaw)}`}>{globalHI}%</p>
+            <p className={`text-sm font-black ${healthIndexAccent(globalHI)}`}>{globalHI}%</p>
           </div>
         )}
       </div>
       <div className="divide-y divide-border">
         {nonEmpty.map((d) => {
-          const avgScore = calcAvgScore(d.distribution)
-          const hi = avgScore !== null ? toHealthIndex(avgScore) : null
+          const hi = resolveQuestionHealthIndex(d)
           const compat = {
             id: d.questionId,
             text: d.questionText,
             order: d.questionOrder,
             scoreDirection: d.scoreDirection,
-            avgScore,
+            avgScore: calcNormalizedAvgScore(d.distribution, d.scoreDirection),
             distribution: d.distribution,
           }
           return (
@@ -91,7 +96,7 @@ export function PgrScoreDistributionWidget({ distributions }: Props): React.Reac
                 {hi !== null ? (
                   <>
                     <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground mb-0.5">Índice de Saúde</p>
-                    <p className={`text-xl font-black ${hiAccent(avgScore)}`}>{hi}%</p>
+                    <p className={`text-xl font-black ${healthIndexAccent(hi)}`}>{hi}%</p>
                   </>
                 ) : (
                   <p className="text-xl font-black text-muted-foreground">—</p>
@@ -105,4 +110,4 @@ export function PgrScoreDistributionWidget({ distributions }: Props): React.Reac
   )
 }
 
-export type { PgrScoreDistribution as PgrScoreDistributionData, QuestionDistDisplay }
+export type { QuestionDistDisplay }

@@ -108,12 +108,12 @@ export default async function AlertsPage(): Promise<React.ReactElement> {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/40">
-                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Tipo</th>
-                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Severidade</th>
+                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Tipo</th>
+                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Severidade</th>
                 <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Mensagem</th>
-                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Data</th>
-                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Status</th>
-                <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Ações</th>
+                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Data</th>
+                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Status</th>
+                <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-40 whitespace-nowrap">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -135,7 +135,7 @@ export default async function AlertsPage(): Promise<React.ReactElement> {
                 }
                 return (
                   <tr key={alert.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <div className="inline-flex items-center gap-0.5">
                         <span className={`${BADGE_BASE} ${TYPE_STYLE[alert.type] ?? BADGE_DEFAULT}`}>
                           {TYPE_LABELS[alert.type] ?? alert.type}
@@ -143,20 +143,20 @@ export default async function AlertsPage(): Promise<React.ReactElement> {
                         <AlertTypeInfo type={alert.type} />
                       </div>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${SEVERITY_STYLE[alert.severity] ?? BADGE_DEFAULT}`}>
                         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${SEVERITY_DOT[alert.severity] ?? "bg-muted-foreground"}`} />
                         {SEVERITY_LABELS[alert.severity] ?? alert.severity}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-xs">{alert.message}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{format(new Date(alert.createdAt), "dd/MM HH:mm")}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-xs text-muted-foreground font-mono whitespace-nowrap">{format(new Date(alert.createdAt), "dd/MM HH:mm")}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <span className={`${BADGE_BASE} ${statusCls}`}>
                         {statusLabel}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right w-40 whitespace-nowrap">
                       <AlertRowActions alertId={alert.id} isRead={alert.isRead} isResolved={Boolean(alert.resolvedAt)} />
                     </td>
                   </tr>

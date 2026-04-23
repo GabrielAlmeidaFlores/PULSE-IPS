@@ -27,12 +27,12 @@ export function AlertRowActions({ alertId, isRead, isResolved }: Props): React.R
   }
 
   return (
-    <div className="flex items-center justify-end gap-1">
+    <div className="flex items-center justify-end gap-1 whitespace-nowrap">
       <button
         onClick={handleMarkRead}
         disabled={pending || isRead || isResolved}
         style={{ borderRadius: 0 }}
-        className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wider border border-border text-muted-foreground hover:bg-muted ${  pending || isRead || isResolved ? "opacity-40 cursor-not-allowed" : ""}`}
+        className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wider border border-border text-muted-foreground hover:bg-muted whitespace-nowrap ${pending || isRead || isResolved ? "opacity-40 cursor-not-allowed" : ""}`}
       >
         Marcar lido
       </button>
@@ -40,7 +40,7 @@ export function AlertRowActions({ alertId, isRead, isResolved }: Props): React.R
         onClick={handleResolve}
         disabled={pending || isResolved}
         style={{ borderRadius: 0 }}
-        className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wider border border-primary text-primary hover:bg-primary/10 ${  pending || isResolved ? "opacity-40 cursor-not-allowed" : ""}`}
+        className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wider border border-primary text-primary hover:bg-primary/10 whitespace-nowrap ${pending || isResolved ? "opacity-40 cursor-not-allowed" : ""}`}
       >
         Resolver
       </button>

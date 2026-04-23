@@ -1,4 +1,5 @@
 import { findAlertsByTenant, createAlert, markAlertRead, resolveAlert, findAllTenantsRecentSurveyResponsesForAlerts } from "@/modules/alerts/alert.repository"
+import { toHealthIndex, healthIndexLabel } from "@/libs/utils/health-index"
 import type { Alert, Department } from "@prisma/client"
 
 export function getAlerts(tenantId: string): Promise<(Alert & { department: Department | null })[]> {
@@ -42,12 +43,13 @@ export async function detectLowScoreAlerts(): Promise<void> {
   for (const [, data] of Array.from(deptScores.entries())) {
     const avgScore = data.scores.reduce((a: number, b: number) => a + b, 0) / data.scores.length
     if (avgScore < LOW_SCORE_THRESHOLD) {
+      const hi = toHealthIndex(avgScore)
       await createAlert({
         tenantId: data.tenantId,
         departmentId: data.departmentId,
         type: "low_score",
         severity: avgScore < 2 ? "critical" : "warning",
-        message: `O índice de bem-estar ocupacional do setor ${data.departmentName} está abaixo do esperado: ${avgScore.toFixed(1)} de 5,0.`,
+        message: `O índice de saúde do setor ${data.departmentName} está abaixo do esperado: ${hi}% (${healthIndexLabel(hi)}).`,
       })
     }
   }
