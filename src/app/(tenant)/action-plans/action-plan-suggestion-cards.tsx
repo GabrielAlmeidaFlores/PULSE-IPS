@@ -1,12 +1,13 @@
 "use client"
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { Lightbulb, ChevronDown, CheckSquare, Loader2 } from "lucide-react"
-import { createFromSuggestionAction } from "@/app/(tenant)/action-plans/new/actions"
-import type { ActionPlanSuggestion } from "@/modules/action-plans/action-plan-suggestions"
+import { Lightbulb, ChevronDown, CheckSquare, Loader2, X } from "lucide-react"
+import { createActionPlanFromSuggestionAction } from "@/app/(tenant)/action-plans/new/actions"
+import { dismissActionPlanSuggestionAction } from "@/app/(tenant)/action-plans/actions"
+import type { ActionPlanSuggestionWithTasks } from "@/modules/action-plans/action-plan-suggestion.service"
 
 interface Props {
-  suggestions: ActionPlanSuggestion[]
+  suggestions: ActionPlanSuggestionWithTasks[]
 }
 
 const PRIORITY_LABELS: Record<string, string> = { low: "Baixa", medium: "Média", high: "Alta" }
@@ -16,22 +17,32 @@ const PRIORITY_CLS: Record<string, string> = {
   low: "bg-muted text-muted-foreground border border-border",
 }
 
-function SuggestionCard({ suggestion }: { suggestion: ActionPlanSuggestion }): React.ReactElement {
+function ActionPlanSuggestionCard({ suggestion, onDismiss }: { suggestion: ActionPlanSuggestionWithTasks; onDismiss: (id: string) => void }): React.ReactElement {
   const [open, setOpen] = useState(false)
-  const [pending, startTransition] = useTransition()
+  const [creating, startCreate] = useTransition()
+  const [dismissing, startDismiss] = useTransition()
   const router = useRouter()
 
   function handleCreate(): void {
-    startTransition(async () => {
-      const result = await createFromSuggestionAction({
+    startCreate(async () => {
+      const result = await createActionPlanFromSuggestionAction({
+        suggestionId: suggestion.id,
         title: suggestion.title,
         description: suggestion.description,
         priority: suggestion.priority,
-        tasks: suggestion.tasks,
+        tasks: suggestion.tasks.map((t) => t.title),
       })
       if (result.id !== undefined) {
         router.push(`/action-plans/${result.id}`)
       }
+    })
+  }
+
+  function handleDismiss(e: React.MouseEvent): void {
+    e.stopPropagation()
+    startDismiss(async () => {
+      await dismissActionPlanSuggestionAction(suggestion.id)
+      onDismiss(suggestion.id)
     })
   }
 
@@ -52,6 +63,15 @@ function SuggestionCard({ suggestion }: { suggestion: ActionPlanSuggestion }): R
         <span className={`shrink-0 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 ${PRIORITY_CLS[suggestion.priority] ?? PRIORITY_CLS.low}`} style={{ borderRadius: 2 }}>
           {PRIORITY_LABELS[suggestion.priority] ?? suggestion.priority}
         </span>
+        <button
+          type="button"
+          onClick={handleDismiss}
+          disabled={dismissing}
+          title="Ignorar sugestão"
+          className="shrink-0 p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
+        >
+          {dismissing ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
+        </button>
         <ChevronDown className={`shrink-0 h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
 
@@ -63,9 +83,9 @@ function SuggestionCard({ suggestion }: { suggestion: ActionPlanSuggestion }): R
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Tarefas incluídas</p>
             <ul className="space-y-1.5">
               {suggestion.tasks.map((task) => (
-                <li key={task} className="flex items-start gap-2">
+                <li key={task.id} className="flex items-start gap-2">
                   <CheckSquare className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-                  <span className="text-[12px] text-foreground">{task}</span>
+                  <span className="text-[12px] text-foreground">{task.title}</span>
                 </li>
               ))}
             </ul>
@@ -74,12 +94,12 @@ function SuggestionCard({ suggestion }: { suggestion: ActionPlanSuggestion }): R
           <button
             type="button"
             onClick={handleCreate}
-            disabled={pending}
+            disabled={creating}
             className="flex items-center gap-2 px-4 py-2 text-[11px] font-bold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60 transition-colors border border-primary"
             style={{ borderRadius: 0 }}
           >
-            {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Lightbulb className="h-3.5 w-3.5" />}
-            {pending ? "Criando..." : "Criar este plano"}
+            {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Lightbulb className="h-3.5 w-3.5" />}
+            {creating ? "Criando..." : "Criar este plano"}
           </button>
         </div>
       )}
@@ -87,8 +107,15 @@ function SuggestionCard({ suggestion }: { suggestion: ActionPlanSuggestion }): R
   )
 }
 
-export function SuggestionCards({ suggestions }: Props): React.ReactElement {
-  if (suggestions.length === 0) return <></>
+export function ActionPlanSuggestionCards({ suggestions }: Props): React.ReactElement {
+  const [visible, setVisible] = useState(suggestions.map((s) => s.id))
+
+  function handleDismiss(id: string): void {
+    setVisible((prev) => prev.filter((v) => v !== id))
+  }
+
+  const shown = suggestions.filter((s) => visible.includes(s.id))
+  if (shown.length === 0) return <></>
 
   return (
     <div className="mb-5">
@@ -99,8 +126,8 @@ export function SuggestionCards({ suggestions }: Props): React.ReactElement {
         </span>
       </div>
       <div className="space-y-2">
-        {suggestions.map((s) => (
-          <SuggestionCard key={s.key} suggestion={s} />
+        {shown.map((s) => (
+          <ActionPlanSuggestionCard key={s.id} suggestion={s} onDismiss={handleDismiss} />
         ))}
       </div>
     </div>

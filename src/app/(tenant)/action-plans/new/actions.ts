@@ -5,6 +5,7 @@ import { isRedirectError } from "next/dist/client/components/redirect-error"
 import { revalidatePath } from "next/cache"
 import { getSession } from "@/modules/auth/session"
 import { createPlan, createPlanWithTasks } from "@/modules/action-plans/action-plan.service"
+import { convertActionPlanSuggestion } from "@/modules/action-plans/action-plan-suggestion.service"
 import { AppError } from "@/libs/errors/app-error"
 import type { ActionResult } from "@/libs/utils/action-result"
 
@@ -14,7 +15,8 @@ const createPlanSchema = z.object({
   priority: z.enum(["low", "medium", "high"]),
 })
 
-const createFromSuggestionSchema = z.object({
+const createActionPlanFromSuggestionSchema = z.object({
+  suggestionId: z.string().uuid(),
   title: z.string().min(1).max(255).trim(),
   description: z.string().min(1).max(2000),
   priority: z.enum(["low", "medium", "high"]),
@@ -41,10 +43,10 @@ export async function createActionPlanAction(input: unknown): Promise<ActionResu
   }
 }
 
-export async function createFromSuggestionAction(input: unknown): Promise<ActionResult & { id?: string }> {
+export async function createActionPlanFromSuggestionAction(input: unknown): Promise<ActionResult & { id?: string }> {
   const session = await getSession()
   if (!session) return { error: "Sessão expirada." }
-  const parsed = createFromSuggestionSchema.safeParse(input)
+  const parsed = createActionPlanFromSuggestionSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
   try {
     const plan = await createPlanWithTasks(
@@ -52,6 +54,7 @@ export async function createFromSuggestionAction(input: unknown): Promise<Action
       { title: parsed.data.title, description: parsed.data.description, priority: parsed.data.priority },
       parsed.data.tasks,
     )
+    await convertActionPlanSuggestion(session.tenantId, parsed.data.suggestionId, plan.id)
     revalidatePath("/action-plans")
     return { id: plan.id }
   } catch (err) {
@@ -59,3 +62,4 @@ export async function createFromSuggestionAction(input: unknown): Promise<Action
     throw err
   }
 }
+

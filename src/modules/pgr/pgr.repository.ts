@@ -21,7 +21,7 @@ export function findPgrReviewsByTenant(tenantId: string): Promise<PgrReviewListI
   })
 }
 
-export function findPgrReviewById(id: string, tenantId: string): Promise<PgrReviewWithResults | null> {
+export function findPgrReviewById(tenantId: string, id: string): Promise<PgrReviewWithResults | null> {
   return prisma.pgrReview.findFirst({
     where: { id, tenantId },
     include: {
@@ -77,7 +77,7 @@ export async function createPgrQuestionResults(results: CreatePgrQuestionResultI
   await prisma.pgrQuestionResult.createMany({ data: results })
 }
 
-export function findUpcomingPgrReviews(reminderDate: Date, reminderDateEnd: Date): Promise<(PgrReview & { organization: Organization })[]> {
+export function findAllTenantsUpcomingPgrReviews(reminderDate: Date, reminderDateEnd: Date): Promise<(PgrReview & { organization: Organization })[]> {
   return prisma.pgrReview.findMany({
     where: { nextReviewAt: { gte: reminderDate, lt: reminderDateEnd } },
     include: { organization: true },
@@ -94,7 +94,7 @@ export async function createPgrAlert(data: CreatePgrAlertInput): Promise<void> {
   await prisma.alert.create({ data })
 }
 
-export function updatePgrReviewStatus(id: string, tenantId: string, status: "reviewed"): Promise<PgrReview> {
+export function updatePgrReviewStatus(tenantId: string, id: string, status: "reviewed"): Promise<PgrReview> {
   return prisma.pgrReview.update({
     where: { id, tenantId },
     data: { status },

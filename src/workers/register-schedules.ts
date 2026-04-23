@@ -1,13 +1,14 @@
 import { createJobQueue, type JobName } from "@/libs/queue"
 
 const REPEAT_SCHEDULES: Record<JobName, string> = {
-  "survey-dispatcher": "*/15 * * * *",
-  "adherence-checker": "0 * * * *",
-  "alert-detector":    "0 3 * * *",
-  "employee-unpause":  "0 1 * * *",
-  "pgr-review-reminder": "0 8 * * *",
-  "stripe-webhook-retry": "0 * * * *",
-  "token-cleanup":     "0 2 * * *",
+  "survey-dispatcher":              "*/15 * * * *",
+  "survey-adherence-checker":       "0 * * * *",
+  "survey-score-alert-detector":    "0 3 * * *",
+  "employee-unpause":               "0 1 * * *",
+  "pgr-review-reminder":            "0 8 * * *",
+  "stripe-webhook-retry":           "0 * * * *",
+  "survey-response-token-cleanup":  "0 2 * * *",
+  "action-plan-suggestion-generator": "0 6 * * *",
 }
 
 async function registerScheduledJobs(): Promise<void> {

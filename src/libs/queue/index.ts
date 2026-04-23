@@ -13,12 +13,13 @@ export const MESSAGE_QUEUE_NAME = "pulse-messages" as const
 
 export type JobName =
   | "survey-dispatcher"
-  | "adherence-checker"
-  | "alert-detector"
+  | "survey-adherence-checker"
+  | "survey-score-alert-detector"
   | "employee-unpause"
   | "pgr-review-reminder"
   | "stripe-webhook-retry"
-  | "token-cleanup"
+  | "survey-response-token-cleanup"
+  | "action-plan-suggestion-generator"
 
 export interface SendMessageJobData {
   to: string

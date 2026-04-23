@@ -103,7 +103,7 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
   if (!session) redirect("/login")
 
   const { id } = await params
-  const review = await getPgrReviewById(id, session.tenantId)
+  const review = await getPgrReviewById(session.tenantId, id)
   if (!review) notFound()
 
   const distributions = await getPgrScoreDistributions(session.tenantId, review.period, review.questionResults)

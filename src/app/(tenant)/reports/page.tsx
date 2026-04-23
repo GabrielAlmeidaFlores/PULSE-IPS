@@ -30,7 +30,7 @@ export default async function ReportsPage(): Promise<React.ReactElement> {
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Como funciona</p>
                   <ul className="text-[12px] text-foreground leading-relaxed space-y-1 list-none">
-                    <li>① Compartilhe o <strong>link público</strong> (botão "Copiar link") com seus colaboradores via e-mail, grupos ou murais</li>
+                    <li>① Compartilhe o <strong>link público</strong> (botão &quot;Copiar link&quot;) com seus colaboradores via e-mail, grupos ou murais</li>
                     <li>② O colaborador acessa, escolhe uma categoria e descreve a situação</li>
                     <li>③ O relato aparece aqui para o RH tratar, sem qualquer identificação</li>
                     <li>④ Marque como <strong>Em análise → Resolvido</strong> à medida que age</li>
@@ -38,7 +38,7 @@ export default async function ReportsPage(): Promise<React.ReactElement> {
                 </div>
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Relatos de crise</p>
-                  <p className="text-[12px] text-foreground leading-relaxed">Quando o sistema detecta palavras-chave de saúde mental grave (ex: "quero desaparecer"), o relato é marcado automaticamente como <strong>crise</strong> e gera um alerta de alta severidade. O formulário público exibe o número do CVV (188) nesse caso.</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">Quando o sistema detecta palavras-chave de saúde mental grave (ex: &quot;quero desaparecer&quot;), o relato é marcado automaticamente como <strong>crise</strong> e gera um alerta de alta severidade. O formulário público exibe o número do CVV (188) nesse caso.</p>
                 </div>
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Importância legal</p>

@@ -2,8 +2,7 @@
 import { z } from "zod"
 import { revalidatePath } from "next/cache"
 import { getSession } from "@/modules/auth/session"
-import { generatePgrReport } from "@/modules/pgr/pgr.service"
-import { updatePgrReviewStatus } from "@/modules/pgr/pgr.repository"
+import { generatePgrReport, markPgrReviewAsReviewed } from "@/modules/pgr/pgr.service"
 import { AppError } from "@/libs/errors/app-error"
 import type { ActionResult } from "@/libs/utils/action-result"
 
@@ -32,7 +31,7 @@ export async function markPgrAsReviewedAction(reviewId: string): Promise<ActionR
   const parsed = reviewIdSchema.safeParse(reviewId)
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "ID inválido." }
   try {
-    await updatePgrReviewStatus(parsed.data, session.tenantId, "reviewed")
+    await markPgrReviewAsReviewed(session.tenantId, parsed.data)
     revalidatePath(`/pgr/${parsed.data}`)
     revalidatePath("/pgr")
     return {}

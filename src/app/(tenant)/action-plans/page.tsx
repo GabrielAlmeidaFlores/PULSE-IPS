@@ -3,8 +3,8 @@ import Link from "next/link"
 import { ChevronRight } from "lucide-react"
 import { getSession } from "@/modules/auth/session"
 import { getActionPlans } from "@/modules/action-plans/action-plan.service"
-import { getActionPlanSuggestions } from "@/modules/action-plans/action-plan-suggestions"
-import { SuggestionCards } from "@/app/(tenant)/action-plans/suggestion-cards"
+import { getPendingActionPlanSuggestions } from "@/modules/action-plans/action-plan-suggestion.service"
+import { ActionPlanSuggestionCards } from "@/app/(tenant)/action-plans/action-plan-suggestion-cards"
 import { PageHelp } from "@/components/page-help"
 
 const PLAN_STATUS_LABELS: Record<string, string> = {
@@ -41,7 +41,7 @@ export default async function ActionPlansPage(): Promise<React.ReactElement> {
 
   const [plans, suggestions] = await Promise.all([
     getActionPlans(session.tenantId),
-    getActionPlanSuggestions(session.tenantId),
+    getPendingActionPlanSuggestions(session.tenantId),
   ])
 
   return (
@@ -80,7 +80,7 @@ export default async function ActionPlansPage(): Promise<React.ReactElement> {
         <Link href="/action-plans/new" className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90 transition-colors border border-primary" style={{ borderRadius: 0 }}>Novo Plano</Link>
       </div>
       <div className="flex-1 overflow-y-auto p-6">
-        <SuggestionCards suggestions={suggestions} />
+        <ActionPlanSuggestionCards suggestions={suggestions} />
         <div className="border border-border bg-card overflow-hidden">
           <table className="w-full text-sm">
             <thead>

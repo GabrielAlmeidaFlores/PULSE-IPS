@@ -13,10 +13,11 @@ import {
   createPgrReview,
   createPgrDeptResults,
   createPgrQuestionResults,
-  findUpcomingPgrReviews,
+  findAllTenantsUpcomingPgrReviews,
   findExistingPgrAlert,
   createPgrAlert,
   findItemScoresForPeriod,
+  updatePgrReviewStatus,
 } from "@/modules/pgr/pgr.repository"
 import { toHealthIndex } from "@/libs/utils/health-index"
 
@@ -26,12 +27,11 @@ export interface PgrReviewSummary extends PgrReview {
   overallHealthIndex: number | null
 }
 
-function computeOverallHealthIndex(deptResults: { avgScore: number; responseCount: number }[]): number | null {
-  const eligible = deptResults.filter((d) => d.responseCount >= MINIMUM_RESPONDENTS_FOR_DISPLAY)
-  if (eligible.length === 0) return null
-  const totalResponses = eligible.reduce((s, d) => s + d.responseCount, 0)
-  const weightedSum = eligible.reduce((s, d) => s + d.avgScore * d.responseCount, 0)
-  return toHealthIndex(weightedSum / totalResponses)
+function computeOverallHealthIndex(deptResults: { avgScore: number }[]): number | null {
+  const scoredDepts = deptResults.filter((d) => d.avgScore > 0)
+  if (scoredDepts.length === 0) return null
+  const simpleAvg = scoredDepts.reduce((s, d) => s + d.avgScore, 0) / scoredDepts.length
+  return toHealthIndex(simpleAvg)
 }
 
 function toSummary(review: PgrReviewListItem): PgrReviewSummary {
@@ -43,8 +43,8 @@ export function getPgrReviews(tenantId: string): Promise<PgrReviewSummary[]> {
   return findPgrReviewsByTenant(tenantId).then((list) => list.map(toSummary))
 }
 
-export function getPgrReviewById(id: string, tenantId: string): Promise<PgrReviewWithResults | null> {
-  return findPgrReviewById(id, tenantId)
+export function getPgrReviewById(tenantId: string, id: string): Promise<PgrReviewWithResults | null> {
+  return findPgrReviewById(tenantId, id)
 }
 
 interface DispatchLike {
@@ -178,7 +178,7 @@ export async function sendPgrReviewReminders(): Promise<{ remindersCreated: numb
   reminderDate.setHours(0, 0, 0, 0)
   const reminderDateEnd = addDays(reminderDate, 1)
 
-  const upcomingReviews = await findUpcomingPgrReviews(reminderDate, reminderDateEnd)
+  const upcomingReviews = await findAllTenantsUpcomingPgrReviews(reminderDate, reminderDateEnd)
   let remindersCreated = 0
 
   for (const review of upcomingReviews) {
@@ -195,6 +195,10 @@ export async function sendPgrReviewReminders(): Promise<{ remindersCreated: numb
   }
 
   return { remindersCreated }
+}
+
+export async function markPgrReviewAsReviewed(tenantId: string, id: string): Promise<void> {
+  await updatePgrReviewStatus(tenantId, id, "reviewed")
 }
 
 export async function getPgrScoreDistributions(

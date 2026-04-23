@@ -445,7 +445,41 @@ prisma/
 | Exclusão lógica | `deleted_at` | `timestamptz NULL` |
 | Tenant isolation | `tenant_id` | FK → `organizations.id` |
 
-### Tabelas sistêmicas (sem `tenant_id`)
+### Nomes de relações Prisma — regra obrigatória
+
+**Todo `@relation` com nome explícito deve usar o nome completo e único da relação, nunca abreviações genéricas.**
+
+O motivo: um mesmo modelo pode participar de múltiplas relações com tabelas diferentes. Um nome genérico como `"SuggestionDismisser"` torna-se ambíguo quando existem outros tipos de sugestão ou outros fluxos no futuro.
+
+```prisma
+// ❌ PROIBIDO — nome genérico que pode colidir com outras relações futuras
+dismisser       OrganizationUser? @relation("SuggestionDismisser", ...)
+dismissedSuggestions ActionPlanSuggestion[] @relation("SuggestionDismisser")
+
+// ✅ CORRETO — nome completo identifica inequivocamente o par de tabelas e o papel
+dismisser       OrganizationUser? @relation("ActionPlanSuggestionDismisser", ...)
+dismissedActionPlanSuggestions ActionPlanSuggestion[] @relation("ActionPlanSuggestionDismisser")
+```
+
+**Padrão de nomenclatura para `@relation`:**
+
+```
+"{ModeloOrigem}{PapelNaRelação}"
+```
+
+Exemplos:
+- `"ActionPlanSuggestionDismisser"` — OrganizationUser que descartou uma ActionPlanSuggestion
+- `"PgrReviewRegistrar"` — OrganizationUser que registrou uma PgrReview
+- `"DocumentCreator"` — OrganizationUser que criou um Document
+
+Campos da relação inversa no modelo pai devem também usar o nome completo:
+
+```prisma
+// Em OrganizationUser
+dismissedActionPlanSuggestions ActionPlanSuggestion[] @relation("ActionPlanSuggestionDismisser")
+```
+
+
 
 #### `plans`
 
@@ -1239,6 +1273,53 @@ if (hasReachedPlanLimit) throw new AppError("EMPLOYEE_LIMIT_REACHED", "Limite at
 ```
 
 > **Motivo:** comentários mentem — o código muda, o comentário fica desatualizado. Código bem nomeado é sempre verdadeiro. Se um trecho parece precisar de comentário, o problema está no nome ou na estrutura, não na ausência de explicação.
+
+### Princípio geral de nomenclatura — contexto completo obrigatório
+
+**Todo identificador deve conter o contexto completo do domínio ao qual pertence. Nomes abreviados ou genéricos são proibidos em absolutamente qualquer parte do código.**
+
+Um nome genérico força quem lê a navegar até a implementação para entender do que se trata. Um nome completo torna o código auto-documentado e evita colisões futuras quando novos domínios ou fluxos similares forem adicionados ao sistema.
+
+**Pergunta de validação obrigatória antes de nomear qualquer coisa:**
+> *"Se eu ler apenas esse nome num log, num painel de monitoramento, numa listagem de arquivos ou numa revisão de código, saberei exatamente o que ele faz e a qual domínio pertence — sem abrir o arquivo?"*
+
+Se a resposta for **não**, o nome está incompleto e deve ser reescrito.
+
+```typescript
+// ❌ PROIBIDO — genérico, sem contexto de domínio
+findPending(tenantId)
+create(tenantId, data)
+dismiss(tenantId, id)
+convert(tenantId, id)
+generate()
+cleanup()
+reminder()
+checker()
+interface WithDetails { ... }
+interface CreateInput { ... }
+<Card />
+<List />
+"generator"
+"cleanup"
+
+// ✅ CORRETO — nome completo: domínio + entidade + ação + complemento quando necessário
+findPendingActionPlanSuggestions(tenantId)
+createActionPlanSuggestion(tenantId, data)
+dismissActionPlanSuggestion(tenantId, id)
+convertActionPlanSuggestionToActionPlan(tenantId, id)
+generateActionPlanSuggestions()
+surveyResponseTokenCleanup()
+pgrReviewDueReminder()
+surveyAdherenceChecker()
+interface ActionPlanSuggestionWithTasks { ... }
+interface CreateActionPlanSuggestionInput { ... }
+<ActionPlanSuggestionCard />
+<ActionPlanSuggestionList />
+"action-plan-suggestion-generator"
+"survey-response-token-cleanup"
+```
+
+**A regra se aplica a todo artefato sem exceção:** funções, variáveis, parâmetros, interfaces, types, constantes, componentes React, hooks, jobs BullMQ, nomes de schedules, rotas, nomes de arquivo, eventos de audit log, tipos de alerta, tipos de mensagem, campos de `@relation` no Prisma.
 
 ### Naming conventions
 
@@ -2249,12 +2330,46 @@ Processos recorrentes gerenciados pelo **BullMQ** com Redis como broker.
 | Job | Frequência | Responsabilidade |
 |---|---|---|
 | `survey-dispatcher` | A cada 15min | Verifica dispatches `scheduled` com `scheduled_at <= now()`, gera tokens, envia via messaging |
-| `adherence-checker` | A cada hora | 48h após cada dispatch, calcula taxa de adesão e cria alertas `low_adherence` |
-| `alert-detector` | Diário (03:00) | Calcula quedas de score; cria alertas `score_drop` e `negative_trend` |
+| `survey-adherence-checker` | A cada hora | 48h após cada dispatch, calcula taxa de adesão e cria alertas `low_adherence` |
+| `survey-score-alert-detector` | Diário (03:00) | Calcula quedas de score; cria alertas `score_drop` e `negative_trend` |
 | `employee-unpause` | Diário (01:00) | Reverte `status = 'active'` para colaboradores com `pause_end_at <= today` |
 | `pgr-review-reminder` | Diário (08:00) | 30 dias antes de `next_review_at`; cria alerta `pgr_review_due` |
 | `stripe-webhook-retry` | A cada hora | Reprocessa `billing_webhook_events` com `error IS NOT NULL` e `processed = false` |
-| `token-cleanup` | Diário (02:00) | Remove `survey_response_tokens` expirados e não utilizados |
+| `survey-response-token-cleanup` | Diário (02:00) | Remove `survey_response_tokens` expirados e não utilizados |
+| `action-plan-suggestion-generator` | Diário (06:00) | Gera sugestões de planos de ação com base em métricas de cada tenant |
+
+### Nomenclatura de Jobs — regra obrigatória
+
+**Nomes de jobs e schedules devem ser específicos e autoexplicativos. Nomes genéricos são proibidos.**
+
+O motivo: um sistema com múltiplos domínios acumula dezenas de jobs ao longo do tempo. Um nome como `"suggestion-generator"` é ambíguo — não indica de qual entidade, fluxo ou domínio se trata. O monitoramento em `/super-admin/jobs` e os `job_logs` ficam impossíveis de triagar sem contexto.
+
+**Padrão obrigatório:**
+
+```
+"{domínio}-{ação}-{complemento-opcional}"
+```
+
+```typescript
+// ❌ PROIBIDO — nome genérico sem contexto de domínio
+"suggestion-generator"
+"reminder"
+"cleanup"
+"checker"
+
+// ✅ CORRETO — nome completo identifica domínio, ação e alvo
+"action-plan-suggestion-generator"   // gera sugestões de planos de ação
+"pgr-review-reminder"                // lembra revisão do PGR
+"survey-response-token-cleanup"      // limpa tokens de resposta de pesquisa expirados
+"survey-adherence-checker"           // verifica adesão a dispatches de pesquisa
+```
+
+**Regras adicionais:**
+
+- Sempre kebab-case (igual aos nomes de arquivo e rotas)
+- O nome deve responder: *"o que esse job faz e em qual domínio?"* sem precisar abrir o código
+- Ao registrar o schedule em `register-schedules.ts`, o nome do job no BullMQ deve ser idêntico ao nome usado em `job-worker.ts`
+- O mesmo nome é usado na rota de acionamento manual `/api/jobs/[job-name]`
 
 ### Acionamento manual
 
@@ -2941,6 +3056,7 @@ Execute `grep` para confirmar cada item:
 | 18 | Novos erros de negócio? Usam `AppError` com mensagem em pt-BR |
 | 19 | Server Action nova? Chama `getSession()`, valida com Zod, chama `revalidatePath` após mutação |
 | 20 | `employee_consents` modificado? `ConsentRepository` ainda é append-only (sem `update`/`delete`) |
+| 21 | **Todo identificador novo passa na pergunta de validação de nomenclatura?** Função, tipo, componente, job, constante, arquivo — o nome carrega domínio + entidade + ação sem precisar abrir o arquivo? (§9) |
 
 ### Quando o PR pode ser considerado pronto
 

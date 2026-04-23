@@ -90,6 +90,7 @@ model Organization {
   documents        Document[]
   actionPlans      ActionPlan[]
   actionPlanTasks  ActionPlanTask[]
+  actionPlanSuggestions ActionPlanSuggestion[]
   reports          AnonymousReport[]
   alerts           Alert[]
   auditLogs        AuditLog[]
@@ -115,6 +116,7 @@ model OrganizationUser {
   organization Organization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   authTokens        AuthToken[]
   termsAcceptances  PlatformTermsAcceptance[]
+  dismissedActionPlanSuggestions ActionPlanSuggestion[] @relation("ActionPlanSuggestionDismisser")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -448,6 +450,43 @@ model ActionPlanTask {
   @@index([actionPlanId])
   @@map("action_plan_tasks")
 }
+
+model ActionPlanSuggestion {
+  id            String    @id @default(uuid())
+  tenantId      String    @map("tenant_id")
+  suggestionKey String    @map("suggestion_key")
+  title         String
+  description   String
+  priority      String    @default("medium")
+  reason        String
+  status        String    @default("pending")
+  dismissedAt   DateTime? @map("dismissed_at")
+  dismissedBy   String?   @map("dismissed_by")
+  actionPlanId  String?   @map("action_plan_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  organization    Organization              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  dismisser       OrganizationUser?         @relation("ActionPlanSuggestionDismisser", fields: [dismissedBy], references: [id])
+  tasks           ActionPlanSuggestionTask[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, suggestionKey])
+  @@map("action_plan_suggestions")
+}
+
+model ActionPlanSuggestionTask {
+  id           String   @id @default(uuid())
+  suggestionId String   @map("suggestion_id")
+  title        String
+  sortOrder    Int      @default(0) @map("sort_order")
+
+  suggestion ActionPlanSuggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
+
+  @@index([suggestionId])
+  @@map("action_plan_suggestion_tasks")
+}
+
 
 model Document {
   id        String   @id @default(uuid())

@@ -8,6 +8,7 @@ import { sendPgrReviewReminders } from "@/modules/pgr/pgr.service"
 import { retryFailedWebhookEvents } from "@/modules/billing/webhook.handler"
 import { createMessageLog, deleteExpiredTokens } from "@/modules/surveys/survey.repository"
 import { jobLogService } from "@/modules/job-logs/job-log.service"
+import { runActionPlanSuggestionGenerator } from "@/modules/action-plans/action-plan-suggestion.service"
 import type { InsertJobLogInput } from "@/modules/job-logs/job-log.types"
 
 async function processJob(jobName: JobName): Promise<void> {
@@ -19,14 +20,14 @@ async function processJob(jobName: JobName): Promise<void> {
       console.log(`[worker] survey-dispatcher: ${JSON.stringify({ dispatch: dispatchResult, auto: autoResult })}`)
       break
     }
-    case "adherence-checker": {
+    case "survey-adherence-checker": {
       const result = await checkDispatchAdherence()
-      console.log(`[worker] adherence-checker: ${JSON.stringify(result)}`)
+      console.log(`[worker] survey-adherence-checker: ${JSON.stringify(result)}`)
       break
     }
-    case "alert-detector": {
+    case "survey-score-alert-detector": {
       await detectLowScoreAlerts()
-      console.log(`[worker] alert-detector: done`)
+      console.log(`[worker] survey-score-alert-detector: done`)
       break
     }
     case "employee-unpause": {
@@ -44,9 +45,14 @@ async function processJob(jobName: JobName): Promise<void> {
       console.log(`[worker] stripe-webhook-retry: ${JSON.stringify(result)}`)
       break
     }
-    case "token-cleanup": {
+    case "survey-response-token-cleanup": {
       const result = await deleteExpiredTokens()
-      console.log(`[worker] token-cleanup: deleted ${result.count} expired tokens`)
+      console.log(`[worker] survey-response-token-cleanup: deleted ${result.count} expired tokens`)
+      break
+    }
+    case "action-plan-suggestion-generator": {
+      const result = await runActionPlanSuggestionGenerator()
+      console.log(`[worker] action-plan-suggestion-generator: ${JSON.stringify(result)}`)
       break
     }
   }

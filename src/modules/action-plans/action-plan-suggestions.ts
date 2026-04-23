@@ -9,101 +9,184 @@ export interface ActionPlanSuggestion {
   tasks: string[]
 }
 
-interface AlertWithDept {
+interface AlertWithContext {
   id: string
   type: string
   severity: string
   departmentId: string | null
   department: { name: string } | null
+  message: string
+  createdAt: Date
 }
 
 interface LowAdherenceDispatch {
   id: string
   totalRecipients: number
   totalResponses: number
+  dispatchedAt: Date | null
   surveyConfiguration: { department: { name: string } | null } | null
 }
 
-const SUGGESTION_TEMPLATES: Record<string, (deptName: string) => Omit<ActionPlanSuggestion, "key" | "reason" | "priority">> = {
-  crisis_report: (dept) => ({
-    title: `Resposta a relato de crise — ${dept}`,
-    description: `Um relato com indicação de situação crítica foi identificado no setor ${dept}. Ação imediata é necessária para garantir o bem-estar do colaborador e do time.`,
-    tasks: [
-      "Acionar canal de suporte psicológico disponível",
-      "Comunicar equipe sobre recursos de apoio (CVV: 188)",
-      "Revisar protocolo de crise com o RH",
-      "Acompanhar evolução do clima no setor",
-    ],
-  }),
-  score_drop: (dept) => ({
-    title: `Intervenção de bem-estar — ${dept}`,
-    description: `O score de satisfação do setor ${dept} apresentou queda significativa. Investigar causas e implementar ações de suporte reduz o risco de agravamento.`,
-    tasks: [
-      "Reunião de diagnóstico com liderança do setor",
-      "Levantamento dos principais fatores de risco relatados",
-      "Definir medidas corretivas e responsáveis",
-      "Monitorar evolução nas próximas pesquisas",
-    ],
-  }),
-  negative_trend: (dept) => ({
-    title: `Plano de melhoria contínua — ${dept}`,
-    description: `O setor ${dept} apresenta tendência negativa por três ou mais períodos consecutivos. É importante agir antes que o problema se consolide.`,
-    tasks: [
-      "Análise detalhada das respostas dos últimos períodos",
-      "Reunião com liderança para identificar causas raiz",
-      "Definir metas de melhoria e prazo de reavaliação",
-      "Revisão do processo de trabalho no setor",
-    ],
-  }),
-  low_adherence: (dept) => ({
-    title: `Engajamento nas pesquisas — ${dept}`,
-    description: `A taxa de participação nas pesquisas do setor ${dept} está abaixo do esperado. Alta adesão é fundamental para resultados representativos.`,
-    tasks: [
-      "Comunicado interno sobre a importância das pesquisas",
-      "Alinhamento com gestores e lideranças do setor",
-      "Revisar horário e frequência de envio das pesquisas",
-    ],
-  }),
+interface ReportItem {
+  category: string | null
+  status: string
+  createdAt: Date
 }
 
-const PRIORITY_BY_TYPE: Record<string, "low" | "medium" | "high"> = {
+interface ConsentDeptGroup {
+  departmentId: string
+  _count: { departmentId: number }
+}
+
+const ALERT_TASKS: Record<string, string[]> = {
+  crisis_report: [
+    "Acionar canal de suporte psicológico disponível",
+    "Comunicar equipe sobre recursos de apoio (CVV: 188)",
+    "Revisar protocolo de crise com o RH",
+    "Acompanhar evolução do clima no setor nas próximas semanas",
+  ],
+  score_drop: [
+    "Reunião de diagnóstico com liderança do setor",
+    "Levantamento dos principais fatores de risco relatados",
+    "Definir medidas corretivas e responsáveis",
+    "Monitorar evolução nas próximas pesquisas",
+  ],
+  low_score: [
+    "Reunião de diagnóstico com liderança do setor",
+    "Levantamento dos principais fatores de risco relatados",
+    "Definir medidas corretivas e responsáveis",
+    "Monitorar evolução nas próximas pesquisas",
+  ],
+  negative_trend: [
+    "Análise detalhada das respostas dos últimos períodos",
+    "Reunião com liderança para identificar causas raiz",
+    "Definir metas de melhoria e prazo de reavaliação",
+    "Revisão do processo de trabalho no setor",
+  ],
+  low_adherence: [
+    "Comunicado interno sobre a importância das pesquisas",
+    "Alinhamento com gestores e lideranças do setor",
+    "Revisar horário e frequência de envio das pesquisas",
+    "Identificar e remover barreiras à participação",
+  ],
+  no_response: [
+    "Verificar se os links de pesquisa chegaram corretamente",
+    "Comunicado interno reforçando a importância das pesquisas",
+    "Alinhar com gestores a divulgação interna do programa",
+    "Revisar janela de horário configurada para o setor",
+  ],
+}
+
+const ALERT_PRIORITY: Record<string, "low" | "medium" | "high"> = {
   crisis_report: "high",
   score_drop: "high",
+  low_score: "high",
   negative_trend: "high",
   low_adherence: "medium",
+  no_response: "medium",
 }
 
-const TYPE_ORDER = ["crisis_report", "score_drop", "negative_trend", "low_adherence"]
+const ALERT_TITLE_BY_TYPE: Record<string, string> = {
+  crisis_report: "Resposta a relato de crise",
+  score_drop: "Intervenção de bem-estar",
+  low_score: "Índice de bem-estar abaixo do esperado",
+  negative_trend: "Plano de melhoria contínua",
+  low_adherence: "Engajamento nas pesquisas",
+  no_response: "Pesquisa sem respostas registradas",
+}
 
-function buildSuggestionFromAlert(alert: AlertWithDept): ActionPlanSuggestion | null {
-  const template = SUGGESTION_TEMPLATES[alert.type]
-  if (!template) return null
+const ALERT_CONTEXT_BY_TYPE: Record<string, string> = {
+  crisis_report:
+    "O sistema identificou palavras-chave de crise em um relato anônimo. Enquanto o alerta permanecer aberto, o risco à saúde mental do time é considerado crítico. Ação imediata é necessária.",
+  score_drop:
+    "Quedas de score costumam indicar aumento de pressão, sobrecarga ou conflitos não endereçados. Agir rapidamente reduz o risco de agravamento e demonstra comprometimento com a NR-1.",
+  low_score:
+    "Scores persistentemente baixos estão associados a burnout, queda de produtividade e aumento de turnover. É necessário investigar as causas e implementar ações estruturadas.",
+  negative_trend:
+    "Tendências negativas prolongadas aumentam o risco de burnout e comprometem o cumprimento da NR-1. O problema se agrava a cada ciclo sem intervenção.",
+  low_adherence:
+    "Baixa participação compromete a representatividade dos dados e pode mascarar problemas reais de saúde no time. Dados insuficientes impedem a detecção precoce de riscos.",
+  no_response:
+    "Sem respostas, não é possível monitorar o bem-estar do setor. A ausência de dados compromete tanto a gestão interna quanto a documentação de conformidade com a NR-1.",
+}
+
+const SEVERITY_LABEL_BY_VALUE: Record<string, string> = {
+  critical: "crítica",
+  warning: "atenção",
+  info: "informativa",
+}
+
+const REPORT_CATEGORY_LABEL_BY_VALUE: Record<string, string> = {
+  harassment: "assédio",
+  overload: "sobrecarga",
+  conflict: "conflito",
+  physical_environment: "ambiente físico",
+  other: "outros",
+}
+
+const SUPPORTED_ALERT_TYPES = new Set(Object.keys(ALERT_TASKS))
+
+const ALERT_TYPE_ORDER = ["crisis_report", "score_drop", "low_score", "negative_trend", "low_adherence", "no_response"]
+
+function formatDateAsBrazilian(date: Date): string {
+  return date.toLocaleDateString("pt-BR")
+}
+
+function daysSinceDate(date: Date): number {
+  return Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24))
+}
+
+function formatDaysAgoLabel(date: Date): string {
+  const days = daysSinceDate(date)
+  if (days === 0) return "hoje"
+  if (days === 1) return "há 1 dia"
+  return `há ${days} dias`
+}
+
+function buildAlertDescription(alert: AlertWithContext): string {
   const deptName = alert.department?.name ?? "geral"
-  const built = template(deptName)
-  const reasonMap: Record<string, string> = {
-    crisis_report: `Alerta de crise ativo no setor ${deptName}`,
-    score_drop: `Queda de score detectada no setor ${deptName}`,
-    negative_trend: `Tendência negativa por múltiplos períodos — ${deptName}`,
-    low_adherence: `Baixa adesão às pesquisas no setor ${deptName}`,
+  const severityLabel = SEVERITY_LABEL_BY_VALUE[alert.severity] ?? alert.severity
+  const daysAgoLabel = formatDaysAgoLabel(alert.createdAt)
+  const typeContext = ALERT_CONTEXT_BY_TYPE[alert.type] ?? ""
+
+  return `Alerta gerado em ${formatDateAsBrazilian(alert.createdAt)} (${daysAgoLabel}) — setor: ${deptName}, severidade: ${severityLabel}. Dado registrado pelo sistema: "${alert.message}". ${typeContext}`.trim()
+}
+
+function buildSuggestionFromAlert(alert: AlertWithContext): ActionPlanSuggestion | null {
+  if (!SUPPORTED_ALERT_TYPES.has(alert.type)) return null
+  const deptName = alert.department?.name ?? "geral"
+  const titleBase = ALERT_TITLE_BY_TYPE[alert.type] ?? "Ação necessária"
+  const daysAgoLabel = formatDaysAgoLabel(alert.createdAt)
+
+  const reasonByType: Record<string, string> = {
+    crisis_report: `Alerta de crise ativo no setor ${deptName} (${daysAgoLabel})`,
+    score_drop: `Queda de score no setor ${deptName} — alerta ativo ${daysAgoLabel}`,
+    low_score: `Score abaixo do esperado — setor ${deptName}: ${alert.message}`,
+    negative_trend: `Tendência negativa no setor ${deptName} — ativo ${daysAgoLabel}`,
+    low_adherence: `Baixa adesão no setor ${deptName}: ${alert.message}`,
+    no_response: `Pesquisa sem resposta no setor ${deptName}: ${alert.message}`,
   }
+
   return {
     key: `alert-${alert.type}-${alert.departmentId ?? "global"}`,
-    ...built,
-    priority: PRIORITY_BY_TYPE[alert.type] ?? "medium",
-    reason: reasonMap[alert.type] ?? `Alerta ${alert.type}`,
+    title: `${titleBase} — ${deptName}`,
+    description: buildAlertDescription(alert),
+    priority: ALERT_PRIORITY[alert.type] ?? "medium",
+    reason: reasonByType[alert.type] ?? `Alerta ${alert.type} no setor ${deptName}`,
+    tasks: ALERT_TASKS[alert.type] ?? [],
   }
 }
 
 function pickAlertSuggestions(
-  openAlerts: AlertWithDept[],
+  openAlerts: AlertWithContext[],
   existingTitles: Set<string>,
   seenKeys: Set<string>,
   slots: number,
 ): ActionPlanSuggestion[] {
   const result: ActionPlanSuggestion[] = []
-  for (const type of TYPE_ORDER) {
+  for (const alertType of ALERT_TYPE_ORDER) {
     if (result.length >= slots) break
-    const topAlert = openAlerts.find((a) => a.type === type)
+    const topAlert = openAlerts.find((a) => a.type === alertType)
     if (!topAlert) continue
     const suggestion = buildSuggestionFromAlert(topAlert)
     if (!suggestion || seenKeys.has(suggestion.key) || existingTitles.has(suggestion.title.toLowerCase())) continue
@@ -114,18 +197,46 @@ function pickAlertSuggestions(
 }
 
 function buildReportSuggestion(
-  openReportCount: number,
+  openReports: ReportItem[],
   existingTitles: Set<string>,
 ): ActionPlanSuggestion | null {
-  if (openReportCount < 3) return null
+  if (openReports.length < 3) return null
   const title = "Tratamento de relatos anônimos pendentes"
   if (existingTitles.has(title.toLowerCase())) return null
+
+  const openCount = openReports.filter((r) => r.status === "open").length
+  const analyzingCount = openReports.filter((r) => r.status === "analyzing").length
+
+  const oldestReport = openReports[0]
+  const oldestDaysAgoLabel = oldestReport !== undefined ? formatDaysAgoLabel(oldestReport.createdAt) : "data desconhecida"
+
+  const categoryCountMap = new Map<string, number>()
+  for (const report of openReports) {
+    const categoryKey = report.category ?? "other"
+    categoryCountMap.set(categoryKey, (categoryCountMap.get(categoryKey) ?? 0) + 1)
+  }
+  const topCategoriesFormatted = [...categoryCountMap.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([cat, count]) => `${REPORT_CATEGORY_LABEL_BY_VALUE[cat] ?? cat} (${count})`)
+    .join(", ")
+
+  const statusBreakdownParts = [
+    openCount > 0 && `${openCount} sem triagem`,
+    analyzingCount > 0 && `${analyzingCount} em análise`,
+  ].filter(Boolean)
+  const statusBreakdownLabel = statusBreakdownParts.join(", ")
+
   return {
     key: "open-reports",
     title,
-    description: `Há ${openReportCount} relatos anônimos em aberto. Tratar com agilidade demonstra comprometimento com o bem-estar e fortalece a confiança do time.`,
+    description:
+      `Há ${openReports.length} relatos anônimos pendentes (${statusBreakdownLabel}). ` +
+      `O mais antigo foi registrado ${oldestDaysAgoLabel}. ` +
+      `Categorias identificadas: ${topCategoriesFormatted}. ` +
+      `Cada relato representa um colaborador que buscou ajuda — a resposta ágil demonstra comprometimento e é exigida indiretamente pela NR-1.`,
     priority: "medium",
-    reason: `${openReportCount} relatos em aberto ou em análise`,
+    reason: `${openReports.length} relatos em aberto ou análise — mais antigo ${oldestDaysAgoLabel}`,
     tasks: [
       "Triagem e categorização dos relatos recebidos",
       "Definir responsável por cada categoria de relato",
@@ -139,18 +250,30 @@ function buildDispatchSuggestion(
   lowAdherenceDispatches: LowAdherenceDispatch[],
   existingTitles: Set<string>,
 ): ActionPlanSuggestion | null {
-  const top = lowAdherenceDispatches[0]
-  if (!top) return null
-  const deptName = top.surveyConfiguration?.department?.name ?? "geral"
-  const adherencePct = Math.round((top.totalResponses / top.totalRecipients) * 100)
+  const topDispatch = lowAdherenceDispatches[0]
+  if (!topDispatch) return null
+  const deptName = topDispatch.surveyConfiguration?.department?.name ?? "geral"
   const title = `Aumentar adesão às pesquisas — ${deptName}`
   if (existingTitles.has(title.toLowerCase())) return null
+
+  const adherencePct = Math.round((topDispatch.totalResponses / topDispatch.totalRecipients) * 100)
+  const missingCount = topDispatch.totalRecipients - topDispatch.totalResponses
+  const dateLabel =
+    topDispatch.dispatchedAt !== null
+      ? `enviada em ${formatDateAsBrazilian(topDispatch.dispatchedAt)}`
+      : "pesquisa recente"
+
   return {
-    key: `dispatch-low-adherence-${top.id}`,
+    key: `dispatch-low-adherence-${topDispatch.id}`,
     title,
-    description: `Uma pesquisa recente do setor ${deptName} teve apenas ${adherencePct}% de participação. Engajar colaboradores nas pesquisas garante dados representativos e conformidade com a NR-1.`,
+    description:
+      `Na pesquisa ${dateLabel} ao setor ${deptName}: ` +
+      `${topDispatch.totalResponses} de ${topDispatch.totalRecipients} colaboradores responderam ` +
+      `(${adherencePct}% de adesão — meta: ≥80%). ` +
+      `${missingCount} pessoas não foram alcançadas. ` +
+      `Dados desrepresentativos comprometem a detecção precoce de riscos psicossociais e a evidência documental exigida pela NR-1.`,
     priority: "medium",
-    reason: `Pesquisa recente com ${adherencePct}% de adesão no setor ${deptName}`,
+    reason: `Pesquisa ${dateLabel} no setor ${deptName}: ${adherencePct}% de adesão (${topDispatch.totalResponses}/${topDispatch.totalRecipients})`,
     tasks: [
       "Informar colaboradores sobre a importância das pesquisas de bem-estar",
       "Verificar se os links chegaram corretamente (checar registros de envio)",
@@ -161,41 +284,69 @@ function buildDispatchSuggestion(
 }
 
 function buildConsentSuggestion(
-  employeesWithoutConsent: number,
+  consentDeptGroups: ConsentDeptGroup[],
+  deptNamesById: Map<string, string>,
   existingTitles: Set<string>,
 ): ActionPlanSuggestion | null {
-  if (employeesWithoutConsent === 0) return null
+  const totalWithoutConsent = consentDeptGroups.reduce((sum, g) => sum + g._count.departmentId, 0)
+  if (totalWithoutConsent === 0) return null
   const title = "Engajamento no TCLE — colaboradores sem aceite"
   if (existingTitles.has(title.toLowerCase())) return null
-  const plural = employeesWithoutConsent > 1
+
+  const isPlural = totalWithoutConsent > 1
+  const deptBreakdownFormatted = consentDeptGroups
+    .slice(0, 3)
+    .map((g) => `${deptNamesById.get(g.departmentId) ?? "setor desconhecido"} (${g._count.departmentId})`)
+    .join(", ")
+
   return {
     key: "consent-pending",
     title,
-    description: `${employeesWithoutConsent} colaborador${plural ? "es" : ""} ativo${plural ? "s" : ""} ainda ${plural ? "não aceitaram" : "não aceitou"} o Termo de Consentimento. Sem o aceite, eles não recebem pesquisas e não entram nas métricas de bem-estar.`,
+    description:
+      `${totalWithoutConsent} colaborador${isPlural ? "es" : ""} ativo${isPlural ? "s" : ""} ` +
+      `não ${isPlural ? "aceitaram" : "aceitou"} o Termo de Consentimento — distribuídos em: ${deptBreakdownFormatted}. ` +
+      `Sem o aceite, esses colaboradores ficam excluídos das pesquisas e das métricas de saúde ocupacional, ` +
+      `reduzindo a representatividade dos dados e comprometendo a documentação de conformidade com a NR-1.`,
     priority: "medium",
-    reason: `${employeesWithoutConsent} colaborador${plural ? "es" : ""} sem TCLE aceito`,
+    reason: `${totalWithoutConsent} colaborador${isPlural ? "es" : ""} sem TCLE aceito — ${deptBreakdownFormatted}`,
     tasks: [
-      "Identificar colaboradores com aceite pendente",
-      "Reenviar link do TCLE via WhatsApp/SMS",
-      "Comunicar gestores sobre a importância do aceite",
+      "Identificar colaboradores com aceite pendente por setor",
+      "Reenviar link do TCLE via WhatsApp/SMS para esses colaboradores",
+      "Comunicar gestores sobre a importância do aceite nos seus setores",
       "Registrar colaboradores que recusaram explicitamente",
     ],
   }
 }
 
 function buildPgrSuggestion(
-  recentPgr: { id: string } | null,
+  lastPgrReview: { period: string; createdAt: Date } | null,
+  thisMonthStart: Date,
   existingTitles: Set<string>,
 ): ActionPlanSuggestion | null {
-  if (recentPgr !== null) return null
+  const hasReviewThisMonth = lastPgrReview !== null && lastPgrReview.createdAt >= thisMonthStart
+  if (hasReviewThisMonth) return null
   const title = "Geração do relatório PGR do mês"
   if (existingTitles.has(title.toLowerCase())) return null
+
+  const currentMonthLabel = new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
+  const lastReviewContext =
+    lastPgrReview !== null
+      ? `O último relatório foi gerado em ${formatDateAsBrazilian(lastPgrReview.createdAt)} (período: ${lastPgrReview.period}).`
+      : "Nenhum relatório PGR foi gerado até o momento."
+
   return {
     key: "pgr-missing",
     title,
-    description: "Nenhum relatório PGR foi gerado neste mês. A NR-1 exige documentação periódica dos riscos psicossociais — gerar o relatório garante conformidade e mantém o histórico de evidências.",
+    description:
+      `Nenhum relatório PGR foi gerado para ${currentMonthLabel}. ` +
+      `${lastReviewContext} ` +
+      `A NR-1 exige que as empresas documentem e revisem periodicamente os riscos psicossociais — ` +
+      `o relatório mensal é a principal evidência de conformidade.`,
     priority: "low",
-    reason: "Relatório PGR não gerado neste mês",
+    reason:
+      lastPgrReview !== null
+        ? `Relatório PGR pendente para ${currentMonthLabel} — último: ${lastPgrReview.period}`
+        : `Nenhum relatório PGR registrado (${currentMonthLabel})`,
     tasks: [
       "Acessar o módulo PGR e gerar o relatório do período",
       "Revisar os indicadores de saúde por setor",
@@ -214,7 +365,7 @@ function appendIfSlotAvailable(
   }
 }
 
-export async function getActionPlanSuggestions(tenantId: string): Promise<ActionPlanSuggestion[]> {
+export async function computeRawSuggestions(tenantId: string): Promise<ActionPlanSuggestion[]> {
   const thisMonthStart = new Date()
   thisMonthStart.setDate(1)
   thisMonthStart.setHours(0, 0, 0, 0)
@@ -222,26 +373,39 @@ export async function getActionPlanSuggestions(tenantId: string): Promise<Action
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-  const sixtyDaysAgo = new Date()
-  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60)
-
-  const [openAlerts, openReportCount, recentPlanTitles, employeesWithoutConsent, recentPgr, recentDispatches] = await Promise.all([
+  const [openAlerts, openReports, recentPlanTitles, consentDeptGroups, lastPgrReview, recentDispatches] = await Promise.all([
     prisma.alert.findMany({
       where: { tenantId, resolvedAt: null },
-      select: { id: true, type: true, severity: true, departmentId: true, department: { select: { name: true } } },
+      select: {
+        id: true,
+        type: true,
+        severity: true,
+        departmentId: true,
+        message: true,
+        createdAt: true,
+        department: { select: { name: true } },
+      },
       orderBy: { createdAt: "desc" },
     }),
-    prisma.anonymousReport.count({ where: { tenantId, status: { in: ["open", "analyzing"] } } }),
+    prisma.anonymousReport.findMany({
+      where: { tenantId, status: { in: ["open", "analyzing"] } },
+      select: { category: true, status: true, createdAt: true },
+      orderBy: { createdAt: "asc" },
+    }),
     prisma.actionPlan.findMany({
-      where: { tenantId, createdAt: { gte: sixtyDaysAgo } },
+      where: { tenantId, createdAt: { gte: thirtyDaysAgo } },
       select: { title: true },
     }),
-    prisma.employee.count({
+    prisma.employee.groupBy({
+      by: ["departmentId"],
       where: { tenantId, status: "active", consents: { none: { event: "accepted" } } },
+      _count: { departmentId: true },
+      orderBy: { _count: { departmentId: "desc" } },
     }),
     prisma.pgrReview.findFirst({
-      where: { tenantId, createdAt: { gte: thisMonthStart } },
-      select: { id: true },
+      where: { tenantId },
+      select: { period: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
     }),
     prisma.surveyDispatch.findMany({
       where: { tenantId, status: "sent", dispatchedAt: { gte: thirtyDaysAgo }, totalRecipients: { gt: 0 } },
@@ -249,6 +413,7 @@ export async function getActionPlanSuggestions(tenantId: string): Promise<Action
         id: true,
         totalRecipients: true,
         totalResponses: true,
+        dispatchedAt: true,
         surveyConfiguration: { select: { department: { select: { name: true } } } },
       },
       orderBy: { dispatchedAt: "desc" },
@@ -256,19 +421,29 @@ export async function getActionPlanSuggestions(tenantId: string): Promise<Action
     }),
   ])
 
+  const consentDeptIds = consentDeptGroups.map((g) => g.departmentId)
+  const consentDepts =
+    consentDeptIds.length > 0
+      ? await prisma.department.findMany({
+          where: { id: { in: consentDeptIds } },
+          select: { id: true, name: true },
+        })
+      : []
+  const deptNamesById = new Map(consentDepts.map((d) => [d.id, d.name]))
+
   const lowAdherenceDispatches = recentDispatches.filter(
-    (d) => d.totalResponses / d.totalRecipients < 0.8
+    (d) => d.totalResponses / d.totalRecipients < 0.8,
   )
 
   const existingTitles = new Set(recentPlanTitles.map((p: { title: string }) => p.title.toLowerCase()))
   const seenKeys = new Set<string>()
   const suggestions: ActionPlanSuggestion[] = []
 
-  suggestions.push(...pickAlertSuggestions(openAlerts, existingTitles, seenKeys, 3))
-  appendIfSlotAvailable(suggestions, buildReportSuggestion(openReportCount, existingTitles))
+  suggestions.push(...pickAlertSuggestions(openAlerts, existingTitles, seenKeys, 6))
+  appendIfSlotAvailable(suggestions, buildReportSuggestion(openReports, existingTitles))
   appendIfSlotAvailable(suggestions, buildDispatchSuggestion(lowAdherenceDispatches, existingTitles))
-  appendIfSlotAvailable(suggestions, buildConsentSuggestion(employeesWithoutConsent, existingTitles))
-  appendIfSlotAvailable(suggestions, buildPgrSuggestion(recentPgr, existingTitles))
+  appendIfSlotAvailable(suggestions, buildConsentSuggestion(consentDeptGroups, deptNamesById, existingTitles))
+  appendIfSlotAvailable(suggestions, buildPgrSuggestion(lastPgrReview, thisMonthStart, existingTitles))
 
-  return suggestions.slice(0, 3)
+  return suggestions
 }
