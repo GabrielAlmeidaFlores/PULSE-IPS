@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "SKIP_ENV_VALIDATION=true tsx src/cli/seed/index.ts",
+    "seed:demo": "SKIP_ENV_VALIDATION=true tsx src/cli/seed/demo.ts",
     "worker:dev": "tsx --tsconfig tsconfig.json src/workers/job-worker.ts",
     "worker:schedules": "tsx --tsconfig tsconfig.json src/workers/register-schedules.ts"
   },
