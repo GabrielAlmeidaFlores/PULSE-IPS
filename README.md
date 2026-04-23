@@ -710,6 +710,14 @@ Analisa as respostas das últimas 48 horas. Para cada departamento:
    - `severity = "critical"` se média < 2,0 (HI < 25%)
    - `severity = "warning"` se 2,0 ≤ média < 3,0 (25% ≤ HI < 50%)
 
+Mensagem exibida ao usuário:
+```
+O índice de saúde do setor {nome do setor} está abaixo do esperado: {HI}% ({classificação}).
+```
+Exemplos:
+- `O índice de saúde do setor Tecnologia está abaixo do esperado: 34% (Crítico).`
+- `O índice de saúde do setor Recursos Humanos está abaixo do esperado: 45% (Atenção).`
+
 **`no_response` — gerado pelo job `survey-adherence-checker` (a cada hora)**
 
 Verifica dispatches enviados há 48 horas que ainda não tiveram a aderência checada. Para cada um:
@@ -719,11 +727,26 @@ Verifica dispatches enviados há 48 horas que ainda não tiveram a aderência ch
    - `severity = "warning"` se 25% ≤ taxa < 50%
 3. Marca o dispatch como checado (`adherenceCheckedAt`) independentemente do resultado.
 
+Mensagem exibida ao usuário:
+```
+Taxa de adesão: {pct}% ({respostas}/{total})
+```
+Exemplos:
+- `Taxa de adesão: 42% (5/12)`
+- `Taxa de adesão: 0% (0/8)`
+
 **`pgr_review_due` — gerado pelo job `pgr-review-reminder` (08:00 diário)**
 
 Busca revisões PGR com `nextReviewAt` nos próximos 30 dias. Para cada tenant:
 1. Verifica se já existe um alerta `pgr_review_due` em aberto para o tenant.
 2. Se não existe, cria: `severity = "warning"`, mensagem com a data de vencimento.
+
+Mensagem exibida ao usuário:
+```
+Revisão PGR prevista para {data}.
+```
+Exemplo:
+- `Revisão PGR prevista para 23/05/2026.`
 
 ---
 
@@ -783,11 +806,55 @@ O sistema coleta 6 fontes de dados em paralelo para cada tenant:
 | `low_adherence` | "Engajamento nas pesquisas — {setor}" | Alerta do tipo `low_adherence` sem resolução | média |
 | `no_response` | "Pesquisa sem respostas registradas — {setor}" | Alerta do tipo `no_response` sem resolução | média |
 
+Para cada sugestão gerada a partir de alerta, os campos exibidos ao usuário são:
+
+**Título:** `"{título base} — {setor}"`
+
+**Motivo (card colapsado):**
+```
+# low_score
+Score abaixo do esperado — setor {setor}: O índice de saúde do setor {setor} está abaixo do esperado: {HI}% ({classificação}).
+
+# no_response
+Pesquisa sem resposta no setor {setor}: Taxa de adesão: {pct}% ({respostas}/{total})
+
+# crisis_report / score_drop / negative_trend / low_adherence
+{Tipo de situação} no setor {setor} — alerta ativo {há X dias}
+```
+
+**Descrição (card expandido):**
+```
+Alerta gerado em {data} ({há X dias}) — setor: {setor}, severidade: {severidade}.
+Dado registrado pelo sistema: "{mensagem do alerta}".
+{contexto fixo por tipo: impacto, risco NR-1, etc.}
+```
+
+Exemplo real para `low_score` no setor Tecnologia:
+```
+Alerta gerado em 23/04/2026 (hoje) — setor: Tecnologia, severidade: crítica.
+Dado registrado pelo sistema: "O índice de saúde do setor Tecnologia está abaixo do esperado: 34% (Crítico).".
+Scores persistentemente baixos estão associados a burnout, queda de produtividade e aumento de turnover.
+É necessário investigar as causas e implementar ações estruturadas.
+```
+
 **2. Relatos anônimos acumulados**
 
 - Título: `"Tratamento de relatos anônimos pendentes"`
 - Condição: ≥ 3 relatos com `status = "open"` ou `"analyzing"`
 - Prioridade: média
+
+Motivo exibido:
+```
+{N} relatos em aberto ou análise — mais antigo {há X dias}
+```
+
+Descrição exibida:
+```
+Há {N} relatos anônimos pendentes ({X} sem triagem, {Y} em análise).
+O mais antigo foi registrado {há X dias}.
+Categorias identificadas: {categoria1} ({n}), {categoria2} ({n}).
+Cada relato representa um colaborador que buscou ajuda — a resposta ágil demonstra comprometimento e é exigida indiretamente pela NR-1.
+```
 
 **3. Dispatch com baixa adesão**
 
@@ -795,17 +862,58 @@ O sistema coleta 6 fontes de dados em paralelo para cada tenant:
 - Condição: dispatch enviado nos últimos 30 dias com taxa de adesão < 80% (`totalResponses / totalRecipients < 0.8`)
 - Prioridade: média
 
+Motivo exibido:
+```
+Pesquisa enviada em {data} no setor {setor}: {pct}% de adesão ({respostas}/{total})
+```
+
+Descrição exibida:
+```
+Na pesquisa enviada em {data} ao setor {setor}: {respostas} de {total} colaboradores responderam
+({pct}% de adesão — meta: ≥80%). {N} respostas não foram recebidas.
+Dados desrepresentativos comprometem a detecção precoce de riscos psicossociais e a evidência documental exigida pela NR-1.
+```
+
 **4. Colaboradores sem TCLE aceito**
 
 - Título: `"Engajamento no TCLE — colaboradores sem aceite"`
 - Condição: ≥ 1 colaborador ativo sem nenhum `event = "accepted"` em `employee_consents`
 - Prioridade: média
 
+Motivo exibido:
+```
+{N} colaborador(es) sem TCLE aceito — {setor1} ({n}), {setor2} ({n})
+```
+
+Descrição exibida:
+```
+{N} colaboradores ativos não aceitaram o Termo de Consentimento — distribuídos em: {setor1} ({n}), {setor2} ({n}).
+Sem o aceite, esses colaboradores ficam excluídos das pesquisas e das métricas de saúde ocupacional,
+reduzindo a representatividade dos dados e comprometendo a documentação de conformidade com a NR-1.
+```
+
 **5. PGR não gerado no mês**
 
 - Título: `"Geração do relatório PGR do mês"`
 - Condição: nenhum registro em `pgr_reviews` com `createdAt` no mês corrente
 - Prioridade: baixa
+
+Motivo exibido:
+```
+# Se há revisão anterior:
+Relatório PGR pendente para {mês/ano} — último: {período anterior}
+
+# Se nunca houve revisão:
+Nenhum relatório PGR registrado ({mês/ano})
+```
+
+Descrição exibida:
+```
+Nenhum relatório PGR foi gerado para {mês/ano}.
+O último relatório foi gerado em {data} (período: {período}). [ou: Nenhum relatório PGR foi gerado até o momento.]
+A NR-1 exige que as empresas documentem e revisem periodicamente os riscos psicossociais —
+o relatório mensal é a principal evidência de conformidade.
+```
 
 #### Deduplicação (duas camadas)
 
