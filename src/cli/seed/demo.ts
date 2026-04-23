@@ -343,7 +343,7 @@ async function main(): Promise<void> {
           departmentId: dept.id,
           name: emp.name,
           phone: emp.phone,
-          email: emp.email,
+          email: emp.email ?? null,
           status: "active",
         },
       })

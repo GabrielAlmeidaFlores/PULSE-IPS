@@ -115,11 +115,32 @@ async function processRequestWithSession(
   sessionInfo: SessionInfo,
 ): Promise<NextResponse> {
   const { pathname } = request.nextUrl
-
-  if (isPublicPath(pathname)) return NextResponse.next()
-
   const sessionCookie = request.cookies.get("pulse_session")?.value
   const superAdminCookie = request.cookies.get("pulse_super_admin_session")?.value
+
+  if (pathname === "/login" || pathname === "/") {
+    if (sessionCookie) {
+      try {
+        await jwtVerify(sessionCookie, getSecretKey())
+        return NextResponse.redirect(new URL("/dashboard", request.url))
+      } catch {
+        /* session inválida — prossegue para a página de login */
+      }
+    }
+  }
+
+  if (pathname === "/super-admin/login") {
+    if (superAdminCookie) {
+      try {
+        await jwtVerify(superAdminCookie, getSecretKey())
+        return NextResponse.redirect(new URL("/super-admin/dashboard", request.url))
+      } catch {
+        /* session inválida — prossegue para a página de login */
+      }
+    }
+  }
+
+  if (isPublicPath(pathname)) return NextResponse.next()
 
   if (pathname.startsWith(SUPER_ADMIN_PREFIX) || pathname.startsWith(SUPER_ADMIN_API_PREFIX)) {
     if (!superAdminCookie) {
