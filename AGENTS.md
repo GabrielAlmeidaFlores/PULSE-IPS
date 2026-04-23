@@ -2440,6 +2440,25 @@ npx prisma generate
 ALTER TABLE "employees" RENAME COLUMN "old_name" TO "new_name";
 ```
 
+### Regras para mutação de `survey_questions`
+
+`survey_questions` é uma tabela operacional com impacto direto na integridade histórica dos dados. As seguintes restrições são obrigatórias:
+
+| Operação | Impacto | Regra |
+|---|---|---|
+| Alterar `score_direction` | Distorce o histórico — respostas antigas são recalculadas com a nova direção na próxima geração de PGR | **Proibido** em perguntas com respostas existentes em `survey_response_items` |
+| Alterar `question_text` | O PGR exibe o texto atual para respostas antigas (vínculo é por `question_id`, não por texto) — pode confundir historicamente | Evitar após coleta de respostas; preferir criar nova pergunta |
+| Desativar (`is_active = false`) | A pergunta some de pesquisas futuras; respostas antigas permanecem acessíveis no histórico do PGR | Permitido |
+| Remover (`DELETE`) | Destrói o vínculo de `survey_response_items.question_id` — histórico de PGR quebra | **Proibido** se houver respostas vinculadas |
+
+**Antes de alterar `score_direction` ou deletar uma pergunta**, verificar se existem respostas:
+
+```sql
+SELECT COUNT(*) FROM survey_response_items WHERE question_id = '<id>';
+```
+
+Se o resultado for > 0, **não altere `score_direction`** e **não delete** — desative a pergunta e crie uma nova no lugar.
+
 ---
 
 ## 20. Fluxos de Negócio Críticos

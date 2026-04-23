@@ -55,15 +55,8 @@ function adherenceColor(pct: number): string {
   return "text-red-600 dark:text-red-500"
 }
 
-interface ScoreTrendIconProps { hi: number }
 interface ScoreGaugeProps { hi: number }
 interface QuestionAggEntry { text: string; order: number; scoreDirection: ScoreDirection; totalWeighted: number; totalCount: number }
-
-function ScoreTrendIcon({ hi }: ScoreTrendIconProps): React.ReactElement {
-  if (hi >= 62) return <TrendingUp className="w-4 h-4 text-green-500" />
-  if (hi >= 37) return <Minus className="w-4 h-4 text-amber-500" />
-  return <TrendingDown className="w-4 h-4 text-red-500" />
-}
 
 function ScoreGauge({ hi }: ScoreGaugeProps): React.ReactElement {
   const pct = Math.min(hi, 100)
@@ -229,7 +222,6 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                 Revisado
               </span>
             )}
-            {hasData && <ScoreTrendIcon hi={globalAvg} />}
           </div>
         </div>
       </div>

@@ -48,32 +48,36 @@ function ActionPlanSuggestionCard({ suggestion, onDismiss }: { suggestion: Actio
 
   return (
     <div className="border border-border bg-card overflow-hidden" style={{ borderRadius: 0 }}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors group"
-      >
-        <span className="shrink-0 text-amber-500 mt-0.5">
-          <Lightbulb className="h-3.5 w-3.5" />
-        </span>
-        <span className="flex-1 min-w-0">
-          <span className="text-[12px] font-semibold text-foreground leading-snug block truncate">{suggestion.title}</span>
-          <span className="text-[11px] text-muted-foreground">{suggestion.reason}</span>
-        </span>
-        <span className={`shrink-0 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 ${PRIORITY_CLS[suggestion.priority] ?? PRIORITY_CLS.low}`} style={{ borderRadius: 2 }}>
-          {PRIORITY_LABELS[suggestion.priority] ?? suggestion.priority}
-        </span>
+      <div className="flex items-center">
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setOpen((v) => !v)}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setOpen((v) => !v) }}
+          className="flex-1 min-w-0 flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors cursor-pointer group"
+        >
+          <span className="shrink-0 text-amber-500 mt-0.5">
+            <Lightbulb className="h-3.5 w-3.5" />
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="text-[12px] font-semibold text-foreground leading-snug block truncate">{suggestion.title}</span>
+            <span className="text-[11px] text-muted-foreground">{suggestion.reason}</span>
+          </span>
+          <span className={`shrink-0 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 ${PRIORITY_CLS[suggestion.priority] ?? PRIORITY_CLS.low}`} style={{ borderRadius: 2 }}>
+            {PRIORITY_LABELS[suggestion.priority] ?? suggestion.priority}
+          </span>
+          <ChevronDown className={`shrink-0 h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+        </div>
         <button
           type="button"
           onClick={handleDismiss}
           disabled={dismissing}
           title="Ignorar sugestão"
-          className="shrink-0 p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
+          className="shrink-0 p-2 mr-2 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
         >
           {dismissing ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
         </button>
-        <ChevronDown className={`shrink-0 h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
-      </button>
+      </div>
 
       {open && (
         <div className="border-t border-border px-4 py-4 space-y-4 bg-muted/20">
