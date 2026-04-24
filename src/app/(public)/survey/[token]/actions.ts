@@ -2,7 +2,7 @@
 
 import { z } from "zod"
 import type { ActionResult } from "@/libs/utils/action-result"
-import { submitSurveyResponse } from "@/modules/surveys/survey.service"
+import { submitSurveyResponse } from "@/modules/surveys/survey-response.service"
 import { optOutFromSurveyToken, acceptConsentFromSurveyToken, refuseConsentFromSurveyToken } from "@/modules/consent/consent.service"
 
 const UNEXPECTED_ERROR_MESSAGE = "Ocorreu um erro inesperado."

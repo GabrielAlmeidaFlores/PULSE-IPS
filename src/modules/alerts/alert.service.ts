@@ -58,6 +58,47 @@ function groupByDept(responses: ResponseWithDept[]): Map<string, { tenantId: str
   return map
 }
 
+function buildLookbackWindows(): { currentFrom: Date; currentTo: Date; previousFrom: Date; previousTo: Date } {
+  const now = Date.now()
+  const hourMs = 60 * 60 * 1000
+  return {
+    currentFrom: new Date(now - 48 * hourMs),
+    currentTo: new Date(now),
+    previousFrom: new Date(now - 96 * hourMs),
+    previousTo: new Date(now - 48 * hourMs),
+  }
+}
+
+function dropSeverity(drop: number): "critical" | "warning" {
+  return drop > 2 ? "critical" : "warning"
+}
+
+function averageOf(values: { avgScore: number }[]): number {
+  return values.reduce((a, b) => a + b.avgScore, 0) / values.length
+}
+
+function isTrendNegative(lastN: { avgScore: number }[], historical: { avgScore: number }[]): boolean {
+  if (historical.length === 0) return false
+  const historicalAvg = averageOf(historical)
+  return lastN.every((p) => p.avgScore < historicalAvg)
+}
+
+function groupEmployeesByDept(
+  employees: { tenantId: string; departmentId: string; departmentName: string }[],
+): Map<string, { tenantId: string; departmentId: string; departmentName: string; count: number }> {
+  const grouped = new Map<string, { tenantId: string; departmentId: string; departmentName: string; count: number }>()
+  for (const emp of employees) {
+    const key = `${emp.tenantId}:${emp.departmentId}`
+    const existing = grouped.get(key)
+    if (existing) {
+      existing.count += 1
+    } else {
+      grouped.set(key, { ...emp, count: 1 })
+    }
+  }
+  return grouped
+}
+
 export async function detectLowScoreAlerts(): Promise<void> {
   const LOW_SCORE_THRESHOLD = 3
   const LOOKBACK_HOURS = 48
@@ -68,30 +109,25 @@ export async function detectLowScoreAlerts(): Promise<void> {
 
   for (const [, data] of Array.from(byDept.entries())) {
     const avgScore = calcAvgFromResponses(data.responses)
-    if (avgScore < LOW_SCORE_THRESHOLD) {
-      const alreadyOpen = await hasOpenAlertOfType(data.tenantId, "low_score", data.departmentId)
-      if (alreadyOpen) continue
-      const hi = toHealthIndex(avgScore)
-      await createAlert({
-        tenantId: data.tenantId,
-        departmentId: data.departmentId,
-        type: "low_score",
-        severity: avgScore < 2 ? "critical" : "warning",
-        message: `O índice de saúde do setor ${data.departmentName} está abaixo do esperado: ${hi}% (${healthIndexLabel(hi)}).`,
-      })
-    }
+    if (avgScore >= LOW_SCORE_THRESHOLD) continue
+
+    const alreadyOpen = await hasOpenAlertOfType(data.tenantId, "low_score", data.departmentId)
+    if (alreadyOpen) continue
+
+    const hi = toHealthIndex(avgScore)
+    await createAlert({
+      tenantId: data.tenantId,
+      departmentId: data.departmentId,
+      type: "low_score",
+      severity: avgScore < 2 ? "critical" : "warning",
+      message: `O índice de saúde do setor ${data.departmentName} está abaixo do esperado: ${hi}% (${healthIndexLabel(hi)}).`,
+    })
   }
 }
 
 export async function detectScoreDropAlerts(): Promise<void> {
   const SCORE_DROP_THRESHOLD = 1.0
-  const now = Date.now()
-  const hourMs = 60 * 60 * 1000
-
-  const currentFrom = new Date(now - 48 * hourMs)
-  const currentTo = new Date(now)
-  const previousFrom = new Date(now - 96 * hourMs)
-  const previousTo = new Date(now - 48 * hourMs)
+  const { currentFrom, currentTo, previousFrom, previousTo } = buildLookbackWindows()
 
   const [currentResponses, previousResponses] = await Promise.all([
     findAllTenantsResponsesInWindow(currentFrom, currentTo),
@@ -108,20 +144,20 @@ export async function detectScoreDropAlerts(): Promise<void> {
     const currentAvg = calcAvgFromResponses(current.responses)
     const previousAvg = calcAvgFromResponses(previous.responses)
     const drop = previousAvg - currentAvg
+    if (drop <= SCORE_DROP_THRESHOLD) continue
 
-    if (drop > SCORE_DROP_THRESHOLD) {
-      const alreadyOpen = await hasOpenAlertOfType(current.tenantId, "score_drop", current.departmentId ?? undefined)
-      if (alreadyOpen) continue
-      const currentHi = toHealthIndex(currentAvg)
-      const previousHi = toHealthIndex(previousAvg)
-      await createAlert({
-        tenantId: current.tenantId,
-        departmentId: current.departmentId,
-        type: "score_drop",
-        severity: drop > 2 ? "critical" : "warning",
-        message: `Queda de ${drop.toFixed(1)} pontos no índice de saúde do setor ${current.departmentName}: de ${previousHi}% para ${currentHi}% nas últimas 48h.`,
-      })
-    }
+    const alreadyOpen = await hasOpenAlertOfType(current.tenantId, "score_drop", current.departmentId ?? undefined)
+    if (alreadyOpen) continue
+
+    const currentHi = toHealthIndex(currentAvg)
+    const previousHi = toHealthIndex(previousAvg)
+    await createAlert({
+      tenantId: current.tenantId,
+      departmentId: current.departmentId,
+      type: "score_drop",
+      severity: dropSeverity(drop),
+      message: `Queda de ${drop.toFixed(1)} pontos no índice de saúde do setor ${current.departmentName}: de ${previousHi}% para ${currentHi}% nas últimas 48h.`,
+    })
   }
 }
 
@@ -135,43 +171,31 @@ export async function detectNegativeTrendAlerts(): Promise<void> {
 
     const lastThree = recent.slice(0, PERIODS_TO_CHECK)
     const historical = recent.slice(PERIODS_TO_CHECK)
-    if (historical.length === 0) continue
 
-    const historicalAvg = historical.reduce((a, b) => a + b.avgScore, 0) / historical.length
-    const allBelowHistorical = lastThree.every((p) => p.avgScore < historicalAvg)
+    if (!isTrendNegative(lastThree, historical)) continue
 
-    if (allBelowHistorical) {
-      const alreadyOpen = await hasOpenAlertOfType(dept.tenantId, "negative_trend", dept.id)
-      if (alreadyOpen) continue
-      const latestHi = toHealthIndex(lastThree[0]?.avgScore ?? 0)
-      await createAlert({
-        tenantId: dept.tenantId,
-        departmentId: dept.id,
-        type: "negative_trend",
-        severity: "warning",
-        message: `O setor ${dept.name} apresenta tendência negativa por ${PERIODS_TO_CHECK} períodos consecutivos abaixo da média histórica. Índice atual: ${latestHi}%.`,
-      })
-    }
+    const alreadyOpen = await hasOpenAlertOfType(dept.tenantId, "negative_trend", dept.id)
+    if (alreadyOpen) continue
+
+    const latestHi = toHealthIndex(lastThree[0]?.avgScore ?? 0)
+    await createAlert({
+      tenantId: dept.tenantId,
+      departmentId: dept.id,
+      type: "negative_trend",
+      severity: "warning",
+      message: `O setor ${dept.name} apresenta tendência negativa por ${PERIODS_TO_CHECK} períodos consecutivos abaixo da média histórica. Índice atual: ${latestHi}%.`,
+    })
   }
 }
 
 export async function detectConsentExpiredAlerts(): Promise<void> {
   const expiredByDept = await findAllTenantsEmployeesWithExpiredConsentTokens()
-
-  const grouped = new Map<string, { tenantId: string; departmentId: string; departmentName: string; count: number }>()
-  for (const emp of expiredByDept) {
-    const key = `${emp.tenantId}:${emp.departmentId}`
-    const existing = grouped.get(key)
-    if (existing) {
-      existing.count += 1
-    } else {
-      grouped.set(key, { tenantId: emp.tenantId, departmentId: emp.departmentId, departmentName: emp.departmentName, count: 1 })
-    }
-  }
+  const grouped = groupEmployeesByDept(expiredByDept)
 
   for (const [, data] of Array.from(grouped.entries())) {
     const alreadyOpen = await hasOpenAlertOfType(data.tenantId, "consent_expired", data.departmentId)
     if (alreadyOpen) continue
+
     await createAlert({
       tenantId: data.tenantId,
       departmentId: data.departmentId,
@@ -181,3 +205,4 @@ export async function detectConsentExpiredAlerts(): Promise<void> {
     })
   }
 }
+

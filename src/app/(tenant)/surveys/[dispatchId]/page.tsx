@@ -1,7 +1,7 @@
 import { redirect, notFound } from "next/navigation"
 import Link from "next/link"
 import { getSession } from "@/modules/auth/session"
-import { getDispatchDashboard, getDispatches, getMultipleDispatchDashboards, type DispatchWithConfig } from "@/modules/surveys/survey.service"
+import { getDispatchDashboard, getDispatches, getMultipleDispatchDashboards, type DispatchWithConfig } from "@/modules/surveys/survey-dashboard.service"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { ArrowLeft, Users, CheckCircle2, XCircle, Activity, BarChart2, TrendingUp } from "lucide-react"

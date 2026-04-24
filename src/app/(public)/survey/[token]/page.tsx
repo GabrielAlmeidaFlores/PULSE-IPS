@@ -1,4 +1,4 @@
-import { validateSurveyToken } from "@/modules/surveys/survey.service"
+import { validateSurveyToken } from "@/modules/surveys/survey-response.service"
 import { SurveyPageClient } from "@/app/(public)/survey/[token]/survey-page-client"
 
 interface Props {

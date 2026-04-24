@@ -6,7 +6,7 @@ import {
   buildConsentSuggestion,
   buildPgrSuggestion,
   computeRawSuggestions,
-} from "@/modules/action-plans/action-plan-suggestions"
+} from "@/modules/action-plans/suggestions"
 import { findSuggestionContextData } from "@/modules/action-plans/action-plan.repository"
 
 vi.mock("@/modules/action-plans/action-plan.repository", () => ({
@@ -21,6 +21,9 @@ const CAT_HARASSMENT = "harassment"
 const CAT_OVERLOAD = "overload"
 const CAT_CONFLICT = "conflict"
 const PGR_PERIOD_CURRENT = "abril/2026"
+const REPORT_DATE_1 = "2026-04-01"
+const REPORT_DATE_2 = "2026-04-10"
+const REPORT_DATE_3 = "2026-04-15"
 
 const baseAlert = {
   id: "alert-1",
@@ -38,38 +41,51 @@ describe("buildSuggestionFromAlert", () => {
     expect(result).toBeNull()
   })
 
-  it("builds suggestion for score_drop", () => {
+  it.each([
+    [SCORE_DROP_TYPE],
+    ["low_score"],
+    ["negative_trend"],
+    ["low_adherence"],
+    ["no_response"],
+  ] as [string][])(
+    "returns non-null suggestion for %s type",
+    (type) => {
+      expect(buildSuggestionFromAlert({ ...baseAlert, type })).not.toBeNull()
+    },
+  )
+
+  it.each([
+    [SCORE_DROP_TYPE, "high"],
+    ["low_score", "high"],
+    ["negative_trend", "high"],
+    ["low_adherence", "medium"],
+    ["no_response", "medium"],
+  ] as [string, string][])(
+    "%s suggestion has %s priority",
+    (type, priority) => {
+      const result = buildSuggestionFromAlert({ ...baseAlert, type })
+      expect(result?.priority).toBe(priority)
+    },
+  )
+
+  it("score_drop suggestion title contains department name", () => {
     const result = buildSuggestionFromAlert({ ...baseAlert, type: SCORE_DROP_TYPE })
-    expect(result).not.toBeNull()
     expect(result?.title).toContain("TI")
-    expect(result?.priority).toBe("high")
+  })
+
+  it("score_drop suggestion has at least one task", () => {
+    const result = buildSuggestionFromAlert({ ...baseAlert, type: SCORE_DROP_TYPE })
     expect(result?.tasks.length).toBeGreaterThan(0)
+  })
+
+  it("score_drop suggestion key encodes type and department", () => {
+    const result = buildSuggestionFromAlert({ ...baseAlert, type: SCORE_DROP_TYPE })
     expect(result?.key).toBe("alert-score_drop-dept-1")
   })
 
-  it("builds suggestion for low_score", () => {
-    const result = buildSuggestionFromAlert({ ...baseAlert, type: "low_score" })
-    expect(result).not.toBeNull()
-    expect(result?.priority).toBe("high")
-  })
-
-  it("builds suggestion for negative_trend", () => {
+  it("negative_trend suggestion reason contains department name", () => {
     const result = buildSuggestionFromAlert({ ...baseAlert, type: "negative_trend" })
-    expect(result).not.toBeNull()
-    expect(result?.priority).toBe("high")
     expect(result?.reason).toContain("TI")
-  })
-
-  it("builds suggestion for low_adherence with medium priority", () => {
-    const result = buildSuggestionFromAlert({ ...baseAlert, type: "low_adherence" })
-    expect(result).not.toBeNull()
-    expect(result?.priority).toBe("medium")
-  })
-
-  it("builds suggestion for no_response with medium priority", () => {
-    const result = buildSuggestionFromAlert({ ...baseAlert, type: "no_response" })
-    expect(result).not.toBeNull()
-    expect(result?.priority).toBe("medium")
   })
 
   it("generates unique key per department and type", () => {
@@ -78,9 +94,13 @@ describe("buildSuggestionFromAlert", () => {
     expect(dept1?.key).not.toBe(dept2?.key)
   })
 
-  it("uses 'geral' when departmentId is null", () => {
+  it("key uses global scope when departmentId is null", () => {
     const result = buildSuggestionFromAlert({ ...baseAlert, departmentId: null, department: null })
     expect(result?.key).toBe("alert-score_drop-global")
+  })
+
+  it("title contains 'geral' when departmentId is null", () => {
+    const result = buildSuggestionFromAlert({ ...baseAlert, departmentId: null, department: null })
     expect(result?.title).toContain("geral")
   })
 })
@@ -96,13 +116,31 @@ describe("buildReportSuggestion", () => {
 
   it("returns suggestion when 3 or more open reports", () => {
     const reports = [
-      { category: CAT_HARASSMENT, status: "open", createdAt: new Date("2026-04-01") },
-      { category: CAT_OVERLOAD, status: "open", createdAt: new Date("2026-04-10") },
-      { category: CAT_CONFLICT, status: "analyzing", createdAt: new Date("2026-04-15") },
+      { category: CAT_HARASSMENT, status: "open", createdAt: new Date(REPORT_DATE_1) },
+      { category: CAT_OVERLOAD, status: "open", createdAt: new Date(REPORT_DATE_2) },
+      { category: CAT_CONFLICT, status: "analyzing", createdAt: new Date(REPORT_DATE_3) },
     ]
     const result = buildReportSuggestion(reports, new Set())
     expect(result).not.toBeNull()
+  })
+
+  it("report suggestion title is correct", () => {
+    const reports = [
+      { category: CAT_HARASSMENT, status: "open", createdAt: new Date(REPORT_DATE_1) },
+      { category: CAT_OVERLOAD, status: "open", createdAt: new Date(REPORT_DATE_2) },
+      { category: CAT_CONFLICT, status: "analyzing", createdAt: new Date(REPORT_DATE_3) },
+    ]
+    const result = buildReportSuggestion(reports, new Set())
     expect(result?.title).toBe("Tratamento de relatos anônimos pendentes")
+  })
+
+  it("report suggestion description mentions count", () => {
+    const reports = [
+      { category: CAT_HARASSMENT, status: "open", createdAt: new Date(REPORT_DATE_1) },
+      { category: CAT_OVERLOAD, status: "open", createdAt: new Date(REPORT_DATE_2) },
+      { category: CAT_CONFLICT, status: "analyzing", createdAt: new Date(REPORT_DATE_3) },
+    ]
+    const result = buildReportSuggestion(reports, new Set())
     expect(result?.description).toContain("3 relatos")
   })
 
@@ -116,14 +154,23 @@ describe("buildReportSuggestion", () => {
     expect(buildReportSuggestion(reports, existingTitles)).toBeNull()
   })
 
-  it("includes status breakdown in description", () => {
+  it("description includes 'sem triagem' for open reports", () => {
     const reports = [
-      { category: CAT_HARASSMENT, status: "open", createdAt: new Date("2026-04-01") },
-      { category: CAT_OVERLOAD, status: "open", createdAt: new Date("2026-04-10") },
-      { category: CAT_CONFLICT, status: "analyzing", createdAt: new Date("2026-04-15") },
+      { category: CAT_HARASSMENT, status: "open", createdAt: new Date(REPORT_DATE_1) },
+      { category: CAT_OVERLOAD, status: "open", createdAt: new Date(REPORT_DATE_2) },
+      { category: CAT_CONFLICT, status: "analyzing", createdAt: new Date(REPORT_DATE_3) },
     ]
     const result = buildReportSuggestion(reports, new Set())
     expect(result?.description).toContain("sem triagem")
+  })
+
+  it("description includes 'em análise' for analyzing reports", () => {
+    const reports = [
+      { category: CAT_HARASSMENT, status: "open", createdAt: new Date(REPORT_DATE_1) },
+      { category: CAT_OVERLOAD, status: "open", createdAt: new Date(REPORT_DATE_2) },
+      { category: CAT_CONFLICT, status: "analyzing", createdAt: new Date(REPORT_DATE_3) },
+    ]
+    const result = buildReportSuggestion(reports, new Set())
     expect(result?.description).toContain("em análise")
   })
 })
@@ -141,11 +188,23 @@ describe("buildDispatchSuggestion", () => {
     expect(buildDispatchSuggestion([], new Set())).toBeNull()
   })
 
-  it("builds suggestion for low adherence dispatch", () => {
+  it("returns non-null suggestion for low adherence dispatch", () => {
     const result = buildDispatchSuggestion([dispatch], new Set())
     expect(result).not.toBeNull()
+  })
+
+  it("dispatch suggestion title contains department name", () => {
+    const result = buildDispatchSuggestion([dispatch], new Set())
     expect(result?.title).toContain("Vendas")
+  })
+
+  it("dispatch suggestion description shows adherence percentage", () => {
+    const result = buildDispatchSuggestion([dispatch], new Set())
     expect(result?.description).toContain("50%")
+  })
+
+  it("dispatch suggestion description shows total recipients", () => {
+    const result = buildDispatchSuggestion([dispatch], new Set())
     expect(result?.description).toContain("10")
   })
 
@@ -166,13 +225,31 @@ describe("buildConsentSuggestion", () => {
     expect(result).toBeNull()
   })
 
-  it("builds suggestion when employees are missing consent", () => {
+  it("returns non-null suggestion when employees are missing consent", () => {
     const groups = [{ departmentId: DEPT_ID_1, _count: { departmentId: 3 } }]
     const deptNames = new Map([[DEPT_ID_1, "RH"]])
     const result = buildConsentSuggestion(groups, deptNames, new Set())
     expect(result).not.toBeNull()
+  })
+
+  it("consent suggestion title is correct", () => {
+    const groups = [{ departmentId: DEPT_ID_1, _count: { departmentId: 3 } }]
+    const deptNames = new Map([[DEPT_ID_1, "RH"]])
+    const result = buildConsentSuggestion(groups, deptNames, new Set())
     expect(result?.title).toBe("Engajamento no TCLE — colaboradores sem aceite")
+  })
+
+  it("consent suggestion description mentions employee count", () => {
+    const groups = [{ departmentId: DEPT_ID_1, _count: { departmentId: 3 } }]
+    const deptNames = new Map([[DEPT_ID_1, "RH"]])
+    const result = buildConsentSuggestion(groups, deptNames, new Set())
     expect(result?.description).toContain("3 colaboradores")
+  })
+
+  it("consent suggestion description mentions department name", () => {
+    const groups = [{ departmentId: DEPT_ID_1, _count: { departmentId: 3 } }]
+    const deptNames = new Map([[DEPT_ID_1, "RH"]])
+    const result = buildConsentSuggestion(groups, deptNames, new Set())
     expect(result?.description).toContain("RH")
   })
 

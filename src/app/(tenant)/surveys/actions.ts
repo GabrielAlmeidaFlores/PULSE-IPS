@@ -3,7 +3,8 @@
 import { z } from "zod"
 import { revalidatePath } from "next/cache"
 import { getSession } from "@/modules/auth/session"
-import { scheduleDispatch, getSurveyConfigs } from "@/modules/surveys/survey.service"
+import { scheduleDispatch } from "@/modules/surveys/survey-dashboard.service"
+import { getSurveyConfigs } from "@/modules/surveys/survey-config.service"
 import { AppError } from "@/libs/errors/app-error"
 import type { ActionResult } from "@/libs/utils/action-result"
 

@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache"
 import { AppError } from "@/libs/errors/app-error"
 import type { ActionResult } from "@/libs/utils/action-result"
 import { getSession } from "@/modules/auth/session"
-import { configureSurvey } from "@/modules/surveys/survey.service"
+import { configureSurvey } from "@/modules/surveys/survey-config.service"
 
 const TIME_REGEX = /^\d{2}:\d{2}$/
 

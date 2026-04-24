@@ -15,6 +15,10 @@ import {
   optOut,
   optOutFromSurveyToken,
   publishNewConsentTermVersion,
+  getConsentByToken,
+  getActiveTermVersion,
+  acceptConsentFromSurveyToken,
+  refuseConsentFromSurveyToken,
 } from "@/modules/consent/consent.service"
 import { AppError } from "@/libs/errors/app-error"
 
@@ -58,6 +62,7 @@ const mockMarkTokenUsed = vi.mocked(markTokenUsed)
 const TENANT_ID = "tenant-1"
 const EMPLOYEE_ID = "employee-1"
 const TERM_VERSION_ID = "term-version-1"
+const TERMS_CONTENT = "<p>Termos</p>"
 const INVITE_TOKEN = "invite-token-abc"
 
 const activeTermVersion = {
@@ -103,47 +108,49 @@ describe("sendConsentInvite", () => {
     vi.clearAllMocks()
     mockGetActiveConsentTermVersion.mockResolvedValue(activeTermVersion)
     mockFindEmployeeForConsent.mockResolvedValue(activeEmployee)
-    mockCreateConsentRecord.mockResolvedValue(baseConsentInvite as never)
+    mockCreateConsentRecord.mockResolvedValue(baseConsentInvite as Awaited<ReturnType<typeof createConsentRecord>>)
   })
 
-  it("creates an invited consent record", async () => {
+  it("creates an invited consent record with correct tenant and employee", async () => {
     await sendConsentInvite(TENANT_ID, EMPLOYEE_ID)
 
-    expect(mockCreateConsentRecord).toHaveBeenCalledOnce()
-    const call = mockCreateConsentRecord.mock.calls[0]?.[0]
-    expect(call?.event).toBe("invited")
-    expect(call?.source).toBe("sms_link")
-    expect(call?.tenantId).toBe(TENANT_ID)
-    expect(call?.employeeId).toBe(EMPLOYEE_ID)
-    expect(call?.consentTermVersionId).toBe(TERM_VERSION_ID)
+    expect(mockCreateConsentRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ event: "invited", source: "sms_link", tenantId: TENANT_ID, employeeId: EMPLOYEE_ID, consentTermVersionId: TERM_VERSION_ID }),
+    )
   })
 
-  it("throws NO_ACTIVE_TERMS when no active term version", async () => {
+  it("throws NO_ACTIVE_TERMS when no active term version exists", async () => {
     mockGetActiveConsentTermVersion.mockResolvedValue(null)
 
-    await expect(sendConsentInvite(TENANT_ID, EMPLOYEE_ID)).rejects.toMatchObject({
-      code: "NO_ACTIVE_TERMS",
-    })
+    await expect(sendConsentInvite(TENANT_ID, EMPLOYEE_ID)).rejects.toMatchObject({ code: "NO_ACTIVE_TERMS" })
+  })
+
+  it("does not create consent record when no active term version exists", async () => {
+    mockGetActiveConsentTermVersion.mockResolvedValue(null)
+
+    await expect(sendConsentInvite(TENANT_ID, EMPLOYEE_ID)).rejects.toThrow()
     expect(mockCreateConsentRecord).not.toHaveBeenCalled()
   })
 
   it("throws EMPLOYEE_NOT_FOUND when employee does not exist", async () => {
     mockFindEmployeeForConsent.mockResolvedValue(null)
 
-    await expect(sendConsentInvite(TENANT_ID, EMPLOYEE_ID)).rejects.toMatchObject({
-      code: "EMPLOYEE_NOT_FOUND",
-    })
+    await expect(sendConsentInvite(TENANT_ID, EMPLOYEE_ID)).rejects.toMatchObject({ code: "EMPLOYEE_NOT_FOUND" })
+  })
+
+  it("does not create consent record when employee does not exist", async () => {
+    mockFindEmployeeForConsent.mockResolvedValue(null)
+
+    await expect(sendConsentInvite(TENANT_ID, EMPLOYEE_ID)).rejects.toThrow()
     expect(mockCreateConsentRecord).not.toHaveBeenCalled()
   })
 
-  it("generates a unique token per invite", async () => {
+  it("generates a unique token for each invite", async () => {
     await sendConsentInvite(TENANT_ID, EMPLOYEE_ID)
     await sendConsentInvite(TENANT_ID, EMPLOYEE_ID)
 
     const token1 = mockCreateConsentRecord.mock.calls[0]?.[0]?.token
     const token2 = mockCreateConsentRecord.mock.calls[1]?.[0]?.token
-    expect(token1).toBeDefined()
-    expect(token2).toBeDefined()
     expect(token1).not.toBe(token2)
   })
 })
@@ -151,19 +158,17 @@ describe("sendConsentInvite", () => {
 describe("recordAcceptance — LGPD append-only rule", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockFindConsentByToken.mockResolvedValue(baseConsentInvite as never)
+    mockFindConsentByToken.mockResolvedValue(baseConsentInvite as Awaited<ReturnType<typeof findConsentByToken>>)
     mockFindExistingConsentEvent.mockResolvedValue(null)
-    mockCreateConsentRecord.mockResolvedValue(baseConsentInvite as never)
+    mockCreateConsentRecord.mockResolvedValue(baseConsentInvite as Awaited<ReturnType<typeof createConsentRecord>>)
   })
 
-  it("creates an accepted consent record", async () => {
+  it("creates an accepted consent record with correct tenant and employee", async () => {
     await recordAcceptance(INVITE_TOKEN)
 
-    expect(mockCreateConsentRecord).toHaveBeenCalledOnce()
-    const call = mockCreateConsentRecord.mock.calls[0]?.[0]
-    expect(call?.event).toBe("accepted")
-    expect(call?.tenantId).toBe(TENANT_ID)
-    expect(call?.employeeId).toBe(EMPLOYEE_ID)
+    expect(mockCreateConsentRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ event: "accepted", tenantId: TENANT_ID, employeeId: EMPLOYEE_ID }),
+    )
   })
 
   it("stores cpfHash when provided", async () => {
@@ -173,7 +178,7 @@ describe("recordAcceptance — LGPD append-only rule", () => {
     expect(call?.cpfHash).toBe("hashed-cpf-value")
   })
 
-  it("does NOT store cpfHash when not provided", async () => {
+  it("does not store cpfHash when not provided", async () => {
     await recordAcceptance(INVITE_TOKEN)
 
     const call = mockCreateConsentRecord.mock.calls[0]?.[0]
@@ -184,6 +189,12 @@ describe("recordAcceptance — LGPD append-only rule", () => {
     mockFindConsentByToken.mockResolvedValue(null)
 
     await expect(recordAcceptance(INVITE_TOKEN)).rejects.toMatchObject({ code: "TOKEN_INVALID" })
+  })
+
+  it("does not create record when token does not exist", async () => {
+    mockFindConsentByToken.mockResolvedValue(null)
+
+    await expect(recordAcceptance(INVITE_TOKEN)).rejects.toThrow()
     expect(mockCreateConsentRecord).not.toHaveBeenCalled()
   })
 
@@ -191,16 +202,31 @@ describe("recordAcceptance — LGPD append-only rule", () => {
     mockFindConsentByToken.mockResolvedValue({
       ...baseConsentInvite,
       tokenExpiresAt: new Date(Date.now() - 1000),
-    } as never)
+    } as Awaited<ReturnType<typeof findConsentByToken>>)
 
     await expect(recordAcceptance(INVITE_TOKEN)).rejects.toMatchObject({ code: "TOKEN_EXPIRED" })
+  })
+
+  it("does not create record when token is expired", async () => {
+    mockFindConsentByToken.mockResolvedValue({
+      ...baseConsentInvite,
+      tokenExpiresAt: new Date(Date.now() - 1000),
+    } as Awaited<ReturnType<typeof findConsentByToken>>)
+
+    await expect(recordAcceptance(INVITE_TOKEN)).rejects.toThrow()
     expect(mockCreateConsentRecord).not.toHaveBeenCalled()
   })
 
   it("throws TOKEN_USED when already accepted or refused — enforces append-only uniqueness", async () => {
-    mockFindExistingConsentEvent.mockResolvedValue({ ...baseConsentInvite, event: "accepted" } as never)
+    mockFindExistingConsentEvent.mockResolvedValue({ ...baseConsentInvite, event: "accepted" } as Awaited<ReturnType<typeof findExistingConsentEvent>>)
 
     await expect(recordAcceptance(INVITE_TOKEN)).rejects.toMatchObject({ code: "TOKEN_USED" })
+  })
+
+  it("does not create record when consent already exists", async () => {
+    mockFindExistingConsentEvent.mockResolvedValue({ ...baseConsentInvite, event: "accepted" } as Awaited<ReturnType<typeof findExistingConsentEvent>>)
+
+    await expect(recordAcceptance(INVITE_TOKEN)).rejects.toThrow()
     expect(mockCreateConsentRecord).not.toHaveBeenCalled()
   })
 
@@ -219,18 +245,17 @@ describe("recordAcceptance — LGPD append-only rule", () => {
 describe("recordRefusal — LGPD append-only rule", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockFindConsentByToken.mockResolvedValue(baseConsentInvite as never)
+    mockFindConsentByToken.mockResolvedValue(baseConsentInvite as Awaited<ReturnType<typeof findConsentByToken>>)
     mockFindExistingConsentEvent.mockResolvedValue(null)
-    mockCreateConsentRecord.mockResolvedValue(baseConsentInvite as never)
+    mockCreateConsentRecord.mockResolvedValue(baseConsentInvite as Awaited<ReturnType<typeof createConsentRecord>>)
   })
 
-  it("creates a refused consent record", async () => {
+  it("creates a refused consent record with correct tenant and employee", async () => {
     await recordRefusal(INVITE_TOKEN)
 
-    const call = mockCreateConsentRecord.mock.calls[0]?.[0]
-    expect(call?.event).toBe("refused")
-    expect(call?.tenantId).toBe(TENANT_ID)
-    expect(call?.employeeId).toBe(EMPLOYEE_ID)
+    expect(mockCreateConsentRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ event: "refused", tenantId: TENANT_ID, employeeId: EMPLOYEE_ID }),
+    )
   })
 
   it("throws TOKEN_INVALID when token does not exist", async () => {
@@ -242,13 +267,18 @@ describe("recordRefusal — LGPD append-only rule", () => {
     mockFindConsentByToken.mockResolvedValue({
       ...baseConsentInvite,
       tokenExpiresAt: new Date(Date.now() - 1000),
-    } as never)
+    } as Awaited<ReturnType<typeof findConsentByToken>>)
     await expect(recordRefusal(INVITE_TOKEN)).rejects.toMatchObject({ code: "TOKEN_EXPIRED" })
   })
 
   it("throws TOKEN_USED when already responded", async () => {
-    mockFindExistingConsentEvent.mockResolvedValue({ ...baseConsentInvite, event: "refused" } as never)
+    mockFindExistingConsentEvent.mockResolvedValue({ ...baseConsentInvite, event: "refused" } as Awaited<ReturnType<typeof findExistingConsentEvent>>)
     await expect(recordRefusal(INVITE_TOKEN)).rejects.toMatchObject({ code: "TOKEN_USED" })
+  })
+
+  it("does not create record when consent already exists", async () => {
+    mockFindExistingConsentEvent.mockResolvedValue({ ...baseConsentInvite, event: "refused" } as Awaited<ReturnType<typeof findExistingConsentEvent>>)
+    await expect(recordRefusal(INVITE_TOKEN)).rejects.toThrow()
     expect(mockCreateConsentRecord).not.toHaveBeenCalled()
   })
 })
@@ -257,22 +287,25 @@ describe("optOut — LGPD opt-out flow", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockGetActiveConsentTermVersion.mockResolvedValue(activeTermVersion)
-    mockCreateConsentRecord.mockResolvedValue(baseConsentInvite as never)
+    mockCreateConsentRecord.mockResolvedValue(baseConsentInvite as Awaited<ReturnType<typeof createConsentRecord>>)
   })
 
-  it("creates an opted_out consent record", async () => {
+  it("creates an opted_out consent record with correct fields", async () => {
     await optOut(TENANT_ID, EMPLOYEE_ID)
 
-    const call = mockCreateConsentRecord.mock.calls[0]?.[0]
-    expect(call?.event).toBe("opted_out")
-    expect(call?.source).toBe("survey_form")
-    expect(call?.tenantId).toBe(TENANT_ID)
-    expect(call?.employeeId).toBe(EMPLOYEE_ID)
+    expect(mockCreateConsentRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ event: "opted_out", source: "survey_form", tenantId: TENANT_ID, employeeId: EMPLOYEE_ID }),
+    )
   })
 
-  it("throws NO_ACTIVE_TERMS when no active term version", async () => {
+  it("throws NO_ACTIVE_TERMS when no active term version exists", async () => {
     mockGetActiveConsentTermVersion.mockResolvedValue(null)
     await expect(optOut(TENANT_ID, EMPLOYEE_ID)).rejects.toMatchObject({ code: "NO_ACTIVE_TERMS" })
+  })
+
+  it("does not create record when no active term version exists", async () => {
+    mockGetActiveConsentTermVersion.mockResolvedValue(null)
+    await expect(optOut(TENANT_ID, EMPLOYEE_ID)).rejects.toThrow()
     expect(mockCreateConsentRecord).not.toHaveBeenCalled()
   })
 })
@@ -289,31 +322,51 @@ describe("optOutFromSurveyToken — opt-out via survey link", () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockFindTokenByValue.mockResolvedValue(tokenRecord as never)
+    mockFindTokenByValue.mockResolvedValue(tokenRecord as Awaited<ReturnType<typeof findTokenByValue>>)
     mockGetActiveConsentTermVersion.mockResolvedValue(activeTermVersion)
-    mockCreateConsentRecord.mockResolvedValue(baseConsentInvite as never)
-    mockMarkTokenUsed.mockResolvedValue(undefined as never)
+    mockCreateConsentRecord.mockResolvedValue(baseConsentInvite as Awaited<ReturnType<typeof createConsentRecord>>)
+    mockMarkTokenUsed.mockResolvedValue(undefined)
   })
 
-  it("creates opted_out record and marks token used", async () => {
+  it("creates opted_out consent record with correct fields", async () => {
     await optOutFromSurveyToken(surveyToken)
 
-    const consentCall = mockCreateConsentRecord.mock.calls[0]?.[0]
-    expect(consentCall?.event).toBe("opted_out")
-    expect(consentCall?.source).toBe("survey_form")
+    expect(mockCreateConsentRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ event: "opted_out", source: "survey_form" }),
+    )
+  })
+
+  it("marks the survey token as used after opt-out", async () => {
+    await optOutFromSurveyToken(surveyToken)
+
     expect(mockMarkTokenUsed).toHaveBeenCalledWith(tokenRecord.id)
   })
 
-  it("throws TOKEN_INVALID when survey token not found", async () => {
+  it("throws INVALID_TOKEN when survey token not found", async () => {
     mockFindTokenByValue.mockResolvedValue(null)
     await expect(optOutFromSurveyToken(surveyToken)).rejects.toMatchObject({ code: "INVALID_TOKEN" })
+  })
+
+  it("does not create consent record when token not found", async () => {
+    mockFindTokenByValue.mockResolvedValue(null)
+    await expect(optOutFromSurveyToken(surveyToken)).rejects.toThrow()
     expect(mockCreateConsentRecord).not.toHaveBeenCalled()
+  })
+
+  it("does not mark token used when token not found", async () => {
+    mockFindTokenByValue.mockResolvedValue(null)
+    await expect(optOutFromSurveyToken(surveyToken)).rejects.toThrow()
     expect(mockMarkTokenUsed).not.toHaveBeenCalled()
   })
 
   it("throws TOKEN_USED when survey token already used", async () => {
-    mockFindTokenByValue.mockResolvedValue({ ...tokenRecord, usedAt: new Date() } as never)
+    mockFindTokenByValue.mockResolvedValue({ ...tokenRecord, usedAt: new Date() } as Awaited<ReturnType<typeof findTokenByValue>>)
     await expect(optOutFromSurveyToken(surveyToken)).rejects.toMatchObject({ code: "TOKEN_USED" })
+  })
+
+  it("does not create consent record when token is already used", async () => {
+    mockFindTokenByValue.mockResolvedValue({ ...tokenRecord, usedAt: new Date() } as Awaited<ReturnType<typeof findTokenByValue>>)
+    await expect(optOutFromSurveyToken(surveyToken)).rejects.toThrow()
     expect(mockCreateConsentRecord).not.toHaveBeenCalled()
   })
 })
@@ -324,20 +377,31 @@ describe("publishNewConsentTermVersion", () => {
     mockCreateConsentTermVersion.mockResolvedValue(activeTermVersion)
   })
 
-  it("creates a new term version", async () => {
+  it("creates a new term version with provided data", async () => {
     await publishNewConsentTermVersion({ version: "2.0", content: "Novo conteúdo" })
     expect(mockCreateConsentTermVersion).toHaveBeenCalledWith({ version: "2.0", content: "Novo conteúdo" })
   })
 
-  it("trims whitespace from version and content", async () => {
-    await publishNewConsentTermVersion({ version: "  2.0  ", content: "  conteúdo  " })
-    expect(mockCreateConsentTermVersion).toHaveBeenCalledWith({ version: "2.0", content: "conteúdo" })
+  it("trims whitespace from version string", async () => {
+    await publishNewConsentTermVersion({ version: "  2.0  ", content: "conteúdo" })
+    const call = mockCreateConsentTermVersion.mock.calls[0]?.[0]
+    expect(call?.version).toBe("2.0")
+  })
+
+  it("trims whitespace from content string", async () => {
+    await publishNewConsentTermVersion({ version: "2.0", content: "  conteúdo  " })
+    const call = mockCreateConsentTermVersion.mock.calls[0]?.[0]
+    expect(call?.content).toBe("conteúdo")
   })
 
   it("throws INVALID_INPUT when version is blank", () => {
     expect(() => publishNewConsentTermVersion({ version: "   ", content: "conteúdo" })).toThrow(
       expect.objectContaining({ code: "INVALID_INPUT" }),
     )
+  })
+
+  it("does not create term version when version is blank", () => {
+    expect(() => publishNewConsentTermVersion({ version: "   ", content: "conteúdo" })).toThrow()
     expect(mockCreateConsentTermVersion).not.toHaveBeenCalled()
   })
 
@@ -345,16 +409,170 @@ describe("publishNewConsentTermVersion", () => {
     expect(() => publishNewConsentTermVersion({ version: "2.0", content: "  " })).toThrow(
       expect.objectContaining({ code: "INVALID_INPUT" }),
     )
+  })
+
+  it("does not create term version when content is blank", () => {
+    expect(() => publishNewConsentTermVersion({ version: "2.0", content: "  " })).toThrow()
     expect(mockCreateConsentTermVersion).not.toHaveBeenCalled()
   })
 })
 
 describe("AppError structure", () => {
-  it("exposes code and message correctly", () => {
-    const err = new AppError("SOME_CODE", "mensagem de erro")
-    expect(err.code).toBe("SOME_CODE")
-    expect(err.message).toBe("mensagem de erro")
+  const ERROR_CODE = "SOME_CODE"
+  const ERROR_MESSAGE = "mensagem de erro"
+
+  it("exposes code property correctly", () => {
+    const err = new AppError(ERROR_CODE, ERROR_MESSAGE)
+    expect(err.code).toBe(ERROR_CODE)
+  })
+
+  it("exposes message property correctly", () => {
+    const err = new AppError(ERROR_CODE, ERROR_MESSAGE)
+    expect(err.message).toBe(ERROR_MESSAGE)
+  })
+
+  it("has name AppError", () => {
+    const err = new AppError(ERROR_CODE, ERROR_MESSAGE)
     expect(err.name).toBe("AppError")
+  })
+
+  it("is an instance of Error", () => {
+    const err = new AppError(ERROR_CODE, ERROR_MESSAGE)
     expect(err instanceof Error).toBe(true)
+  })
+})
+
+describe("getConsentByToken", () => {
+  it("returns consent record matching repository result", async () => {
+    mockFindConsentByToken.mockResolvedValue(baseConsentInvite as Awaited<ReturnType<typeof findConsentByToken>>)
+
+    const result = await getConsentByToken(INVITE_TOKEN)
+    expect(result).toEqual(baseConsentInvite)
+  })
+
+  it("queries repository with the provided token", async () => {
+    mockFindConsentByToken.mockResolvedValue(baseConsentInvite as Awaited<ReturnType<typeof findConsentByToken>>)
+
+    await getConsentByToken(INVITE_TOKEN)
+    expect(mockFindConsentByToken).toHaveBeenCalledWith(INVITE_TOKEN)
+  })
+})
+
+describe("getActiveTermVersion", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("returns the active consent term version", async () => {
+    const termVersion = { id: TERM_VERSION_ID, version: "1.0", content: TERMS_CONTENT, isCurrent: true }
+    mockGetActiveConsentTermVersion.mockResolvedValue(termVersion as Awaited<ReturnType<typeof getActiveConsentTermVersion>>)
+
+    const result = await getActiveTermVersion()
+    expect(result).toEqual(termVersion)
+  })
+
+  it("calls repository once to fetch active term version", async () => {
+    const termVersion = { id: TERM_VERSION_ID, version: "1.0", content: TERMS_CONTENT, isCurrent: true }
+    mockGetActiveConsentTermVersion.mockResolvedValue(termVersion as Awaited<ReturnType<typeof getActiveConsentTermVersion>>)
+
+    await getActiveTermVersion()
+    expect(mockGetActiveConsentTermVersion).toHaveBeenCalledOnce()
+  })
+})
+
+describe("acceptConsentFromSurveyToken", () => {
+  const SURVEY_TOKEN = "survey-token-abc"
+  const tokenRecord = {
+    id: "token-1",
+    tenantId: TENANT_ID,
+    employeeId: EMPLOYEE_ID,
+    token: SURVEY_TOKEN,
+    usedAt: null,
+    expiresAt: new Date(Date.now() + 86400000),
+  }
+  const activeVersion = { id: TERM_VERSION_ID, version: "1.0", content: TERMS_CONTENT, isCurrent: true }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockFindTokenByValue.mockResolvedValue(tokenRecord as Awaited<ReturnType<typeof findTokenByValue>>)
+    mockGetActiveConsentTermVersion.mockResolvedValue(activeVersion as Awaited<ReturnType<typeof getActiveConsentTermVersion>>)
+    mockFindExistingConsentEvent.mockResolvedValue(null)
+  })
+
+  it("creates accepted consent record when no existing acceptance", async () => {
+    await acceptConsentFromSurveyToken(SURVEY_TOKEN)
+
+    expect(mockCreateConsentRecord).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: TENANT_ID,
+      employeeId: EMPLOYEE_ID,
+      event: "accepted",
+    }))
+  })
+
+  it("skips creating record when consent already accepted", async () => {
+    mockFindExistingConsentEvent.mockResolvedValue({ id: "existing" } as Awaited<ReturnType<typeof findExistingConsentEvent>>)
+
+    await acceptConsentFromSurveyToken(SURVEY_TOKEN)
+
+    expect(mockCreateConsentRecord).not.toHaveBeenCalled()
+  })
+
+  it("throws INVALID_TOKEN when token not found", async () => {
+    mockFindTokenByValue.mockResolvedValue(null)
+
+    await expect(acceptConsentFromSurveyToken(SURVEY_TOKEN)).rejects.toMatchObject({ code: "INVALID_TOKEN" })
+  })
+
+  it("throws TOKEN_USED when token already used", async () => {
+    mockFindTokenByValue.mockResolvedValue({ ...tokenRecord, usedAt: new Date() } as Awaited<ReturnType<typeof findTokenByValue>>)
+
+    await expect(acceptConsentFromSurveyToken(SURVEY_TOKEN)).rejects.toMatchObject({ code: "TOKEN_USED" })
+  })
+})
+
+describe("refuseConsentFromSurveyToken", () => {
+  const SURVEY_TOKEN = "survey-token-refuse"
+  const tokenRecord = {
+    id: "token-2",
+    tenantId: TENANT_ID,
+    employeeId: EMPLOYEE_ID,
+    token: SURVEY_TOKEN,
+    usedAt: null,
+    expiresAt: new Date(Date.now() + 86400000),
+  }
+  const activeVersion = { id: TERM_VERSION_ID, version: "1.0", content: TERMS_CONTENT, isCurrent: true }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockFindTokenByValue.mockResolvedValue(tokenRecord as Awaited<ReturnType<typeof findTokenByValue>>)
+    mockGetActiveConsentTermVersion.mockResolvedValue(activeVersion as Awaited<ReturnType<typeof getActiveConsentTermVersion>>)
+  })
+
+  it("creates refused consent record with correct fields", async () => {
+    await refuseConsentFromSurveyToken(SURVEY_TOKEN)
+
+    expect(mockCreateConsentRecord).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: TENANT_ID,
+      employeeId: EMPLOYEE_ID,
+      event: "refused",
+    }))
+  })
+
+  it("marks the survey token as used after refusal", async () => {
+    await refuseConsentFromSurveyToken(SURVEY_TOKEN)
+
+    expect(mockMarkTokenUsed).toHaveBeenCalledWith(tokenRecord.id)
+  })
+
+  it("throws INVALID_TOKEN when token not found", async () => {
+    mockFindTokenByValue.mockResolvedValue(null)
+
+    await expect(refuseConsentFromSurveyToken(SURVEY_TOKEN)).rejects.toMatchObject({ code: "INVALID_TOKEN" })
+  })
+
+  it("throws TOKEN_USED when token already used", async () => {
+    mockFindTokenByValue.mockResolvedValue({ ...tokenRecord, usedAt: new Date() } as Awaited<ReturnType<typeof findTokenByValue>>)
+
+    await expect(refuseConsentFromSurveyToken(SURVEY_TOKEN)).rejects.toMatchObject({ code: "TOKEN_USED" })
   })
 })

@@ -38,20 +38,19 @@ describe("healthIndexLabel", () => {
     expect(healthIndexLabel(null)).toBe("—")
   })
 
-  it("returns Saudável for hi >= 62", () => {
-    expect(healthIndexLabel(62)).toBe("Saudável")
-    expect(healthIndexLabel(100)).toBe("Saudável")
-  })
-
-  it("returns Atenção for 37 <= hi < 62", () => {
-    expect(healthIndexLabel(37)).toBe("Atenção")
-    expect(healthIndexLabel(61)).toBe("Atenção")
-  })
-
-  it("returns Crítico for hi < 37", () => {
-    expect(healthIndexLabel(0)).toBe("Crítico")
-    expect(healthIndexLabel(36)).toBe("Crítico")
-  })
+  it.each([
+    [62, "Saudável"],
+    [100, "Saudável"],
+    [37, "Atenção"],
+    [61, "Atenção"],
+    [0, "Crítico"],
+    [36, "Crítico"],
+  ] as [number, string][])(
+    "healthIndexLabel(%i) → %s",
+    (index, expected) => {
+      expect(healthIndexLabel(index)).toBe(expected)
+    },
+  )
 })
 
 describe("healthIndexAccent", () => {

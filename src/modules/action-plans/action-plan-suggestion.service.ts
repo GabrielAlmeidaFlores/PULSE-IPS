@@ -1,5 +1,5 @@
 import { findAllTenantsActiveOrganizationIds } from "@/modules/organizations/organization.repository"
-import { computeRawSuggestions } from "@/modules/action-plans/action-plan-suggestions"
+import { computeRawSuggestions } from "@/modules/action-plans/suggestions"
 import {
   findExistingActionPlanSuggestionKeysForTenant,
   createActionPlanSuggestion,

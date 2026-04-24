@@ -2,7 +2,7 @@ import { headers } from "next/headers"
 import { NextResponse } from "next/server"
 import { env } from "@/env"
 import { verifyCronSecret } from "@/libs/utils/cron-auth"
-import { cleanupExpiredTokens } from "@/modules/surveys/survey.service"
+import { cleanupExpiredTokens } from "@/modules/surveys/survey-response.service"
 
 export async function POST(_request: Request): Promise<NextResponse> {
   const headersList = await headers()

@@ -48,7 +48,7 @@ async function fireDispatch(
   configWorkStartTime: string,
   configWorkEndTime: string,
   timezone: string,
-): Promise<void> {
+): Promise<boolean> {
   const today = getDayOfWeekInTimezone(timezone)
 
   const workDayFiltered = employees.filter((emp) => {
@@ -56,12 +56,12 @@ async function fireDispatch(
     return effectiveDays.includes(today)
   })
 
-  if (workDayFiltered.length === 0) return
+  if (workDayFiltered.length === 0) return false
 
   const acceptedIds = await findEmployeeIdsWithAcceptedConsent(tenantId, workDayFiltered.map((e) => e.id))
   const eligibleEmployees = workDayFiltered.filter((emp) => acceptedIds.includes(emp.id))
 
-  if (eligibleEmployees.length === 0) return
+  if (eligibleEmployees.length === 0) return false
 
   const dispatch = await createDispatch(tenantId, configId, new Date())
 
@@ -99,6 +99,7 @@ async function fireDispatch(
     .filter((job): job is NonNullable<typeof job> => job !== null)
 
   await messageQueue.addBulk(bulkJobs)
+  return true
 }
 
 export async function runSurveyDispatcher(): Promise<{ dispatched: number; errors: number }> {
@@ -126,7 +127,7 @@ export async function runSurveyDispatcher(): Promise<{ dispatched: number; error
         workDays: emp.workDays.map((w) => w.dayOfWeek),
       }))
 
-      await fireDispatch(
+      const fired = await fireDispatch(
         config.id,
         dispatch.tenantId,
         employees,
@@ -136,7 +137,7 @@ export async function runSurveyDispatcher(): Promise<{ dispatched: number; error
         timezone,
       )
 
-      dispatched++
+      if (fired) dispatched++
     } catch (err) {
       errors++
       logger.error({ err, configId: config.id }, "survey-dispatcher: error processing dispatch")
@@ -169,7 +170,7 @@ export async function runAutoDispatchScheduler(): Promise<{ triggered: number; s
         }
       }
 
-      await fireDispatch(
+      const fired = await fireDispatch(
         config.id,
         config.tenantId,
         config.department.employees,
@@ -178,7 +179,7 @@ export async function runAutoDispatchScheduler(): Promise<{ triggered: number; s
         config.workEndTime,
         timezone,
       )
-      triggered++
+      if (fired) triggered++
     } catch (err) {
       skipped++
       logger.error({ err, configId: config.id }, "auto-dispatcher: error triggering dispatch")

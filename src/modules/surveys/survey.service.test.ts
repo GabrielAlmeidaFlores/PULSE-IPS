@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { findTokenByValue, createSurveyResponseWithItems } from "@/modules/surveys/survey.repository"
-import { submitSurveyResponse, validateSurveyToken } from "@/modules/surveys/survey.service"
+import { submitSurveyResponse, validateSurveyToken } from "@/modules/surveys/survey-response.service"
 
 vi.mock("@/modules/surveys/survey.repository", () => ({
   findTokenByValue: vi.fn(),
@@ -66,7 +66,7 @@ const sampleAnswers = [{ questionId: "q-1", score: 4 }]
 describe("submitSurveyResponse — anonymity guarantee", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockFindTokenByValue.mockResolvedValue(validTokenRecord as never)
+    mockFindTokenByValue.mockResolvedValue(validTokenRecord as Awaited<ReturnType<typeof findTokenByValue>>)
     mockCreateSurveyResponseWithItems.mockResolvedValue(undefined)
   })
 
@@ -116,7 +116,7 @@ describe("submitSurveyResponse — anonymity guarantee", () => {
   })
 
   it("throws SURVEY_ALREADY_ANSWERED when token already used", async () => {
-    mockFindTokenByValue.mockResolvedValue({ ...validTokenRecord, usedAt: new Date() } as never)
+    mockFindTokenByValue.mockResolvedValue({ ...validTokenRecord, usedAt: new Date() } as Awaited<ReturnType<typeof findTokenByValue>>)
 
     await expect(submitSurveyResponse({ token: SURVEY_TOKEN, answers: sampleAnswers }))
       .rejects.toMatchObject({ code: "SURVEY_ALREADY_ANSWERED" })
@@ -127,7 +127,7 @@ describe("submitSurveyResponse — anonymity guarantee", () => {
     mockFindTokenByValue.mockResolvedValue({
       ...validTokenRecord,
       expiresAt: new Date(Date.now() - 1000),
-    } as never)
+    } as Awaited<ReturnType<typeof findTokenByValue>>)
 
     await expect(submitSurveyResponse({ token: SURVEY_TOKEN, answers: sampleAnswers }))
       .rejects.toMatchObject({ code: "TOKEN_EXPIRED" })
@@ -139,7 +139,7 @@ describe("submitSurveyResponse — anonymity guarantee", () => {
       ...validTokenRecord,
       workStartTime: "09:00",
       workEndTime: "09:01",
-    } as never)
+    } as Awaited<ReturnType<typeof findTokenByValue>>)
 
     await expect(submitSurveyResponse({ token: SURVEY_TOKEN, answers: sampleAnswers }))
       .rejects.toMatchObject({ code: "OUTSIDE_WORK_WINDOW" })
@@ -161,31 +161,31 @@ describe("validateSurveyToken", () => {
     mockFindTokenByValue.mockResolvedValue(null)
     const result = await validateSurveyToken("nonexistent")
     expect(result.valid).toBe(false)
-    expect(result.error).toBeDefined()
+    if (!result.valid) expect(result.error).toBeDefined()
   })
 
   it("returns invalid when token already used", async () => {
-    mockFindTokenByValue.mockResolvedValue({ ...validTokenRecord, usedAt: new Date() } as never)
+    mockFindTokenByValue.mockResolvedValue({ ...validTokenRecord, usedAt: new Date() } as Awaited<ReturnType<typeof findTokenByValue>>)
     const result = await validateSurveyToken(SURVEY_TOKEN)
     expect(result.valid).toBe(false)
-    expect(result.error).toContain("respondida")
+    if (!result.valid) expect(result.error).toContain("respondida")
   })
 
   it("returns invalid when token is expired", async () => {
     mockFindTokenByValue.mockResolvedValue({
       ...validTokenRecord,
       expiresAt: new Date(Date.now() - 1000),
-    } as never)
+    } as Awaited<ReturnType<typeof findTokenByValue>>)
     const result = await validateSurveyToken(SURVEY_TOKEN)
     expect(result.valid).toBe(false)
-    expect(result.error).toContain("expirou")
+    if (!result.valid) expect(result.error).toContain("expirou")
   })
 
   it("returns invalid when dispatch is not in sent status", async () => {
     mockFindTokenByValue.mockResolvedValue({
       ...validTokenRecord,
       dispatch: { ...validTokenRecord.dispatch, status: "scheduled" },
-    } as never)
+    } as Awaited<ReturnType<typeof findTokenByValue>>)
 
     const { getCurrentConsent, getActiveConsentTermVersion } = await import("@/modules/consent/consent.repository")
     vi.mocked(getCurrentConsent).mockResolvedValue(null)
@@ -193,11 +193,11 @@ describe("validateSurveyToken", () => {
 
     const result = await validateSurveyToken(SURVEY_TOKEN)
     expect(result.valid).toBe(false)
-    expect(result.error).toContain("ativa")
+    if (!result.valid) expect(result.error).toContain("ativa")
   })
 
   it("returns valid with consentStatus needs_consent when employee has no consent", async () => {
-    mockFindTokenByValue.mockResolvedValue(validTokenRecord as never)
+    mockFindTokenByValue.mockResolvedValue(validTokenRecord as Awaited<ReturnType<typeof findTokenByValue>>)
 
     const { getCurrentConsent, getActiveConsentTermVersion } = await import("@/modules/consent/consent.repository")
     vi.mocked(getCurrentConsent).mockResolvedValue(null)
@@ -212,11 +212,11 @@ describe("validateSurveyToken", () => {
 
     const result = await validateSurveyToken(SURVEY_TOKEN)
     expect(result.valid).toBe(true)
-    expect(result.consentStatus).toBe("needs_consent")
+    if (result.valid) expect(result.consentStatus).toBe("needs_consent")
   })
 
   it("returns valid with consentStatus accepted when employee accepted current version", async () => {
-    mockFindTokenByValue.mockResolvedValue(validTokenRecord as never)
+    mockFindTokenByValue.mockResolvedValue(validTokenRecord as Awaited<ReturnType<typeof findTokenByValue>>)
 
     const { getCurrentConsent, getActiveConsentTermVersion } = await import("@/modules/consent/consent.repository")
     const termId = "term-version-current"
@@ -239,15 +239,15 @@ describe("validateSurveyToken", () => {
       tokenExpiresAt: null,
       cpfHash: null,
       createdAt: new Date(),
-    } as never)
+    } as Awaited<ReturnType<typeof findTokenByValue>>)
 
     const result = await validateSurveyToken(SURVEY_TOKEN)
     expect(result.valid).toBe(true)
-    expect(result.consentStatus).toBe("accepted")
+    if (result.valid) expect(result.consentStatus).toBe("accepted")
   })
 
   it("returns needs_consent when employee accepted a different (older) term version", async () => {
-    mockFindTokenByValue.mockResolvedValue(validTokenRecord as never)
+    mockFindTokenByValue.mockResolvedValue(validTokenRecord as Awaited<ReturnType<typeof findTokenByValue>>)
 
     const { getCurrentConsent, getActiveConsentTermVersion } = await import("@/modules/consent/consent.repository")
     vi.mocked(getActiveConsentTermVersion).mockResolvedValue({
@@ -269,15 +269,15 @@ describe("validateSurveyToken", () => {
       tokenExpiresAt: null,
       cpfHash: null,
       createdAt: new Date(),
-    } as never)
+    } as Awaited<ReturnType<typeof findTokenByValue>>)
 
     const result = await validateSurveyToken(SURVEY_TOKEN)
     expect(result.valid).toBe(true)
-    expect(result.consentStatus).toBe("needs_consent")
+    if (result.valid) expect(result.consentStatus).toBe("needs_consent")
   })
 
   it("response object does not expose employeeId in token payload directly", async () => {
-    mockFindTokenByValue.mockResolvedValue(validTokenRecord as never)
+    mockFindTokenByValue.mockResolvedValue(validTokenRecord as Awaited<ReturnType<typeof findTokenByValue>>)
 
     const { getCurrentConsent, getActiveConsentTermVersion } = await import("@/modules/consent/consent.repository")
     vi.mocked(getCurrentConsent).mockResolvedValue(null)
