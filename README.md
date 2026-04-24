@@ -38,6 +38,7 @@ Plataforma SaaS multi-tenant de gestão de saúde e bem-estar ocupacional voltad
   - [Super Admin](#16-super-admin)
   - [Convite de usuários](#17-convite-de-usuários)
   - [Timezone e expediente](#18-timezone-e-expediente)
+- [Lint, testes e build](#lint-testes-e-build)
 
 ---
 
@@ -886,9 +887,10 @@ O fluxo de consentimento garante que a coleta de dados de saúde dos funcionári
 ### 14. PGR
 
 1. Admin acessa `/pgr` para gerenciar as revisões do Programa de Gerenciamento de Riscos.
-2. Cada `PgrReview` tem um período, URL do arquivo, status (`pending` → `generated` → `reviewed`) e data da próxima revisão.
-3. O job `pgr-review-reminder` (diariamente às 08:00) verifica reviews com `nextReviewAt <= now()` e envia e-mail de lembrete para os admins da organização.
-4. A geração do documento PDF é feita via `@react-pdf/renderer`.
+2. Cada `PgrReview` tem um período, status (`pending` → `generated` → `reviewed`) e data da próxima revisão.
+3. O job `pgr-review-reminder` (diariamente às 08:00) verifica reviews com `nextReviewAt <= now()` e cria alerta `pgr_review_due`.
+4. O PDF é gerado **sob demanda** via `GET /api/pgr/[id]/pdf` — nenhum arquivo é armazenado em disco. O botão "Exportar PDF" na página de detalhe da revisão aciona o download.
+5. O PDF contém: capa com índice de saúde global e resumo por setor, seguido de uma página por setor com breakdown de perguntas e scores.
 
 ---
 
@@ -997,11 +999,17 @@ O super admin acessa `/super-admin` com credenciais separadas e tem controle tot
 
 ---
 
-## Lint e build
+## Lint, testes e build
 
 ```bash
 # Verificar erros e warnings de lint
 yarn lint
+
+# Executar testes unitários
+yarn test
+
+# Testes com relatório de cobertura (meta: ≥ 90%)
+yarn test:coverage
 
 # Build de produção
 yarn build
@@ -1010,7 +1018,8 @@ yarn build
 yarn start
 ```
 
-> O projeto segue as regras definidas em `eslint.config.mjs`: TypeScript strict, import order, sonarjs, unicorn e regras customizadas documentadas em `AGENTS.md`.
+> O projeto segue as regras definidas em `eslint.config.mjs`: TypeScript strict, import order, sonarjs e regras customizadas documentadas em `AGENTS.md`.
+> Os testes usam **Vitest** e cobrem a camada de service (lógica de negócio) e utilitários. Ver seção 30 do `AGENTS.md` para convenções completas.
 
 
 ---

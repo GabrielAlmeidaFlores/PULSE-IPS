@@ -35,6 +35,7 @@
 27. [Abstração de SDKs e ORM](#27-abstração-de-sdks-e-orm)
 28. [Queries Cross-tenant — Convenção de Naming para Jobs](#28-queries-cross-tenant--convenção-de-naming-para-jobs)
 29. [Checklist de Conformidade Pré-PR](#29-checklist-de-conformidade-pré-pr)
+30. [Testes Unitários](#30-testes-unitários)
 
 ---
 
@@ -392,7 +393,9 @@ src/
 │   │   ├── storage/
 │   │   │   └── storage.interface.ts        # IStorageService
 │   │   ├── pdf/
-│   │   │   └── pdf.interface.ts            # IPDFService
+│   │   │   ├── pdf.interface.ts            # IPDFService — interface genérica (não usada pelo PGR)
+│   │   │   ├── pgr-pdf.adapter.tsx         # ✅ Implementação @react-pdf/renderer — gera PDF PGR
+│   │   │   └── pgr-pdf.types.ts            # Tipos próprios de input do PDF (PgrPdfInput, etc.)
 │   │   ├── billing/
 │   │   │   ├── billing.interface.ts        # IBillingService
 │   │   │   └── stripe.adapter.ts           # ✅ Implementação atual
@@ -1909,13 +1912,28 @@ export interface IStorageService {
 }
 ```
 
-### PDF
+### PDF — Geração do relatório PGR
+
+O PDF do relatório PGR é gerado **sob demanda** pela rota `GET /api/pgr/[id]/pdf`, sem armazenamento em disco/storage. A abordagem é domain-specific — não usa a interface genérica `IPDFService`.
+
+**Adapter:** `src/libs/integrations/pdf/pgr-pdf.adapter.tsx`  
+**Tipos de input:** `src/libs/integrations/pdf/pgr-pdf.types.ts`  
+**Rota de geração:** `src/app/api/pgr/[id]/pdf/route.ts`  
+**Botão de download:** `src/app/(tenant)/pgr/[id]/pgr-download-button.tsx`
 
 ```typescript
-export interface IPDFService {
-  generatePGRReport(data: PGRReportData): Promise<GeneratePDFResult>
-}
+// Função exportada pelo adapter — chamada pela rota da API
+export async function generatePgrPdf(data: PgrPdfInput): Promise<Buffer>
 ```
+
+**Conteúdo do PDF:**
+- Capa com índice de saúde global, métricas de participação e tabela-resumo de setores
+- Uma página por setor com breakdown de perguntas e barra de progresso colorida por score
+- Footer fixo em todas as páginas (nome da org, período, paginação)
+
+**Regra de camada:** o adapter está em `libs/integrations/` e pode importar `libs/utils/`. A rota chama o adapter diretamente após buscar os dados via service (`getPgrReviewById`, `getOrganization`).
+
+**Por que não usa `IPDFService`:** a interface genérica (`generatePGRReport(data: PGRReportData)`) é desnecessariamente abstrata — só existe um formato de PDF no produto. Criar um adapter concreto que implemente essa interface adicionaria uma camada de indireção sem nenhum benefício real.
 
 ---
 
@@ -2694,6 +2712,10 @@ npx tsc --noEmit            # verifica tipagem sem compilar (deve retornar 0 err
 # Lint
 yarn lint                   # ESLint — deve retornar 0 erros e 0 warnings antes de qualquer PR
 
+# Testes
+yarn test                   # executa todos os testes unitários (Vitest)
+yarn test:coverage          # executa testes com relatório de cobertura (meta: ≥ 90%)
+
 # Build
 yarn build                  # build de produção (deve ser limpo, sem warnings)
 
@@ -3081,7 +3103,152 @@ Execute `grep` para confirmar cada item:
 
 - `tsc --noEmit` → **0 erros**
 - `yarn lint` → **0 erros, 0 warnings**
+- `yarn test:coverage` → **cobertura ≥ 90%** nos arquivos em escopo (ver `vitest.config.ts`)
 - Todos os itens manuais acima verificados
 - Sem `TODO`, `FIXME` ou `@ts-ignore` introduzidos
 
 *Pulse — AGENTS.md | Documento interno | Abril de 2026*
+
+---
+
+## 30. Testes Unitários
+
+### Framework
+
+**Vitest** (`yarn test` / `yarn test:coverage`) com ambiente `node`. Sem DOM — os testes cobrem exclusivamente a camada de service e utilitários.
+
+```bash
+yarn test                  # executa todos os testes
+yarn test:coverage         # relatório de cobertura (meta: ≥ 90%)
+```
+
+### Escopo de cobertura
+
+Os arquivos em escopo estão declarados em `vitest.config.ts` na chave `coverage.include`. A meta de cobertura é **≥ 90%** em todos eles. Para adicionar cobertura de um novo service, basta incluí-lo nessa lista.
+
+**Em escopo (serviços de domínio + utilitários):**
+- `src/libs/utils/*.ts` — slug, pagination, date, health-index, cron-auth
+- `src/modules/*/service.ts` — toda a lógica de negócio dos módulos
+- `src/modules/action-plans/suggestions/*.ts` — geração de sugestões
+
+**Fora do escopo (intencionalmente):**
+- Repositories — testam o ORM, não lógica de negócio; exigem banco real
+- Server Actions e páginas — testadas via E2E ou manualmente
+- Adapters de integração — testados por contrato/smoke test manual
+- Workers — testados via execução manual
+
+### Localização dos arquivos de teste
+
+Todo arquivo de teste fica **ao lado do arquivo testado**, com sufixo `.test.ts`:
+
+```
+src/modules/employees/
+├── employee.service.ts
+├── employee.service.test.ts   ← testa employee.service.ts
+├── employee.repository.ts     ← não tem teste unitário
+└── ...
+```
+
+### Estrutura obrigatória
+
+```typescript
+import { describe, it, expect, vi, beforeEach } from "vitest"
+
+// 1. Mock de todos os repositórios e dependências externas
+vi.mock("@/modules/employees/employee.repository")
+vi.mock("@/env", () => ({ env: { NEXT_PUBLIC_APP_URL: "http://localhost:3000" } }))
+
+// 2. Referências tipadas aos mocks (vi.mocked garante tipos corretos)
+const mockCreateEmployee = vi.mocked(createEmployee)
+
+// 3. Constantes de fixtures no topo (sem factories desnecessárias)
+const TENANT_ID = "tenant-1"
+const EMPLOYEE_INPUT = { name: "Ana Silva", phone: "+5511999999999", departmentId: "dept-1" }
+
+// 4. Reset dos mocks antes de cada teste
+beforeEach(() => {
+  vi.clearAllMocks()
+  // Setup dos happy-path defaults
+  mockCreateEmployee.mockResolvedValue(CREATED_EMPLOYEE as Awaited<ReturnType<typeof createEmployee>>)
+})
+
+// 5. describe por comportamento testado, it com frase em português
+describe("createNewEmployee — limite do plano", () => {
+  it("lança AppError quando limite do override é atingido", async () => {
+    mockFindOrganizationById.mockResolvedValue({ maxEmployeesOverride: 5 } as ...)
+    mockCountEmployees.mockResolvedValue(5)
+
+    await expect(createNewEmployee(TENANT_ID, EMPLOYEE_INPUT))
+      .rejects.toMatchObject({ code: "EMPLOYEE_LIMIT_REACHED" })
+  })
+})
+```
+
+### Regras de mocking
+
+| O que mockar | Como |
+|---|---|
+| Repositories | `vi.mock("@/modules/x/x.repository")` — auto-mock de todas as funções |
+| Módulos com factory (`queue`, `integrations`) | `vi.mock("@/libs/queue", () => ({ getMessageQueue: vi.fn(() => ({ add: vi.fn() })) }))` |
+| Módulo `@/env` | `vi.mock("@/env", () => ({ env: { NEXT_PUBLIC_APP_URL: "..." } }))` sempre |
+| Prisma | Nunca — use repository mocks |
+| Funções do mesmo módulo | Use o import real, não mock — se precisar, é sinal de acoplamento |
+
+### Cast de tipo nos mocks
+
+`vi.mocked()` garante que o mock tem o tipo correto. Use `as Awaited<ReturnType<typeof fn>>` para casts de retorno:
+
+```typescript
+// ✅ Correto — cast preciso sem `any`
+mockFindEmployee.mockResolvedValue(
+  { id: "emp-1", name: "Ana" } as Awaited<ReturnType<typeof findEmployeeById>>
+)
+
+// ❌ Proibido — perde tipagem
+mockFindEmployee.mockResolvedValue({ id: "emp-1" } as any)
+```
+
+### Nomenclatura dos testes
+
+- `describe` → nome do service/função + contexto (`"createNewEmployee — limite do plano"`)
+- `it` → frase completa em português que descreve o comportamento esperado (`"lança AppError quando limite é atingido"`)
+- Sem `should`, `when`, `given` — frases diretas
+
+### O que testar em cada service
+
+| Cenário | Obrigatório |
+|---|---|
+| Happy path — retorno correto e chamadas corretas | ✅ |
+| Casos de erro esperados (`AppError`) | ✅ |
+| Guards/validações (token expirado, não encontrado, etc.) | ✅ |
+| Lógica de negócio condicional (limites, regras de estado) | ✅ |
+| Chamadas a repositórios dependentes foram feitas | ✅ com `toHaveBeenCalledWith` |
+| Chamadas que NÃO devem ocorrer em caso de erro | ✅ com `expect(mock).not.toHaveBeenCalled()` |
+| Detalhes de implementação de repositório | ❌ |
+| Comportamento de libs externas (bcrypt, jose, etc.) | ❌ |
+
+### Proibições em testes
+
+```typescript
+// ❌ Proibido — any em mocks
+mockFn.mockResolvedValue({} as any)
+
+// ❌ Proibido — teste sem assertion
+it("cria funcionário", async () => {
+  await createNewEmployee(TENANT_ID, EMPLOYEE_INPUT)  // sem expect
+})
+
+// ❌ Proibido — múltiplos comportamentos num único it
+it("cria e verifica limite e auditoria", async () => { ... })  // 3 casos = 3 its
+
+// ❌ Proibido — string literal de erro duplicada no teste (use AppError.code)
+await expect(fn()).rejects.toThrow("Limite de colaboradores atingido.")  // frágil
+// ✅ Prefira:
+await expect(fn()).rejects.toMatchObject({ code: "EMPLOYEE_LIMIT_REACHED" })
+```
+
+### Adicionando cobertura para um novo service
+
+1. Criar `src/modules/{dominio}/{nome}.service.test.ts`
+2. Adicionar o caminho em `vitest.config.ts` → `coverage.include`
+3. Rodar `yarn test:coverage` e garantir ≥ 90% nas linhas do arquivo
