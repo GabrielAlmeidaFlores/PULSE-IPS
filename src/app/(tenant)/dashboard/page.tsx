@@ -263,7 +263,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
                   }
                   return (
                     <tr key={alert.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <div className="inline-flex items-center gap-0.5">
                           <span className={`${BADGE_BASE} ${TYPE_STYLE[alert.type] ?? BADGE_DEFAULT}`}>
                             {TYPE_LABELS[alert.type] ?? alert.type}
