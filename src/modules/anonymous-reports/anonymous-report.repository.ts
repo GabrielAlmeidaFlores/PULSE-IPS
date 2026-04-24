@@ -13,7 +13,10 @@ export function findReportById(tenantId: string, reportId: string): Promise<Anon
   return prisma.anonymousReport.findFirst({ where: { id: reportId, tenantId } })
 }
 
-export function createReport(tenantId: string, data: CreateAnonymousReportInput): Promise<AnonymousReport> {
+export function createReport(
+  tenantId: string,
+  data: CreateAnonymousReportInput,
+): Promise<AnonymousReport> {
   return prisma.anonymousReport.create({
     data: {
       tenantId,

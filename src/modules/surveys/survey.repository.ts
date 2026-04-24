@@ -433,15 +433,33 @@ export function countResponsesForDispatch(tenantId: string, dispatchId: string):
 }
 
 export async function createAdherenceAlert(data: CreateAdherenceAlertInput): Promise<void> {
-  await prisma.alert.create({
-    data: {
-      tenantId: data.tenantId,
-      departmentId: data.departmentId,
-      type: "no_response",
-      severity: data.adherenceRate < 0.25 ? "critical" : "warning",
-      message: `Taxa de adesão: ${Math.round(data.adherenceRate * 100)}% (${data.responseCount}/${data.totalRecipients})`,
-    },
-  })
+  const isLowAdherence = data.adherenceRate >= 0.5 && data.adherenceRate < 0.8
+  const isNoResponse = data.adherenceRate < 0.5
+
+  if (isNoResponse) {
+    await prisma.alert.create({
+      data: {
+        tenantId: data.tenantId,
+        departmentId: data.departmentId,
+        type: "no_response",
+        severity: data.adherenceRate < 0.25 ? "critical" : "warning",
+        message: `Taxa de adesão: ${Math.round(data.adherenceRate * 100)}% (${data.responseCount}/${data.totalRecipients})`,
+      },
+    })
+    return
+  }
+
+  if (isLowAdherence) {
+    await prisma.alert.create({
+      data: {
+        tenantId: data.tenantId,
+        departmentId: data.departmentId,
+        type: "low_adherence",
+        severity: "warning",
+        message: `Taxa de adesão: ${Math.round(data.adherenceRate * 100)}% (${data.responseCount}/${data.totalRecipients})`,
+      },
+    })
+  }
 }
 
 export async function markDispatchAdherenceChecked(tenantId: string, dispatchId: string, totalResponses: number): Promise<void> {

@@ -47,9 +47,6 @@ export const TYPE_LABELS: Record<string, string> = {
   low_adherence: "Adesão baixa",
   no_response: "Sem resposta",
   consent_expired: "Consentimento expirado",
-  billing: "Cobrança",
-  system: "Sistema",
-  crisis_report: "Relato de crise",
 }
 
 export const TYPE_STYLE: Record<string, string> = {
@@ -60,7 +57,4 @@ export const TYPE_STYLE: Record<string, string> = {
   low_adherence: "bg-yellow-100 text-yellow-800 border-yellow-300",
   no_response: BADGE_RED,
   consent_expired: BADGE_DEFAULT,
-  billing: BADGE_BLUE,
-  system: BADGE_DEFAULT,
-  crisis_report: BADGE_RED,
 }

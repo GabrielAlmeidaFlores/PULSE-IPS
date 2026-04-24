@@ -189,7 +189,7 @@ export async function runAutoDispatchScheduler(): Promise<{ triggered: number; s
 }
 
 export async function checkDispatchAdherence(): Promise<{ processed: number; alertsCreated: number }> {
-  const LOW_ADHERENCE_THRESHOLD = 0.5
+  const ALERT_ADHERENCE_THRESHOLD = 0.8
   const dispatches = await findAllTenantsDispatches48hAgo()
   let alertsCreated = 0
 
@@ -197,7 +197,7 @@ export async function checkDispatchAdherence(): Promise<{ processed: number; ale
     const responseCount = await countResponsesForDispatch(dispatch.tenantId, dispatch.id)
     const adherenceRate = dispatch.totalRecipients > 0 ? responseCount / dispatch.totalRecipients : 0
 
-    if (adherenceRate < LOW_ADHERENCE_THRESHOLD) {
+    if (adherenceRate < ALERT_ADHERENCE_THRESHOLD) {
       await createAdherenceAlert({
         tenantId: dispatch.tenantId,
         departmentId: dispatch.surveyConfiguration.departmentId,

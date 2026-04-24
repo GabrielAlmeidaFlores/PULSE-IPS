@@ -2,7 +2,7 @@ import { createJobWorker, createMessageWorker, QUEUE_NAME, MESSAGE_QUEUE_NAME, t
 import { getMessagingService } from "@/libs/integrations"
 import { prisma } from "@/libs/db"
 import { runSurveyDispatcher, checkDispatchAdherence, runAutoDispatchScheduler } from "@/modules/surveys/survey-dispatch.service"
-import { detectLowScoreAlerts } from "@/modules/alerts/alert.service"
+import { detectLowScoreAlerts, detectScoreDropAlerts, detectNegativeTrendAlerts, detectConsentExpiredAlerts } from "@/modules/alerts/alert.service"
 import { unpauseDueEmployees } from "@/modules/employees/employee.service"
 import { sendPgrReviewReminders } from "@/modules/pgr/pgr.service"
 import { retryFailedWebhookEvents } from "@/modules/billing/webhook.handler"
@@ -27,6 +27,9 @@ async function processJob(jobName: JobName): Promise<void> {
     }
     case "survey-score-alert-detector": {
       await detectLowScoreAlerts()
+      await detectScoreDropAlerts()
+      await detectNegativeTrendAlerts()
+      await detectConsentExpiredAlerts()
       console.log(`[worker] survey-score-alert-detector: done`)
       break
     }

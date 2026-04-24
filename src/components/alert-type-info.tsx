@@ -53,21 +53,6 @@ const ALERT_DETAILS: Record<string, AlertTypeDetail> = {
     description: "O termo de consentimento (TCLE) de um ou mais colaboradores está expirado ou ainda pendente de aceite.",
     action: "Reenvie o convite de consentimento para os colaboradores pendentes para que possam voltar a participar das pesquisas.",
   },
-  crisis_report: {
-    label: "Relato de crise",
-    description: "Um relato anônimo contém palavras-chave associadas a situações de crise (ex: automutilação, ideação suicida).",
-    action: "Ative o protocolo de crise imediatamente. Disponibilize apoio psicológico para a equipe. CVV: 188 (gratuito, 24h).",
-  },
-  billing: {
-    label: "Cobrança",
-    description: "Há uma pendência relacionada à assinatura ou ao pagamento da conta do plano.",
-    action: "Regularize o pagamento junto à equipe financeira antes que o acesso à plataforma seja suspenso.",
-  },
-  system: {
-    label: "Sistema",
-    description: "Notificação interna gerada automaticamente pelo sistema.",
-    action: "Leia a mensagem do alerta para mais detalhes. Se necessário, entre em contato com o suporte técnico.",
-  },
 }
 
 interface AlertTypeInfoProps {

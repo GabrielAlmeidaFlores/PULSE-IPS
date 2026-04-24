@@ -715,6 +715,27 @@ Referência de tudo que o usuário vê na tela para cada alerta (`/alerts`) e su
 | | Tooltip — label | Bem-estar abaixo do esperado |
 | | Tooltip — descrição | O índice de saúde do setor está abaixo do limiar de atenção (índice < 37%). |
 | | Tooltip — ação | Investigue a causa raiz, converse com a equipe e elabore um plano de ação para melhorar o clima ocupacional. |
+| **`score_drop`** *(Alerta — gerado automaticamente)* | Condição | Queda > 1 ponto no score médio comparando janela atual (0–48h) com janela anterior (48–96h) |
+| | Job | `survey-score-alert-detector` · 03:00 diário |
+| | Severidade | `critical` se queda > 2 pontos · `warning` se queda > 1 ponto |
+| | Mensagem | `Queda de {N} pontos no índice de saúde do setor {X}: de {HI_ant}% para {HI_atual}% nas últimas 48h.` |
+| | Tooltip — label | Queda no bem-estar |
+| | Tooltip — descrição | O índice de saúde do setor caiu mais de 1 ponto em relação ao período anterior. |
+| | Tooltip — ação | Revise as respostas das pesquisas, identifique qual fator piorou e crie um plano de ação para endereçar a causa. |
+| **`negative_trend`** *(Alerta — gerado automaticamente)* | Condição | Últimos 3 dispatches com respostas todos abaixo da média histórica do setor |
+| | Job | `survey-score-alert-detector` · 03:00 diário |
+| | Severidade | `warning` |
+| | Mensagem | `O setor {X} apresenta tendência negativa por 3 períodos consecutivos abaixo da média histórica. Índice atual: {HI}%.` |
+| | Tooltip — label | Tendência de piora persistente |
+| | Tooltip — descrição | O índice de saúde do setor ficou abaixo da média histórica por 3 períodos consecutivos — sinal de problema persistente. |
+| | Tooltip — ação | Situação requer atenção urgente. Revise o contexto da equipe, aplique pesquisas qualitativas e implemente planos de ação estruturados. |
+| **`low_adherence`** *(Alerta — gerado automaticamente)* | Condição | Adesão entre 50% e 80% em dispatch enviado há ≥ 48h |
+| | Job | `survey-adherence-checker` · a cada hora |
+| | Severidade | `warning` |
+| | Mensagem | `Taxa de adesão: {pct}% ({respostas}/{total})` |
+| | Tooltip — label | Adesão baixa |
+| | Tooltip — descrição | Menos de 80% dos colaboradores responderam à pesquisa dentro de 48 horas após o disparo. |
+| | Tooltip — ação | Reforce junto aos gestores a importância de responder e verifique se todos os colaboradores do setor têm dados de contato cadastrados. |
 | **`no_response`** *(Alerta — gerado automaticamente)* | Condição | Adesão < 50% em dispatch enviado há ≥ 48h |
 | | Job | `survey-adherence-checker` · a cada hora |
 | | Severidade | `critical` se adesão < 25% · `warning` se 25–50% |
@@ -722,6 +743,13 @@ Referência de tudo que o usuário vê na tela para cada alerta (`/alerts`) e su
 | | Tooltip — label | Sem resposta |
 | | Tooltip — descrição | Nenhuma resposta foi recebida neste ciclo de pesquisa. |
 | | Tooltip — ação | Verifique se o disparo foi concluído sem erros nos logs de jobs e se os colaboradores do setor têm dados de contato cadastrados. |
+| **`consent_expired`** *(Alerta — gerado automaticamente)* | Condição | Colaborador ativo com último evento `invited` e `tokenExpiresAt < now()`, agrupado por setor |
+| | Job | `survey-score-alert-detector` · 03:00 diário |
+| | Severidade | `warning` |
+| | Mensagem | `{N} colaborador(es) do setor {X} com convite de consentimento expirado. Reenvie o convite para retomar a participação.` |
+| | Tooltip — label | Consentimento expirado |
+| | Tooltip — descrição | O termo de consentimento (TCLE) de um ou mais colaboradores está expirado ou ainda pendente de aceite. |
+| | Tooltip — ação | Reenvie o convite de consentimento para os colaboradores pendentes para que possam voltar a participar das pesquisas. |
 | **`pgr_review_due`** *(Alerta — gerado automaticamente)* | Condição | `nextReviewAt` nos próximos 30 dias e sem alerta aberto do mesmo tipo |
 | | Job | `pgr-review-reminder` · 08:00 diário |
 | | Severidade | `warning` |
@@ -729,34 +757,6 @@ Referência de tudo que o usuário vê na tela para cada alerta (`/alerts`) e su
 | | Tooltip — label | Revisão PGR pendente |
 | | Tooltip — descrição | A revisão obrigatória do PGR vence em até 30 dias. A NR-1 exige documentação periódica dos riscos psicossociais — ausência de registro expõe a empresa a multas. |
 | | Tooltip — ação + passos | 1. Acesse PGR no menu lateral. 2. Clique em Gerar relatório e selecione o mês/ano — faça isso apenas quando o mês estiver encerrado. 3. Revise os indicadores: índice de saúde, alertas ativos e planos de ação. 4. Se houver setores críticos, crie Planos de Ação antes de concluir. 5. Clique em Marcar como revisado para gerar a evidência legal. |
-| **`score_drop`** *(Alerta — não gerado automaticamente)* | Condição prevista | Queda > 1 ponto no HI em relação ao período anterior |
-| | Tooltip — label | Queda no bem-estar |
-| | Tooltip — descrição | O índice de saúde do setor caiu mais de 1 ponto em relação ao período anterior. |
-| | Tooltip — ação | Revise as respostas das pesquisas, identifique qual fator piorou e crie um plano de ação para endereçar a causa. |
-| **`negative_trend`** *(Alerta — não gerado automaticamente)* | Condição prevista | 3 períodos consecutivos com HI abaixo da média histórica |
-| | Tooltip — label | Tendência de piora persistente |
-| | Tooltip — descrição | O índice de saúde do setor ficou abaixo da média histórica por 3 períodos consecutivos — sinal de problema persistente. |
-| | Tooltip — ação | Situação requer atenção urgente. Revise o contexto da equipe, aplique pesquisas qualitativas e implemente planos de ação estruturados. |
-| **`low_adherence`** *(Alerta — não gerado automaticamente)* | Condição prevista | Adesão entre 50% e 80% |
-| | Tooltip — label | Adesão baixa |
-| | Tooltip — descrição | Menos de 80% dos colaboradores responderam à pesquisa dentro de 48 horas após o disparo. |
-| | Tooltip — ação | Reforce junto aos gestores a importância de responder e verifique se todos os colaboradores do setor têm dados de contato cadastrados. |
-| **`crisis_report`** *(Alerta — não gerado automaticamente)* | Condição prevista | Relato com `isCrisis = true` (palavras-chave de crise detectadas) |
-| | Tooltip — label | Relato de crise |
-| | Tooltip — descrição | Um relato anônimo contém palavras-chave associadas a situações de crise (ex: automutilação, ideação suicida). |
-| | Tooltip — ação | Ative o protocolo de crise imediatamente. Disponibilize apoio psicológico para a equipe. CVV: 188 (gratuito, 24h). |
-| **`consent_expired`** *(Alerta — não gerado automaticamente)* | Condição prevista | TCLE pendente ou expirado |
-| | Tooltip — label | Consentimento expirado |
-| | Tooltip — descrição | O termo de consentimento (TCLE) de um ou mais colaboradores está expirado ou ainda pendente de aceite. |
-| | Tooltip — ação | Reenvie o convite de consentimento para os colaboradores pendentes para que possam voltar a participar das pesquisas. |
-| **`billing`** *(Alerta — não gerado automaticamente)* | Condição prevista | Pendência financeira |
-| | Tooltip — label | Cobrança |
-| | Tooltip — descrição | Há uma pendência relacionada à assinatura ou ao pagamento da conta do plano. |
-| | Tooltip — ação | Regularize o pagamento junto à equipe financeira antes que o acesso à plataforma seja suspenso. |
-| **`system`** *(Alerta — não gerado automaticamente)* | Condição prevista | Notificações internas |
-| | Tooltip — label | Sistema |
-| | Tooltip — descrição | Notificação interna gerada automaticamente pelo sistema. |
-| | Tooltip — ação | Leia a mensagem do alerta para mais detalhes. Se necessário, entre em contato com o suporte técnico. |
 | **"Índice de bem-estar abaixo do esperado — {setor}"** *(Sugestão)* | Condição | Alerta `low_score` sem resolução |
 | | Prioridade | `high` |
 | | Chave de dedup | `alert-low_score-{departmentId}` |
@@ -767,16 +767,6 @@ Referência de tudo que o usuário vê na tela para cada alerta (`/alerts`) e su
 | | Tarefa 2 | Levantamento dos principais fatores de risco relatados |
 | | Tarefa 3 | Definir medidas corretivas e responsáveis |
 | | Tarefa 4 | Monitorar evolução nas próximas pesquisas |
-| **"Pesquisa sem respostas registradas — {setor}"** *(Sugestão)* | Condição | Alerta `no_response` sem resolução |
-| | Prioridade | `medium` |
-| | Chave de dedup | `alert-no_response-{departmentId}` |
-| | Título | `Pesquisa sem respostas registradas — {setor}` |
-| | Motivo *(card colapsado)* | `Pesquisa sem resposta no setor {X}: Taxa de adesão: {pct}% ({r}/{total})` |
-| | Descrição *(card expandido)* | `Alerta gerado em {data} ({há N dias}) — setor: {X}, severidade: {sev}. Dado registrado pelo sistema: "Taxa de adesão: {pct}% ({r}/{total})". Sem respostas, não é possível monitorar o bem-estar do setor. A ausência de dados compromete tanto a gestão interna quanto a documentação de conformidade com a NR-1.` |
-| | Tarefa 1 | Verificar se os links de pesquisa chegaram corretamente |
-| | Tarefa 2 | Comunicado interno reforçando a importância das pesquisas |
-| | Tarefa 3 | Alinhar com gestores a divulgação interna do programa |
-| | Tarefa 4 | Revisar janela de horário configurada para o setor |
 | **"Intervenção de bem-estar — {setor}"** *(Sugestão)* | Condição | Alerta `score_drop` sem resolução |
 | | Prioridade | `high` |
 | | Chave de dedup | `alert-score_drop-{departmentId}` |
@@ -807,16 +797,16 @@ Referência de tudo que o usuário vê na tela para cada alerta (`/alerts`) e su
 | | Tarefa 2 | Alinhamento com gestores e lideranças do setor |
 | | Tarefa 3 | Revisar horário e frequência de envio das pesquisas |
 | | Tarefa 4 | Identificar e remover barreiras à participação |
-| **"Resposta a relato de crise — {setor}"** *(Sugestão)* | Condição | Alerta `crisis_report` sem resolução |
-| | Prioridade | `high` |
-| | Chave de dedup | `alert-crisis_report-{departmentId}` |
-| | Título | `Resposta a relato de crise — {setor}` |
-| | Motivo *(card colapsado)* | `Alerta de crise ativo no setor {X} ({há N dias})` |
-| | Descrição *(card expandido)* | `Alerta gerado em {data} ({há N dias}) — setor: {X}, severidade: {sev}. Dado registrado pelo sistema: "{alert.message}". O sistema identificou palavras-chave de crise em um relato anônimo. Enquanto o alerta permanecer aberto, o risco à saúde mental do time é considerado crítico. Ação imediata é necessária.` |
-| | Tarefa 1 | Acionar canal de suporte psicológico disponível |
-| | Tarefa 2 | Comunicar equipe sobre recursos de apoio (CVV: 188) |
-| | Tarefa 3 | Revisar protocolo de crise com o RH |
-| | Tarefa 4 | Acompanhar evolução do clima no setor nas próximas semanas |
+| **"Pesquisa sem respostas registradas — {setor}"** *(Sugestão)* | Condição | Alerta `no_response` sem resolução |
+| | Prioridade | `medium` |
+| | Chave de dedup | `alert-no_response-{departmentId}` |
+| | Título | `Pesquisa sem respostas registradas — {setor}` |
+| | Motivo *(card colapsado)* | `Pesquisa sem resposta no setor {X}: Taxa de adesão: {pct}% ({r}/{total})` |
+| | Descrição *(card expandido)* | `Alerta gerado em {data} ({há N dias}) — setor: {X}, severidade: {sev}. Dado registrado pelo sistema: "Taxa de adesão: {pct}% ({r}/{total})". Sem respostas, não é possível monitorar o bem-estar do setor. A ausência de dados compromete tanto a gestão interna quanto a documentação de conformidade com a NR-1.` |
+| | Tarefa 1 | Verificar se os links de pesquisa chegaram corretamente |
+| | Tarefa 2 | Comunicado interno reforçando a importância das pesquisas |
+| | Tarefa 3 | Alinhar com gestores a divulgação interna do programa |
+| | Tarefa 4 | Revisar janela de horário configurada para o setor |
 | **"Tratamento de relatos anônimos pendentes"** *(Sugestão)* | Condição | ≥ 3 relatos com status `open` ou `analyzing` |
 | | Prioridade | `medium` |
 | | Chave de dedup | `open-reports` |

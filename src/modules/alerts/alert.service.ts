@@ -1,4 +1,14 @@
-import { findAlertsByTenant, createAlert, markAlertRead, resolveAlert, findAllTenantsRecentSurveyResponsesForAlerts } from "@/modules/alerts/alert.repository"
+import {
+  findAlertsByTenant,
+  createAlert,
+  markAlertRead,
+  resolveAlert,
+  findAllTenantsRecentSurveyResponsesForAlerts,
+  findAllTenantsResponsesInWindow,
+  findAllTenantsActiveDepartments,
+  findAllTenantsDeptRecentDispatchAvgs,
+  findAllTenantsEmployeesWithExpiredConsentTokens,
+} from "@/modules/alerts/alert.repository"
 import { toHealthIndex, healthIndexLabel } from "@/libs/utils/health-index"
 import type { Alert, Department } from "@prisma/client"
 
@@ -18,30 +28,45 @@ function normalizeItemScore(score: number, scoreDirection: string): number {
   return scoreDirection === "lower_is_better" ? 6 - score : score
 }
 
+function calcAvgFromResponses(responses: { items: { score: number; question: { scoreDirection: string } }[] }[]): number {
+  const allScores = responses.flatMap((r) =>
+    r.items.map((item) => normalizeItemScore(item.score, item.question.scoreDirection)),
+  )
+  if (allScores.length === 0) return 0
+  return allScores.reduce((a, b) => a + b, 0) / allScores.length
+}
+
+interface ResponseWithDept {
+  tenantId: string
+  items: { score: number; question: { scoreDirection: string } }[]
+  dispatch: { surveyConfiguration: { department: { id: string; name: string } } }
+}
+
+function groupByDept(responses: ResponseWithDept[]): Map<string, { tenantId: string; departmentId: string; departmentName: string; responses: ResponseWithDept[] }> {
+  const map = new Map<string, { tenantId: string; departmentId: string; departmentName: string; responses: ResponseWithDept[] }>()
+  for (const r of responses) {
+    const dept = r.dispatch.surveyConfiguration.department
+    const key = `${r.tenantId}:${dept.id}`
+    const existing = map.get(key)
+    if (existing) {
+      existing.responses.push(r)
+    } else {
+      map.set(key, { tenantId: r.tenantId, departmentId: dept.id, departmentName: dept.name, responses: [r] })
+    }
+  }
+  return map
+}
+
 export async function detectLowScoreAlerts(): Promise<void> {
   const LOW_SCORE_THRESHOLD = 3
   const LOOKBACK_HOURS = 48
 
   const since = new Date(Date.now() - LOOKBACK_HOURS * 60 * 60 * 1000)
   const responses = await findAllTenantsRecentSurveyResponsesForAlerts(since)
+  const byDept = groupByDept(responses)
 
-  const deptScores = new Map<string, { tenantId: string; departmentId: string; departmentName: string; scores: number[] }>()
-
-  for (const response of responses) {
-    const dept = response.dispatch.surveyConfiguration.department
-    const key = `${response.tenantId}:${dept.id}`
-    const existing = deptScores.get(key)
-    const normalizedScores = response.items.map((item) => normalizeItemScore(item.score, item.question.scoreDirection))
-    const avg = normalizedScores.reduce((sum, s) => sum + s, 0) / (normalizedScores.length || 1)
-    if (existing) {
-      existing.scores.push(avg)
-    } else {
-      deptScores.set(key, { tenantId: response.tenantId, departmentId: dept.id, departmentName: dept.name, scores: [avg] })
-    }
-  }
-
-  for (const [, data] of Array.from(deptScores.entries())) {
-    const avgScore = data.scores.reduce((a: number, b: number) => a + b, 0) / data.scores.length
+  for (const [, data] of Array.from(byDept.entries())) {
+    const avgScore = calcAvgFromResponses(data.responses)
     if (avgScore < LOW_SCORE_THRESHOLD) {
       const hi = toHealthIndex(avgScore)
       await createAlert({
@@ -52,5 +77,98 @@ export async function detectLowScoreAlerts(): Promise<void> {
         message: `O índice de saúde do setor ${data.departmentName} está abaixo do esperado: ${hi}% (${healthIndexLabel(hi)}).`,
       })
     }
+  }
+}
+
+export async function detectScoreDropAlerts(): Promise<void> {
+  const SCORE_DROP_THRESHOLD = 1.0
+  const now = Date.now()
+  const hourMs = 60 * 60 * 1000
+
+  const currentFrom = new Date(now - 48 * hourMs)
+  const currentTo = new Date(now)
+  const previousFrom = new Date(now - 96 * hourMs)
+  const previousTo = new Date(now - 48 * hourMs)
+
+  const [currentResponses, previousResponses] = await Promise.all([
+    findAllTenantsResponsesInWindow(currentFrom, currentTo),
+    findAllTenantsResponsesInWindow(previousFrom, previousTo),
+  ])
+
+  const currentByDept = groupByDept(currentResponses)
+  const previousByDept = groupByDept(previousResponses)
+
+  for (const [key, current] of Array.from(currentByDept.entries())) {
+    const previous = previousByDept.get(key)
+    if (!previous) continue
+
+    const currentAvg = calcAvgFromResponses(current.responses)
+    const previousAvg = calcAvgFromResponses(previous.responses)
+    const drop = previousAvg - currentAvg
+
+    if (drop > SCORE_DROP_THRESHOLD) {
+      const currentHi = toHealthIndex(currentAvg)
+      const previousHi = toHealthIndex(previousAvg)
+      await createAlert({
+        tenantId: current.tenantId,
+        departmentId: current.departmentId,
+        type: "score_drop",
+        severity: drop > 2 ? "critical" : "warning",
+        message: `Queda de ${drop.toFixed(1)} pontos no índice de saúde do setor ${current.departmentName}: de ${previousHi}% para ${currentHi}% nas últimas 48h.`,
+      })
+    }
+  }
+}
+
+export async function detectNegativeTrendAlerts(): Promise<void> {
+  const PERIODS_TO_CHECK = 3
+  const departments = await findAllTenantsActiveDepartments()
+
+  for (const dept of departments) {
+    const recent = await findAllTenantsDeptRecentDispatchAvgs(dept.id, PERIODS_TO_CHECK + 6)
+    if (recent.length < PERIODS_TO_CHECK) continue
+
+    const lastThree = recent.slice(0, PERIODS_TO_CHECK)
+    const historical = recent.slice(PERIODS_TO_CHECK)
+    if (historical.length === 0) continue
+
+    const historicalAvg = historical.reduce((a, b) => a + b.avgScore, 0) / historical.length
+    const allBelowHistorical = lastThree.every((p) => p.avgScore < historicalAvg)
+
+    if (allBelowHistorical) {
+      const latestHi = toHealthIndex(lastThree[0]?.avgScore ?? 0)
+      await createAlert({
+        tenantId: dept.tenantId,
+        departmentId: dept.id,
+        type: "negative_trend",
+        severity: "warning",
+        message: `O setor ${dept.name} apresenta tendência negativa por ${PERIODS_TO_CHECK} períodos consecutivos abaixo da média histórica. Índice atual: ${latestHi}%.`,
+      })
+    }
+  }
+}
+
+export async function detectConsentExpiredAlerts(): Promise<void> {
+  const expiredByDept = await findAllTenantsEmployeesWithExpiredConsentTokens()
+
+  const grouped = new Map<string, { tenantId: string; departmentId: string; departmentName: string; count: number }>()
+  for (const emp of expiredByDept) {
+    const key = `${emp.tenantId}:${emp.departmentId}`
+    const existing = grouped.get(key)
+    if (existing) {
+      existing.count += 1
+    } else {
+      grouped.set(key, { tenantId: emp.tenantId, departmentId: emp.departmentId, departmentName: emp.departmentName, count: 1 })
+    }
+  }
+
+  for (const [, data] of Array.from(grouped.entries())) {
+    await createAlert({
+      tenantId: data.tenantId,
+      departmentId: data.departmentId,
+      type: "consent_expired",
+      severity: "warning",
+      message: `${data.count} colaborador(es) do setor ${data.departmentName} com convite de consentimento expirado. Reenvie o convite para retomar a participação.`,
+    })
   }
 }

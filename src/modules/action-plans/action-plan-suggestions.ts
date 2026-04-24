@@ -39,12 +39,6 @@ interface ConsentDeptGroup {
 }
 
 const ALERT_TASKS: Record<string, string[]> = {
-  crisis_report: [
-    "Acionar canal de suporte psicológico disponível",
-    "Comunicar equipe sobre recursos de apoio (CVV: 188)",
-    "Revisar protocolo de crise com o RH",
-    "Acompanhar evolução do clima no setor nas próximas semanas",
-  ],
   score_drop: [
     "Reunião de diagnóstico com liderança do setor",
     "Levantamento dos principais fatores de risco relatados",
@@ -78,7 +72,6 @@ const ALERT_TASKS: Record<string, string[]> = {
 }
 
 const ALERT_PRIORITY: Record<string, "low" | "medium" | "high"> = {
-  crisis_report: "high",
   score_drop: "high",
   low_score: "high",
   negative_trend: "high",
@@ -87,7 +80,6 @@ const ALERT_PRIORITY: Record<string, "low" | "medium" | "high"> = {
 }
 
 const ALERT_TITLE_BY_TYPE: Record<string, string> = {
-  crisis_report: "Resposta a relato de crise",
   score_drop: "Intervenção de bem-estar",
   low_score: "Índice de bem-estar abaixo do esperado",
   negative_trend: "Plano de melhoria contínua",
@@ -96,8 +88,6 @@ const ALERT_TITLE_BY_TYPE: Record<string, string> = {
 }
 
 const ALERT_CONTEXT_BY_TYPE: Record<string, string> = {
-  crisis_report:
-    "O sistema identificou palavras-chave de crise em um relato anônimo. Enquanto o alerta permanecer aberto, o risco à saúde mental do time é considerado crítico. Ação imediata é necessária.",
   score_drop:
     "Quedas de score costumam indicar aumento de pressão, sobrecarga ou conflitos não endereçados. Agir rapidamente reduz o risco de agravamento e demonstra comprometimento com a NR-1.",
   low_score:
@@ -126,7 +116,7 @@ const REPORT_CATEGORY_LABEL_BY_VALUE: Record<string, string> = {
 
 const SUPPORTED_ALERT_TYPES = new Set(Object.keys(ALERT_TASKS))
 
-const ALERT_TYPE_ORDER = ["crisis_report", "score_drop", "low_score", "negative_trend", "low_adherence", "no_response"]
+const ALERT_TYPE_ORDER = ["score_drop", "low_score", "negative_trend", "low_adherence", "no_response"]
 
 function formatDateAsBrazilian(date: Date): string {
   return date.toLocaleDateString("pt-BR")
@@ -159,9 +149,6 @@ function buildSuggestionFromAlert(alert: AlertWithContext): ActionPlanSuggestion
   const daysAgoLabel = formatDaysAgoLabel(alert.createdAt)
 
   const reasonByType: Record<string, string> = {
-    crisis_report: `Alerta de crise ativo no setor ${deptName} (${daysAgoLabel})`,
-    score_drop: `Queda de score no setor ${deptName} — alerta ativo ${daysAgoLabel}`,
-    low_score: `Score abaixo do esperado — setor ${deptName}: ${alert.message}`,
     negative_trend: `Tendência negativa no setor ${deptName} — ativo ${daysAgoLabel}`,
     low_adherence: `Baixa adesão no setor ${deptName}: ${alert.message}`,
     no_response: `Pesquisa sem resposta no setor ${deptName}: ${alert.message}`,
