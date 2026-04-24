@@ -1,14 +1,13 @@
 import { redirect } from "next/navigation"
-import { Suspense } from "react"
 import { getSession } from "@/modules/auth/session"
 import { getAlerts } from "@/modules/alerts/alert.service"
-import { getDashboardData, getAvailableQuestions } from "@/modules/dashboard/dashboard.service"
+import { getDashboardData } from "@/modules/dashboard/dashboard.service"
 import { PageHelp } from "@/components/page-help"
 import { ChartCard } from "@/components/chart-card"
 import { ScoreTrendChart } from "@/app/(tenant)/dashboard/components/score-trend-chart"
-import { DeptComparisonChart, AdherenceChart, DeptMultiLineChart } from "@/app/(tenant)/dashboard/components/dept-charts"
+import { DeptComparisonChart, AdherenceChart } from "@/app/(tenant)/dashboard/components/dept-charts"
+import { DeptMultiLineChartWithFilter } from "@/app/(tenant)/dashboard/components/dept-multi-line-chart-with-filter"
 import { DeptScoreCards } from "@/app/(tenant)/dashboard/components/dept-score-cards"
-import { QuestionFilter } from "@/app/(tenant)/dashboard/components/question-filter"
 import { Activity, Users, AlertTriangle, BarChart2, TrendingUp, TrendingDown, Minus } from "lucide-react"
 import { AlertTypeInfo } from "@/components/alert-type-info"
 import { format } from "date-fns"
@@ -24,23 +23,13 @@ import {
 } from "@/libs/design-system/alert-labels"
 import { healthIndexAccent } from "@/libs/utils/health-index"
 
-interface Props {
-  searchParams: Promise<Record<string, string | string[] | undefined>>
-}
-
-export default async function DashboardPage({ searchParams }: Props): Promise<React.ReactElement> {
+export default async function DashboardPage(): Promise<React.ReactElement> {
   const session = await getSession()
   if (!session) redirect("/login")
 
-  const params = await searchParams
-  const rawQ = params["q"]
-  const qArray = Array.isArray(rawQ) ? rawQ : [rawQ].filter(Boolean) as string[]
-  const selectedOrders = qArray.map(Number).filter((n) => Number.isFinite(n) && n > 0)
-
-  const [dashboard, recentAlerts, availableQuestions] = await Promise.all([
-    getDashboardData(session.tenantId, selectedOrders),
+  const [dashboard, recentAlerts] = await Promise.all([
+    getDashboardData(session.tenantId),
     getAlerts(session.tenantId),
-    getAvailableQuestions(session.tenantId),
   ])
 
   const { kpis, overallTrend, deptMonthlyChart, deptNames, deptComparison, adherenceChart, deptCards } = dashboard
@@ -52,55 +41,42 @@ export default async function DashboardPage({ searchParams }: Props): Promise<Re
   const topDept = [...deptCards].filter((c) => c.avg > 0).sort((a, b) => b.avg - a.avg)[0] ?? null
   const bottomDept = [...deptCards].filter((c) => c.avg > 0).sort((a, b) => a.avg - b.avg)[0] ?? null
 
-  function resolveSubtitle(): string {
-    if (selectedOrders.length === 0) return "Insights sobre saúde ocupacional"
-    const label = selectedOrders.length === 1 ? "pergunta" : "perguntas"
-    return `Filtrado por ${label}: ${selectedOrders.map((o) => `P${o}`).join(", ")}`
-  }
-
   const hiAccent = healthIndexAccent(kpis.healthIndex)
   const hasEnoughData = overallTrend.length > 0
 
   return (
     <div className="flex flex-col h-full">
       <div className="border-b border-border bg-card px-6 py-4 shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <h1 className="text-sm font-bold uppercase tracking-widest">Dashboard</h1>
-            <PageHelp content={
-              <div className="space-y-3">
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">O que é este painel?</p>
-                  <p className="text-[12px] text-foreground leading-relaxed">Visão consolidada da saúde ocupacional da empresa em tempo real. Agrega dados de todas as pesquisas enviadas e transforma as respostas anônimas em indicadores acionáveis para o RH e a gestão.</p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Índice de saúde</p>
-                  <p className="text-[12px] text-foreground leading-relaxed">Calculado a partir das notas de 1 a 5 das pesquisas, convertidas numa escala de 0% a 100%. <strong>≥ 62% = Saudável</strong>, <strong>37–61% = Atenção</strong>, <strong>&lt; 37% = Crítico</strong>. Exibido apenas quando há pelo menos 5 respostas no período (proteção ao anonimato).</p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">O que você vê aqui</p>
-                  <ul className="text-[12px] text-foreground leading-relaxed space-y-1 list-none">
-                    <li>📈 <strong>Evolução temporal</strong> — tendência do índice ao longo dos últimos meses</li>
-                    <li>🏆 <strong>Setor em destaque</strong> — departamento com melhor índice no período</li>
-                    <li>⚠️ <strong>Setor crítico</strong> — departamento que mais precisa de atenção</li>
-                    <li>📊 <strong>Taxa de adesão</strong> — % de colaboradores que responderam</li>
-                    <li>🔔 <strong>Alertas ativos</strong> — problemas identificados automaticamente</li>
-                  </ul>
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Dica</p>
-                  <p className="text-[12px] text-foreground leading-relaxed">Use o seletor de período (canto superior direito) para comparar meses. Quedas consecutivas geram alertas automáticos e devem ser investigadas com um Plano de Ação.</p>
-                </div>
+        <div className="flex items-center gap-1.5">
+          <h1 className="text-sm font-bold uppercase tracking-widest">Dashboard</h1>
+          <PageHelp content={
+            <div className="space-y-3">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">O que é este painel?</p>
+                <p className="text-[12px] text-foreground leading-relaxed">Visão consolidada da saúde ocupacional da empresa em tempo real. Agrega dados de todas as pesquisas enviadas e transforma as respostas anônimas em indicadores acionáveis para o RH e a gestão.</p>
               </div>
-            } />
-          </div>
-          {availableQuestions.length > 0 && (
-            <Suspense>
-              <QuestionFilter questions={availableQuestions} />
-            </Suspense>
-          )}
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Índice de saúde</p>
+                <p className="text-[12px] text-foreground leading-relaxed">Calculado a partir das notas de 1 a 5 das pesquisas, convertidas numa escala de 0% a 100%. <strong>≥ 62% = Saudável</strong>, <strong>37–61% = Atenção</strong>, <strong>&lt; 37% = Crítico</strong>. Exibido apenas quando há pelo menos 5 respostas no período (proteção ao anonimato).</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">O que você vê aqui</p>
+                <ul className="text-[12px] text-foreground leading-relaxed space-y-1 list-none">
+                  <li>📈 <strong>Evolução temporal</strong> — tendência do índice ao longo dos últimos meses</li>
+                  <li>🏆 <strong>Setor em destaque</strong> — departamento com melhor índice no período</li>
+                  <li>⚠️ <strong>Setor crítico</strong> — departamento que mais precisa de atenção</li>
+                  <li>📊 <strong>Taxa de adesão</strong> — % de colaboradores que responderam</li>
+                  <li>🔔 <strong>Alertas ativos</strong> — problemas identificados automaticamente</li>
+                </ul>
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Dica</p>
+                <p className="text-[12px] text-foreground leading-relaxed">Quedas consecutivas geram alertas automáticos e devem ser investigadas com um Plano de Ação.</p>
+              </div>
+            </div>
+          } />
         </div>
-        <p className="text-xs text-muted-foreground mt-0.5">{resolveSubtitle()}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">Insights sobre saúde ocupacional</p>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -246,7 +222,7 @@ export default async function DashboardPage({ searchParams }: Props): Promise<Re
 
         {deptMonthlyChart.length > 0 && deptNames.length > 0 && (
           <ChartCard title="Evolução do Índice de Saúde por Setor" subtitle="Índice de saúde de cada setor ao longo dos últimos 6 meses">
-            <DeptMultiLineChart data={deptMonthlyChart} deptNames={deptNames} />
+            <DeptMultiLineChartWithFilter data={deptMonthlyChart} deptNames={deptNames} />
           </ChartCard>
         )}
 
