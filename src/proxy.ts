@@ -16,7 +16,22 @@ const PUBLIC_PATHS = [
   "/accept-terms",
   "/learn-more",
   "/api/webhooks",
+  "/api/health",
   SUPER_ADMIN_LOGIN_PATH,
+]
+
+const TENANT_PATHS = [
+  "/dashboard",
+  "/employees",
+  "/departments",
+  "/surveys",
+  "/reports",
+  "/action-plans",
+  "/documents",
+  "/alerts",
+  "/pgr",
+  "/settings",
+  "/billing",
 ]
 
 const SUPER_ADMIN_PREFIX = "/super-admin"
@@ -26,6 +41,10 @@ const SKIP_LOG_PREFIXES = ["/api/internal/", "/api/jobs/", "/_next/", "/favicon"
 function isPublicPath(pathname: string): boolean {
   if (pathname === "/") return true
   return PUBLIC_PATHS.some((p) => pathname.startsWith(p))
+}
+
+function isTenantPath(pathname: string): boolean {
+  return TENANT_PATHS.some((p) => pathname.startsWith(p))
 }
 
 function getSecretKey(): Uint8Array {
@@ -194,7 +213,11 @@ async function processRequestWithSession(
     return handleSuperAdminRoute(superAdminCookie, request, sessionInfo)
   }
 
-  return handleTenantRoute(sessionCookie, request, sessionInfo)
+  if (isTenantPath(pathname)) {
+    return handleTenantRoute(sessionCookie, request, sessionInfo)
+  }
+
+  return NextResponse.next()
 }
 
 export const config = {
