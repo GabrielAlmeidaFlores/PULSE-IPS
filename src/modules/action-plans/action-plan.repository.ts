@@ -91,3 +91,104 @@ export function createActionPlanWithTasks(
     return plan
   })
 }
+
+export interface SuggestionContextData {
+  openAlerts: {
+    id: string
+    type: string
+    severity: string
+    departmentId: string | null
+    message: string
+    createdAt: Date
+    department: { name: string } | null
+  }[]
+  openReports: { category: string | null; status: string; createdAt: Date }[]
+  recentPlanTitles: { title: string }[]
+  consentPendingByDept: { departmentId: string; _count: { departmentId: number } }[]
+  lastPgrReview: { period: string; createdAt: Date } | null
+  recentDispatches: {
+    id: string
+    totalRecipients: number
+    totalResponses: number
+    dispatchedAt: Date | null
+    surveyConfiguration: { department: { name: string } }
+  }[]
+  deptNamesById: Map<string, string>
+}
+
+export async function findSuggestionContextData(tenantId: string): Promise<SuggestionContextData> {
+  const thisMonthStart = new Date()
+  thisMonthStart.setDate(1)
+  thisMonthStart.setHours(0, 0, 0, 0)
+
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+  const [openAlerts, openReports, recentPlanTitles, consentPendingByDept, lastPgrReview, recentDispatches] = await Promise.all([
+    prisma.alert.findMany({
+      where: { tenantId, resolvedAt: null },
+      select: {
+        id: true,
+        type: true,
+        severity: true,
+        departmentId: true,
+        message: true,
+        createdAt: true,
+        department: { select: { name: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.anonymousReport.findMany({
+      where: { tenantId, status: { in: ["open", "analyzing"] } },
+      select: { category: true, status: true, createdAt: true },
+      orderBy: { createdAt: "asc" },
+    }),
+    prisma.actionPlan.findMany({
+      where: { tenantId, createdAt: { gte: thirtyDaysAgo } },
+      select: { title: true },
+    }),
+    prisma.employee.groupBy({
+      by: ["departmentId"],
+      where: { tenantId, status: "active", consents: { none: { event: "accepted" } } },
+      _count: { departmentId: true },
+      orderBy: { _count: { departmentId: "desc" } },
+    }),
+    prisma.pgrReview.findFirst({
+      where: { tenantId },
+      select: { period: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.surveyDispatch.findMany({
+      where: { tenantId, status: "sent", dispatchedAt: { gte: thirtyDaysAgo }, totalRecipients: { gt: 0 } },
+      select: {
+        id: true,
+        totalRecipients: true,
+        totalResponses: true,
+        dispatchedAt: true,
+        surveyConfiguration: { select: { department: { select: { name: true } } } },
+      },
+      orderBy: { dispatchedAt: "desc" },
+      take: 10,
+    }),
+  ])
+
+  const consentDeptIds = consentPendingByDept.map((g) => g.departmentId)
+  const consentDepts =
+    consentDeptIds.length > 0
+      ? await prisma.department.findMany({
+          where: { id: { in: consentDeptIds } },
+          select: { id: true, name: true },
+        })
+      : []
+  const deptNamesById = new Map(consentDepts.map((d) => [d.id, d.name]))
+
+  return {
+    openAlerts,
+    openReports,
+    recentPlanTitles,
+    consentPendingByDept,
+    lastPgrReview,
+    recentDispatches,
+    deptNamesById,
+  }
+}

@@ -145,6 +145,18 @@ export function findAllTenantsActiveDepartments(): Promise<{ id: string; tenantI
   })
 }
 
+export function hasOpenAlertOfType(tenantId: string, type: AlertType, departmentId?: string): Promise<boolean> {
+  return prisma.alert.findFirst({
+    where: {
+      tenantId,
+      type,
+      resolvedAt: null,
+      ...(departmentId !== undefined ? { departmentId } : {}),
+    },
+    select: { id: true },
+  }).then((result) => result !== null)
+}
+
 export interface EmployeeWithExpiredConsentToken {
   tenantId: string
   departmentId: string

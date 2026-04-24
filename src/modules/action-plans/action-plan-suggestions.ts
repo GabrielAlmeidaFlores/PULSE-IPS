@@ -1,4 +1,4 @@
-import { prisma } from "@/libs/db"
+import { findSuggestionContextData } from "@/modules/action-plans/action-plan.repository"
 
 export interface ActionPlanSuggestion {
   key: string
@@ -133,7 +133,7 @@ function formatDaysAgoLabel(date: Date): string {
   return `há ${days} dias`
 }
 
-function buildAlertDescription(alert: AlertWithContext): string {
+export function buildAlertDescription(alert: AlertWithContext): string {
   const deptName = alert.department?.name ?? "geral"
   const severityLabel = SEVERITY_LABEL_BY_VALUE[alert.severity] ?? alert.severity
   const daysAgoLabel = formatDaysAgoLabel(alert.createdAt)
@@ -142,7 +142,7 @@ function buildAlertDescription(alert: AlertWithContext): string {
   return `Alerta gerado em ${formatDateAsBrazilian(alert.createdAt)} (${daysAgoLabel}) — setor: ${deptName}, severidade: ${severityLabel}. Dado registrado pelo sistema: "${alert.message}". ${typeContext}`.trim()
 }
 
-function buildSuggestionFromAlert(alert: AlertWithContext): ActionPlanSuggestion | null {
+export function buildSuggestionFromAlert(alert: AlertWithContext): ActionPlanSuggestion | null {
   if (!SUPPORTED_ALERT_TYPES.has(alert.type)) return null
   const deptName = alert.department?.name ?? "geral"
   const titleBase = ALERT_TITLE_BY_TYPE[alert.type] ?? "Ação necessária"
@@ -183,7 +183,7 @@ function pickAlertSuggestions(
   return result
 }
 
-function buildReportSuggestion(
+export function buildReportSuggestion(
   openReports: ReportItem[],
   existingTitles: Set<string>,
 ): ActionPlanSuggestion | null {
@@ -233,7 +233,7 @@ function buildReportSuggestion(
   }
 }
 
-function buildDispatchSuggestion(
+export function buildDispatchSuggestion(
   lowAdherenceDispatches: LowAdherenceDispatch[],
   existingTitles: Set<string>,
 ): ActionPlanSuggestion | null {
@@ -270,7 +270,7 @@ function buildDispatchSuggestion(
   }
 }
 
-function buildConsentSuggestion(
+export function buildConsentSuggestion(
   consentDeptGroups: ConsentDeptGroup[],
   deptNamesById: Map<string, string>,
   existingTitles: Set<string>,
@@ -305,7 +305,7 @@ function buildConsentSuggestion(
   }
 }
 
-function buildPgrSuggestion(
+export function buildPgrSuggestion(
   lastPgrReview: { period: string; createdAt: Date } | null,
   thisMonthStart: Date,
   existingTitles: Set<string>,
@@ -357,80 +357,21 @@ export async function computeRawSuggestions(tenantId: string): Promise<ActionPla
   thisMonthStart.setDate(1)
   thisMonthStart.setHours(0, 0, 0, 0)
 
-  const thirtyDaysAgo = new Date()
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+  const ctx = await findSuggestionContextData(tenantId)
 
-  const [openAlerts, openReports, recentPlanTitles, consentDeptGroups, lastPgrReview, recentDispatches] = await Promise.all([
-    prisma.alert.findMany({
-      where: { tenantId, resolvedAt: null },
-      select: {
-        id: true,
-        type: true,
-        severity: true,
-        departmentId: true,
-        message: true,
-        createdAt: true,
-        department: { select: { name: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.anonymousReport.findMany({
-      where: { tenantId, status: { in: ["open", "analyzing"] } },
-      select: { category: true, status: true, createdAt: true },
-      orderBy: { createdAt: "asc" },
-    }),
-    prisma.actionPlan.findMany({
-      where: { tenantId, createdAt: { gte: thirtyDaysAgo } },
-      select: { title: true },
-    }),
-    prisma.employee.groupBy({
-      by: ["departmentId"],
-      where: { tenantId, status: "active", consents: { none: { event: "accepted" } } },
-      _count: { departmentId: true },
-      orderBy: { _count: { departmentId: "desc" } },
-    }),
-    prisma.pgrReview.findFirst({
-      where: { tenantId },
-      select: { period: true, createdAt: true },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.surveyDispatch.findMany({
-      where: { tenantId, status: "sent", dispatchedAt: { gte: thirtyDaysAgo }, totalRecipients: { gt: 0 } },
-      select: {
-        id: true,
-        totalRecipients: true,
-        totalResponses: true,
-        dispatchedAt: true,
-        surveyConfiguration: { select: { department: { select: { name: true } } } },
-      },
-      orderBy: { dispatchedAt: "desc" },
-      take: 10,
-    }),
-  ])
-
-  const consentDeptIds = consentDeptGroups.map((g) => g.departmentId)
-  const consentDepts =
-    consentDeptIds.length > 0
-      ? await prisma.department.findMany({
-          where: { id: { in: consentDeptIds } },
-          select: { id: true, name: true },
-        })
-      : []
-  const deptNamesById = new Map(consentDepts.map((d) => [d.id, d.name]))
-
-  const lowAdherenceDispatches = recentDispatches.filter(
+  const lowAdherenceDispatches = ctx.recentDispatches.filter(
     (d) => d.totalResponses / d.totalRecipients < 0.8,
   )
 
-  const existingTitles = new Set(recentPlanTitles.map((p: { title: string }) => p.title.toLowerCase()))
+  const existingTitles = new Set(ctx.recentPlanTitles.map((p: { title: string }) => p.title.toLowerCase()))
   const seenKeys = new Set<string>()
   const suggestions: ActionPlanSuggestion[] = []
 
-  suggestions.push(...pickAlertSuggestions(openAlerts, existingTitles, seenKeys, 6))
-  appendIfSlotAvailable(suggestions, buildReportSuggestion(openReports, existingTitles))
+  suggestions.push(...pickAlertSuggestions(ctx.openAlerts, existingTitles, seenKeys, 6))
+  appendIfSlotAvailable(suggestions, buildReportSuggestion(ctx.openReports, existingTitles))
   appendIfSlotAvailable(suggestions, buildDispatchSuggestion(lowAdherenceDispatches, existingTitles))
-  appendIfSlotAvailable(suggestions, buildConsentSuggestion(consentDeptGroups, deptNamesById, existingTitles))
-  appendIfSlotAvailable(suggestions, buildPgrSuggestion(lastPgrReview, thisMonthStart, existingTitles))
+  appendIfSlotAvailable(suggestions, buildConsentSuggestion(ctx.consentPendingByDept, ctx.deptNamesById, existingTitles))
+  appendIfSlotAvailable(suggestions, buildPgrSuggestion(ctx.lastPgrReview, thisMonthStart, existingTitles))
 
   return suggestions
 }

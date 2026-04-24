@@ -8,6 +8,7 @@ import {
   findAllTenantsActiveDepartments,
   findAllTenantsDeptRecentDispatchAvgs,
   findAllTenantsEmployeesWithExpiredConsentTokens,
+  hasOpenAlertOfType,
 } from "@/modules/alerts/alert.repository"
 import { toHealthIndex, healthIndexLabel } from "@/libs/utils/health-index"
 import type { Alert, Department } from "@prisma/client"
@@ -24,11 +25,11 @@ export function resolve(tenantId: string, alertId: string): Promise<{ count: num
   return resolveAlert(tenantId, alertId)
 }
 
-function normalizeItemScore(score: number, scoreDirection: string): number {
+export function normalizeItemScore(score: number, scoreDirection: string): number {
   return scoreDirection === "lower_is_better" ? 6 - score : score
 }
 
-function calcAvgFromResponses(responses: { items: { score: number; question: { scoreDirection: string } }[] }[]): number {
+export function calcAvgFromResponses(responses: { items: { score: number; question: { scoreDirection: string } }[] }[]): number {
   const allScores = responses.flatMap((r) =>
     r.items.map((item) => normalizeItemScore(item.score, item.question.scoreDirection)),
   )
@@ -68,6 +69,8 @@ export async function detectLowScoreAlerts(): Promise<void> {
   for (const [, data] of Array.from(byDept.entries())) {
     const avgScore = calcAvgFromResponses(data.responses)
     if (avgScore < LOW_SCORE_THRESHOLD) {
+      const alreadyOpen = await hasOpenAlertOfType(data.tenantId, "low_score", data.departmentId)
+      if (alreadyOpen) continue
       const hi = toHealthIndex(avgScore)
       await createAlert({
         tenantId: data.tenantId,
@@ -107,6 +110,8 @@ export async function detectScoreDropAlerts(): Promise<void> {
     const drop = previousAvg - currentAvg
 
     if (drop > SCORE_DROP_THRESHOLD) {
+      const alreadyOpen = await hasOpenAlertOfType(current.tenantId, "score_drop", current.departmentId ?? undefined)
+      if (alreadyOpen) continue
       const currentHi = toHealthIndex(currentAvg)
       const previousHi = toHealthIndex(previousAvg)
       await createAlert({
@@ -136,6 +141,8 @@ export async function detectNegativeTrendAlerts(): Promise<void> {
     const allBelowHistorical = lastThree.every((p) => p.avgScore < historicalAvg)
 
     if (allBelowHistorical) {
+      const alreadyOpen = await hasOpenAlertOfType(dept.tenantId, "negative_trend", dept.id)
+      if (alreadyOpen) continue
       const latestHi = toHealthIndex(lastThree[0]?.avgScore ?? 0)
       await createAlert({
         tenantId: dept.tenantId,
@@ -163,6 +170,8 @@ export async function detectConsentExpiredAlerts(): Promise<void> {
   }
 
   for (const [, data] of Array.from(grouped.entries())) {
+    const alreadyOpen = await hasOpenAlertOfType(data.tenantId, "consent_expired", data.departmentId)
+    if (alreadyOpen) continue
     await createAlert({
       tenantId: data.tenantId,
       departmentId: data.departmentId,
