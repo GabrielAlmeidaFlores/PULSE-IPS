@@ -1,7 +1,19 @@
+export interface PgrPdfScoreDistItem {
+  score: number
+  count: number
+}
+
+export interface PgrPdfQuestionDist {
+  questionId: string
+  questionOrder: number
+  distribution: PgrPdfScoreDistItem[]
+}
+
 export interface PgrPdfDeptQuestion {
   text: string
   order: number
   avgScore: number
+  healthIndex: number
   responseCount: number
   scoreDirection: string
 }
@@ -15,6 +27,20 @@ export interface PgrPdfDept {
   adherencePct: number
   employeeCount: number
   questions: PgrPdfDeptQuestion[]
+  healthyQs: number
+  warningQs: number
+  criticalQs: number
+  bestQuestion: { text: string; order: number; healthIndex: number } | null
+  worstQuestion: { text: string; order: number; healthIndex: number } | null
+  questionDistributions: PgrPdfQuestionDist[]
+}
+
+export interface PgrPdfAggregatedQuestion {
+  text: string
+  order: number
+  healthIndex: number
+  responseCount: number
+  scoreDirection: string
 }
 
 export interface PgrPdfInput {
@@ -24,6 +50,7 @@ export interface PgrPdfInput {
   generatedAt: Date
   status: string
   reviewedAt: Date | null
+  nextReviewAt: Date | null
   globalHealthIndex: number | null
   totalEmployees: number
   totalResponses: number
@@ -33,4 +60,5 @@ export interface PgrPdfInput {
   warningDepts: number
   criticalDepts: number
   departments: PgrPdfDept[]
+  aggregatedQuestions: PgrPdfAggregatedQuestion[]
 }

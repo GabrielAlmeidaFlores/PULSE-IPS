@@ -1,8 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { getSession } from "@/modules/auth/session"
-import { getPgrReviewById } from "@/modules/pgr/pgr.service"
+import { getPgrReviewById, getPgrScoreDistributions } from "@/modules/pgr/pgr.service"
 import { generatePgrPdf } from "@/libs/integrations/pdf/pgr-pdf.adapter"
-import type { PgrPdfInput, PgrPdfDept } from "@/libs/integrations/pdf/pgr-pdf.types"
+import type { PgrPdfInput, PgrPdfDept, PgrPdfDeptQuestion, PgrPdfAggregatedQuestion } from "@/libs/integrations/pdf/pgr-pdf.types"
 import { getOrganization } from "@/modules/organizations/organization.service"
 import { toHealthIndex } from "@/libs/utils/health-index"
 import { format } from "date-fns"
@@ -33,6 +33,8 @@ export async function GET(_req: NextRequest, { params }: RouteParams): Promise<N
   const depts = review.deptResults
   const allQuestions = review.questionResults
 
+  const distributions = await getPgrScoreDistributions(session.tenantId, review.period, allQuestions)
+
   const totalResponses = depts.reduce((s, d) => s + d.responseCount, 0)
   const totalRecipients = depts.reduce((s, d) => s + d.totalRecipients, 0)
   const totalEmployees = depts.reduce((s, d) => s + d.employeeCount, 0)
@@ -49,20 +51,63 @@ export async function GET(_req: NextRequest, { params }: RouteParams): Promise<N
   const warningDepts = scoredDepts.filter((d) => { const hi = toHealthIndex(d.avgScore); return hi >= 37 && hi < 62 }).length
   const criticalDepts = scoredDepts.filter((d) => toHealthIndex(d.avgScore) < 37).length
 
+  const questionAggMap = new Map<string, { text: string; order: number; scoreDirection: string; totalWeighted: number; totalCount: number }>()
+  for (const q of allQuestions) {
+    if (!questionAggMap.has(q.questionId)) {
+      questionAggMap.set(q.questionId, { text: q.questionText, order: q.questionOrder, scoreDirection: q.scoreDirection, totalWeighted: 0, totalCount: 0 })
+    }
+    const entry = questionAggMap.get(q.questionId)
+    if (entry) {
+      entry.totalWeighted += q.avgScore * q.responseCount
+      entry.totalCount += q.responseCount
+    }
+  }
+
+  const aggregatedQuestions: PgrPdfAggregatedQuestion[] = [...questionAggMap.values()]
+    .map((v) => ({
+      text: v.text,
+      order: v.order,
+      healthIndex: v.totalCount > 0 ? toHealthIndex(v.totalWeighted / v.totalCount) : 0,
+      responseCount: v.totalCount,
+      scoreDirection: v.scoreDirection,
+    }))
+    .sort((a, b) => a.healthIndex - b.healthIndex)
+
   const pdfDepts: PgrPdfDept[] = depts.map((dept) => {
     const hi = dept.avgScore > 0 ? toHealthIndex(dept.avgScore) : null
     const deptAdherence = dept.totalRecipients > 0
       ? Math.round((dept.responseCount / dept.totalRecipients) * 100)
       : 0
-    const deptQuestions = allQuestions
-      .filter((q) => q.departmentId === dept.departmentId)
+
+    const deptQuestionsRaw = allQuestions.filter((q) => q.departmentId === dept.departmentId)
+    const deptQuestions: PgrPdfDeptQuestion[] = deptQuestionsRaw
       .map((q) => ({
         text: q.questionText,
         order: q.questionOrder,
         avgScore: q.avgScore,
+        healthIndex: toHealthIndex(q.avgScore),
         responseCount: q.responseCount,
         scoreDirection: q.scoreDirection,
       }))
+      .sort((a, b) => a.order - b.order)
+
+    const scoredQs = deptQuestions.filter((q) => q.avgScore > 0)
+    const healthyQs = scoredQs.filter((q) => q.healthIndex >= 62).length
+    const warningQs = scoredQs.filter((q) => q.healthIndex >= 37 && q.healthIndex < 62).length
+    const criticalQs = scoredQs.filter((q) => q.healthIndex > 0 && q.healthIndex < 37).length
+
+    const sortedByScore = [...scoredQs].sort((a, b) => a.healthIndex - b.healthIndex)
+    const worstQ = sortedByScore[0] ?? null
+    const bestQ = sortedByScore[sortedByScore.length - 1] ?? null
+
+    const deptDistributions = distributions
+      .filter((d) => d.departmentId === dept.departmentId)
+      .map((d) => ({
+        questionId: d.questionId,
+        questionOrder: d.questionOrder,
+        distribution: d.distribution,
+      }))
+
     return {
       name: dept.departmentName,
       healthIndex: hi,
@@ -72,6 +117,12 @@ export async function GET(_req: NextRequest, { params }: RouteParams): Promise<N
       adherencePct: deptAdherence,
       employeeCount: dept.employeeCount,
       questions: deptQuestions,
+      healthyQs,
+      warningQs,
+      criticalQs,
+      bestQuestion: bestQ ? { text: bestQ.text, order: bestQ.order, healthIndex: bestQ.healthIndex } : null,
+      worstQuestion: worstQ ? { text: worstQ.text, order: worstQ.order, healthIndex: worstQ.healthIndex } : null,
+      questionDistributions: deptDistributions,
     }
   })
 
@@ -82,6 +133,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams): Promise<N
     generatedAt: review.createdAt,
     status: review.status,
     reviewedAt: review.reviewedAt ?? null,
+    nextReviewAt: review.nextReviewAt ?? null,
     globalHealthIndex,
     totalEmployees,
     totalResponses,
@@ -91,6 +143,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams): Promise<N
     warningDepts,
     criticalDepts,
     departments: pdfDepts,
+    aggregatedQuestions,
   }
 
   const buffer = await generatePgrPdf(input)
