@@ -29,6 +29,11 @@ jobs:
       - name: Tests
         run: yarn test
 
+      - name: Build
+        run: yarn build
+        env:
+          SKIP_ENV_VALIDATION: true
+
   infra:
     name: Infrastructure check
     runs-on: production
