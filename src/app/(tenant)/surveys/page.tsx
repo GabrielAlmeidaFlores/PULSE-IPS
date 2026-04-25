@@ -11,21 +11,21 @@ import { CheckCircle2, XCircle, ChevronRight } from "lucide-react"
 const STATUS_PRIORITY: Record<string, number> = {
   failed: 0,
   scheduled: 1,
-  dispatched: 2,
-  completed: 3,
+  sent: 2,
+  cancelled: 3,
 }
 
 const STATUS_STYLE: Record<string, string> = {
   scheduled: "bg-muted text-muted-foreground border-border",
-  dispatched: "bg-primary/10 text-primary border-primary/20",
-  completed: "bg-green-50 text-green-700 border-green-200",
+  sent: "bg-primary/10 text-primary border-primary/20",
+  cancelled: "bg-yellow-100 text-yellow-800 border-yellow-300",
   failed: "bg-destructive/10 text-destructive border-destructive/20",
 }
 
 const STATUS_LABELS: Record<string, string> = {
   scheduled: "Agendado",
-  dispatched: "Enviado",
-  completed: "Concluído",
+  sent: "Enviado",
+  cancelled: "Cancelado",
   failed: "Falhou",
 }
 
