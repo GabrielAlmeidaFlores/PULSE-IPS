@@ -3,16 +3,16 @@ WORKDIR /app
 
 FROM base AS deps
 RUN apk add --no-cache libc6-compat openssl
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json yarn.lock ./
+RUN yarn install --frozen-lockfile
 
 FROM base AS builder
 RUN apk add --no-cache openssl
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npx prisma generate
+RUN yarn prisma generate
 ENV SKIP_ENV_VALIDATION=true
-RUN npm run build
+RUN yarn build
 
 FROM base AS worker
 RUN apk add --no-cache openssl
