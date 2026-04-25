@@ -487,7 +487,7 @@ function healthBgColor(hi: number): string {
   return RED_LIGHT
 }
 
-function healthBorderColor(hi: number): string {
+function _healthBorderColor(hi: number): string {
   if (hi >= 62) return GREEN_BORDER
   if (hi >= 37) return AMBER_BORDER
   return RED_BORDER
@@ -509,6 +509,11 @@ function adherenceColor(pct: number): string {
   if (pct >= 80) return GREEN
   if (pct >= 50) return AMBER
   return RED
+}
+
+function adherenceSubLabel(pct: number): string {
+  if (pct >= 50) return "Atenção"
+  return "Abaixo da meta"
 }
 
 function scoreColor(n: number): string {
@@ -796,7 +801,7 @@ function DeptPage({ dept, orgName, periodLabel }: DeptPageProps): React.ReactEle
             <View style={styles.deptMetaCell}>
               <Text style={styles.deptMetaLabel}>Adesão</Text>
               <Text style={[styles.deptMetaValue, { color: adherenceColor(dept.adherencePct) }]}>{dept.adherencePct}%</Text>
-              <Text style={styles.deptMetaSubValue}>{dept.adherencePct >= 80 ? "Meta atingida" : dept.adherencePct >= 50 ? "Atenção" : "Abaixo da meta"}</Text>
+              <Text style={styles.deptMetaSubValue}>{dept.adherencePct >= 80 ? "Meta atingida" : adherenceSubLabel(dept.adherencePct)}</Text>
             </View>
             <View style={[styles.deptMetaCell, { borderRightWidth: 0 }]}>
               <Text style={styles.deptMetaLabel}>Perguntas</Text>
@@ -1046,8 +1051,7 @@ function MethodologyPage({ orgName, periodLabel, generatedAt }: MethodologyPageP
             frequência configurada por setor (diária, semanal, quinzenal ou mensal). As pesquisas são enviadas
             apenas dentro do horário de expediente de cada setor.{"\n\n"}
             Cada pergunta utiliza escala Likert de 1 a 5 pontos. A direção da escala é configurável por pergunta:
-            para questões de bem-estar (ex: "Como você se sente?"), nota 5 = melhor. Para questões de risco (ex:
-            "Com que frequência se sente sobrecarregado?"), nota 1 = melhor.
+            {`para questões de bem-estar (ex: "Como você se sente?"), nota 5 = melhor. Para questões de risco (ex: "Com que frequência se sente sobrecarregado?"), nota 1 = melhor.`}
           </Text>
         </View>
 
@@ -1061,7 +1065,7 @@ function MethodologyPage({ orgName, periodLabel, generatedAt }: MethodologyPageP
             {"• Atenção (37%–61%): risco moderado — monitoramento próximo e plano de ação recomendado\n"}
             {"• Crítico (< 37%): risco elevado — intervenção urgente necessária\n\n"}
             Para garantir anonimato, métricas por setor são exibidas apenas quando há mínimo de 5 respondentes.
-            Notas de perguntas com direção "menor melhor" são invertidas antes do cálculo.
+            {`Notas de perguntas com direção "menor melhor" são invertidas antes do cálculo.`}
           </Text>
         </View>
 

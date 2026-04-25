@@ -1,0 +1,142 @@
+name: Deploy — Pulse
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  infra:
+    name: Infrastructure check
+    runs-on: production
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Write .env
+        run: printf '%s' '${{ vars.PRD_ENVS }}' > .env
+
+      - name: Ensure db is healthy
+        run: |
+          if docker ps --filter "name=^pulse_db$" --filter "status=running" --format "{{.Names}}" | grep -q "^pulse_db$"; then
+            echo "✔ db already running"
+          else
+            echo "▶ Starting db..."
+            docker compose up -d --no-build db
+          fi
+          for i in $(seq 1 30); do
+            STATUS=$(docker inspect --format='{{.State.Health.Status}}' pulse_db 2>/dev/null || echo "starting")
+            if [ "${STATUS}" = "healthy" ]; then echo "✔ db healthy"; exit 0; fi
+            if [ "$i" -eq 30 ]; then
+              echo "✖ db failed to become healthy" >&2
+              docker logs pulse_db --tail 50 >&2
+              exit 1
+            fi
+            sleep 3
+          done
+
+      - name: Ensure redis is healthy
+        run: |
+          if docker ps --filter "name=^pulse_redis$" --filter "status=running" --format "{{.Names}}" | grep -q "^pulse_redis$"; then
+            echo "✔ redis already running"
+          else
+            echo "▶ Starting redis..."
+            docker compose up -d --no-build redis
+          fi
+          for i in $(seq 1 30); do
+            STATUS=$(docker inspect --format='{{.State.Health.Status}}' pulse_redis 2>/dev/null || echo "starting")
+            if [ "${STATUS}" = "healthy" ]; then echo "✔ redis healthy"; exit 0; fi
+            if [ "$i" -eq 30 ]; then
+              echo "✖ redis failed to become healthy" >&2
+              docker logs pulse_redis --tail 50 >&2
+              exit 1
+            fi
+            sleep 3
+          done
+
+  build:
+    name: Build application image
+    runs-on: production
+    timeout-minutes: 20
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Write .env
+        run: printf '%s' '${{ vars.PRD_ENVS }}' > .env
+
+      - name: Build app and worker images
+        run: |
+          docker compose build --no-cache app worker
+
+  migrate:
+    name: Database migrations
+    runs-on: production
+    timeout-minutes: 10
+    needs: [infra, build]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Write .env
+        run: printf '%s' '${{ vars.PRD_ENVS }}' > .env
+
+      - name: Run Prisma migrate deploy
+        run: |
+          docker compose run --rm migrate
+
+  deploy:
+    name: Deploy app and worker
+    runs-on: production
+    timeout-minutes: 10
+    needs: [migrate]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Write .env
+        run: printf '%s' '${{ vars.PRD_ENVS }}' > .env
+
+      - name: Recreate app, worker and schedule-register
+        run: |
+          docker compose up -d --no-build --force-recreate app worker schedule-register
+
+  healthcheck:
+    name: App health check
+    runs-on: production
+    timeout-minutes: 10
+    needs: [deploy]
+    steps:
+      - name: Wait for app to become healthy
+        run: |
+          echo "Aguardando app ficar healthy..."
+          for i in $(seq 1 20); do
+            STATUS=$(docker inspect --format='{{.State.Health.Status}}' pulse_app 2>/dev/null || echo "starting")
+            echo "  tentativa $i — status: ${STATUS}"
+            if [ "${STATUS}" = "healthy" ]; then
+              echo "✔ App healthy"
+              exit 0
+            fi
+            if [ "${STATUS}" = "unhealthy" ]; then
+              echo "✖ App unhealthy — logs:" >&2
+              docker logs pulse_app --tail 100 >&2
+              exit 1
+            fi
+            sleep 10
+          done
+          echo "✖ Timeout — app não ficou healthy a tempo" >&2
+          docker logs pulse_app --tail 100 >&2
+          exit 1
+
+  cleanup:
+    name: Cleanup old images
+    runs-on: production
+    timeout-minutes: 5
+    needs: [healthcheck]
+    if: success()
+    steps:
+      - name: Prune dangling images
+        run: |
+          docker image prune -f
+          echo "✔ Imagens antigas removidas"
