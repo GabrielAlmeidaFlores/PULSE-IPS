@@ -23,7 +23,7 @@ export function ScheduleDispatchButton({ hasConfigs }: Props): React.ReactElemen
 
   function handleSubmit(): void {
     startTransition(async () => {
-      const result = await scheduleAllDispatchesAction(scheduledAt)
+      const result = await scheduleAllDispatchesAction(new Date(scheduledAt).toISOString())
       if (result?.error) {
         toast.error(result.error)
       } else {
