@@ -32,10 +32,7 @@ services:
       retries: 10
 
   migrate:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: runner
+    image: pulse-app:latest
     container_name: pulse_migrate
     restart: "no"
     depends_on:
@@ -52,6 +49,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: runner
+    image: pulse-app:latest
     container_name: pulse_app
     restart: unless-stopped
     depends_on:
@@ -80,6 +78,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: worker
+    image: pulse-worker:latest
     container_name: pulse_worker
     restart: unless-stopped
     depends_on:
@@ -95,10 +94,7 @@ services:
       REDIS_PORT: "6379"
 
   schedule-register:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: worker
+    image: pulse-worker:latest
     container_name: pulse_schedule_register
     restart: "no"
     depends_on:
