@@ -2,6 +2,8 @@
 
 > **Para agentes de IA:** este documento é a fonte única de verdade sobre o produto, a arquitetura, os padrões de código e as regras que devem ser seguidas ao contribuir com o projeto Pulse. Leia-o inteiro antes de fazer qualquer alteração.
 
+> 🚫 **PROIBIDO ABSOLUTO — Git:** agentes de IA **nunca** devem executar `git commit`, `git push`, `git merge`, `git rebase` ou qualquer comando que altere o histórico ou envie código para repositórios remotos. Todas as alterações de código devem ser feitas nos arquivos locais e apresentadas ao desenvolvedor humano, que decide se e quando commitar e fazer push.
+
 **Versão da stack implementada:** Next.js 16 (App Router) + PostgreSQL + Prisma v7 + TypeScript strict  
 **Última revisão:** Abril de 2026
 
