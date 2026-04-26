@@ -58,7 +58,7 @@ export default async function ActionPlansPage(): Promise<React.ReactElement> {
                 </div>
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Por que documentar?</p>
-                  <p className="text-[12px] text-foreground leading-relaxed">A <strong>NR-1</strong> exige não apenas monitorar os riscos, mas <strong>controlar e mitigar</strong> os identificados. Sem planos de ação documentados, a empresa pode ser autuada mesmo que tenha tomado medidas — se não há registro, para o fiscal não aconteceu.</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">Monitorar não basta — é preciso <strong>agir e documentar</strong>. Sem planos de ação registrados, não há como comprovar que a empresa respondeu aos problemas identificados. O histórico de ações é o que transforma dados em resultado real.</p>
                 </div>
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Ciclo de vida</p>

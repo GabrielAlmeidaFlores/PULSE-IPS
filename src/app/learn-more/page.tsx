@@ -1,6 +1,5 @@
 import Link from "next/link"
 import {
-  Shield,
   Users,
   ClipboardList,
   Bell,
@@ -12,14 +11,13 @@ import {
   Zap,
   MessageSquare,
   UserCheck,
-  AlertTriangle,
   Clock,
   ChevronRight,
   ChevronDown,
-  Globe,
   Smile,
   TrendingUp,
   X,
+  Heart,
 } from "lucide-react"
 import { Logo } from "@/libs/design-system/components/logo"
 import { AnimateIn } from "@/components/animate-in"
@@ -31,7 +29,7 @@ function whatsappUrl(message: string): string {
 export const metadata = {
   title: "Como o Pulse funciona — Saiba mais",
   description:
-    "Entenda como o Pulse mantém sua empresa em dia com a NR-1, protege a privacidade dos colaboradores e elimina o trabalho manual do RH.",
+    "Entenda como o Pulse monitora o bem-estar da sua equipe com pesquisas anônimas automáticas, alertas inteligentes e relatórios completos.",
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }): React.ReactElement {
@@ -117,7 +115,7 @@ export default function LearnMorePage(): React.ReactElement {
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/"><Logo size="sm" /></Link>
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground">
-            <a href="#problema" className="hover:text-foreground transition-colors">O problema</a>
+            <a href="#desafio" className="hover:text-foreground transition-colors">O desafio</a>
             <a href="#solucao" className="hover:text-foreground transition-colors">A solução</a>
             <a href="#fluxo" className="hover:text-foreground transition-colors">Como funciona</a>
             <a href="#privacidade" className="hover:text-foreground transition-colors">Privacidade</a>
@@ -136,23 +134,23 @@ export default function LearnMorePage(): React.ReactElement {
 
       <section
         className="relative overflow-hidden pt-24 pb-20 border-b border-border"
-        style={{ background: "linear-gradient(160deg, oklch(0.97 0.012 265) 0%, oklch(0.975 0.004 258) 60%, oklch(0.97 0.010 240) 100%)" }}
+        style={{ background: "linear-gradient(160deg, oklch(0.97 0.010 258) 0%, oklch(0.975 0.004 258) 60%, oklch(0.97 0.010 258) 100%)" }}
       >
         <div
           className="absolute inset-0 opacity-[0.03]"
           style={{
-            backgroundImage: "radial-gradient(circle at 1px 1px, oklch(0.50 0.195 265) 1px, transparent 0)",
+            backgroundImage: "radial-gradient(circle at 1px 1px, oklch(0.705 0.180 265) 1px, transparent 0)",
             backgroundSize: "28px 28px",
           }}
         />
         <div
           className="absolute -top-32 -right-32 w-[600px] h-[600px] rounded-full pointer-events-none"
-          style={{ background: "radial-gradient(circle, oklch(0.50 0.195 265 / 0.07) 0%, transparent 70%)", animation: "lp-float 9s ease-in-out infinite" }}
+          style={{ background: "radial-gradient(circle, oklch(0.705 0.180 265 / 0.07) 0%, transparent 70%)", animation: "lp-float 9s ease-in-out infinite" }}
         />
         <div className="relative max-w-5xl mx-auto px-6 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-amber-200 bg-amber-50 text-xs font-semibold text-amber-700 mb-6" style={{ animation: "lp-fade-in 0.5s ease-out both" }}>
-            <AlertTriangle className="w-3.5 h-3.5" />
-            Nova obrigação legal a partir de maio de 2026
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-xs font-semibold text-primary mb-6" style={{ animation: "lp-fade-in 0.5s ease-out both" }}>
+            <Heart className="w-3.5 h-3.5" />
+            Bem-estar e performance corporativa
           </div>
           <h1
             className="text-5xl md:text-6xl font-extrabold tracking-tight leading-tight mb-6"
@@ -164,11 +162,11 @@ export default function LearnMorePage(): React.ReactElement {
               animation: "lp-fade-in-up 0.7s 0.1s ease-out both",
             }}
           >
-            Sua empresa em dia com a NR-1.<br />Sem dor de cabeça.
+            Sua equipe mais saudável.<br />Sua empresa mais forte.
           </h1>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-10 leading-relaxed" style={{ animation: "lp-fade-in-up 0.7s 0.22s ease-out both" }}>
-            O Pulse cuida de tudo que a lei exige — coleta de dados, consentimento dos colaboradores,
-            alertas automáticos e relatórios prontos para auditoria. Você foca na sua empresa.
+            O Pulse monitora continuamente o bem-estar dos colaboradores com pesquisas anônimas
+            automáticas, alertas inteligentes e relatórios completos — sem trabalho manual para o RH.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center" style={{ animation: "lp-fade-in-up 0.7s 0.34s ease-out both" }}>
             <Link
@@ -190,27 +188,27 @@ export default function LearnMorePage(): React.ReactElement {
       </section>
 
 
-      <section id="problema" className="py-24 border-b border-border">
+      <section id="desafio" className="py-24 border-b border-border">
         <div className="max-w-6xl mx-auto px-6">
           <div className="grid md:grid-cols-2 gap-16 items-center">
             <AnimateIn animation="fade-in-up">
               <div>
                 <SectionLabel>✦ O cenário atual</SectionLabel>
                 <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-6 leading-tight">
-                  Gerenciar saúde ocupacional hoje é um pesadelo
+                  Gestão de saúde ocupacional hoje é um desafio
                 </h2>
                 <p className="text-muted-foreground leading-relaxed mb-6">
-                  A maioria das empresas ainda tenta cumprir a NR-1 com planilhas espalhadas, e-mails manuais
-                  e documentos soltos. O resultado é sempre o mesmo: horas perdidas, prazos esquecidos e
-                  nenhuma garantia de que está tudo correto se vier uma fiscalização.
+                  A maioria das empresas tenta entender o bem-estar da equipe com planilhas espalhadas,
+                  pesquisas manuais e conversas informais. O resultado é sempre o mesmo: dados imprecisos,
+                  horas perdidas e problemas que só aparecem quando já viraram crise.
                 </p>
                 <div className="space-y-3">
                   {[
-                    "Planilhas desatualizadas que ninguém sabe onde estão",
-                    "Nenhuma forma de provar que os colaboradores deram consentimento",
-                    "Relatório do PGR feito na correria, sem dados confiáveis",
-                    "RH gastando horas em tarefas que poderiam ser automáticas",
-                    "Risco real de multa se vier uma auditoria",
+                    "Sem dados reais sobre o bem-estar da equipe",
+                    "RH gasta horas em tarefas que poderiam ser automáticas",
+                    "Problemas de clima passam despercebidos até virar crise",
+                    "Colaboradores não falam o que pensam por medo de identificação",
+                    "Histórico de ações espalhado, difícil de consultar",
                   ].map((item) => (
                     <div key={item} className="flex items-start gap-3 text-sm text-foreground">
                       <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center shrink-0 mt-0.5">
@@ -229,24 +227,24 @@ export default function LearnMorePage(): React.ReactElement {
                   bg: "linear-gradient(135deg, oklch(0.98 0.01 25) 0%, oklch(0.97 0.005 20) 100%)",
                   label: "Sem o Pulse",
                   labelColor: "text-red-700",
-                  title: "Horas por mês",
-                  desc: "gastas em tarefas manuais que deveriam ser automáticas",
+                  title: "Gestão no escuro",
+                  desc: "decisões tomadas sem dados reais sobre como a equipe está",
                 },
                 {
                   border: "border-amber-100",
                   bg: "linear-gradient(135deg, oklch(0.98 0.01 80) 0%, oklch(0.97 0.005 75) 100%)",
-                  label: "Risco de auditoria",
+                  label: "Problema invisível",
                   labelColor: "text-amber-700",
-                  title: "Sem documentação",
-                  desc: "sua empresa não consegue provar que está cumprindo a lei",
+                  title: "Crise silenciosa",
+                  desc: "turnover alto, afastamentos e queda de produtividade sem sinal de alerta",
                 },
                 {
                   border: "border-primary/20",
-                  bg: "linear-gradient(135deg, oklch(0.97 0.012 265) 0%, oklch(0.975 0.004 258) 100%)",
+                  bg: "linear-gradient(135deg, oklch(0.97 0.010 258) 0%, oklch(0.975 0.004 258) 100%)",
                   label: "Com o Pulse",
                   labelColor: "text-primary",
-                  title: "Tudo automatizado",
-                  desc: "relatórios, alertas e consentimentos funcionando sozinhos",
+                  title: "Monitoramento contínuo",
+                  desc: "dados reais por setor, alertas automáticos e histórico completo de ações",
                 },
               ].map((card, i) => (
                 <AnimateIn key={card.title} delay={i * 90} animation="fade-in-up">
@@ -268,11 +266,11 @@ export default function LearnMorePage(): React.ReactElement {
           <div className="text-center mb-14">
             <SectionLabel>✦ A solução</SectionLabel>
             <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">
-              Tudo que a NR-1 exige, em um único lugar
+              Tudo para monitorar, entender e melhorar o bem-estar da sua equipe
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              O Pulse reúne todas as ferramentas que sua empresa precisa para estar em conformidade —
-              e ainda avisa você quando é preciso agir.
+              O Pulse reúne todas as ferramentas que o RH precisa para agir com base em dados reais —
+              e ainda avisa quando é preciso agir.
             </p>
           </div>
 
@@ -281,20 +279,20 @@ export default function LearnMorePage(): React.ReactElement {
               {
                 icon: <Clock className="w-5 h-5" />,
                 title: "Envio sempre no momento certo",
-                desc: "Você define os dias da semana e o horário de expediente de cada equipe. O Pulse só envia pesquisas quando o colaborador está trabalhando — nunca no fim de semana ou fora do horário, a não ser que você queira.",
+                desc: "Você define os dias da semana e o horário de expediente de cada equipe. O Pulse só envia pesquisas quando o colaborador está trabalhando — nunca fora do horário.",
                 benefit: "Respeito ao colaborador",
               },
               {
                 icon: <Users className="w-5 h-5" />,
-                title: "Sua equipe organizada",
-                desc: "Cadastre seus colaboradores por setor em minutos — ou importe uma planilha do Excel de uma vez. O Pulse organiza tudo automaticamente.",
+                title: "Sua equipe organizada por setor",
+                desc: "Cadastre seus colaboradores por setor em minutos — ou importe uma planilha Excel de uma vez. O Pulse organiza tudo automaticamente.",
                 benefit: "Chega de planilha bagunçada",
               },
               {
                 icon: <UserCheck className="w-5 h-5" />,
                 title: "Consentimento no piloto automático",
-                desc: "Cada colaborador recebe no WhatsApp um convite para aceitar os termos de participação. O aceite é registrado automaticamente, sem você precisar fazer nada.",
-                benefit: "Prova legal de consentimento",
+                desc: "Na primeira pesquisa, o colaborador lê os termos de participação e decide se quer continuar. O aceite fica registrado automaticamente.",
+                benefit: "Participação voluntária e documentada",
               },
               {
                 icon: <ClipboardList className="w-5 h-5" />,
@@ -305,7 +303,7 @@ export default function LearnMorePage(): React.ReactElement {
               {
                 icon: <BarChart3 className="w-5 h-5" />,
                 title: "Painel com tudo que importa",
-                desc: "Veja em tempo real como está cada setor da sua empresa — taxa de participação, pontuação de bem-estar e evolução ao longo do tempo.",
+                desc: "Veja em tempo real como está cada setor — taxa de participação, pontuação de bem-estar e evolução ao longo do tempo.",
                 benefit: "Decisões com base em dados",
               },
               {
@@ -315,10 +313,10 @@ export default function LearnMorePage(): React.ReactElement {
                 benefit: "Gestão proativa, não reativa",
               },
               {
-                icon: <Shield className="w-5 h-5" />,
+                icon: <CheckCircle2 className="w-5 h-5" />,
                 title: "Registro de todas as ações",
-                desc: "Cada medida tomada pelo RH fica documentada com data, responsável e resultado. Se vier uma fiscalização, você mostra tudo com poucos cliques.",
-                benefit: "Auditoria sem surpresa",
+                desc: "Cada medida tomada pelo RH fica documentada com data, responsável e resultado. Histórico completo sempre acessível.",
+                benefit: "Rastreabilidade total",
               },
               {
                 icon: <MessageSquare className="w-5 h-5" />,
@@ -328,19 +326,13 @@ export default function LearnMorePage(): React.ReactElement {
               },
               {
                 icon: <FileText className="w-5 h-5" />,
-                title: "Relatório pronto com um clique",
-                desc: "Precisa apresentar o relatório obrigatório? O Pulse gera o documento completo em segundos, com todos os dados do período organizados.",
+                title: "Relatório completo com um clique",
+                desc: "Precisou apresentar um relatório? O Pulse gera o documento em PDF em segundos, com todos os dados do período organizados.",
                 benefit: "Nunca mais corre na última hora",
-              },
-              {
-                icon: <TrendingUp className="w-5 h-5" />,
-                title: "Sua empresa sempre protegida",
-                desc: "Documentação em dia, consentimentos registrados, ações documentadas. Sua empresa pode passar por uma fiscalização a qualquer momento sem preocupação.",
-                benefit: "Tranquilidade para o gestor",
               },
             ].map((item, i) => (
               <AnimateIn key={item.title} delay={i * 60}>
-                <div className="rounded-xl border border-border bg-white p-6 hover:border-primary/30 hover:shadow-[0_4px_20px_oklch(0.18_0.022_258/0.06)] transition-all group h-full">
+                <div className="rounded-xl border border-border bg-white p-6 hover:border-primary/30 hover:shadow-[0_4px_20px_oklch(0.50_0.195_265/0.08)] transition-all group h-full">
                   <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary mb-4">
                     {item.icon}
                   </div>
@@ -366,12 +358,11 @@ export default function LearnMorePage(): React.ReactElement {
               Veja como tudo acontece
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Do cadastro do primeiro colaborador até o relatório pronto para auditoria.
+              Do cadastro do primeiro colaborador até o relatório completo.
               Veja exatamente o que você faz e o que o Pulse faz por você.
             </p>
           </div>
 
-    
           <div className="flex flex-wrap justify-center gap-4 mb-10">
             {[
               { color: "bg-blue-100 border-blue-200 text-blue-700", label: "Você faz" },
@@ -388,16 +379,16 @@ export default function LearnMorePage(): React.ReactElement {
           <div className="max-w-xl mx-auto">
             {([
               { actor: "voce", icon: <Users className="w-5 h-5" />, title: "Você cadastra sua equipe", desc: "Registra os colaboradores por setor — um a um ou importando uma planilha Excel. Leva minutos." },
-              { actor: "pulse", icon: <MessageSquare className="w-5 h-5" />, title: "Pulse envia o convite pelo WhatsApp", desc: "Cada colaborador recebe automaticamente uma mensagem com o link para aceitar os termos de participação." },
-              { actor: "colaborador", icon: <UserCheck className="w-5 h-5" />, title: "Colaborador aceita pelo celular", desc: "Em poucos cliques, no próprio celular. Sem papel, sem burocracia. O aceite fica registrado automaticamente." },
-              { actor: "voce", icon: <ClipboardList className="w-5 h-5" />, title: "Você configura a pesquisa uma vez", desc: "Define as perguntas e com que frequência enviar — semanal, quinzenal, mensal. Feito isso, não precisa mais tocar." },
-              { actor: "voce", icon: <Clock className="w-5 h-5" />, title: "Você define o expediente de cada equipe", desc: "Configura os dias da semana e o horário de trabalho de cada setor (ex: segunda a sexta, das 9h às 18h). Equipes com turnos diferentes, finais de semana ou horários especiais têm suas próprias configurações." },
-              { actor: "pulse", icon: <Zap className="w-5 h-5" />, title: "Pulse dispara as pesquisas automaticamente", desc: "Só envia dentro do horário de expediente configurado — nunca madrugada, nunca fora do turno. O colaborador recebe a mensagem quando está trabalhando e pode responder na hora." },
+              { actor: "pulse", icon: <MessageSquare className="w-5 h-5" />, title: "Pulse envia a primeira pesquisa", desc: "O colaborador recebe o link da pesquisa pelo WhatsApp ou SMS, dentro do horário de expediente." },
+              { actor: "colaborador", icon: <UserCheck className="w-5 h-5" />, title: "Colaborador aceita ao responder", desc: "Na primeira vez, o colaborador lê os termos e confirma a participação. Sem papel, sem burocracia. O aceite fica registrado automaticamente." },
+              { actor: "voce", icon: <ClipboardList className="w-5 h-5" />, title: "Você configura a pesquisa uma vez", desc: "Define as perguntas e com que frequência enviar — diariamente, semanalmente, quinzenalmente ou mensalmente." },
+              { actor: "voce", icon: <Clock className="w-5 h-5" />, title: "Você define o expediente de cada equipe", desc: "Configura os dias da semana e o horário de trabalho de cada setor. Equipes com turnos diferentes têm suas próprias configurações." },
+              { actor: "pulse", icon: <Zap className="w-5 h-5" />, title: "Pulse dispara as pesquisas automaticamente", desc: "Só envia dentro do horário de expediente configurado. O colaborador recebe a mensagem quando está trabalhando." },
               { actor: "colaborador", icon: <EyeOff className="w-5 h-5" />, title: "Colaborador responde — com total anonimato", desc: "Sem login, sem identificação. Só as respostas. Ninguém na empresa sabe quem disse o quê." },
               { actor: "pulse", icon: <BarChart3 className="w-5 h-5" />, title: "Pulse analisa e atualiza o painel", desc: "Os indicadores de cada setor são calculados automaticamente. Você vê tudo no painel em tempo real." },
               { actor: "pulse", icon: <Bell className="w-5 h-5" />, title: "Pulse avisa quando há algo a resolver", desc: "Se algum setor tiver queda nos resultados ou baixa participação, você recebe um alerta para agir." },
-              { actor: "voce", icon: <Shield className="w-5 h-5" />, title: "Você registra a ação que tomou", desc: "Uma conversa com o gestor, um treinamento, uma mudança de processo. Registra no sistema com responsável e prazo." },
-              { actor: "pulse", icon: <FileText className="w-5 h-5" />, title: "Pulse documenta tudo permanentemente", desc: "Cada ação registrada, cada consentimento, cada resposta. O histórico é imutável — pronto para qualquer auditoria." },
+              { actor: "voce", icon: <CheckCircle2 className="w-5 h-5" />, title: "Você registra a ação que tomou", desc: "Uma conversa com o gestor, um treinamento, uma mudança de processo. Registra no sistema com responsável e prazo." },
+              { actor: "pulse", icon: <FileText className="w-5 h-5" />, title: "Pulse documenta tudo permanentemente", desc: "Cada ação registrada, cada aceite de participação, cada pesquisa enviada. O histórico é imutável." },
               { actor: "voce", icon: <CheckCircle2 className="w-5 h-5" />, title: "Você gera o relatório com um clique", desc: "Quando precisar, abre a plataforma, seleciona o período e clica em gerar. O documento está pronto em segundos.", isLast: true },
             ] as { actor: FlowActor; icon: React.ReactElement; title: string; desc: string; isLast?: true }[]).map((card, i) => (
               <AnimateIn key={card.title} delay={i * 50} animation="fade-in-up">
@@ -420,7 +411,6 @@ export default function LearnMorePage(): React.ReactElement {
             </p>
           </div>
 
-    
           <div className="mt-10 rounded-2xl border border-amber-200 bg-amber-50 p-8">
             <div className="flex items-start gap-4">
               <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center text-amber-700 shrink-0">
@@ -429,24 +419,24 @@ export default function LearnMorePage(): React.ReactElement {
               <div>
                 <div className="font-bold text-lg text-amber-900 mb-2">Por que enviar só durante o expediente?</div>
                 <p className="text-sm text-amber-800 leading-relaxed mb-4">
-                  A NR-1 exige que a empresa monitore os riscos psicossociais <strong>no contexto do trabalho</strong>.
-                  Isso significa que as pesquisas precisam ser respondidas enquanto o colaborador está no ambiente de trabalho —
-                  não às 22h em casa, não no fim de semana descansando. Enviar fora do horário pode comprometer a validade
-                  jurídica das respostas e ainda invadir o tempo de descanso, o que é justamente o oposto do que a lei busca proteger.
+                  Respostas coletadas no contexto do trabalho são muito mais precisas e representativas.
+                  O colaborador está no ambiente profissional, com os temas ainda frescos — o que resulta
+                  em dados mais confiáveis para o RH tomar decisões. Além disso, respeitar o horário
+                  de descanso demonstra cuidado genuíno com quem responde.
                 </p>
                 <div className="grid sm:grid-cols-3 gap-4">
                   {[
                     {
-                      title: "Validade legal",
-                      desc: "Respostas coletadas durante o expediente têm mais peso jurídico como evidência de que o monitoramento foi feito no contexto laboral.",
+                      title: "Dados mais precisos",
+                      desc: "Respostas dadas no contexto do trabalho refletem melhor a realidade do ambiente — não o humor do fim de semana.",
                     },
                     {
-                      title: "Respeito ao descanso",
-                      desc: "A LGPD e a CLT protegem o direito ao descanso. Enviar mensagens fora do horário pode ser interpretado como assédio ou invasão de privacidade.",
+                      title: "Respeito ao colaborador",
+                      desc: "Não invadir o tempo de descanso mostra cuidado genuíno com quem recebe as mensagens.",
                     },
                     {
                       title: "Taxas de resposta maiores",
-                      desc: "Colaboradores que recebem no horário certo respondem mais — e com mais atenção. Isso melhora a qualidade dos dados para o RH.",
+                      desc: "Colaboradores no trabalho respondem mais — e com mais atenção. Isso melhora a qualidade dos dados.",
                     },
                   ].map((item) => (
                     <div key={item.title} className="rounded-xl bg-white border border-amber-100 p-4">
@@ -465,10 +455,10 @@ export default function LearnMorePage(): React.ReactElement {
       <section className="py-16 border-b border-border bg-primary/5">
         <div className="max-w-3xl mx-auto px-6 text-center">
           <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-3">
-            Pronto para automatizar o compliance da sua empresa?
+            Pronto para monitorar o bem-estar da sua equipe?
           </h2>
           <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-            Configure o Pulse em menos de 30 minutos e tenha sua empresa em conformidade com a NR-1 antes de maio de 2026.
+            Configure o Pulse em menos de 30 minutos e comece a ter dados reais sobre como sua equipe está.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
@@ -479,7 +469,7 @@ export default function LearnMorePage(): React.ReactElement {
               <ArrowRight className="w-4 h-4" />
             </Link>
             <a
-              href={whatsappUrl("Olá! Tenho dúvidas sobre o Pulse para NR-1.")}
+              href={whatsappUrl("Olá! Tenho dúvidas sobre o Pulse.")}
               className="inline-flex items-center justify-center h-11 px-7 rounded-lg border border-border bg-white font-semibold text-sm text-foreground hover:border-primary/30 hover:bg-primary/5 transition-all"
             >
               Falar com a equipe
@@ -498,9 +488,8 @@ export default function LearnMorePage(): React.ReactElement {
                 Seus colaboradores respondem com confiança. Você tem os dados que precisa.
               </h2>
               <p className="text-muted-foreground leading-relaxed mb-8">
-                Para as pesquisas funcionarem, os colaboradores precisam se sentir seguros para responder com
-                honestidade. O Pulse foi construído para garantir esse ambiente de confiança — do ponto de vista
-                técnico e legal.
+                Para as pesquisas funcionarem, os colaboradores precisam se sentir seguros para responder
+                com honestidade. O Pulse foi construído do zero para garantir esse ambiente de confiança.
               </p>
               <div className="space-y-5">
                 {[
@@ -512,17 +501,17 @@ export default function LearnMorePage(): React.ReactElement {
                   {
                     icon: <UserCheck className="w-5 h-5" />,
                     title: "Consentimento formal registrado",
-                    desc: "Cada colaborador aceita participar antes de receber qualquer pesquisa. Esse aceite é registrado e guardado permanentemente — exigência da lei.",
+                    desc: "Na primeira pesquisa, o colaborador lê os termos e decide se quer participar. O aceite fica registrado e guardado permanentemente.",
                   },
                   {
-                    icon: <Shield className="w-5 h-5" />,
+                    icon: <CheckCircle2 className="w-5 h-5" />,
                     title: "Dados da sua empresa isolados",
                     desc: "As informações da sua empresa não se misturam com as de nenhuma outra. Cada conta tem um ambiente completamente separado.",
                   },
                   {
                     icon: <Smile className="w-5 h-5" />,
                     title: "Colaborador pode recusar",
-                    desc: "Participar é voluntário. Quem não quiser pode recusar — e essa recusa também fica registrada formalmente, protegendo a empresa.",
+                    desc: "Participar é voluntário. Quem não quiser pode recusar — e essa escolha também fica registrada, protegendo ambos os lados.",
                   },
                 ].map((item) => (
                   <div key={item.title} className="flex gap-4">
@@ -541,11 +530,11 @@ export default function LearnMorePage(): React.ReactElement {
             <div className="space-y-4">
               <div className="rounded-2xl border border-green-200 bg-green-50 p-6">
                 <CheckCircle2 className="w-7 h-7 text-green-600 mb-3" />
-                <div className="font-bold text-lg text-green-900 mb-2">Em conformidade com a LGPD</div>
+                <div className="font-bold text-lg text-green-900 mb-2">Privacidade que gera confiança</div>
                 <p className="text-sm text-green-800 leading-relaxed">
-                  O Pulse foi desenvolvido seguindo a Lei Geral de Proteção de Dados. O consentimento é
-                  coletado antes de qualquer dado, e o colaborador tem o direito de recusar — tudo
-                  devidamente documentado.
+                  O anonimato não é apenas uma promessa — é uma garantia técnica. Após o colaborador
+                  abrir o link da pesquisa, qualquer vínculo entre o token e a resposta é eliminado
+                  automaticamente. Ninguém no sistema consegue reverter esse processo.
                 </p>
               </div>
               <div className="rounded-2xl border border-border bg-white p-6">
@@ -554,8 +543,8 @@ export default function LearnMorePage(): React.ReactElement {
                   {[
                     "Colaboradores seguros respondem com mais honestidade",
                     "Dados mais honestos = decisões melhores para a empresa",
-                    "Conformidade legal protege o CNPJ de multas",
-                    "Histórico imutável protege a empresa em disputas trabalhistas",
+                    "Ambiente de confiança reduz turnover e melhora o engajamento",
+                    "Histórico documentado protege a empresa em eventuais disputas",
                   ].map((item) => (
                     <div key={item} className="flex items-start gap-2 text-sm text-foreground">
                       <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
@@ -578,7 +567,7 @@ export default function LearnMorePage(): React.ReactElement {
               Feito para quem cuida de pessoas
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Não importa o tamanho da empresa. Se você tem colaboradores, a NR-1 se aplica a você.
+              Não importa o tamanho da empresa. Se você tem equipe, você precisa de dados sobre ela.
             </p>
           </div>
 
@@ -589,14 +578,14 @@ export default function LearnMorePage(): React.ReactElement {
               </div>
               <div className="font-bold text-xl text-blue-900 mb-2">Para o dono da empresa</div>
               <p className="text-sm text-blue-800 leading-relaxed mb-5">
-                Você não precisa virar especialista em NR-1. Configure o Pulse uma vez, delegue para o RH
-                e tenha a certeza de que a empresa está protegida — sem precisar acompanhar cada detalhe.
+                Configure o Pulse uma vez, delegue para o RH e tenha a certeza de que a empresa está
+                com o bem-estar da equipe monitorado — sem precisar acompanhar cada detalhe.
               </p>
               <div className="space-y-2">
                 {[
-                  "Conformidade garantida sem precisar entender a lei",
-                  "Relatórios prontos se vier uma fiscalização",
-                  "Visão clara da saúde da equipe no painel",
+                  "Visão clara da saúde de cada setor no painel",
+                  "Alertas automáticos quando algo precisa de atenção",
+                  "Relatórios prontos sempre que precisar",
                   "Histórico completo de todas as ações tomadas",
                 ].map((item) => (
                   <div key={item} className="flex items-start gap-2 text-sm text-blue-900">
@@ -613,9 +602,8 @@ export default function LearnMorePage(): React.ReactElement {
               </div>
               <div className="font-bold text-xl text-purple-900 mb-2">Para o time de RH</div>
               <p className="text-sm text-purple-800 leading-relaxed mb-5">
-                Chega de copiar e colar dados entre planilhas, enviar e-mails manualmente e lembrar de prazo
-                no calendário. O Pulse automatiza as tarefas repetitivas para você focar no que realmente
-                importa: as pessoas.
+                Chega de copiar e colar dados entre planilhas e enviar mensagens manualmente.
+                O Pulse automatiza as tarefas repetitivas para você focar no que realmente importa: as pessoas.
               </p>
               <div className="space-y-2">
                 {[
@@ -633,13 +621,12 @@ export default function LearnMorePage(): React.ReactElement {
             </div>
           </div>
 
-    
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
-              { num: "Mai/2026", label: "Prazo da nova fiscalização NR-1", icon: <Clock className="w-5 h-5" /> },
               { num: "100%", label: "Automação no envio de pesquisas", icon: <Zap className="w-5 h-5" /> },
-              { num: "1 clique", label: "Para gerar o relatório completo", icon: <FileText className="w-5 h-5" /> },
-              { num: "Zero", label: "Planilhas necessárias", icon: <CheckCircle2 className="w-5 h-5" /> },
+              { num: "1 clique", label: "Para gerar o relatório completo em PDF", icon: <FileText className="w-5 h-5" /> },
+              { num: "Zero", label: "Planilhas necessárias para o RH", icon: <CheckCircle2 className="w-5 h-5" /> },
+              { num: "< 30 min", label: "Para configurar e começar a monitorar", icon: <Clock className="w-5 h-5" /> },
             ].map((item) => (
               <div
                 key={item.label}
@@ -652,100 +639,6 @@ export default function LearnMorePage(): React.ReactElement {
                 <p className="text-xs text-muted-foreground leading-tight">{item.label}</p>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-
-      <section className="py-24 border-b border-border bg-red-50/60">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="grid md:grid-cols-2 gap-16 items-start">
-            <div>
-              <SectionLabel>⚠ Consequências reais</SectionLabel>
-              <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-6 leading-tight">
-                O que acontece se minha empresa não cumprir a NR-1?
-              </h2>
-              <p className="text-muted-foreground leading-relaxed mb-8">
-                A nova versão da NR-1 entrou em vigor e o prazo para adequação encerra em maio de 2026.
-                A partir daí, o Ministério do Trabalho e Emprego tem base legal para fiscalizar e autuar
-                empresas que não demonstrarem monitoramento dos riscos psicossociais.
-              </p>
-              <div className="space-y-4">
-                {[
-                  {
-                    title: "Multas do MTE",
-                    desc: "O descumprimento de normas regulamentadoras pode resultar em multas que variam de R$ 2.200 até R$ 22.000 por irregularidade, conforme o art. 201 da CLT. Reincidências dobram o valor.",
-                    color: "red",
-                  },
-                  {
-                    title: "Interdição de atividades",
-                    desc: "Em casos graves, o fiscal do trabalho pode interditar setores ou até a empresa inteira até que as condições sejam sanadas — causando prejuízo operacional imediato.",
-                    color: "red",
-                  },
-                  {
-                    title: "Passivo trabalhista",
-                    desc: "Colaboradores que desenvolverem problemas de saúde mental no trabalho podem acionar a empresa na Justiça do Trabalho por negligência. Sem documentação, a empresa não tem como se defender.",
-                    color: "amber",
-                  },
-                  {
-                    title: "Dano à reputação",
-                    desc: "Autuações públicas do MTE aparecem em registros oficiais. Isso afeta a imagem da empresa com clientes, parceiros e candidatos a emprego.",
-                    color: "amber",
-                  },
-                ].map((item) => (
-                  <div
-                    key={item.title}
-                    className={`rounded-xl border p-4 ${item.color === "red" ? "border-red-200 bg-white" : "border-amber-200 bg-white"}`}
-                  >
-                    <div className={`font-semibold text-sm mb-1 ${item.color === "red" ? "text-red-800" : "text-amber-800"}`}>
-                      {item.title}
-                    </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="space-y-6">
-              <div className="rounded-2xl border border-green-200 bg-green-50 p-7">
-                <CheckCircle2 className="w-8 h-8 text-green-600 mb-4" />
-                <div className="font-bold text-xl text-green-900 mb-3">Com o Pulse, você tem prova</div>
-                <p className="text-sm text-green-800 leading-relaxed mb-5">
-                  O Pulse gera automaticamente toda a documentação que o fiscal exige: termos de
-                  consentimento assinados, histórico de pesquisas enviadas, respostas agregadas por setor,
-                  planos de ação com responsáveis e prazos, e o relatório consolidado do PGR — tudo com
-                  data, hora e trilha de auditoria imutável.
-                </p>
-                <div className="space-y-2">
-                  {[
-                    "Consentimento formal de cada colaborador",
-                    "Histórico imutável de todas as pesquisas",
-                    "Alertas e planos de ação documentados",
-                    "Relatório PGR gerado em 1 clique",
-                  ].map((item) => (
-                    <div key={item} className="flex items-center gap-2 text-sm text-green-900">
-                      <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
-                      {item}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-border bg-white p-7">
-                <div className="text-sm font-semibold text-muted-foreground mb-2">Quanto custa não se adequar?</div>
-                <div className="grid grid-cols-2 gap-4">
-                  {[
-                    { label: "Multa mínima MTE", value: "R$ 2.200" },
-                    { label: "Multa máxima MTE", value: "R$ 22.000" },
-                    { label: "Reincidência", value: "+100%" },
-                    { label: "Custo de adequação", value: "A partir de R$ 0" },
-                  ].map((item) => (
-                    <div key={item.label} className="text-center">
-                      <div className="text-xl font-extrabold text-foreground">{item.value}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">{item.label}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </section>
@@ -765,36 +658,32 @@ export default function LearnMorePage(): React.ReactElement {
           <div className="space-y-4">
             {[
               {
-                q: "A NR-1 se aplica a todos os tamanhos de empresa?",
-                a: "Sim. A NR-1 se aplica a qualquer empresa que tenha empregados com carteira assinada (CLT), independentemente do número de colaboradores ou do setor de atuação. Microempresas e empresas de pequeno porte não estão isentas — mas podem ter obrigações simplificadas dependendo do grau de risco.",
+                q: "Os colaboradores precisam criar uma conta ou instalar algum aplicativo?",
+                a: "Não. Eles recebem um link pelo WhatsApp ou SMS e respondem diretamente no navegador do celular. Sem cadastro, sem download, sem fricção.",
               },
               {
-                q: "Preciso contratar um consultor de segurança do trabalho para usar o Pulse?",
-                a: "Não necessariamente. O Pulse automatiza a coleta de dados, o consentimento e a geração de relatórios — o que costuma ser feito manualmente por consultores. Dependendo do porte e risco da sua empresa, um técnico ou engenheiro de segurança do trabalho pode ser necessário para o PCMSO e PPRA, mas o monitoramento contínuo de fatores psicossociais fica com o Pulse.",
+                q: "As respostas são realmente anônimas?",
+                a: "Sim, por garantia técnica. Após o colaborador abrir o link, qualquer vínculo entre o token e a resposta é eliminado automaticamente. Ninguém no sistema — nem o RH, nem o gestor, nem o administrador — consegue saber quem respondeu o quê.",
               },
               {
-                q: "Quanto tempo leva para colocar o Pulse em funcionamento?",
-                a: "Em média 20 a 30 minutos para a configuração inicial: criar a conta, importar os colaboradores via planilha, configurar os setores e a frequência das pesquisas. Depois disso, o sistema funciona automaticamente.",
+                q: "Posso configurar frequências diferentes por setor?",
+                a: "Sim. Cada setor tem sua própria configuração: frequência de envio (diária, semanal, quinzenal ou mensal), dias da semana e horário de expediente. Equipes com turnos especiais também têm configuração individual por colaborador.",
               },
               {
-                q: "Os colaboradores precisam baixar algum aplicativo?",
-                a: "Não. Eles recebem um link pelo WhatsApp ou SMS e respondem diretamente no navegador do celular. Sem cadastro, sem download, sem atrito.",
+                q: "Como funcionam os alertas automáticos?",
+                a: "O Pulse monitora continuamente os resultados de cada setor e detecta três situações: queda brusca na pontuação, tendência negativa em múltiplos períodos e baixa taxa de resposta. Quando qualquer uma dessas situações ocorre, um alerta aparece no painel para o RH agir.",
               },
               {
-                q: "Meus colaboradores podem ser identificados pelas respostas?",
-                a: "Não, por design técnico. O link de pesquisa é desvinculado da resposta no momento em que o colaborador a envia. Nem o RH, nem o gestor, nem os administradores da plataforma conseguem saber quem respondeu o quê. As métricas só são exibidas quando há ao menos 5 respondentes — mais uma camada de proteção ao anonimato.",
+                q: "O que é o relatório em PDF?",
+                a: "É um documento consolidado com métricas por setor, histórico de alertas, planos de ação e resultados de pesquisas. Você escolhe o período, clica em gerar e baixa o arquivo em segundos — pronto para apresentar a diretores, sócios ou qualquer interessado.",
               },
               {
                 q: "E se um colaborador não quiser participar?",
-                a: "Participação é totalmente voluntária. O colaborador pode recusar o consentimento ou pedir para sair a qualquer momento. Essa recusa é registrada formalmente no sistema — o que também protege a empresa de eventuais alegações de que o monitoramento foi feito sem consentimento.",
+                a: "Participação é sempre voluntária. Na primeira pesquisa, o colaborador pode recusar os termos e sair a qualquer momento. Essa escolha fica registrada no sistema e o colaborador deixa de receber pesquisas.",
               },
               {
-                q: "Posso cancelar a qualquer momento?",
-                a: "Sim. Sem fidelidade, sem multa de saída. Você pode cancelar pelo próprio painel da plataforma. Seus dados ficam disponíveis para exportação por 30 dias após o cancelamento.",
-              },
-              {
-                q: "O Pulse está em conformidade com a LGPD?",
-                a: "Sim. O sistema coleta consentimento explícito antes de qualquer dado, armazena apenas as informações necessárias, garante anonimato técnico nas respostas e mantém trilha de auditoria de todas as operações. Dados de diferentes empresas são completamente isolados entre si.",
+                q: "Posso cancelar quando quiser?",
+                a: "Sim. Sem fidelidade, sem multa. Você cancela quando quiser pelo próprio painel. Seus dados ficam disponíveis para exportação por 30 dias após o cancelamento.",
               },
             ].map((item) => (
               <details
@@ -826,50 +715,51 @@ export default function LearnMorePage(): React.ReactElement {
 
       <section
         className="py-24"
-        style={{ background: "linear-gradient(135deg, oklch(0.50 0.195 265) 0%, oklch(0.42 0.18 285) 100%)" }}
+        style={{ background: "linear-gradient(135deg, oklch(0.50 0.195 265) 0%, oklch(0.40 0.180 265) 100%)" }}
       >
         <div className="max-w-3xl mx-auto px-6 text-center text-white">
           <AnimateIn animation="fade-in">
-            <Globe className="w-10 h-10 mx-auto mb-6 opacity-80" />
+            <Heart className="w-10 h-10 mx-auto mb-6 opacity-80" />
             <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">
-              Comece hoje. A fiscalização não espera.
+              Cuide da sua equipe com dados reais
             </h2>
             <p className="text-lg opacity-80 mb-10 leading-relaxed">
-              Cada dia sem o Pulse é um dia com risco de auditoria, documentação incompleta e horas de trabalho
-              manual que poderiam ser automáticas. Configure em minutos e durma tranquilo.
+              Deixe de agir no escuro. Com o Pulse, você monitora o bem-estar dos colaboradores
+              continuamente e age antes que os problemas afetem a performance.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 href="/#planos"
                 className="inline-flex items-center justify-center gap-2 h-12 px-8 rounded-lg bg-white text-primary font-bold text-base transition-all hover:bg-white/90"
               >
-                Ver planos e começar
+                Escolher um plano
                 <ArrowRight className="w-4 h-4" />
               </Link>
-              <Link
-                href="/login"
+              <a
+                href={whatsappUrl("Olá! Gostaria de falar com um consultor sobre o Pulse.")}
                 className="inline-flex items-center justify-center h-12 px-8 rounded-lg border-2 border-white/40 text-white font-semibold text-base hover:bg-white/10 transition-all"
               >
-                Já tenho uma conta
-              </Link>
+                Falar com um consultor
+              </a>
             </div>
           </AnimateIn>
         </div>
       </section>
 
-
       <footer className="py-12 bg-white border-t border-border">
         <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
           <Link href="/"><Logo size="sm" /></Link>
           <p className="text-sm text-muted-foreground text-center">
-            © {new Date().getFullYear()} Pulse — Solução para NR-1. Todos os direitos reservados.
+            © {new Date().getFullYear()} Pulse — Saúde Ocupacional. Todos os direitos reservados.
           </p>
           <div className="flex gap-6 text-sm text-muted-foreground">
-            <Link href="/" className="hover:text-foreground transition-colors">← Voltar ao início</Link>
+            <Link href="/" className="hover:text-foreground transition-colors">Início</Link>
             <Link href="/login" className="hover:text-foreground transition-colors">Acessar plataforma</Link>
+            <a href="mailto:contato@pulse.com.br" className="hover:text-foreground transition-colors">Contato</a>
           </div>
         </div>
       </footer>
+
     </div>
   )
 }

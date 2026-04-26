@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { CheckCircle2, Shield, ClipboardList, Bell, FileText, Users, BarChart3, ArrowRight, Building2, Star, AlertTriangle, ChevronDown } from "lucide-react"
+import { CheckCircle2, ClipboardList, Bell, FileText, Users, BarChart3, ArrowRight, Building2, Star, MessageSquare, EyeOff, ChevronDown } from "lucide-react"
 import { Logo } from "@/libs/design-system/components/logo"
 import { getAllPlans } from "@/modules/plans/plan.service"
 import { env } from "@/env"
@@ -21,7 +21,7 @@ function whatsappUrl(message: string): string {
 }
 
 export default async function LandingPage(): Promise<React.ReactElement> {
-  const plansFromDb = await getAllPlans()
+  const plansFromDb = await getAllPlans().catch(() => [])
   return (
     <div className="min-h-screen bg-white text-foreground">
 
@@ -49,31 +49,25 @@ export default async function LandingPage(): Promise<React.ReactElement> {
         </div>
       </header>
 
-      <div className="bg-amber-500 text-white text-center py-2.5 px-4 text-xs font-semibold tracking-wide">
-        <AlertTriangle className="inline w-3.5 h-3.5 mr-1.5 -mt-0.5" />
-        NR-1 obrigatória a partir de <strong>maio de 2026</strong> — sua empresa já está preparada?{" "}
-        <Link href="/learn-more" className="underline underline-offset-2 hover:no-underline">Entenda o risco</Link>
-      </div>
-
       <section
         className="relative overflow-hidden pt-24 pb-20"
-        style={{ background: "linear-gradient(160deg, oklch(0.97 0.012 265) 0%, oklch(0.975 0.004 258) 60%, oklch(0.97 0.010 240) 100%)" }}
+        style={{ background: "linear-gradient(160deg, oklch(0.97 0.010 258) 0%, oklch(0.975 0.004 258) 60%, oklch(0.97 0.010 258) 100%)" }}
       >
         <div
           className="absolute inset-0 opacity-[0.03]"
           style={{
-            backgroundImage: "radial-gradient(circle at 1px 1px, oklch(0.50 0.195 265) 1px, transparent 0)",
+            backgroundImage: "radial-gradient(circle at 1px 1px, oklch(0.705 0.180 265) 1px, transparent 0)",
             backgroundSize: "28px 28px",
           }}
         />
         <div
           className="absolute -top-32 -right-32 w-[600px] h-[600px] rounded-full pointer-events-none"
-          style={{ background: "radial-gradient(circle, oklch(0.50 0.195 265 / 0.08) 0%, transparent 70%)", animation: "lp-float 8s ease-in-out infinite" }}
+          style={{ background: "radial-gradient(circle, oklch(0.705 0.180 265 / 0.08) 0%, transparent 70%)", animation: "lp-float 8s ease-in-out infinite" }}
         />
         <div className="relative max-w-6xl mx-auto px-6 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-xs font-semibold text-primary mb-6" style={{ animation: "lp-fade-in 0.5s ease-out both" }}>
-            <Shield className="w-3.5 h-3.5" />
-            Conformidade com a NR-1 simplificada
+            <BarChart3 className="w-3.5 h-3.5" />
+            Monitoramento de bem-estar corporativo
           </div>
           <h1
             className="text-5xl md:text-6xl font-extrabold tracking-tight leading-tight mb-6"
@@ -85,12 +79,11 @@ export default async function LandingPage(): Promise<React.ReactElement> {
               animation: "lp-fade-in-up 0.7s 0.1s ease-out both",
             }}
           >
-            Saúde ocupacional<br />sob controle.
+            Saiba o que sua equipe<br />está sentindo.
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed" style={{ animation: "lp-fade-in-up 0.7s 0.2s ease-out both" }}>
-            O Pulse é a plataforma que ajuda empresas a cumprir a{" "}
-            <strong className="text-foreground font-semibold">NR-1</strong> de forma eficiente — gerenciando riscos,
-            pesquisas de saúde e planos de ação em um único lugar.
+            O Pulse envia pesquisas anônimas automaticamente, detecta sinais de alerta por setor
+            e ajuda você a agir antes que os problemas afetem a performance da equipe.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center" style={{ animation: "lp-fade-in-up 0.7s 0.32s ease-out both" }}>
             <a
@@ -111,9 +104,9 @@ export default async function LandingPage(): Promise<React.ReactElement> {
           <div className="mt-16 flex flex-wrap justify-center gap-12 text-sm text-muted-foreground" style={{ animation: "lp-fade-in-up 0.7s 0.5s ease-out both" }}>
             {(
               [
-                ["mai/2026", "Prazo legal da nova NR-1"],
-                ["< 30 min", "Para configurar e estar pronto"],
+                ["< 30 min", "Para configurar e começar"],
                 ["100%", "Anonimato nas respostas"],
+                ["Automático", "Envio de pesquisas por setor"],
               ] as [string, string][]
             ).map(([num, label]) => (
               <div key={label} className="text-center">
@@ -128,46 +121,46 @@ export default async function LandingPage(): Promise<React.ReactElement> {
 
       <section id="recursos" className="py-24 max-w-6xl mx-auto px-6">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">Tudo que você precisa para a NR-1</h2>
+          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">Tudo para monitorar e melhorar o bem-estar da sua equipe</h2>
           <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-            Uma plataforma integrada que cobre todo o ciclo de gestão de saúde e riscos ocupacionais.
+            Uma plataforma integrada que cobre todo o ciclo de gestão de saúde e clima organizacional.
           </p>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
           {[
             {
-              icon: <Users className="w-5 h-5" />,
-              title: "Gestão de Funcionários",
-              desc: "Cadastro completo de colaboradores com histórico de saúde, departamentos e status de conformidade.",
-            },
-            {
               icon: <ClipboardList className="w-5 h-5" />,
-              title: "Pesquisas de Saúde",
-              desc: "Crie e dispare pesquisas de clima e bem-estar por link. Respostas analisadas automaticamente.",
-            },
-            {
-              icon: <Bell className="w-5 h-5" />,
-              title: "Alertas Inteligentes",
-              desc: "Detecção automática de funcionários com pontuação crítica antes que vire um problema.",
-            },
-            {
-              icon: <Shield className="w-5 h-5" />,
-              title: "Planos de Ação",
-              desc: "Registre, acompanhe e documente ações corretivas para conformidade com auditores.",
-            },
-            {
-              icon: <FileText className="w-5 h-5" />,
-              title: "PGR Automatizado",
-              desc: "Gere o Programa de Gerenciamento de Riscos atualizado com base nos dados coletados.",
+              title: "Pesquisas automáticas via WhatsApp",
+              desc: "Configure a frequência e o horário de cada setor. O Pulse envia as pesquisas automaticamente para cada colaborador — sem nenhuma intervenção manual.",
             },
             {
               icon: <BarChart3 className="w-5 h-5" />,
-              title: "Dashboard em Tempo Real",
-              desc: "Indicadores consolidados por departamento. Visão executiva sempre atualizada.",
+              title: "Painel por setor em tempo real",
+              desc: "Acompanhe a pontuação de bem-estar e a taxa de participação de cada departamento. Veja tendências e evolução ao longo do tempo.",
+            },
+            {
+              icon: <Bell className="w-5 h-5" />,
+              title: "Alertas antes que vire problema",
+              desc: "O sistema detecta quedas de pontuação, tendências negativas e baixa adesão. Você recebe um alerta e age antes que a situação cresça.",
+            },
+            {
+              icon: <MessageSquare className="w-5 h-5" />,
+              title: "Canal de relatos anônimos",
+              desc: "Colaboradores podem relatar situações difíceis de forma completamente anônima. Você sabe o que está acontecendo sem expor ninguém.",
+            },
+            {
+              icon: <FileText className="w-5 h-5" />,
+              title: "Planos de ação documentados",
+              desc: "Registre ações com responsável, prazo e acompanhamento. Saiba o que foi decidido, quando e por quem — tudo em um único lugar.",
+            },
+            {
+              icon: <Users className="w-5 h-5" />,
+              title: "Relatório consolidado em PDF",
+              desc: "Gere um relatório completo com métricas, alertas, planos de ação e histórico com um clique. Pronto para apresentar a qualquer momento.",
             },
           ].map((feature, i) => (
             <AnimateIn key={feature.title} delay={i * 80}>
-              <div className="rounded-xl border border-border bg-white p-6 hover:border-primary/30 hover:shadow-[0_4px_20px_oklch(0.18_0.022_258/0.06)] transition-all h-full">
+              <div className="rounded-xl border border-border bg-white p-6 hover:border-primary/30 hover:shadow-[0_4px_20px_oklch(0.50_0.195_265/0.08)] transition-all h-full">
                 <div className="w-10 h-10 rounded-lg bg-primary/8 flex items-center justify-center text-primary mb-4">
                   {feature.icon}
                 </div>
@@ -189,18 +182,18 @@ export default async function LandingPage(): Promise<React.ReactElement> {
             {[
               {
                 step: "01",
-                title: "Contrate o plano",
-                desc: "Escolha o plano adequado para o tamanho da sua empresa e receba o acesso em minutos.",
+                title: "Cadastre sua equipe",
+                desc: "Importe via planilha Excel ou cadastre os colaboradores e departamentos em minutos. Configure os responsáveis de RH.",
               },
               {
                 step: "02",
-                title: "Cadastre sua equipe",
-                desc: "Importe ou cadastre seus funcionários e departamentos. Configure os responsáveis de RH.",
+                title: "Configure e esqueça",
+                desc: "Defina a frequência das pesquisas e o horário de expediente de cada setor. O Pulse cuida do envio automaticamente.",
               },
               {
                 step: "03",
-                title: "Monitore e comprove",
-                desc: "Dispare pesquisas, acompanhe alertas, gere planos de ação e tenha o PGR sempre pronto.",
+                title: "Acompanhe e aja",
+                desc: "Monitore os indicadores no painel, receba alertas automáticos e registre as ações tomadas com responsável e prazo.",
               },
             ].map((item, i) => (
               <AnimateIn key={item.step} delay={i * 110} animation="fade-in-up">
@@ -354,24 +347,24 @@ export default async function LandingPage(): Promise<React.ReactElement> {
           <div className="space-y-4">
             {[
               {
-                q: "O que acontece se minha empresa não cumprir a NR-1?",
-                a: "A fiscalização pelo Ministério do Trabalho pode resultar em multas, interdição de atividades e processos trabalhistas. A partir de maio de 2026, o monitoramento de riscos psicossociais passa a ser exigência expressa — empresas sem documentação comprobatória ficam expostas.",
+                q: "Os colaboradores precisam instalar algum aplicativo?",
+                a: "Não. Eles recebem um link pelo WhatsApp ou SMS e respondem diretamente no navegador do celular. Sem cadastro, sem download, sem fricção.",
               },
               {
                 q: "Quanto tempo leva para configurar e começar?",
                 a: "Em média 20 a 30 minutos. Você cria a conta, importa sua equipe via planilha Excel, configura a frequência das pesquisas e está pronto. O sistema cuida do resto automaticamente.",
               },
               {
-                q: "Os colaboradores precisam criar uma conta ou instalar algum app?",
-                a: "Não. Eles recebem um link pelo WhatsApp ou SMS e respondem diretamente no navegador do celular. Sem cadastro, sem download, sem fricção.",
-              },
-              {
                 q: "As respostas são realmente anônimas?",
                 a: "Sim, por design técnico. Após o colaborador abrir o link da pesquisa, qualquer vínculo entre o token e a resposta é eliminado. Nem o RH, nem o gestor, nem nenhum administrador consegue saber quem respondeu o quê.",
               },
               {
+                q: "Com que frequência posso enviar as pesquisas?",
+                a: "Você escolhe: diariamente, duas vezes por semana, semanalmente, quinzenalmente ou mensalmente. Cada setor pode ter sua própria configuração de frequência e horário.",
+              },
+              {
                 q: "E se o colaborador não quiser participar?",
-                a: "Participação é sempre voluntária. O colaborador pode recusar o consentimento ou optar por sair a qualquer momento. A recusa é registrada formalmente, protegendo a empresa e respeitando os direitos do trabalhador.",
+                a: "Participação é sempre voluntária. Na primeira pesquisa, o colaborador pode recusar os termos e sair a qualquer momento. A recusa fica registrada no sistema.",
               },
               {
                 q: "Posso cancelar quando quiser?",
@@ -406,16 +399,16 @@ export default async function LandingPage(): Promise<React.ReactElement> {
 
       <section
         className="py-24 border-y border-border"
-        style={{ background: "linear-gradient(135deg, oklch(0.50 0.195 265) 0%, oklch(0.42 0.18 285) 100%)" }}
+        style={{ background: "linear-gradient(135deg, oklch(0.50 0.195 265) 0%, oklch(0.40 0.180 265) 100%)" }}
       >
         <div className="max-w-3xl mx-auto px-6 text-center text-white">
           <AnimateIn animation="fade-in">
             <Building2 className="w-10 h-10 mx-auto mb-6 opacity-80" />
           <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">
-            Sua empresa está em conformidade com a NR-1?
+            Cuide da sua equipe com dados reais
           </h2>
           <p className="text-lg opacity-80 mb-10 leading-relaxed">
-            A fiscalização está mais rigorosa. Não espere uma auditoria para agir. Comece hoje com o Pulse e tenha a documentação sempre pronta.
+            Deixe de agir no escuro. Com o Pulse, você monitora o bem-estar dos colaboradores continuamente e age no momento certo — antes que os problemas afetem a performance.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
@@ -440,7 +433,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
         <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
           <Logo size="sm" />
           <p className="text-sm text-muted-foreground text-center">
-            © {new Date().getFullYear()} Pulse — Solução para NR1. Todos os direitos reservados.
+            © {new Date().getFullYear()} Pulse — Saúde Ocupacional. Todos os direitos reservados.
           </p>
           <div className="flex gap-6 text-sm text-muted-foreground">
             <Link href="/learn-more" className="hover:text-foreground transition-colors">Como funciona</Link>

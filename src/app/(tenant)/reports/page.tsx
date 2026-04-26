@@ -42,7 +42,7 @@ export default async function ReportsPage(): Promise<React.ReactElement> {
                 </div>
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Importância legal</p>
-                  <p className="text-[12px] text-foreground leading-relaxed">Manter um canal de escuta permanente e documentar o tratamento dos relatos é uma boa prática exigida indiretamente pela <strong>NR-1</strong> e pode ser apresentado como evidência do comprometimento da empresa com a saúde ocupacional.</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">Manter um canal de escuta permanente e documentar o tratamento dos relatos é uma boa prática que demonstra o comprometimento genuíno da empresa com a saúde e o bem-estar dos colaboradores.</p>
                 </div>
               </div>
             } />

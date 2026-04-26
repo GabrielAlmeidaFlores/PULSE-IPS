@@ -31,7 +31,7 @@ export default function NotFound(): React.ReactElement {
             PULSE
           </span>
           <span className="text-[9px] font-semibold tracking-[0.3em] uppercase text-primary">
-            PLATAFORMA NR-1
+            SAÚDE OCUPACIONAL
           </span>
         </div>
       </header>
@@ -78,7 +78,7 @@ export default function NotFound(): React.ReactElement {
 
       <footer className="border-t border-border px-6 py-3">
         <p className="text-[10px] text-muted-foreground/60 text-center tracking-[0.2em] uppercase">
-          Pulse — Conformidade NR-1
+          Pulse — Saúde Ocupacional
         </p>
       </footer>
     </div>

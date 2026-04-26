@@ -60,7 +60,7 @@ export default async function AlertsPage(): Promise<React.ReactElement> {
                 </div>
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Como agir</p>
-                  <p className="text-[12px] text-foreground leading-relaxed">Para cada alerta relevante, crie um <strong>Plano de Ação</strong> (menu lateral) descrevendo as medidas adotadas. Isso documenta a resposta da empresa e é evidência no PGR para a NR-1.</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">Para cada alerta relevante, crie um <strong>Plano de Ação</strong> (menu lateral) descrevendo as medidas adotadas. Isso documenta a resposta da empresa e é uma evidência importante para o histórico de saúde ocupacional.</p>
                 </div>
               </div>
             } />

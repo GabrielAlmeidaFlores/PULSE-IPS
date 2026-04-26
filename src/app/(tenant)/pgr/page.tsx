@@ -36,7 +36,7 @@ export default async function PgrPage(): Promise<React.ReactElement> {
               <div className="space-y-3">
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">O que é o PGR?</p>
-                  <p className="text-[12px] text-foreground leading-relaxed">O <strong>Programa de Gerenciamento de Riscos</strong> é exigido pela <strong>NR-1 (atualização de 2025)</strong>, que entrou em vigor em maio de 2026. Toda empresa com funcionários CLT deve identificar, avaliar e controlar riscos ocupacionais — incluindo os <strong>fatores psicossociais</strong> como estresse, sobrecarga e clima organizacional.</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">O <strong>Programa de Gerenciamento de Riscos</strong> é o documento que consolida o histórico de saúde ocupacional da empresa: pesquisas realizadas, alertas gerados, planos de ação executados e métricas por setor. Inclui a análise de <strong>fatores psicossociais</strong> como estresse, sobrecarga e clima organizacional.</p>
                 </div>
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Por que é importante?</p>
@@ -53,7 +53,7 @@ export default async function PgrPage(): Promise<React.ReactElement> {
                 </div>
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Frequência recomendada</p>
-                  <p className="text-[12px] text-foreground leading-relaxed">A NR-1 recomenda revisão <strong>ao menos anual</strong>, mas empresas com histórico de alertas críticos devem revisar <strong>trimestralmente</strong>. O sistema alerta automaticamente 30 dias antes do vencimento da próxima revisão.</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">Recomenda-se revisão <strong>ao menos anual</strong>, mas empresas com histórico de alertas críticos devem revisar <strong>trimestralmente</strong>. O sistema alerta automaticamente 30 dias antes do vencimento da próxima revisão.</p>
                 </div>
               </div>
             } />

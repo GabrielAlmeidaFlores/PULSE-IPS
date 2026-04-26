@@ -116,7 +116,7 @@ async function tryRedirectIfAlreadyLoggedIn(
   superAdminCookie: string | undefined,
   request: NextRequest,
 ): Promise<NextResponse | null> {
-  if (pathname === "/login" || pathname === "/") {
+  if (pathname === "/login") {
     if (sessionCookie) {
       try {
         await jwtVerify(sessionCookie, getSecretKey())

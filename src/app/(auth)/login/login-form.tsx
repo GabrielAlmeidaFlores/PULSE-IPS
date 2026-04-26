@@ -42,9 +42,9 @@ export function LoginForm(): React.ReactElement {
       <div className="border-b border-border px-6 py-4 border-l-4 border-l-primary">
         <div className="flex flex-col leading-none mb-1">
           <span className="text-[18px] font-black tracking-[0.2em] uppercase text-foreground">PULSE</span>
-          <span className="text-[9px] font-semibold tracking-[0.3em] uppercase text-primary">PLATAFORMA NR-1</span>
+          <span className="text-[9px] font-semibold tracking-[0.3em] uppercase text-primary">SAÚDE OCUPACIONAL</span>
         </div>
-        <p className="text-[11px] text-muted-foreground mt-2">Acesse sua conta e gerencie a conformidade da sua empresa</p>
+        <p className="text-[11px] text-muted-foreground mt-2">Acesse sua conta e gerencie o bem-estar da sua equipe</p>
       </div>
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="p-6 space-y-4">
