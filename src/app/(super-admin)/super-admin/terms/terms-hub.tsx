@@ -1,11 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { FileText, Shield } from "lucide-react"
+import { FileText, Shield, Lock } from "lucide-react"
 import { TermsVersionList } from "@/app/(super-admin)/super-admin/terms/terms-version-list"
 import { NewTermsVersionForm } from "@/app/(super-admin)/super-admin/terms/new-terms-version-form"
 import { ConsentTermVersionList } from "@/app/(super-admin)/super-admin/consent-terms/consent-term-version-list"
 import { NewConsentTermForm } from "@/app/(super-admin)/super-admin/consent-terms/new-consent-term-form"
+import { PrivacyPolicyVersionList } from "@/app/(super-admin)/super-admin/terms/privacy-policy-version-list"
+import { NewPrivacyPolicyVersionForm } from "@/app/(super-admin)/super-admin/terms/new-privacy-policy-version-form"
 
 interface PlatformTermsVersion {
   id: string
@@ -26,12 +28,23 @@ interface ConsentTermVersion {
   createdAt: Date
 }
 
+interface PrivacyPolicyVersion {
+  id: string
+  version: string
+  title: string
+  content: string
+  isActive: boolean
+  effectiveAt: Date
+  createdAt: Date
+}
+
 interface Props {
   platformVersions: PlatformTermsVersion[]
   consentVersions: ConsentTermVersion[]
+  privacyPolicyVersions: PrivacyPolicyVersion[]
 }
 
-type TermsType = "platform" | "tcle"
+type TermsType = "platform" | "tcle" | "privacy"
 
 const TABS: { id: TermsType; label: string; icon: React.ReactElement; description: string }[] = [
   {
@@ -46,19 +59,30 @@ const TABS: { id: TermsType; label: string; icon: React.ReactElement; descriptio
     icon: <Shield className="h-4 w-4" />,
     description: "Aceitos pelos colaboradores antes de responder pesquisas",
   },
+  {
+    id: "privacy",
+    label: "Política de Privacidade",
+    icon: <Lock className="h-4 w-4" />,
+    description: "Exibida publicamente na plataforma",
+  },
 ]
 
-export function TermsHub({ platformVersions, consentVersions }: Props): React.ReactElement {
+export function TermsHub({
+  platformVersions,
+  consentVersions,
+  privacyPolicyVersions,
+}: Props): React.ReactElement {
   const [activeTab, setActiveTab] = useState<TermsType>("platform")
 
   const activePlatform = platformVersions.find((v) => v.isActive)
   const activeConsent = consentVersions.find((v) => v.isActive)
+  const activePrivacy = privacyPolicyVersions.find((v) => v.isActive)
 
   return (
     <div className="flex flex-col h-full">
       <div className="px-6 py-3 border-b border-border bg-card shrink-0">
-        <h1 className="text-[13px] font-black tracking-[0.2em] uppercase text-foreground">Termos e Consentimentos</h1>
-        <p className="text-[11px] text-muted-foreground">Gerencie os termos da plataforma e o TCLE dos colaboradores</p>
+        <h1 className="text-[13px] font-black tracking-[0.2em] uppercase text-foreground">Documentos Legais</h1>
+        <p className="text-[11px] text-muted-foreground">Gerencie os termos da plataforma, o TCLE dos colaboradores e a política de privacidade</p>
       </div>
 
       <div className="flex border-b border-border bg-card shrink-0">
@@ -86,6 +110,11 @@ export function TermsHub({ platformVersions, consentVersions }: Props): React.Re
               {tab.id === "tcle" && activeConsent && (
                 <span className="text-[9px] font-bold bg-green-100 text-green-700 border border-green-200 px-1.5 py-0.5 tracking-wider">
                   v{activeConsent.version}
+                </span>
+              )}
+              {tab.id === "privacy" && activePrivacy && (
+                <span className="text-[9px] font-bold bg-green-100 text-green-700 border border-green-200 px-1.5 py-0.5 tracking-wider">
+                  v{activePrivacy.version}
                 </span>
               )}
             </button>
@@ -131,6 +160,28 @@ export function TermsHub({ platformVersions, consentVersions }: Props): React.Re
                 <ConsentTermVersionList versions={consentVersions} />
               </div>
               <NewConsentTermForm {...(activeConsent ? { initialContent: activeConsent.content } : {})} />
+            </div>
+          </>
+        )}
+
+        {activeTab === "privacy" && (
+          <>
+            <div className="flex items-start gap-2 p-3 mb-6 bg-blue-50 border border-blue-200" style={{ borderRadius: 0 }}>
+              <p className="text-[11px] text-blue-800">
+                <strong>Informação:</strong> a versão ativa da política de privacidade é exibida publicamente em{" "}
+                <code className="font-mono">/privacy-policy</code>. Ao publicar uma nova versão, a anterior fica inativa automaticamente.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <h2 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground">
+                  Histórico de versões · {privacyPolicyVersions.length} publicada(s)
+                </h2>
+                <PrivacyPolicyVersionList versions={privacyPolicyVersions} />
+              </div>
+              <NewPrivacyPolicyVersionForm
+                {...(activePrivacy ? { initialContent: activePrivacy.content } : {})}
+              />
             </div>
           </>
         )}

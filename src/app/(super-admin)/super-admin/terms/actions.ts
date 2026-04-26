@@ -1,24 +1,17 @@
 "use server"
 
-import { z } from "zod"
 import { revalidatePath } from "next/cache"
 import type { ActionResult } from "@/libs/utils/action-result"
 import { getSuperAdminSession } from "@/modules/auth/session"
 import { createNewTermsVersion } from "@/modules/terms/terms.service"
-
-const createTermsSchema = z.object({
-  version: z.string().min(1).max(20).trim(),
-  title: z.string().min(1).max(255).trim(),
-  content: z.string().min(1).max(500000),
-  effectiveAt: z.string().datetime(),
-})
+import { createTermsVersionSchema } from "@/modules/terms/terms.schema"
 
 export async function createTermsVersionAction(input: unknown): Promise<ActionResult> {
   try {
     const session = await getSuperAdminSession()
     if (!session) return { error: "Acesso não autorizado." }
 
-    const parsed = createTermsSchema.safeParse(input)
+    const parsed = createTermsVersionSchema.safeParse(input)
     if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
 
     await createNewTermsVersion({

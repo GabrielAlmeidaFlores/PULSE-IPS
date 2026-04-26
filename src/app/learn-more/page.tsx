@@ -747,15 +747,33 @@ export default function LearnMorePage(): React.ReactElement {
       </section>
 
       <footer className="py-12 bg-white border-t border-border">
-        <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
-          <Link href="/"><Logo size="sm" /></Link>
-          <p className="text-sm text-muted-foreground text-center">
-            © {new Date().getFullYear()} Pulse — Saúde Ocupacional. Todos os direitos reservados.
-          </p>
-          <div className="flex gap-6 text-sm text-muted-foreground">
-            <Link href="/" className="hover:text-foreground transition-colors">Início</Link>
-            <Link href="/login" className="hover:text-foreground transition-colors">Acessar plataforma</Link>
-            <a href="mailto:contato@pulse.com.br" className="hover:text-foreground transition-colors">Contato</a>
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="flex flex-col md:flex-row justify-between gap-10 mb-10">
+            <div className="flex flex-col gap-3">
+              <Link href="/"><Logo size="sm" /></Link>
+              <p className="text-sm text-muted-foreground max-w-xs">
+                Monitoramento contínuo de saúde ocupacional para equipes de alto desempenho.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-10">
+              <div className="flex flex-col gap-3">
+                <span className="text-xs font-bold tracking-widest uppercase text-foreground">Produto</span>
+                <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Início</Link>
+                <Link href="/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Acessar plataforma</Link>
+                <a href="mailto:contato@pulse.com.br" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Contato</a>
+              </div>
+              <div className="flex flex-col gap-3">
+                <span className="text-xs font-bold tracking-widest uppercase text-foreground">Legal</span>
+                <Link href="/platform-terms" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Termos de Uso</Link>
+                <Link href="/privacy-policy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Política de Privacidade</Link>
+                <Link href="/consent-terms" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Termo de Consentimento</Link>
+              </div>
+            </div>
+          </div>
+          <div className="border-t border-border pt-6">
+            <p className="text-xs text-muted-foreground text-center">
+              © {new Date().getFullYear()} Pulse — Saúde Ocupacional. Todos os direitos reservados.
+            </p>
           </div>
         </div>
       </footer>
