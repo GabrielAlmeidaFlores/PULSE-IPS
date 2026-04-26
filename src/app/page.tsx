@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { CheckCircle2, ClipboardList, Bell, FileText, Users, BarChart3, ArrowRight, Building2, Star, MessageSquare, EyeOff, ChevronDown } from "lucide-react"
+import { CheckCircle2, ClipboardList, Bell, FileText, Users, BarChart3, ArrowRight, Building2, Star, MessageSquare, ChevronDown } from "lucide-react"
 import { Logo } from "@/libs/design-system/components/logo"
 import { getAllPlans } from "@/modules/plans/plan.service"
 import { env } from "@/env"
