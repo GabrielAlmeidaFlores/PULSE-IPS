@@ -31,7 +31,7 @@ export default async function PgrPage(): Promise<React.ReactElement> {
       <div className="border-b border-border bg-card px-6 py-4 flex items-center justify-between shrink-0">
         <div>
           <div className="flex items-center gap-1.5">
-            <h1 className="text-sm font-bold uppercase tracking-widest">PGR — Revisoes</h1>
+            <h1 className="text-sm font-bold uppercase tracking-widest">PGR — Revisões</h1>
             <PageHelp content={
               <div className="space-y-3">
                 <div>
@@ -58,7 +58,7 @@ export default async function PgrPage(): Promise<React.ReactElement> {
               </div>
             } />
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">{reviews.length} revisoes</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{reviews.length} revisões</p>
         </div>
         <PgrGenerateButton />
       </div>
@@ -67,7 +67,7 @@ export default async function PgrPage(): Promise<React.ReactElement> {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/40">
-                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Periodo</th>
+                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Período</th>
                 <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Status</th>
                 <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Índice de saúde</th>
                 <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Gerado em</th>
@@ -76,7 +76,7 @@ export default async function PgrPage(): Promise<React.ReactElement> {
             </thead>
             <tbody>
               {reviews.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-xs text-muted-foreground">Nenhuma revisao PGR.</td></tr>
+                <tr><td colSpan={5} className="px-4 py-8 text-center text-xs text-muted-foreground">Nenhuma revisão PGR.</td></tr>
               )}
               {reviews.map((review, i) => (
                 <tr key={review.id} className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors group ${i % 2 !== 0 ? "bg-muted/10" : ""}`}>

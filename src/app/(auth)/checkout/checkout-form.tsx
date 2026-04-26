@@ -10,13 +10,13 @@ import { selfServiceCheckoutAction } from "@/app/(auth)/checkout/actions"
 import { storage } from "@/libs/local-storage"
 
 const schema = z.object({
-  orgName: z.string().min(2, "Minimo 2 caracteres"),
+  orgName: z.string().min(2, "Mínimo 2 caracteres"),
   slug: z
     .string()
-    .min(2, "Minimo 2 caracteres")
+    .min(2, "Mínimo 2 caracteres")
     .max(50)
-    .regex(/^[a-z0-9-]+$/, "Apenas letras minusculas, numeros e hifens"),
-  adminEmail: z.string().email("E-mail invalido"),
+    .regex(/^[a-z0-9-]+$/, "Apenas letras minúsculas, números e hifens"),
+  adminEmail: z.string().email("E-mail inválido"),
 })
 
 type FormValues = z.infer<typeof schema>

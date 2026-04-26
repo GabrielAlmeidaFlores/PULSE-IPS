@@ -50,7 +50,7 @@ export function ReportForm({ orgSlug }: Props): React.ReactElement {
     return (
       <div className="w-full max-w-lg border border-border bg-card p-8 text-center">
         <h2 className="text-lg font-bold uppercase tracking-wide mb-2">Relato enviado</h2>
-        <p className="text-sm text-muted-foreground">Seu relato anonimo foi registrado com sucesso.</p>
+        <p className="text-sm text-muted-foreground">Seu relato anônimo foi registrado com sucesso.</p>
       </div>
     )
   }
@@ -58,8 +58,8 @@ export function ReportForm({ orgSlug }: Props): React.ReactElement {
   return (
     <div className="w-full max-w-lg border border-border bg-card">
       <div className="border-b border-border px-6 py-4">
-        <h1 className="text-sm font-bold uppercase tracking-widest">Canal de relatos anonimos</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">Sua identidade nao sera revelada</p>
+        <h1 className="text-sm font-bold uppercase tracking-widest">Canal de relatos anônimos</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">Sua identidade não será revelada</p>
       </div>
       <form onSubmit={form.handleSubmit(onSubmit)} className="p-6 space-y-4">
         <div className="space-y-1.5">
@@ -79,12 +79,12 @@ export function ReportForm({ orgSlug }: Props): React.ReactElement {
         </div>
         <div className="space-y-1.5">
           <Label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
-            Descricao
+            Descrição
           </Label>
           <Textarea
             {...form.register("content")}
             rows={6}
-            placeholder="Descreva a situacao com o maximo de detalhes possivel..."
+            placeholder="Descreva a situação com o máximo de detalhes possível..."
           />
           {form.formState.errors.content && (
             <p className="text-xs text-destructive">{form.formState.errors.content.message}</p>

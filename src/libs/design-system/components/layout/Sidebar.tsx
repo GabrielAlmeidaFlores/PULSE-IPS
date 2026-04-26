@@ -16,10 +16,10 @@ interface NavItem {
 function getNavItems(role: "admin" | "rh"): NavItem[] {
   const items: NavItem[] = [
     { href: "/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
-    { href: "/employees", label: "Funcionarios", icon: <Users className="h-4 w-4" /> },
+    { href: "/employees", label: "Funcionários", icon: <Users className="h-4 w-4" /> },
     { href: "/departments", label: "Departamentos", icon: <Building2 className="h-4 w-4" /> },
     { href: "/surveys", label: "Pesquisas", icon: <ClipboardList className="h-4 w-4" /> },
-    { href: "/action-plans", label: "Planos de Acao", icon: <ShieldCheck className="h-4 w-4" /> },
+    { href: "/action-plans", label: "Planos de Ação", icon: <ShieldCheck className="h-4 w-4" /> },
     { href: "/documents", label: "Documentos", icon: <FileText className="h-4 w-4" /> },
     { href: "/alerts", label: "Alertas", icon: <Bell className="h-4 w-4" /> },
     { href: "/reports", label: "Relatos", icon: <MessageSquare className="h-4 w-4" /> },
@@ -28,7 +28,7 @@ function getNavItems(role: "admin" | "rh"): NavItem[] {
   if (role === "admin") {
     items.push(
       { href: "/billing", label: "Assinatura", icon: <CreditCard className="h-4 w-4" /> },
-      { href: "/settings", label: "Configuracoes", icon: <Settings className="h-4 w-4" /> },
+      { href: "/settings", label: "Configurações", icon: <Settings className="h-4 w-4" /> },
     )
   }
   return items
@@ -77,7 +77,7 @@ export function Sidebar({ role }: SidebarProps): React.ReactElement {
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="left" className="w-60 p-0 bg-sidebar border-sidebar-border" style={{ borderRadius: 0 }}>
-          <SheetTitle className="sr-only">Menu de navegacao</SheetTitle>
+          <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
           <div className="h-14 flex items-center justify-between px-4 border-b border-sidebar-border">
             <Logo size="sm" />
             <button onClick={() => setOpen(false)} aria-label="Fechar menu">

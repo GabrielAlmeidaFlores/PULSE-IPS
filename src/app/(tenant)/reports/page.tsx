@@ -20,7 +20,7 @@ export default async function ReportsPage(): Promise<React.ReactElement> {
       <div className="border-b border-border bg-card px-6 py-4 flex items-center justify-between shrink-0">
         <div>
           <div className="flex items-center gap-1.5">
-            <h1 className="text-sm font-bold uppercase tracking-widest">Relatos Anonimos</h1>
+            <h1 className="text-sm font-bold uppercase tracking-widest">Relatos Anônimos</h1>
             <PageHelp content={
               <div className="space-y-3">
                 <div>

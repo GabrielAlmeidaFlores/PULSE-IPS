@@ -26,7 +26,7 @@ export function PlanCard({ externalPriceId, planName, priceLabel, maxEmployees, 
     <div className="flex items-center justify-between px-4 py-3">
       <div>
         <p className="text-sm font-semibold">{planName}</p>
-        <p className="text-xs text-muted-foreground">{description} — ate {maxEmployees} colaboradores</p>
+        <p className="text-xs text-muted-foreground">{description} — até {maxEmployees} colaboradores</p>
       </div>
       <div className="flex items-center gap-3">
         <span className="text-xs text-muted-foreground">{priceLabel}</span>

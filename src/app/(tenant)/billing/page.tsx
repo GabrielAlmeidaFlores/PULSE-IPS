@@ -83,7 +83,7 @@ export default async function BillingPage(): Promise<React.ReactElement> {
                 )},
                 { label: "Valor", value: `${(subscription.snapshotPriceInCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })  } / ${  subscription.snapshotInterval}` },
                 { label: "Max. colaboradores", value: subscription.snapshotMaxEmployees },
-                { label: "Periodo atual", value: `${format(subscription.currentPeriodStart, "dd/MM/yyyy")  } ate ${  format(subscription.currentPeriodEnd, "dd/MM/yyyy")}` },
+                { label: "Período atual", value: `${format(subscription.currentPeriodStart, "dd/MM/yyyy")  } até ${  format(subscription.currentPeriodEnd, "dd/MM/yyyy")}` },
               ].map((row) => (
                 <div key={row.label} className="flex items-center justify-between px-4 py-2.5">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{row.label}</span>
@@ -108,7 +108,7 @@ export default async function BillingPage(): Promise<React.ReactElement> {
                     <PlanCard
                       externalPriceId={plan.prices[0]?.externalPriceId ?? null}
                       planName={plan.name}
-                      priceLabel={plan.prices[0] ? `${(plan.prices[0].priceInCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })  }/mes` : "—"}
+                      priceLabel={plan.prices[0] ? `${(plan.prices[0].priceInCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })  }/mês` : "—"}
                       maxEmployees={plan.maxEmployees}
                       description={plan.description}
                     />

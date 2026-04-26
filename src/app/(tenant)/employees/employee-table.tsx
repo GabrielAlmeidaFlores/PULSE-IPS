@@ -106,7 +106,7 @@ export function EmployeeTable({ employees, total, departments }: Props): React.R
             {employees.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-xs text-muted-foreground">
-                  Nenhum funcionario cadastrado.
+                  Nenhum funcionário cadastrado.
                 </td>
               </tr>
             )}

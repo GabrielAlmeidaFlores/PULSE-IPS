@@ -1570,6 +1570,69 @@ O comando `yarn lint` executa o ESLint sobre todos os arquivos `**/*.ts` e `**/*
 
 ---
 
+### Ortografia do português — regra obrigatória para todo texto gerado por IA
+
+**Todo texto em português produzido por agentes de IA deve usar ortografia correta, incluindo acentos, til, cedilha e demais diacríticos.** Esta regra aplica-se a qualquer artefato do projeto: código-fonte, comentários (quando excepcionalmente permitidos), mensagens de erro, labels de UI, strings de validação Zod, conteúdo de e-mail, nomes de variáveis semânticas visíveis ao usuário e documentação.
+
+#### Exemplos de grafias proibidas e corretas
+
+| ❌ Proibido (sem acento) | ✅ Correto |
+|---|---|
+| nao | não |
+| Configuracoes | Configurações |
+| Funcionarios | Funcionários |
+| Planos de Acao | Planos de Ação |
+| anonimo / anonimos | anônimo / anônimos |
+| Periodo | Período |
+| Titulo | Título |
+| Descricao | Descrição |
+| Organizacao | Organização |
+| situacao | situação |
+| invalido | inválido |
+| minimo / maximo | mínimo / máximo |
+| possivel | possível |
+| minusculas | minúsculas |
+| numeros | números |
+| revisao / revisoes | revisão / revisões |
+| funcao | função |
+| opcao | opção |
+| relatorio | relatório |
+| historico | histórico |
+| automatico | automático |
+| publico | público |
+| tecnico | técnico |
+| unico | único |
+| basico | básico |
+| critico | crítico |
+| especifico | específico |
+| saude | saúde |
+| metricas | métricas |
+| numero | número |
+| pagina | página |
+| valido | válido |
+| ate | até |
+| tambem | também |
+| nenhum/nenhuma | nenhum / nenhuma (já correto, mas atenção ao contexto) |
+
+#### Exceções legítimas — onde acentos são intencionalmente omitidos
+
+| Contexto | Exemplo | Motivo |
+|---|---|---|
+| Endereços de e-mail (placeholders ou reais) | `voce@empresa.com` | E-mails não aceitam caracteres acentuados |
+| IDs HTML / âncoras de URL | `id="solucao"`, `href="#solucao"` | IDs devem ser URL-safe; o texto do link pode (e deve) estar acentuado |
+| Chaves de objetos / union types internos | `type FlowActor = "voce"` | Identificadores de código não são texto exibido ao usuário |
+| Slugs de rota (URL segments) | `/action-plans`, `/employees` | Rotas devem ser em inglês (ver §9 — Rotas em inglês) |
+
+#### Checklist de ortografia antes de gerar qualquer texto em ptBR
+
+Antes de escrever qualquer string em português, pergunte:
+- A palavra possui vogal tônica? → acente-a (á, é, í, ó, ú, â, ê, ô, ã, õ, à)
+- A palavra termina em `-ção`, `-ções`, `-ção`? → sempre com cedilha e til
+- A palavra contém som de "ss" antes de `a`, `o`, `u`? → verifique se precisa de cedilha (ç)
+- O texto será exibido diretamente ao usuário (label, mensagem de erro, toast, e-mail)? → ortografia perfeita é obrigatória
+
+---
+
 ## 10. Design Patterns
 
 ### Separação de responsabilidades (obrigatória)
