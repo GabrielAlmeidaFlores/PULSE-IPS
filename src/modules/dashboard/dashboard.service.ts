@@ -2,16 +2,19 @@ import { format, subMonths, subDays, startOfMonth } from "date-fns"
 import { MINIMUM_RESPONDENTS_FOR_DISPLAY } from "@/libs/utils/anonymity"
 import {
   findDispatchesWithData,
+  findDeptDispatchesWithData,
+  findDeptActiveAlerts,
   findUniqueQuestions,
   countActiveEmployees,
   countTotalResponses,
   countActiveAlerts,
   type DispatchWithData,
   type UniqueQuestion,
+  type DeptActiveAlert,
 } from "@/modules/dashboard/dashboard.repository"
 import { toHealthIndex } from "@/libs/utils/health-index"
 
-export type { UniqueQuestion }
+export type { UniqueQuestion, DeptActiveAlert }
 
 export interface ChartMonthPoint {
   month: string
@@ -285,5 +288,73 @@ export async function getDashboardData(tenantId: string, selectedOrders: number[
     deptComparison,
     adherenceChart,
     deptCards,
+  }
+}
+
+export interface DeptQuestionScore {
+  questionText: string
+  healthIndex: number
+  rawAvg: number
+  itemCount: number
+}
+
+export interface DeptHealthSummary {
+  questionScores: DeptQuestionScore[]
+  activeAlerts: DeptActiveAlert[]
+  adherenceRate: number | null
+  responseCount: number
+  totalRecipients: number
+}
+
+function aggregateDeptQuestionScores(dispatches: DispatchWithData[]): DeptQuestionScore[] {
+  const questionMap = new Map<string, { totalNormalized: number; itemCount: number }>()
+
+  for (const dispatch of dispatches) {
+    for (const response of dispatch.responses) {
+      for (const item of response.items) {
+        const normalized = normalizeScore(item.score, item.question.scoreDirection)
+        const existing = questionMap.get(item.question.text) ?? { totalNormalized: 0, itemCount: 0 }
+        existing.totalNormalized += normalized
+        existing.itemCount++
+        questionMap.set(item.question.text, existing)
+      }
+    }
+  }
+
+  return [...questionMap.entries()]
+    .filter(([, data]) => data.itemCount >= MINIMUM_RESPONDENTS_FOR_DISPLAY)
+    .map(([text, data]) => {
+      const rawAvg = roundTwo(data.totalNormalized / data.itemCount)
+      return {
+        questionText: text,
+        healthIndex: toHealthIndex(rawAvg),
+        rawAvg,
+        itemCount: data.itemCount,
+      }
+    })
+    .sort((a, b) => a.rawAvg - b.rawAvg)
+}
+
+export async function getDeptHealthSummary(tenantId: string, deptId: string): Promise<DeptHealthSummary> {
+  const thirtyDaysAgo = subDays(new Date(), 30)
+
+  const [dispatches, activeAlerts] = await Promise.all([
+    findDeptDispatchesWithData(tenantId, deptId, thirtyDaysAgo),
+    findDeptActiveAlerts(tenantId, deptId),
+  ])
+
+  const questionScores = aggregateDeptQuestionScores(dispatches)
+
+  const totalRecipients = dispatches.reduce((sum, d) => sum + d.totalRecipients, 0)
+  const responseCount = dispatches.reduce((sum, d) => sum + d.responses.length, 0)
+  const adherenceRate =
+    totalRecipients > 0 ? Math.round((responseCount / totalRecipients) * 1000) / 10 : null
+
+  return {
+    questionScores,
+    activeAlerts,
+    adherenceRate,
+    responseCount,
+    totalRecipients,
   }
 }
