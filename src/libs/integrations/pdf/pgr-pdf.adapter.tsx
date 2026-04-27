@@ -3,9 +3,9 @@ import { Document, Page, View, Text, StyleSheet, renderToBuffer, type DocumentPr
 import type { PgrPdfInput, PgrPdfDept, PgrPdfAggregatedQuestion } from "@/libs/integrations/pdf/pgr-pdf.types"
 
 const FONT_BOLD = "Helvetica-Bold"
-const BLUE = "#2563eb"
+const BLUE = "#3DB98A"
 const BLUE_LIGHT = "#dbeafe"
-const BLUE_DARK = "#1e3a5f"
+const BLUE_DARK = "#1a1a2e"
 const GREEN = "#16a34a"
 const GREEN_LIGHT = "#dcfce7"
 const GREEN_BORDER = "#86efac"
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     fontSize: 6,
     color: GRAY_500,
   },
-  nr1Badge: {
+  complianceBadge: {
     fontSize: 6,
     color: BLUE,
     fontFamily: FONT_BOLD,
@@ -550,7 +550,7 @@ function PageFooter({ orgName, pageLabel }: PageFooterProps): React.ReactElement
   return (
     <View style={styles.footer} fixed>
       <Text style={styles.footerText}>{orgName} · Relatório PGR · Pulse</Text>
-      <Text style={styles.nr1Badge}>NR-1 Conformidade</Text>
+      <Text style={styles.complianceBadge}>Conformidade Legal</Text>
       <Text style={styles.footerText}>{pageLabel}</Text>
     </View>
   )
@@ -578,11 +578,7 @@ function CoverPage({ data }: CoverPageProps): React.ReactElement {
         <View style={styles.pageHeaderRow}>
           <View>
             <Text style={styles.brandText}>Pulse</Text>
-            <Text style={styles.docTitle}>Relatório PGR — NR-1</Text>
-          </View>
-          <View style={styles.headerRight}>
-            <Text style={styles.orgName}>{data.orgName}</Text>
-            <Text style={styles.periodText}>{data.periodLabel}</Text>
+            <Text style={styles.docTitle}>Relatório PGR</Text>
           </View>
         </View>
       </View>
@@ -763,7 +759,7 @@ function DeptPage({ dept, orgName, periodLabel }: DeptPageProps): React.ReactEle
         <View style={styles.pageHeaderRow}>
           <View>
             <Text style={styles.brandText}>Pulse · Detalhe por Setor</Text>
-            <Text style={styles.docTitle}>Relatório PGR — NR-1</Text>
+            <Text style={styles.docTitle}>Relatório PGR</Text>
           </View>
           <View style={styles.headerRight}>
             <Text style={styles.orgName}>{orgName}</Text>
@@ -960,7 +956,7 @@ function ConsolidatedQuestionsPage({ aggregatedQuestions, orgName, periodLabel }
         <View style={styles.pageHeaderRow}>
           <View>
             <Text style={styles.brandText}>Pulse · Perguntas Consolidadas</Text>
-            <Text style={styles.docTitle}>Relatório PGR — NR-1</Text>
+            <Text style={styles.docTitle}>Relatório PGR</Text>
           </View>
           <View style={styles.headerRight}>
             <Text style={styles.orgName}>{orgName}</Text>
@@ -1020,7 +1016,7 @@ function MethodologyPage({ orgName, periodLabel, generatedAt }: MethodologyPageP
         <View style={styles.pageHeaderRow}>
           <View>
             <Text style={styles.brandText}>Pulse · Metodologia e Conformidade</Text>
-            <Text style={styles.docTitle}>Relatório PGR — NR-1</Text>
+            <Text style={styles.docTitle}>Relatório PGR</Text>
           </View>
           <View style={styles.headerRight}>
             <Text style={styles.orgName}>{orgName}</Text>
@@ -1033,11 +1029,11 @@ function MethodologyPage({ orgName, periodLabel, generatedAt }: MethodologyPageP
         <Text style={styles.sectionTitle}>Contexto Regulatório</Text>
 
         <View style={styles.methodologyBox}>
-          <Text style={styles.methodologyTitle}>NR-1 — Disposições Gerais e Gerenciamento de Riscos Ocupacionais</Text>
+          <Text style={styles.methodologyTitle}>Gerenciamento de Riscos Ocupacionais</Text>
           <Text style={styles.methodologyText}>
-            A Norma Regulamentadora nº 1 (NR-1), atualizada em 2024 e com vigência a partir de maio de 2026, exige que
-            as empresas incluam no Programa de Gerenciamento de Riscos (PGR) a identificação e controle de fatores de
-            risco psicossocial — incluindo estresse ocupacional, sobrecarga de trabalho e clima organizacional.
+            A legislação trabalhista exige que as empresas incluam no Programa de Gerenciamento de Riscos (PGR)
+            a identificação e controle de fatores de risco psicossocial — incluindo estresse ocupacional,
+            sobrecarga de trabalho e clima organizacional.
             Este relatório constitui evidência documental do cumprimento desta exigência.
           </Text>
         </View>
@@ -1086,7 +1082,7 @@ function MethodologyPage({ orgName, periodLabel, generatedAt }: MethodologyPageP
           <Text style={{ fontSize: 7, color: GRAY_500, textAlign: "center", lineHeight: 1.5 }}>
             Relatório gerado automaticamente pelo sistema Pulse em {formatDateTime(generatedAt)}.{"\n"}
             Este documento é de uso interno e serve como evidência documental para o PGR.{"\n"}
-            Pulse — Monitoramento de Saúde Ocupacional · NR-1 Conformidade
+            Pulse — Monitoramento de Saúde Ocupacional · Conformidade Legal
           </Text>
         </View>
       </View>
@@ -1105,7 +1101,7 @@ function PgrDocument({ data }: PgrDocumentProps): React.ReactElement {
     <Document
       title={`Relatório PGR — ${data.orgName} — ${data.periodLabel}`}
       author="Pulse"
-      subject="Programa de Gerenciamento de Riscos — NR-1"
+      subject="Programa de Gerenciamento de Riscos Ocupacionais"
       creator="Pulse"
       producer="Pulse"
     >

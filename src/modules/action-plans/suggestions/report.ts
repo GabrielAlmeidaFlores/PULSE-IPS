@@ -61,7 +61,7 @@ export function buildReportSuggestion(
       `Há ${openReports.length} relatos anônimos pendentes (${statusBreakdownLabel}). ` +
       `O mais antigo foi registrado ${oldestDaysAgoLabel}. ` +
       `Categorias identificadas: ${topCategoriesFormatted}. ` +
-      `Cada relato representa um colaborador que buscou ajuda — a resposta ágil demonstra comprometimento e é exigida indiretamente pela NR-1.`,
+      `Cada relato representa um colaborador que buscou ajuda — a resposta ágil demonstra comprometimento com o bem-estar da equipe.`,
     priority: "medium",
     reason: `${openReports.length} relatos em aberto ou análise — mais antigo ${oldestDaysAgoLabel}`,
     tasks: [

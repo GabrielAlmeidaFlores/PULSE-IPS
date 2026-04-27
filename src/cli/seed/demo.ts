@@ -132,7 +132,7 @@ const DOCUMENT_TEMPLATES = [
   { title: "Manual de Segurança e Saúde Ocupacional", type: "manual" },
   { title: "Plano de Ação Corretiva — Operações Q3/2025", type: "action_plan" },
   { title: "Relatório de Incidentes — Outubro 2025", type: "report" },
-  { title: "Treinamento NR-1: Riscos Psicossociais no Trabalho", type: "training" },
+  { title: "Treinamento: Riscos Psicossociais no Trabalho", type: "training" },
   { title: "Política de Bem-Estar e Saúde Mental", type: "policy" },
   { title: "Ata de Reunião CIPA — Novembro 2025", type: "meeting_minutes" },
 ]

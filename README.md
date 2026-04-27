@@ -1,6 +1,6 @@
-# Pulse — Plataforma NR-1 de Saúde Ocupacional
+# Pulse — Plataforma de Saúde Ocupacional
 
-Plataforma SaaS multi-tenant de gestão de saúde e bem-estar ocupacional voltada à conformidade com a **NR-1** (Gerenciamento de Riscos Ocupacionais) e **LGPD**. Permite que empresas cadastrem colaboradores, apliquem pesquisas de saúde/clima com envio automático por SMS ou WhatsApp, monitorem alertas, criem planos de ação e gerem o PGR.
+Plataforma SaaS multi-tenant de gestão de saúde e bem-estar ocupacional voltada à conformidade com a **LGPD** e às obrigações legais trabalhistas. Permite que empresas cadastrem colaboradores, apliquem pesquisas de saúde/clima com envio automático por SMS ou WhatsApp, monitorem alertas, criem planos de ação e gerem o PGR.
 
 ---
 
@@ -756,7 +756,7 @@ Referência de tudo que o usuário vê na tela para cada alerta (`/alerts`) e su
 | | Severidade | `warning` |
 | | Mensagem | `Revisão PGR prevista para {data}.` |
 | | Tooltip — label | Revisão PGR pendente |
-| | Tooltip — descrição | A revisão obrigatória do PGR vence em até 30 dias. A NR-1 exige documentação periódica dos riscos psicossociais — ausência de registro expõe a empresa a multas. |
+| | Tooltip — descrição | A revisão obrigatória do PGR vence em até 30 dias. A legislação trabalhista exige documentação periódica dos riscos psicossociais — ausência de registro expõe a empresa a multas. |
 | | Tooltip — ação + passos | 1. Acesse PGR no menu lateral. 2. Clique em Gerar relatório e selecione o mês/ano — faça isso apenas quando o mês estiver encerrado. 3. Revise os indicadores: índice de saúde, alertas ativos e planos de ação. 4. Se houver setores críticos, crie Planos de Ação antes de concluir. 5. Clique em Marcar como revisado para gerar a evidência legal. |
 | **"Índice de bem-estar abaixo do esperado — {setor}"** *(Sugestão)* | Condição | Alerta `low_score` sem resolução |
 | | Prioridade | `high` |
@@ -773,7 +773,7 @@ Referência de tudo que o usuário vê na tela para cada alerta (`/alerts`) e su
 | | Chave de dedup | `alert-score_drop-{departmentId}` |
 | | Título | `Intervenção de bem-estar — {setor}` |
 | | Motivo *(card colapsado)* | `Queda de score no setor {X} — alerta ativo {há N dias}` |
-| | Descrição *(card expandido)* | `Alerta gerado em {data} ({há N dias}) — setor: {X}, severidade: {sev}. Dado registrado pelo sistema: "{alert.message}". Quedas de score costumam indicar aumento de pressão, sobrecarga ou conflitos não endereçados. Agir rapidamente reduz o risco de agravamento e demonstra comprometimento com a NR-1.` |
+| | Descrição *(card expandido)* | `Alerta gerado em {data} ({há N dias}) — setor: {X}, severidade: {sev}. Dado registrado pelo sistema: "{alert.message}". Quedas de score costumam indicar aumento de pressão, sobrecarga ou conflitos não endereçados. Agir rapidamente reduz o risco de agravamento e demonstra comprometimento com a saúde ocupacional.` |
 | | Tarefa 1 | Reunião de diagnóstico com liderança do setor |
 | | Tarefa 2 | Levantamento dos principais fatores de risco relatados |
 | | Tarefa 3 | Definir medidas corretivas e responsáveis |
@@ -783,7 +783,7 @@ Referência de tudo que o usuário vê na tela para cada alerta (`/alerts`) e su
 | | Chave de dedup | `alert-negative_trend-{departmentId}` |
 | | Título | `Plano de melhoria contínua — {setor}` |
 | | Motivo *(card colapsado)* | `Tendência negativa no setor {X} — ativo {há N dias}` |
-| | Descrição *(card expandido)* | `Alerta gerado em {data} ({há N dias}) — setor: {X}, severidade: {sev}. Dado registrado pelo sistema: "{alert.message}". Tendências negativas prolongadas aumentam o risco de burnout e comprometem o cumprimento da NR-1. O problema se agrava a cada ciclo sem intervenção.` |
+| | Descrição *(card expandido)* | `Alerta gerado em {data} ({há N dias}) — setor: {X}, severidade: {sev}. Dado registrado pelo sistema: "{alert.message}". Tendências negativas prolongadas aumentam o risco de burnout e comprometem as obrigações legais trabalhistas. O problema se agrava a cada ciclo sem intervenção.` |
 | | Tarefa 1 | Análise detalhada das respostas dos últimos períodos |
 | | Tarefa 2 | Reunião com liderança para identificar causas raiz |
 | | Tarefa 3 | Definir metas de melhoria e prazo de reavaliação |
@@ -803,7 +803,7 @@ Referência de tudo que o usuário vê na tela para cada alerta (`/alerts`) e su
 | | Chave de dedup | `alert-no_response-{departmentId}` |
 | | Título | `Pesquisa sem respostas registradas — {setor}` |
 | | Motivo *(card colapsado)* | `Pesquisa sem resposta no setor {X}: Taxa de adesão: {pct}% ({r}/{total})` |
-| | Descrição *(card expandido)* | `Alerta gerado em {data} ({há N dias}) — setor: {X}, severidade: {sev}. Dado registrado pelo sistema: "Taxa de adesão: {pct}% ({r}/{total})". Sem respostas, não é possível monitorar o bem-estar do setor. A ausência de dados compromete tanto a gestão interna quanto a documentação de conformidade com a NR-1.` |
+| | Descrição *(card expandido)* | `Alerta gerado em {data} ({há N dias}) — setor: {X}, severidade: {sev}. Dado registrado pelo sistema: "Taxa de adesão: {pct}% ({r}/{total})". Sem respostas, não é possível monitorar o bem-estar do setor. A ausência de dados compromete tanto a gestão interna quanto a documentação de conformidade legal.` |
 | | Tarefa 1 | Verificar se os links de pesquisa chegaram corretamente |
 | | Tarefa 2 | Comunicado interno reforçando a importância das pesquisas |
 | | Tarefa 3 | Alinhar com gestores a divulgação interna do programa |
@@ -813,7 +813,7 @@ Referência de tudo que o usuário vê na tela para cada alerta (`/alerts`) e su
 | | Chave de dedup | `open-reports` |
 | | Título | `Tratamento de relatos anônimos pendentes` |
 | | Motivo *(card colapsado)* | `{N} relatos em aberto ou análise — mais antigo {há N dias}` |
-| | Descrição *(card expandido)* | `Há {N} relatos anônimos pendentes ({X} sem triagem, {Y} em análise). O mais antigo foi registrado {há N dias}. Categorias identificadas: {cat1} ({n}), {cat2} ({n}). Cada relato representa um colaborador que buscou ajuda — a resposta ágil demonstra comprometimento e é exigida indiretamente pela NR-1.` |
+| | Descrição *(card expandido)* | `Há {N} relatos anônimos pendentes ({X} sem triagem, {Y} em análise). O mais antigo foi registrado {há N dias}. Categorias identificadas: {cat1} ({n}), {cat2} ({n}). Cada relato representa um colaborador que buscou ajuda — a resposta ágil demonstra comprometimento e é exigida pela legislação trabalhista vigente.` |
 | | Tarefa 1 | Triagem e categorização dos relatos recebidos |
 | | Tarefa 2 | Definir responsável por cada categoria de relato |
 | | Tarefa 3 | Elaborar plano de resposta e comunicação interna |
@@ -823,7 +823,7 @@ Referência de tudo que o usuário vê na tela para cada alerta (`/alerts`) e su
 | | Chave de dedup | `dispatch-low-adherence-{dispatchId}` |
 | | Título | `Aumentar adesão às pesquisas — {setor}` |
 | | Motivo *(card colapsado)* | `Pesquisa enviada em {data} no setor {X}: {pct}% de adesão ({r}/{total})` |
-| | Descrição *(card expandido)* | `Na pesquisa enviada em {data} ao setor {X}: {r} de {total} colaboradores responderam ({pct}% de adesão — meta: ≥80%). {N} respostas não foram recebidas. Dados desrepresentativos comprometem a detecção precoce de riscos psicossociais e a evidência documental exigida pela NR-1.` |
+| | Descrição *(card expandido)* | `Na pesquisa enviada em {data} ao setor {X}: {r} de {total} colaboradores responderam ({pct}% de adesão — meta: ≥80%). {N} respostas não foram recebidas. Dados desrepresentativos comprometem a detecção precoce de riscos psicossociais e a evidência documental exigida pela legislação.` |
 | | Tarefa 1 | Informar colaboradores sobre a importância das pesquisas de bem-estar |
 | | Tarefa 2 | Verificar se os links chegaram corretamente (checar registros de envio) |
 | | Tarefa 3 | Alinhar com gestores a divulgação interna do programa |
@@ -833,7 +833,7 @@ Referência de tudo que o usuário vê na tela para cada alerta (`/alerts`) e su
 | | Chave de dedup | `consent-pending` |
 | | Título | `Engajamento no TCLE — colaboradores sem aceite` |
 | | Motivo *(card colapsado)* | `{N} colaborador(es) sem TCLE aceito — {setor1} ({n}), {setor2} ({n})` |
-| | Descrição *(card expandido)* | `{N} colaboradores ativos não aceitaram o Termo de Consentimento — distribuídos em: {setor1} ({n}), {setor2} ({n}). Sem o aceite, esses colaboradores ficam excluídos das pesquisas e das métricas de saúde ocupacional, reduzindo a representatividade dos dados e comprometendo a documentação de conformidade com a NR-1.` |
+| | Descrição *(card expandido)* | `{N} colaboradores ativos não aceitaram o Termo de Consentimento — distribuídos em: {setor1} ({n}), {setor2} ({n}). Sem o aceite, esses colaboradores ficam excluídos das pesquisas e das métricas de saúde ocupacional, reduzindo a representatividade dos dados e comprometendo a documentação de conformidade legal.` |
 | | Tarefa 1 | Identificar colaboradores com aceite pendente por setor |
 | | Tarefa 2 | Reenviar o convite de aceite do TCLE para esses colaboradores |
 | | Tarefa 3 | Comunicar gestores sobre a importância do aceite nos seus setores |
@@ -843,7 +843,7 @@ Referência de tudo que o usuário vê na tela para cada alerta (`/alerts`) e su
 | | Chave de dedup | `pgr-missing` |
 | | Título | `Geração do relatório PGR do mês` |
 | | Motivo *(card colapsado)* | `Relatório PGR pendente para {mês/ano} — último: {período}` · ou `Nenhum relatório PGR registrado ({mês/ano})` se nunca houve |
-| | Descrição *(card expandido)* | `Nenhum relatório PGR foi gerado para {mês/ano}. O último relatório foi gerado em {data} (período: {período}).` · ou `Nenhum relatório PGR foi gerado até o momento.` · `A NR-1 exige que as empresas documentem e revisem periodicamente os riscos psicossociais — o relatório mensal é a principal evidência de conformidade.` |
+| | Descrição *(card expandido)* | `Nenhum relatório PGR foi gerado para {mês/ano}. O último relatório foi gerado em {data} (período: {período}).` · ou `Nenhum relatório PGR foi gerado até o momento.` · `A legislação trabalhista exige que as empresas documentem e revisem periodicamente os riscos psicossociais — o relatório mensal é a principal evidência de conformidade.` |
 | | Tarefa 1 | Acessar o módulo PGR e gerar o relatório do período |
 | | Tarefa 2 | Revisar os indicadores de saúde por setor |
 | | Tarefa 3 | Registrar observações e planos de melhoria |
@@ -993,7 +993,7 @@ O super admin acessa `/super-admin` com credenciais separadas e tem controle tot
 - Fora do expediente, o formulário exibe uma mensagem informando o horário disponível.
 
 **Justificativa legal:**
-- Enviar pesquisas apenas durante o expediente é exigência implícita da NR-1 e das boas práticas da LGPD.
+- Enviar pesquisas apenas durante o expediente é uma boa prática de saúde ocupacional e de conformidade com a LGPD.
 - Respeita o direito ao descanso dos trabalhadores (CLT).
 - Aumenta a taxa de resposta ao enviar no momento de maior engajamento.
 
@@ -1070,7 +1070,7 @@ flowchart TD
     RH_DASH --> ALERT_VIEW["Visualiza alertas\nde saúde gerados\npelo sistema"]
     RH_DASH --> AP_CREATE["Cria Planos de Ação\ncom tarefas e responsáveis"]
     RH_DASH --> DOCS["Gerencia documentos\nda empresa (PPRA, PCMSO…)"]
-    RH_DASH --> PGR["Gerencia o PGR\n(revisões periódicas — NR-1)"]
+    RH_DASH --> PGR["Gerencia o PGR\n(revisões periódicas"]
     RH_DASH --> REPORTS["Acompanha\ndenúncias anônimas"]
 
     DASH --> SURVEY_CFG

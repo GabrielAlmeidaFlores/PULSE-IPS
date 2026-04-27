@@ -23,7 +23,7 @@ export function buildConsentSuggestion(
       `${totalWithoutConsent} colaborador${isPlural ? "es" : ""} ativo${isPlural ? "s" : ""} ` +
       `não ${isPlural ? "aceitaram" : "aceitou"} o Termo de Consentimento — distribuídos em: ${deptBreakdownFormatted}. ` +
       `Sem o aceite, esses colaboradores ficam excluídos das pesquisas e das métricas de saúde ocupacional, ` +
-      `reduzindo a representatividade dos dados e comprometendo a documentação de conformidade com a NR-1.`,
+      `reduzindo a representatividade dos dados e comprometendo a documentação de conformidade legal.`,
     priority: "medium",
     reason: `${totalWithoutConsent} colaborador${isPlural ? "es" : ""} sem TCLE aceito — ${deptBreakdownFormatted}`,
     tasks: [

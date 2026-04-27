@@ -42,7 +42,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
             </Link>
             <a
               href="#planos"
-              className="inline-flex items-center justify-center h-9 px-4 rounded-lg bg-primary text-white text-sm font-semibold transition-all hover:-translate-y-px hover:shadow-[0_6px_20px_oklch(0.50_0.195_265/0.28)]"
+              className="inline-flex items-center justify-center h-9 px-4 rounded-lg bg-primary text-white text-sm font-semibold transition-all hover:-translate-y-px hover:shadow-[0_6px_20px_oklch(0.705_0.128_164/0.28)]"
             >
               Começar agora
             </a>
@@ -52,18 +52,18 @@ export default async function LandingPage(): Promise<React.ReactElement> {
 
       <section
         className="relative overflow-hidden pt-24 pb-20"
-        style={{ background: "linear-gradient(160deg, oklch(0.97 0.010 258) 0%, oklch(0.975 0.004 258) 60%, oklch(0.97 0.010 258) 100%)" }}
+        style={{ background: "linear-gradient(160deg, oklch(0.978 0.010 164) 0%, oklch(0.978 0.010 164) 60%, oklch(0.978 0.010 164) 100%)" }}
       >
         <div
           className="absolute inset-0 opacity-[0.03]"
           style={{
-            backgroundImage: "radial-gradient(circle at 1px 1px, oklch(0.705 0.180 265) 1px, transparent 0)",
+            backgroundImage: "radial-gradient(circle at 1px 1px, oklch(0.705 0.128 164) 1px, transparent 0)",
             backgroundSize: "28px 28px",
           }}
         />
         <div
           className="absolute -top-32 -right-32 w-[600px] h-[600px] rounded-full pointer-events-none"
-          style={{ background: "radial-gradient(circle, oklch(0.705 0.180 265 / 0.08) 0%, transparent 70%)", animation: "lp-float 8s ease-in-out infinite" }}
+          style={{ background: "radial-gradient(circle, oklch(0.705 0.128 164 / 0.12) 0%, transparent 70%)", animation: "lp-float 8s ease-in-out infinite" }}
         />
         <div className="relative max-w-6xl mx-auto px-6 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-xs font-semibold text-primary mb-6" style={{ animation: "lp-fade-in 0.5s ease-out both" }}>
@@ -73,7 +73,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
           <h1
             className="text-5xl md:text-6xl font-extrabold tracking-tight leading-tight mb-6"
             style={{
-              background: "linear-gradient(135deg, oklch(0.18 0.022 258), oklch(0.50 0.195 265))",
+              background: "linear-gradient(135deg, oklch(0.228 0.025 249), oklch(0.705 0.128 164))",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
               backgroundClip: "text",
@@ -89,7 +89,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
           <div className="flex flex-col sm:flex-row gap-4 justify-center" style={{ animation: "lp-fade-in-up 0.7s 0.32s ease-out both" }}>
             <a
               href="#planos"
-              className="inline-flex items-center justify-center gap-2 h-12 px-8 rounded-lg bg-primary text-white font-semibold text-base transition-all hover:-translate-y-px hover:shadow-[0_8px_24px_oklch(0.50_0.195_265/0.30)]"
+              className="inline-flex items-center justify-center gap-2 h-12 px-8 rounded-lg bg-primary text-white font-semibold text-base transition-all hover:-translate-y-px hover:shadow-[0_8px_24px_oklch(0.705_0.128_164/0.30)]"
             >
               Ver planos e preços
               <ArrowRight className="w-4 h-4" />
@@ -161,7 +161,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
             },
           ].map((feature, i) => (
             <AnimateIn key={feature.title} delay={i * 80}>
-              <div className="rounded-xl border border-border bg-white p-6 hover:border-primary/30 hover:shadow-[0_4px_20px_oklch(0.50_0.195_265/0.08)] transition-all h-full">
+              <div className="rounded-xl border border-border bg-white p-6 hover:border-primary/30 hover:shadow-[0_4px_20px_oklch(0.228_0.025_249/0.06)] transition-all h-full">
                 <div className="w-10 h-10 rounded-lg bg-primary/8 flex items-center justify-center text-primary mb-4">
                   {feature.icon}
                 </div>
@@ -199,7 +199,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
             ].map((item, i) => (
               <AnimateIn key={item.step} delay={i * 110} animation="fade-in-up">
                 <div className="flex flex-col items-start">
-                  <div className="text-5xl font-black text-primary/15 mb-4 leading-none">{item.step}</div>
+                  <div className="text-5xl font-black text-primary/40 mb-4 leading-none">{item.step}</div>
                   <h3 className="font-bold text-lg mb-2">{item.title}</h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
                 </div>
@@ -252,8 +252,8 @@ export default async function LandingPage(): Promise<React.ReactElement> {
                   <div
                     className={`rounded-2xl border p-8 flex flex-col gap-6 transition-all relative h-full ${
                     isHighlight
-                      ? "border-primary bg-primary shadow-[0_8px_40px_oklch(0.50_0.195_265/0.25)] text-white"
-                      : "border-border bg-white hover:border-primary/30 hover:shadow-[0_4px_20px_oklch(0.18_0.022_258/0.06)]"
+                      ? "border-primary bg-primary shadow-[0_8px_40px_oklch(0.705_0.128_164/0.28)] text-white"
+                      : "border-border bg-white hover:border-primary/30 hover:shadow-[0_4px_20px_oklch(0.228_0.025_249/0.06)]"
                   }`}
                 >
                   {isHighlight && (
@@ -330,7 +330,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
                       className={`inline-flex items-center justify-center h-11 rounded-lg font-semibold text-sm transition-all ${
                         isHighlight
                           ? "bg-white text-primary hover:bg-white/90"
-                          : "bg-primary text-white hover:-translate-y-px hover:shadow-[0_6px_20px_oklch(0.50_0.195_265/0.28)]"
+                          : "bg-primary text-white hover:-translate-y-px hover:shadow-[0_6px_20px_oklch(0.705_0.128_164/0.28)]"
                       }`}
                     >
                       Contratar agora
@@ -420,7 +420,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
 
       <section
         className="py-24 border-y border-border"
-        style={{ background: "linear-gradient(135deg, oklch(0.50 0.195 265) 0%, oklch(0.40 0.180 265) 100%)" }}
+        style={{ background: "linear-gradient(135deg, oklch(0.705 0.128 164) 0%, oklch(0.580 0.120 164) 100%)" }}
       >
         <div className="max-w-3xl mx-auto px-6 text-center text-white">
           <AnimateIn animation="fade-in">

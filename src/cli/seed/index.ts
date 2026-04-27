@@ -249,7 +249,7 @@ const TERMS_V1 = {
 </p>
 <p>
   13.5. Para dúvidas ou solicitações relacionadas a estes Termos, entre em contato pelo e-mail:
-  <strong>privacidade@usepulse.com.br</strong>
+  <strong>privacidade@pulseips.com.br</strong>
 </p>
 
 <hr/>
@@ -269,7 +269,7 @@ const CONSENT_TERM_V2 = {
   content: `<div style="font-family:sans-serif;line-height:1.7;color:#1e293b;max-width:760px;margin:0 auto">
 
 <div style="background:#f0f7ff;border:1px solid #bfdbfe;border-radius:10px;padding:20px 24px;margin-bottom:28px">
-  <p style="margin:0 0 6px 0;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#1d4ed8">📋 Termo de Consentimento Livre e Esclarecido (TCLE)</p>
+  <p style="margin:0 0 6px 0;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#3DB98A">📋 Termo de Consentimento Livre e Esclarecido (TCLE)</p>
   <p style="margin:0;font-size:13px;color:#334155">
     <strong>Versão:</strong> 1.1.0 &nbsp;·&nbsp;
     <strong>Vigência:</strong> 01 de maio de 2026 &nbsp;·&nbsp;
@@ -585,7 +585,7 @@ const CONSENT_TERM_V2 = {
 <p>
   Para exercer qualquer desses direitos, procure o setor de RH da sua empresa. O RH é o canal
   preferencial para solicitações do dia a dia. Para questões que o RH não puder resolver, entre em
-  contato diretamente com a Pulse pelo e-mail <strong>privacidade@usepulse.com.br</strong>.
+  contato diretamente com a Pulse pelo e-mail <strong>privacidade@pulseips.com.br</strong>.
 </p>
 
 <hr style="border:none;border-top:1px solid #e2e8f0;margin:28px 0"/>
@@ -704,7 +704,7 @@ const CONSENT_TERM_V2 = {
   </li>
   <li>
     <strong>Pulse — Encarregado de Proteção de Dados (DPO):</strong>
-    <strong>privacidade@usepulse.com.br</strong>
+    <strong>privacidade@pulseips.com.br</strong>
     — para solicitações de direitos do titular, reclamações ou questões que o RH não puder resolver;
   </li>
   <li>
@@ -732,8 +732,8 @@ const CONSENT_TERM_V2 = {
 <hr style="border:none;border-top:1px solid #e2e8f0;margin:28px 0"/>
 
 <div style="background:#f0f7ff;border:1px solid #bfdbfe;border-radius:10px;padding:20px 24px;margin-bottom:20px">
-  <p style="margin:0 0 10px 0;font-weight:700;color:#1d4ed8;font-size:15px">✅ Ao aceitar este termo, você declara que:</p>
-  <ul style="margin:0;padding-left:20px;color:#1e3a5f">
+  <p style="margin:0 0 10px 0;font-weight:700;color:#3DB98A;font-size:15px">✅ Ao aceitar este termo, você declara que:</p>
+  <ul style="margin:0;padding-left:20px;color:#1a1a2e">
     <li>Leu e compreendeu todas as informações descritas acima;</li>
     <li>Aceita voluntariamente participar das pesquisas periódicas de bem-estar;</li>
     <li>Está ciente de que suas respostas são anônimas por garantia técnica, não apenas por promessa;</li>
@@ -744,7 +744,7 @@ const CONSENT_TERM_V2 = {
 </div>
 
 <p style="font-size:11px;color:#64748b;margin-top:16px;text-align:center">
-  Pulse Tecnologia em Saúde Ocupacional · privacidade@usepulse.com.br ·
+  Pulse Tecnologia em Saúde Ocupacional · privacidade@pulseips.com.br ·
   Versão 1.1.0 — Vigente a partir de 01/05/2026 ·
   Fundamento legal: LGPD (Lei nº 13.709/2018)
 </p>
@@ -932,7 +932,7 @@ const PRIVACY_POLICY_V1 = {
 </ul>
 <p>
   Para exercer seus direitos, entre em contato com o RH da sua empresa ou diretamente com a Pulse pelo
-  e-mail <strong>privacidade@usepulse.com.br</strong>. O prazo de resposta é de até 15 dias corridos.
+  e-mail <strong>privacidade@pulseips.com.br</strong>. O prazo de resposta é de até 15 dias corridos.
 </p>
 
 <h3>8. Cookies e rastreamento</h3>
@@ -955,7 +955,7 @@ const PRIVACY_POLICY_V1 = {
 
 <h3>11. Contato e Encarregado de Dados (DPO)</h3>
 <ul>
-  <li><strong>E-mail:</strong> privacidade@usepulse.com.br</li>
+  <li><strong>E-mail:</strong> privacidade@pulseips.com.br</li>
   <li><strong>Assunto:</strong> "Direitos do Titular" ou "Política de Privacidade"</li>
 </ul>
 <p>
@@ -965,7 +965,7 @@ const PRIVACY_POLICY_V1 = {
 
 <hr/>
 <p style="font-size:12px;color:#64748b;">
-  Pulse Tecnologia em Saúde Ocupacional · privacidade@usepulse.com.br · Versão 1.0.0 — Vigente a partir de 01/01/2026
+  Pulse Tecnologia em Saúde Ocupacional · privacidade@pulseips.com.br · Versão 1.0.0 — Vigente a partir de 01/01/2026
 </p>`,
 };
 

@@ -46,7 +46,7 @@
 
 ## 1. O que é o Pulse
 
-O **Pulse** é um software SaaS de monitoramento de saúde ocupacional que ajuda empresas a cumprir as exigências da NR-1 (vigentes a partir de maio de 2026). O sistema:
+O **Pulse** é um software SaaS de monitoramento de saúde ocupacional que ajuda empresas a monitorar a saúde ocupacional dos colaboradores e cumprir obrigações legais trabalhistas. O sistema:
 
 1. Envia pesquisas rápidas e anônimas para colaboradores via SMS/WhatsApp automaticamente por setor
 2. Agrupa resultados por setor e emite alertas automáticos quando detecta queda de indicadores
@@ -74,7 +74,7 @@ Por exigência da LGPD:
 
 ## 2. Contexto Regulatório
 
-A atualização da NR-1 exige que empresas monitorem fatores de risco psicossocial (estresse, sobrecarga, clima) e produzam documentação comprobatória. O Pulse atende essa exigência com:
+A legislação trabalhista exige que empresas monitorem fatores de risco psicossocial (estresse, sobrecarga, clima) e produzam documentação comprobatória. O Pulse atende essa exigência com:
 
 - **TCLE (Termo de Consentimento Livre e Esclarecido):** registro imutável de que cada colaborador foi informado e consentiu
 - **Anonimato duplo:** respostas sem `employee_id` + métricas exibidas apenas com ≥ 5 respondentes
@@ -2130,19 +2130,19 @@ theme: {
   extend: {
     colors: {
       brand: {
-        50:  "#f0f7ff",
-        100: "#dbeafe",
-        500: "#2563eb",   // ação primária (light)
-        600: "#1d4ed8",   // hover
-        700: "#1e40af",
-        900: "#1e3a5f",
+        50:  "#f0fdf9",
+        100: "#d1faf0",
+        500: "#3DB98A",   // ação primária
+        600: "#2a9b71",   // hover
+        700: "#1e7a57",
+        900: "#1a1a2e",
       },
       success: { 50: "#f0fdf4", 500: "#16a34a", 700: "#15803d" },
       warning: { 50: "#fffbeb", 500: "#d97706", 700: "#b45309" },
-      danger:  { 50: "#fef2f2", 500: "#dc2626", 700: "#b91c1c" },
+      danger:  { 50: "#fef2f2", 500: "#CC0000", 700: "#990000" },
       neutral: {
         50: "#f8fafc", 100: "#f1f5f9", 200: "#e2e8f0",
-        500: "#64748b", 700: "#334155", 900: "#0f172a",
+        500: "#64748b", 700: "#334155", 900: "#1a1a2e",
       },
     },
     fontFamily: {
@@ -2175,20 +2175,21 @@ export function ThemeToggle() {
 
 ```css
 :root {
-  --background: 0 0% 100%;
-  --foreground: 222 47% 11%;
-  --primary: 221 83% 53%;      /* brand-500 #2563eb */
-  --muted: 210 40% 96%;
-  --border: 214 32% 91%;
+  --background: oklch(0.978 0.004 149);
+  --foreground: oklch(0.228 0.025 249);   /* #1a1a2e — navy escuro */
+  --primary: oklch(0.709 0.066 149.5);    /* #3DB98A — verde primário */
+  --primary-foreground: oklch(0.228 0.025 249);  /* navy — contraste sobre verde */
+  --destructive: oklch(0.531 0.211 17.6); /* #CC0000 — vermelho */
+  --muted: oklch(0.955 0.005 149);
+  --border: oklch(0.882 0.010 149);
 }
+```
 
-.dark {
-  --background: 0 0% 7%;
-  --foreground: 210 40% 98%;
-  --primary: 217 91% 60%;
-  --muted: 217 33% 17%;
-  --border: 217 33% 17%;
-}
+**Sidebar (dark navy):**
+```css
+--sidebar: oklch(0.175 0.022 249);           /* #1a1a2e */
+--sidebar-foreground: oklch(0.920 0.012 149); /* texto claro */
+--sidebar-primary: oklch(0.709 0.066 149.5);  /* verde ativo */
 ```
 
 **Regra:** nenhum componente usa cores hardcoded (`text-slate-900`, `bg-white`). Sempre usar variáveis semânticas do shadcn/ui (`bg-background`, `text-foreground`, `bg-card`, `text-muted-foreground`).
@@ -2201,7 +2202,7 @@ export function ThemeToggle() {
 
 ```css
 /* src/app/globals.css — única fonte de verdade para bordas de form controls */
---input-border: oklch(0.74 0.022 258);   /* borda padrão — visível mas sutil */
+--input-border: oklch(0.740 0.018 149);   /* borda padrão — visível mas sutil */
 ```
 
 Os estilos são aplicados via `data-slot` no `@layer base` de `globals.css`:
@@ -2218,7 +2219,8 @@ Focus e hover são centralizados no mesmo bloco — ao focar, a borda muda para 
 
 ### Identidade visual
 
-- **Primária:** azul corporativo `#2563eb` — confiança, seriedade
+- **Primária:** verde corporativo `#3DB98A` — saúde, bem-estar, confiança
+- **Escura:** navy `#1a1a2e` — seriedade, contraste (sidebar, destaques)
 - **Tipografia:** Poppins (configurada via `next/font`)
 - **Acessibilidade:** foco visível em todos os elementos interativos, contraste WCAG AA, labels em todos os inputs
 

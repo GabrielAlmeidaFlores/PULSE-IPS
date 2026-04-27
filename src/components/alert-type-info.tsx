@@ -23,7 +23,7 @@ const ALERT_DETAILS: Record<string, AlertTypeDetail> = {
   },
   pgr_review_due: {
     label: "Revisão PGR pendente",
-    description: "A revisão obrigatória do PGR vence em até 30 dias. A NR-1 exige documentação periódica dos riscos psicossociais — ausência de registro expõe a empresa a multas.",
+    description: "A revisão obrigatória do PGR vence em até 30 dias. A legislação trabalhista exige documentação periódica dos riscos psicossociais — ausência de registro expõe a empresa a multas.",
     action: "Siga os passos abaixo para concluir a revisão:",
     steps: [
       "Acesse PGR no menu lateral.",

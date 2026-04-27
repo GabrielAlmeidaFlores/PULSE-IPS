@@ -17,7 +17,7 @@ import type { BarPoint, ChartMonthPoint } from "@/modules/dashboard/dashboard.se
 import { healthIndexChartColor } from "@/libs/utils/health-index"
 
 export const CHART_PALETTE = [
-  "#2563eb",
+  "#3DB98A",
   "#16a34a",
   "#d97706",
   "#dc2626",
@@ -178,9 +178,9 @@ export function DeptMultiLineChart({ data, deptNames }: MultiLineProps): React.R
             key={name}
             type="monotone"
             dataKey={name}
-            stroke={CHART_PALETTE[i % CHART_PALETTE.length] ?? "#2563eb"}
+            stroke={CHART_PALETTE[i % CHART_PALETTE.length] ?? "#3DB98A"}
             strokeWidth={2}
-            dot={{ r: 4, strokeWidth: 0, fill: CHART_PALETTE[i % CHART_PALETTE.length] ?? "#2563eb" }}
+            dot={{ r: 4, strokeWidth: 0, fill: CHART_PALETTE[i % CHART_PALETTE.length] ?? "#3DB98A" }}
             activeDot={{ r: 6, strokeWidth: 0 }}
             connectNulls
           />

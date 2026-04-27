@@ -38,7 +38,7 @@ export function DeptMultiLineChartWithFilter({ data, deptNames }: Props): React.
     <div className="space-y-3">
       <div className="flex flex-wrap gap-1.5 px-1">
         {deptNames.map((name, i) => {
-          const color = CHART_PALETTE[i % CHART_PALETTE.length] ?? "#2563eb"
+          const color = CHART_PALETTE[i % CHART_PALETTE.length] ?? "#3DB98A"
           const isHidden = hidden.has(name)
           return (
             <button

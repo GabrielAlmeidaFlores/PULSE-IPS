@@ -26,7 +26,7 @@ export function buildDispatchSuggestion(
       `${topDispatch.totalResponses} de ${topDispatch.totalRecipients} colaboradores responderam ` +
       `(${adherencePct}% de adesão — meta: ≥80%). ` +
       `${missingCount} respostas não foram recebidas. ` +
-      `Dados desrepresentativos comprometem a detecção precoce de riscos psicossociais e a evidência documental exigida pela NR-1.`,
+      `Dados desrepresentativos comprometem a detecção precoce de riscos psicossociais e a evidência documental exigida pela legislação trabalhista.`,
     priority: "medium",
     reason: `Pesquisa ${dateLabel} no setor ${deptName}: ${adherencePct}% de adesão (${topDispatch.totalResponses}/${topDispatch.totalRecipients})`,
     tasks: [

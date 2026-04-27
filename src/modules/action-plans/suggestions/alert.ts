@@ -51,15 +51,15 @@ const ALERT_TITLE_BY_TYPE: Record<string, string> = {
 
 const ALERT_CONTEXT_BY_TYPE: Record<string, string> = {
   score_drop:
-    "Quedas de score costumam indicar aumento de pressão, sobrecarga ou conflitos não endereçados. Agir rapidamente reduz o risco de agravamento e demonstra comprometimento com a NR-1.",
+    "Quedas de score costumam indicar aumento de pressão, sobrecarga ou conflitos não endereçados. Agir rapidamente reduz o risco de agravamento e demonstra comprometimento com a saúde ocupacional da equipe.",
   low_score:
     "Scores persistentemente baixos estão associados a burnout, queda de produtividade e aumento de turnover. É necessário investigar as causas e implementar ações estruturadas.",
   negative_trend:
-    "Tendências negativas prolongadas aumentam o risco de burnout e comprometem o cumprimento da NR-1. O problema se agrava a cada ciclo sem intervenção.",
+    "Tendências negativas prolongadas aumentam o risco de burnout e comprometem as obrigações legais trabalhistas. O problema se agrava a cada ciclo sem intervenção.",
   low_adherence:
     "Baixa participação compromete a representatividade dos dados e pode mascarar problemas reais de saúde no time. Dados insuficientes impedem a detecção precoce de riscos.",
   no_response:
-    "Sem respostas, não é possível monitorar o bem-estar do setor. A ausência de dados compromete tanto a gestão interna quanto a documentação de conformidade com a NR-1.",
+    "Sem respostas, não é possível monitorar o bem-estar do setor. A ausência de dados compromete tanto a gestão interna quanto a documentação de conformidade legal.",
 }
 
 const SEVERITY_LABEL_BY_VALUE: Record<string, string> = {

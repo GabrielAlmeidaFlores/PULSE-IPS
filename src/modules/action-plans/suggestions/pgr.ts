@@ -23,7 +23,7 @@ export function buildPgrSuggestion(
     description:
       `Nenhum relatório PGR foi gerado para ${currentMonthLabel}. ` +
       `${lastReviewContext} ` +
-      `A NR-1 exige que as empresas documentem e revisem periodicamente os riscos psicossociais — ` +
+      `A legislação trabalhista exige que as empresas documentem e revisem periodicamente os riscos psicossociais — ` +
       `o relatório mensal é a principal evidência de conformidade.`,
     priority: "low",
     reason:

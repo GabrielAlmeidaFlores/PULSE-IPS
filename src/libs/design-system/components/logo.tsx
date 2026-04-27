@@ -17,7 +17,7 @@ export function Logo({ size = "md", align = "start" }: LogoProps): React.ReactEl
         Pulse
       </span>
       <span className={`font-medium tracking-widest uppercase text-muted-foreground/60 ${subtitleSize}`}>
-        Solução para NR1
+        Saúde Ocupacional
       </span>
     </div>
   )
