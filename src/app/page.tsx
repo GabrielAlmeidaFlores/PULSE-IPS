@@ -1,10 +1,11 @@
 import Link from "next/link"
 import { CheckCircle2, XCircle, ClipboardList, Bell, FileText, Users, BarChart3, ArrowRight, Building2, Star, MessageSquare, ChevronDown } from "lucide-react"
-import { Logo } from "@/libs/design-system/components/logo"
 import { getAllPlans } from "@/modules/plans/plan.service"
 import { ALL_DISPLAY_FEATURES } from "@/modules/plans/plan.types"
 import { env } from "@/env"
 import { AnimateIn } from "@/components/animate-in"
+import { LpHeader } from "@/app/lp-header"
+import { Logo } from "@/libs/design-system/components/logo"
 
 export const dynamic = "force-dynamic"
 
@@ -24,35 +25,12 @@ function whatsappUrl(message: string): string {
 export default async function LandingPage(): Promise<React.ReactElement> {
   const plansFromDb = await getAllPlans().catch(() => [])
   return (
-    <div className="min-h-screen bg-white text-foreground">
+    <div className="min-h-screen bg-background text-foreground">
 
-      <header className="sticky top-0 z-50 border-b border-border bg-white/90 backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Logo size="sm" />
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground">
-            <a href="#recursos" className="hover:text-foreground transition-colors">Recursos</a>
-            <a href="#como-funciona" className="hover:text-foreground transition-colors">Como funciona</a>
-            <a href="#planos" className="hover:text-foreground transition-colors">Planos</a>
-            <a href="#faq" className="hover:text-foreground transition-colors">Dúvidas</a>
-            <Link href="/learn-more" className="hover:text-foreground transition-colors">Saiba mais</Link>
-          </nav>
-          <div className="flex items-center gap-3">
-            <Link href="/login" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              Entrar
-            </Link>
-            <a
-              href="#planos"
-              className="inline-flex items-center justify-center h-9 px-4 rounded-lg bg-primary text-white text-sm font-semibold transition-all hover:-translate-y-px hover:shadow-[0_6px_20px_oklch(0.705_0.128_164/0.28)]"
-            >
-              Começar agora
-            </a>
-          </div>
-        </div>
-      </header>
+      <LpHeader />
 
       <section
-        className="relative overflow-hidden pt-24 pb-20"
-        style={{ background: "linear-gradient(160deg, oklch(0.978 0.010 164) 0%, oklch(0.978 0.010 164) 60%, oklch(0.978 0.010 164) 100%)" }}
+        className="relative overflow-hidden pt-24 pb-20 lp-hero-bg"
       >
         <div
           className="absolute inset-0 opacity-[0.03]"
@@ -71,14 +49,8 @@ export default async function LandingPage(): Promise<React.ReactElement> {
             Monitoramento de bem-estar corporativo
           </div>
           <h1
-            className="text-5xl md:text-6xl font-extrabold tracking-tight leading-tight mb-6"
-            style={{
-              background: "linear-gradient(135deg, oklch(0.228 0.025 249), oklch(0.705 0.128 164))",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
-              animation: "lp-fade-in-up 0.7s 0.1s ease-out both",
-            }}
+            className="lp-hero-title text-5xl md:text-6xl font-extrabold tracking-tight leading-tight mb-6"
+            style={{ animation: "lp-fade-in-up 0.7s 0.1s ease-out both" }}
           >
             Saiba o que sua equipe<br />está sentindo.
           </h1>
@@ -96,7 +68,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
             </a>
             <Link
               href="/learn-more"
-              className="inline-flex items-center justify-center gap-2 h-12 px-8 rounded-lg border-2 border-border bg-white font-semibold text-base text-foreground transition-all hover:border-primary/30 hover:bg-primary/5"
+              className="inline-flex items-center justify-center gap-2 h-12 px-8 rounded-lg border-2 border-border bg-background font-semibold text-base text-foreground transition-all hover:border-primary/30 hover:bg-primary/5"
             >
               Como funciona
               <ArrowRight className="w-4 h-4" />
@@ -111,7 +83,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
               ] as [string, string][]
             ).map(([num, label]) => (
               <div key={label} className="text-center">
-                <div className="text-3xl font-extrabold text-foreground">{num}</div>
+                <div className="text-3xl font-extrabold text-primary">{num}</div>
                 <div className="mt-1">{label}</div>
               </div>
             ))}
@@ -161,8 +133,8 @@ export default async function LandingPage(): Promise<React.ReactElement> {
             },
           ].map((feature, i) => (
             <AnimateIn key={feature.title} delay={i * 80}>
-              <div className="rounded-xl border border-border bg-white p-6 hover:border-primary/30 hover:shadow-[0_4px_20px_oklch(0.228_0.025_249/0.06)] transition-all h-full">
-                <div className="w-10 h-10 rounded-lg bg-primary/8 flex items-center justify-center text-primary mb-4">
+              <div className="rounded-xl border border-border bg-card p-6 lp-feature-card hover:shadow-[0_4px_24px_oklch(0.705_0.128_164/0.12)] transition-all h-full">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary mb-4">
                   {feature.icon}
                 </div>
                 <h3 className="font-bold text-base mb-2">{feature.title}</h3>
@@ -173,7 +145,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
         </div>
       </section>
 
-      <section id="como-funciona" className="py-24 bg-muted/30 border-y border-border">
+      <section id="como-funciona" className="py-24 lp-steps-section border-y border-border">
         <div className="max-w-5xl mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">Como funciona</h2>
@@ -199,7 +171,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
             ].map((item, i) => (
               <AnimateIn key={item.step} delay={i * 110} animation="fade-in-up">
                 <div className="flex flex-col items-start">
-                  <div className="text-5xl font-black text-primary/40 mb-4 leading-none">{item.step}</div>
+                  <div className="lp-step-number">{item.step}</div>
                   <h3 className="font-bold text-lg mb-2">{item.title}</h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
                 </div>
@@ -253,7 +225,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
                     className={`rounded-2xl border p-8 flex flex-col gap-6 transition-all relative h-full ${
                     isHighlight
                       ? "border-primary bg-primary shadow-[0_8px_40px_oklch(0.705_0.128_164/0.28)] text-white"
-                      : "border-border bg-white hover:border-primary/30 hover:shadow-[0_4px_20px_oklch(0.228_0.025_249/0.06)]"
+                      : "border-border bg-card hover:border-primary/30 hover:shadow-[0_4px_20px_oklch(0.228_0.025_249/0.06)]"
                   }`}
                 >
                   {isHighlight && (
@@ -329,7 +301,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
                       href={`/checkout?priceId=${primaryPrice.id}`}
                       className={`inline-flex items-center justify-center h-11 rounded-lg font-semibold text-sm transition-all ${
                         isHighlight
-                          ? "bg-white text-primary hover:bg-white/90"
+                          ? "bg-white/20 text-white hover:bg-white/30 border border-white/30"
                           : "bg-primary text-white hover:-translate-y-px hover:shadow-[0_6px_20px_oklch(0.705_0.128_164/0.28)]"
                       }`}
                     >
@@ -340,7 +312,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
                       href={whatsappUrl("Olá! Tenho interesse no Pulse. Poderia me ajudar?")}
                       className={`inline-flex items-center justify-center h-11 rounded-lg font-semibold text-sm transition-all ${
                         isHighlight
-                          ? "bg-white text-primary hover:bg-white/90"
+                          ? "bg-white/20 text-white hover:bg-white/30 border border-white/30"
                           : "border border-border text-foreground hover:border-primary/40 hover:bg-primary/5"
                       }`}
                     >
@@ -357,7 +329,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
         )}
       </section>
 
-      <section id="faq" className="py-24 bg-muted/30 border-y border-border">
+      <section id="faq" className="py-24 lp-section-alt border-y border-border">
         <div className="max-w-3xl mx-auto px-6">
           <div className="text-center mb-14">
             <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">Dúvidas frequentes</h2>
@@ -394,7 +366,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
             ].map((item) => (
               <details
                 key={item.q}
-                className="group rounded-xl border border-border bg-white overflow-hidden"
+                className="group rounded-xl border border-border bg-card overflow-hidden"
               >
                 <summary className="flex items-center justify-between gap-4 px-6 py-5 cursor-pointer list-none font-semibold text-sm text-foreground hover:bg-muted/30 transition-colors">
                   {item.q}
@@ -450,7 +422,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
         </div>
       </section>
 
-      <footer className="py-12 bg-white border-t border-border">
+      <footer className="py-12 bg-background border-t border-border">
         <div className="max-w-6xl mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between gap-10 mb-10">
             <div className="flex flex-col gap-3">

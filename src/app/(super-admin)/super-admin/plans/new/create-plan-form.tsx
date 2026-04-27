@@ -1,6 +1,6 @@
 "use client"
 
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -84,7 +84,7 @@ export function CreatePlanForm(): React.ReactElement {
     router.push("/super-admin/plans")
   }
 
-  const selectedFeatures = form.watch("features") as PlanFeature[]
+  const selectedFeatures = useWatch({ control: form.control, name: "features" }) as PlanFeature[]
 
   function toggleFeature(feature: PlanFeature): void {
     const current = form.getValues("features") as PlanFeature[]

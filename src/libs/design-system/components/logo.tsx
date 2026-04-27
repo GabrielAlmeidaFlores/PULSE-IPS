@@ -1,23 +1,21 @@
+import React from "react"
+
 interface LogoProps {
   size?: "sm" | "md" | "lg"
   align?: "start" | "center"
 }
 
 export function Logo({ size = "md", align = "start" }: LogoProps): React.ReactElement {
-  const titleSizeMap = { sm: "text-lg", md: "text-2xl", lg: "text-3xl" }
-  const subtitleSizeMap = { sm: "text-[9px]", md: "text-[10px]", lg: "text-xs" }
-  const titleSize = titleSizeMap[size]
-  const subtitleSize = subtitleSizeMap[size]
-  const gap = size === "lg" ? "gap-1" : "gap-0.5"
-  const alignment = align === "center" ? "items-center" : "items-start"
+  const sizeMap = { sm: "text-lg", md: "text-2xl", lg: "text-3xl" }
+  const alignment = align === "center" ? "justify-center" : "justify-start"
 
   return (
-    <div className={`flex flex-col leading-none ${gap} ${alignment}`}>
-      <span className={`font-extrabold tracking-tight gradient-text ${titleSize}`}>
-        Pulse
+    <div className={`flex items-baseline leading-none gap-1.5 ${alignment}`}>
+      <span className={`font-black tracking-tight text-primary ${sizeMap[size]}`}>
+        PULSE
       </span>
-      <span className={`font-medium tracking-widest uppercase text-muted-foreground/60 ${subtitleSize}`}>
-        Saúde Ocupacional
+      <span className={`font-light tracking-[0.18em] text-foreground/50 ${sizeMap[size]}`}>
+        IPS
       </span>
     </div>
   )

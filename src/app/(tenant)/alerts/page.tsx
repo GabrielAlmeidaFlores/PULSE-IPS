@@ -124,13 +124,13 @@ export default async function AlertsPage(): Promise<React.ReactElement> {
                 let statusCls: string
                 let statusLabel: string
                 if (alert.resolvedAt) {
-                  statusCls = "bg-green-100 text-green-800 border-green-300"
+                  statusCls = "bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800"
                   statusLabel = "resolvido"
                 } else if (alert.isRead) {
                   statusCls = BADGE_DEFAULT
                   statusLabel = "lido"
                 } else {
-                  statusCls = "bg-amber-100 text-amber-800 border-amber-300"
+                  statusCls = "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800"
                   statusLabel = "novo"
                 }
                 return (

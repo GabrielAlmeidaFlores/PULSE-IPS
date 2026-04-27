@@ -31,7 +31,7 @@ const FREQUENCY_LABELS: Record<string, string> = {
 const STATUS_STYLE: Record<string, string> = {
   scheduled: "bg-muted text-muted-foreground border-border",
   sent: "bg-primary/10 text-primary border-primary/20",
-  cancelled: "bg-yellow-100 text-yellow-800 border-yellow-300",
+  cancelled: "bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800",
   failed: "bg-destructive/10 text-destructive border-destructive/20",
 }
 

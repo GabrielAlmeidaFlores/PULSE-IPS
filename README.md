@@ -194,9 +194,11 @@ O que é criado:
 | Item | Valor padrão |
 |---|---|
 | Super Admin | `admin@admin.com` / `Testando123!` |
-| Termos de uso | Versão `1.0.0` (ativa) |
+| Termos de Uso da Plataforma | Versão `1.0.0` (ativa) |
+| TCLE dos Colaboradores | Versão `1.0.0` (ativa) |
+| Política de Privacidade | Versão `1.0.0` (ativa) |
 
-O seed é idempotente: se os dados já existirem, nada é duplicado.
+O seed é **idempotente via upsert**: se os dados já existirem, o conteúdo é atualizado para a versão mais recente definida no arquivo. Rodar o seed novamente em produção é seguro.
 
 > Troque a senha do super admin imediatamente após o primeiro login em produção.
 

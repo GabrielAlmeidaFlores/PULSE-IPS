@@ -1,7 +1,9 @@
 import type { Metadata } from "next"
 import { Poppins } from "next/font/google"
+import { cookies } from "next/headers"
 import { Toaster } from "sonner"
 import { NuqsAdapter } from "nuqs/adapters/next/app"
+import { ThemeProvider } from "@/components/theme-provider"
 import "@/app/globals.css"
 
 const poppins = Poppins({
@@ -15,22 +17,28 @@ export const metadata: Metadata = {
   description: "Employee wellness platform",
 }
 
-export default function RootLayout({
-  children,
-}: {
+interface RootLayoutProps {
   children: React.ReactNode
-}): React.ReactElement {
+}
+
+export default async function RootLayout({ children }: RootLayoutProps): Promise<React.ReactElement> {
+  const cookieStore = await cookies()
+  const isDark = cookieStore.get("pulse:theme")?.value === "dark"
+
   return (
     <html
-      lang="en"
-      className={`${poppins.variable} h-full antialiased`}
+      lang="pt-BR"
+      className={`${poppins.variable} h-full antialiased${isDark ? " dark" : ""}`}
+      suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
+        <ThemeProvider>
           <NuqsAdapter>
             {children}
           </NuqsAdapter>
-          <Toaster position="top-right" theme="light" richColors />
-        </body>
+          <Toaster position="top-right" richColors />
+        </ThemeProvider>
+      </body>
     </html>
   )
 }

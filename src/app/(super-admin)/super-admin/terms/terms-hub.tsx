@@ -103,17 +103,17 @@ export function TermsHub({
               {tab.icon}
               {tab.label}
               {tab.id === "platform" && activePlatform && (
-                <span className="text-[9px] font-bold bg-green-100 text-green-700 border border-green-200 px-1.5 py-0.5 tracking-wider">
+                <span className="text-[9px] font-bold bg-green-100 text-green-700 border border-green-200 px-1.5 py-0.5 tracking-wider dark:bg-green-900/30 dark:text-green-400 dark:border-green-800">
                   v{activePlatform.version}
                 </span>
               )}
               {tab.id === "tcle" && activeConsent && (
-                <span className="text-[9px] font-bold bg-green-100 text-green-700 border border-green-200 px-1.5 py-0.5 tracking-wider">
+                <span className="text-[9px] font-bold bg-green-100 text-green-700 border border-green-200 px-1.5 py-0.5 tracking-wider dark:bg-green-900/30 dark:text-green-400 dark:border-green-800">
                   v{activeConsent.version}
                 </span>
               )}
               {tab.id === "privacy" && activePrivacy && (
-                <span className="text-[9px] font-bold bg-green-100 text-green-700 border border-green-200 px-1.5 py-0.5 tracking-wider">
+                <span className="text-[9px] font-bold bg-green-100 text-green-700 border border-green-200 px-1.5 py-0.5 tracking-wider dark:bg-green-900/30 dark:text-green-400 dark:border-green-800">
                   v{activePrivacy.version}
                 </span>
               )}

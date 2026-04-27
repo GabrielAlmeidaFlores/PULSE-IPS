@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import { Menu, X, LayoutDashboard, Users, Building2, ClipboardList, Bell, FileText, ShieldCheck, CreditCard, Settings, MessageSquare } from "lucide-react"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { Logo } from "@/libs/design-system/components/logo"
+import { ThemeToggle } from "@/components/theme-toggle"
 import type { PlanFeature } from "@/modules/plans/plan.types"
 
 interface NavItem {
@@ -99,8 +100,9 @@ export function Sidebar({ role, features }: SidebarProps): React.ReactElement {
           <Logo size="sm" />
         </div>
         <NavLinks items={navItems} />
-        <div className="px-4 py-3 border-t border-sidebar-border">
+        <div className="px-4 py-3 border-t border-sidebar-border flex items-center justify-between">
           <p className="text-[10px] text-muted-foreground/50 font-bold tracking-widest uppercase">v0.1.0</p>
+          <ThemeToggle variant="icon" />
         </div>
       </aside>
     </>

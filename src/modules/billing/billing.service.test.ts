@@ -1,11 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { createCheckoutSession, getBillingPortalUrl, getSubscription } from "@/modules/billing/billing.service"
 import { findOrganizationRequired, updateOrganizationBillingStatus } from "@/modules/organizations/organization.repository"
-import { findActiveSubscription, upsertSubscription, findPlanPriceForProvisioning } from "@/modules/billing/billing.repository"
+import { findActiveSubscription, upsertSubscription, findPlanPriceForProvisioning, findTenantSubscriptionFeatures, createSubscriptionFeatureSnapshot } from "@/modules/billing/billing.repository"
+import { findPlanFeatures } from "@/modules/plans/plan.repository"
 import { getBillingService } from "@/libs/integrations"
 
 vi.mock("@/modules/billing/billing.repository")
 vi.mock("@/modules/organizations/organization.repository")
+vi.mock("@/modules/plans/plan.repository")
 vi.mock("@/libs/integrations")
 vi.mock("@/env", () => ({
   env: {
@@ -21,6 +23,9 @@ const mockUpdateOrgBillingStatus = vi.mocked(updateOrganizationBillingStatus)
 const mockFindActiveSubscription = vi.mocked(findActiveSubscription)
 const mockUpsertSubscription = vi.mocked(upsertSubscription)
 const mockFindPlanPriceForProvisioning = vi.mocked(findPlanPriceForProvisioning)
+const mockFindTenantSubscriptionFeatures = vi.mocked(findTenantSubscriptionFeatures)
+const mockCreateSubscriptionFeatureSnapshot = vi.mocked(createSubscriptionFeatureSnapshot)
+const mockFindPlanFeatures = vi.mocked(findPlanFeatures)
 const mockGetBillingService = vi.mocked(getBillingService)
 
 const ORG = { id: "org-1", slug: "acme", externalCustomerId: "cus_test123", planId: null }
@@ -36,7 +41,10 @@ const PLAN_PRICE = {
 beforeEach(() => {
   vi.clearAllMocks()
   mockUpdateOrgBillingStatus.mockResolvedValue(undefined)
-  mockUpsertSubscription.mockResolvedValue(undefined)
+  mockUpsertSubscription.mockResolvedValue({ id: "sub-1" } as Awaited<ReturnType<typeof upsertSubscription>>)
+  mockFindTenantSubscriptionFeatures.mockResolvedValue([])
+  mockCreateSubscriptionFeatureSnapshot.mockResolvedValue(undefined)
+  mockFindPlanFeatures.mockResolvedValue([])
 })
 
 describe("createCheckoutSession", () => {

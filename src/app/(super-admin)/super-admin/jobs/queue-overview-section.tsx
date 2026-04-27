@@ -7,12 +7,12 @@ interface Props {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  active:   "bg-blue-100 text-blue-800 border-blue-300",
-  waiting:  "bg-yellow-100 text-yellow-800 border-yellow-300",
-  delayed:  "bg-purple-100 text-purple-800 border-purple-300",
-  failed:   "bg-red-100 text-red-800 border-red-300",
-  completed:"bg-green-100 text-green-800 border-green-300",
-  paused:   "bg-neutral-100 text-neutral-800 border-neutral-300",
+  active:   "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800",
+  waiting:  "bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800",
+  delayed:  "bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800",
+  failed:   "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
+  completed:"bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800",
+  paused:   "bg-neutral-100 text-neutral-800 border-neutral-300 dark:bg-neutral-800/40 dark:text-neutral-400 dark:border-neutral-700",
 }
 
 const QUEUE_LABELS: Record<string, string> = {

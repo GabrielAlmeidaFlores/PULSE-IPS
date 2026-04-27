@@ -6,6 +6,7 @@ import { getOrgUsers } from "@/modules/auth/invite.service"
 import { SettingsForm } from "@/app/(tenant)/settings/settings-form"
 import { TeamManagement } from "@/app/(tenant)/settings/team-management"
 import { ChangePasswordForm } from "@/app/(tenant)/settings/change-password-form"
+import { ThemeSettings } from "@/app/(tenant)/settings/theme-settings"
 import { PageHelp } from "@/components/page-help"
 
 export default async function SettingsPage(): Promise<React.ReactElement> {
@@ -73,6 +74,9 @@ export default async function SettingsPage(): Promise<React.ReactElement> {
         </div>
         <div className="mt-6">
           <ChangePasswordForm />
+        </div>
+        <div className="mt-6">
+          <ThemeSettings />
         </div>
       </div>
     </div>

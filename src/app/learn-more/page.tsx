@@ -19,8 +19,9 @@ import {
   X,
   Heart,
 } from "lucide-react"
-import { Logo } from "@/libs/design-system/components/logo"
 import { AnimateIn } from "@/components/animate-in"
+import { LearnMoreHeader } from "@/app/learn-more-header"
+import { Logo } from "@/libs/design-system/components/logo"
 
 function whatsappUrl(message: string): string {
   return `https://wa.me/5511999999999?text=${encodeURIComponent(message)}`
@@ -58,9 +59,9 @@ function FlowCard({
   const actorConfig: Record<FlowActor, { label: string; bg: string; border: string; badge: string; badgeText: string }> = {
     voce: {
       label: "VOCÊ",
-      bg: "bg-white",
-      border: "border-blue-200",
-      badge: "bg-blue-100 text-blue-700",
+      bg: "bg-card",
+      border: "border-blue-200 dark:border-blue-800/60",
+      badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
       badgeText: "Sua ação",
     },
     pulse: {
@@ -72,9 +73,9 @@ function FlowCard({
     },
     colaborador: {
       label: "COLABORADOR",
-      bg: "bg-white",
-      border: "border-green-200",
-      badge: "bg-green-100 text-green-700",
+      bg: "bg-card",
+      border: "border-green-200 dark:border-green-800/60",
+      badge: "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300",
       badgeText: "Colaborador",
     },
   }
@@ -109,32 +110,13 @@ function FlowCard({
 
 export default function LearnMorePage(): React.ReactElement {
   return (
-    <div className="min-h-screen bg-white text-foreground">
+    <div className="min-h-screen bg-background text-foreground">
 
-      <header className="sticky top-0 z-50 border-b border-border bg-white/90 backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/"><Logo size="sm" /></Link>
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground">
-            <a href="#desafio" className="hover:text-foreground transition-colors">O desafio</a>
-            <a href="#solucao" className="hover:text-foreground transition-colors">A solução</a>
-            <a href="#fluxo" className="hover:text-foreground transition-colors">Como funciona</a>
-            <a href="#privacidade" className="hover:text-foreground transition-colors">Privacidade</a>
-            <a href="#para-quem" className="hover:text-foreground transition-colors">Para quem é</a>
-            <a href="#faq" className="hover:text-foreground transition-colors">Dúvidas</a>
-          </nav>
-          <Link
-            href="/login"
-            className="inline-flex items-center justify-center h-9 px-4 rounded-lg bg-primary text-white text-sm font-semibold transition-all hover:-translate-y-px hover:shadow-[0_6px_20px_oklch(0.705_0.128_164/0.28)]"
-          >
-            Acessar plataforma
-          </Link>
-        </div>
-      </header>
+      <LearnMoreHeader />
 
 
       <section
-        className="relative overflow-hidden pt-24 pb-20 border-b border-border"
-        style={{ background: "linear-gradient(160deg, oklch(0.978 0.010 164) 0%, oklch(0.978 0.010 164) 60%, oklch(0.978 0.010 164) 100%)" }}
+        className="relative overflow-hidden pt-24 pb-20 border-b border-border lp-hero-bg"
       >
         <div
           className="absolute inset-0 opacity-[0.03]"
@@ -153,14 +135,8 @@ export default function LearnMorePage(): React.ReactElement {
             Bem-estar e performance corporativa
           </div>
           <h1
-            className="text-5xl md:text-6xl font-extrabold tracking-tight leading-tight mb-6"
-            style={{
-              background: "linear-gradient(135deg, oklch(0.228 0.025 249), oklch(0.705 0.128 164))",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
-              animation: "lp-fade-in-up 0.7s 0.1s ease-out both",
-            }}
+            className="lp-hero-title text-5xl md:text-6xl font-extrabold tracking-tight leading-tight mb-6"
+            style={{ animation: "lp-fade-in-up 0.7s 0.1s ease-out both" }}
           >
             Sua equipe mais saudável.<br />Sua empresa mais forte.
           </h1>
@@ -178,7 +154,7 @@ export default function LearnMorePage(): React.ReactElement {
             </Link>
             <a
               href="#fluxo"
-              className="inline-flex items-center justify-center gap-2 h-12 px-8 rounded-lg border-2 border-border bg-white font-semibold text-base text-foreground transition-all hover:border-primary/30 hover:bg-primary/5"
+              className="inline-flex items-center justify-center gap-2 h-12 px-8 rounded-lg border-2 border-border bg-background font-semibold text-base text-foreground transition-all hover:border-primary/30 hover:bg-primary/5"
             >
               Ver como funciona
               <ArrowRight className="w-4 h-4" />
@@ -223,24 +199,24 @@ export default function LearnMorePage(): React.ReactElement {
             <div className="space-y-4">
               {[
                 {
-                  border: "border-red-100",
-                  bg: "linear-gradient(135deg, oklch(0.98 0.01 25) 0%, oklch(0.97 0.005 20) 100%)",
+                  border: "border-red-100 dark:border-red-900/30",
+                  bgClass: "lp-problem-card-red",
                   label: "Sem o Pulse",
-                  labelColor: "text-red-700",
+                  labelColor: "text-red-700 dark:text-red-400",
                   title: "Gestão no escuro",
                   desc: "decisões tomadas sem dados reais sobre como a equipe está",
                 },
                 {
-                  border: "border-amber-100",
-                  bg: "linear-gradient(135deg, oklch(0.98 0.01 80) 0%, oklch(0.97 0.005 75) 100%)",
+                  border: "border-amber-100 dark:border-amber-900/30",
+                  bgClass: "lp-problem-card-amber",
                   label: "Problema invisível",
-                  labelColor: "text-amber-700",
+                  labelColor: "text-amber-700 dark:text-amber-400",
                   title: "Crise silenciosa",
                   desc: "turnover alto, afastamentos e queda de produtividade sem sinal de alerta",
                 },
                 {
                   border: "border-primary/20",
-                  bg: "linear-gradient(135deg, oklch(0.978 0.010 164) 0%, oklch(0.978 0.010 164) 100%)",
+                  bgClass: "lp-problem-card-green",
                   label: "Com o Pulse",
                   labelColor: "text-primary",
                   title: "Monitoramento contínuo",
@@ -248,7 +224,7 @@ export default function LearnMorePage(): React.ReactElement {
                 },
               ].map((card, i) => (
                 <AnimateIn key={card.title} delay={i * 90} animation="fade-in-up">
-                  <div className={`rounded-2xl p-6 border ${card.border}`} style={{ background: card.bg }}>
+                  <div className={`rounded-2xl p-6 border ${card.border} ${card.bgClass}`}>
                     <div className={`text-sm font-bold ${card.labelColor} mb-2`}>{card.label}</div>
                     <div className="text-2xl font-extrabold text-foreground mb-1">{card.title}</div>
                     <p className="text-sm text-muted-foreground">{card.desc}</p>
@@ -261,7 +237,7 @@ export default function LearnMorePage(): React.ReactElement {
       </section>
 
 
-      <section id="solucao" className="py-24 border-b border-border bg-muted/20">
+      <section id="solucao" className="py-24 border-b border-border lp-section-alt">
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-14">
             <SectionLabel>✦ A solução</SectionLabel>
@@ -332,11 +308,11 @@ export default function LearnMorePage(): React.ReactElement {
               },
             ].map((item, i) => (
               <AnimateIn key={item.title} delay={i * 60}>
-                <div className="rounded-xl border border-border bg-white p-6 hover:border-primary/30 hover:shadow-[0_4px_20px_oklch(0.228_0.025_249/0.06)] transition-all group h-full">
+                <div className="rounded-xl border border-border bg-card p-6 lp-feature-card hover:shadow-[0_4px_24px_oklch(0.705_0.128_164/0.12)] transition-all group h-full">
                   <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary mb-4">
                     {item.icon}
                   </div>
-                  <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 border border-green-200 text-green-700 text-xs font-semibold mb-3">
+                  <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold mb-3">
                     <CheckCircle2 className="w-3 h-3" />
                     {item.benefit}
                   </div>
@@ -365,12 +341,12 @@ export default function LearnMorePage(): React.ReactElement {
 
           <div className="flex flex-wrap justify-center gap-4 mb-10">
             {[
-              { color: "bg-blue-100 border-blue-200 text-blue-700", label: "Você faz" },
+              { color: "bg-blue-100 border-blue-200 text-blue-700 dark:bg-blue-900/50 dark:border-blue-800/60 dark:text-blue-300", label: "Você faz" },
               { color: "bg-primary/10 border-primary/30 text-primary", label: "Pulse faz automaticamente" },
-              { color: "bg-green-100 border-green-200 text-green-700", label: "Colaborador faz" },
+              { color: "bg-green-100 border-green-200 text-green-700 dark:bg-green-900/50 dark:border-green-800/60 dark:text-green-300", label: "Colaborador faz" },
             ].map((item) => (
               <div key={item.label} className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold ${item.color}`}>
-                <div className={`w-2 h-2 rounded-full ${item.color.split(" ")[0]}`} />
+                <div className="w-2 h-2 rounded-full bg-current opacity-60" />
                 {item.label}
               </div>
             ))}
@@ -411,14 +387,14 @@ export default function LearnMorePage(): React.ReactElement {
             </p>
           </div>
 
-          <div className="mt-10 rounded-2xl border border-amber-200 bg-amber-50 p-8">
+          <div className="mt-10 rounded-2xl border border-primary/20 bg-primary/5 p-8">
             <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center text-amber-700 shrink-0">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
                 <Clock className="w-5 h-5" />
               </div>
               <div>
-                <div className="font-bold text-lg text-amber-900 mb-2">Por que enviar só durante o expediente?</div>
-                <p className="text-sm text-amber-800 leading-relaxed mb-4">
+                <div className="font-bold text-lg text-foreground mb-2">Por que enviar só durante o expediente?</div>
+                <p className="text-sm text-muted-foreground leading-relaxed mb-4">
                   Respostas coletadas no contexto do trabalho são muito mais precisas e representativas.
                   O colaborador está no ambiente profissional, com os temas ainda frescos — o que resulta
                   em dados mais confiáveis para a liderança tomar decisões. Além disso, respeitar o horário
@@ -439,9 +415,9 @@ export default function LearnMorePage(): React.ReactElement {
                       desc: "Colaboradores no trabalho respondem mais — e com mais atenção. Isso melhora a qualidade dos dados.",
                     },
                   ].map((item) => (
-                    <div key={item.title} className="rounded-xl bg-white border border-amber-100 p-4">
-                      <div className="font-bold text-sm text-amber-900 mb-1">{item.title}</div>
-                      <p className="text-xs text-amber-700 leading-relaxed">{item.desc}</p>
+                    <div key={item.title} className="rounded-xl bg-card border border-border p-4">
+                      <div className="font-bold text-sm text-foreground mb-1">{item.title}</div>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
                     </div>
                   ))}
                 </div>
@@ -470,7 +446,7 @@ export default function LearnMorePage(): React.ReactElement {
             </Link>
             <a
               href={whatsappUrl("Olá! Tenho dúvidas sobre o Pulse.")}
-              className="inline-flex items-center justify-center h-11 px-7 rounded-lg border border-border bg-white font-semibold text-sm text-foreground hover:border-primary/30 hover:bg-primary/5 transition-all"
+              className="inline-flex items-center justify-center h-11 px-7 rounded-lg border border-border bg-background font-semibold text-sm text-foreground hover:border-primary/30 hover:bg-primary/5 transition-all"
             >
               Falar com a equipe
             </a>
@@ -479,7 +455,7 @@ export default function LearnMorePage(): React.ReactElement {
       </section>
 
 
-      <section id="privacidade" className="py-24 border-b border-border bg-muted/20">
+      <section id="seguranca" className="py-24 border-b border-border lp-section-alt">
         <div className="max-w-6xl mx-auto px-6">
           <div className="grid md:grid-cols-2 gap-16 items-center">
             <div>
@@ -528,16 +504,16 @@ export default function LearnMorePage(): React.ReactElement {
             </div>
 
             <div className="space-y-4">
-              <div className="rounded-2xl border border-green-200 bg-green-50 p-6">
-                <CheckCircle2 className="w-7 h-7 text-green-600 mb-3" />
-                <div className="font-bold text-lg text-green-900 mb-2">Privacidade que gera confiança</div>
-                <p className="text-sm text-green-800 leading-relaxed">
+              <div className="rounded-2xl border border-primary/20 bg-primary/5 p-6">
+                <CheckCircle2 className="w-7 h-7 text-primary mb-3" />
+                <div className="font-bold text-lg text-foreground mb-2">Privacidade que gera confiança</div>
+                <p className="text-sm text-muted-foreground leading-relaxed">
                   O anonimato não é apenas uma promessa — é uma garantia técnica. Após o colaborador
                   abrir o link da pesquisa, qualquer vínculo entre o token e a resposta é eliminado
                   automaticamente. Ninguém no sistema consegue reverter esse processo.
                 </p>
               </div>
-              <div className="rounded-2xl border border-border bg-white p-6">
+              <div className="rounded-2xl border border-border bg-card p-6">
                 <div className="font-bold text-base mb-4">Por que isso importa para o seu negócio?</div>
                 <div className="space-y-3">
                   {[
@@ -572,12 +548,12 @@ export default function LearnMorePage(): React.ReactElement {
           </div>
 
           <div className="grid md:grid-cols-2 gap-8 mb-12">
-            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-8">
-              <div className="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center mb-4">
-                <TrendingUp className="w-6 h-6 text-blue-700" />
+            <div className="rounded-2xl border border-primary/20 bg-primary/5 p-8">
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+                <TrendingUp className="w-6 h-6 text-primary" />
               </div>
-              <div className="font-bold text-xl text-blue-900 mb-2">Para o dono da empresa</div>
-              <p className="text-sm text-blue-800 leading-relaxed mb-5">
+              <div className="font-bold text-xl text-foreground mb-2">Para o dono da empresa</div>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-5">
                 Configure o Pulse uma vez, delegue para o RH e tenha a certeza de que a empresa está
                 com o bem-estar da equipe monitorado — sem precisar acompanhar cada detalhe.
               </p>
@@ -588,20 +564,20 @@ export default function LearnMorePage(): React.ReactElement {
                   "Relatórios prontos sempre que precisar",
                   "Histórico completo de todas as ações tomadas",
                 ].map((item) => (
-                  <div key={item} className="flex items-start gap-2 text-sm text-blue-900">
-                    <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <div key={item} className="flex items-start gap-2 text-sm text-foreground">
+                    <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                     {item}
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="rounded-2xl border border-purple-200 bg-purple-50 p-8">
-              <div className="w-12 h-12 rounded-2xl bg-purple-100 flex items-center justify-center mb-4">
-                <Users className="w-6 h-6 text-purple-700" />
+            <div className="rounded-2xl border border-border bg-card p-8">
+              <div className="w-12 h-12 rounded-2xl bg-muted flex items-center justify-center mb-4">
+                <Users className="w-6 h-6 text-foreground" />
               </div>
-              <div className="font-bold text-xl text-purple-900 mb-2">Para o time de RH</div>
-              <p className="text-sm text-purple-800 leading-relaxed mb-5">
+              <div className="font-bold text-xl text-foreground mb-2">Para o time de RH</div>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-5">
                 Chega de copiar e colar dados entre planilhas e enviar mensagens manualmente.
                 O Pulse automatiza as tarefas repetitivas para você focar no que realmente importa: as pessoas.
               </p>
@@ -612,8 +588,8 @@ export default function LearnMorePage(): React.ReactElement {
                   "Importação de planilha em poucos cliques",
                   "Relatório gerado automaticamente, sem edição manual",
                 ].map((item) => (
-                  <div key={item} className="flex items-start gap-2 text-sm text-purple-900">
-                    <CheckCircle2 className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
+                  <div key={item} className="flex items-start gap-2 text-sm text-foreground">
+                    <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                     {item}
                   </div>
                 ))}
@@ -630,12 +606,12 @@ export default function LearnMorePage(): React.ReactElement {
             ].map((item) => (
               <div
                 key={item.label}
-                className="rounded-xl border border-border bg-white p-6 text-center hover:border-primary/20 transition-all"
+                className="rounded-xl border border-border bg-card p-6 text-center lp-feature-card hover:shadow-[0_4px_24px_oklch(0.705_0.128_164/0.10)] transition-all"
               >
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary mx-auto mb-3">
                   {item.icon}
                 </div>
-                <div className="text-2xl font-extrabold text-foreground mb-1">{item.num}</div>
+                <div className="text-2xl font-extrabold text-primary mb-1">{item.num}</div>
                 <p className="text-xs text-muted-foreground leading-tight">{item.label}</p>
               </div>
             ))}
@@ -644,7 +620,7 @@ export default function LearnMorePage(): React.ReactElement {
       </section>
 
 
-      <section id="faq" className="py-24 border-b border-border bg-muted/30">
+      <section id="faq" className="py-24 border-b border-border lp-section-alt">
         <div className="max-w-3xl mx-auto px-6">
           <div className="text-center mb-14">
             <SectionLabel>✦ Dúvidas frequentes</SectionLabel>
@@ -688,7 +664,7 @@ export default function LearnMorePage(): React.ReactElement {
             ].map((item) => (
               <details
                 key={item.q}
-                className="group rounded-xl border border-border bg-white overflow-hidden"
+                className="group rounded-xl border border-border bg-card overflow-hidden"
               >
                 <summary className="flex items-center justify-between gap-4 px-6 py-5 cursor-pointer list-none font-semibold text-sm text-foreground hover:bg-muted/30 transition-colors">
                   {item.q}
@@ -746,7 +722,7 @@ export default function LearnMorePage(): React.ReactElement {
         </div>
       </section>
 
-      <footer className="py-12 bg-white border-t border-border">
+      <footer className="py-12 bg-background border-t border-border">
         <div className="max-w-6xl mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between gap-10 mb-10">
             <div className="flex flex-col gap-3">

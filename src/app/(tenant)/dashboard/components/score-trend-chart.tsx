@@ -41,6 +41,28 @@ interface Props {
   data: TrendPoint[]
 }
 
+interface TickProps {
+  x?: number
+  y?: number
+  payload?: { value: unknown }
+}
+
+function XTick({ x, y, payload }: TickProps): React.ReactElement {
+  return (
+    <text x={x} y={y} dy={12} textAnchor="middle" style={{ fill: "var(--muted-foreground)", fontSize: 11 }}>
+      {String(payload?.value ?? "")}
+    </text>
+  )
+}
+
+function YTick({ x, y, payload }: TickProps): React.ReactElement {
+  return (
+    <text x={x} y={y} dy={4} textAnchor="end" style={{ fill: "var(--muted-foreground)", fontSize: 11 }}>
+      {`${payload?.value}%`}
+    </text>
+  )
+}
+
 export function ScoreTrendChart({ data }: Props): React.ReactElement {
   const lastAvg = data[data.length - 1]?.avg ?? 0
   const color = healthIndexChartColor(lastAvg)
@@ -54,9 +76,9 @@ export function ScoreTrendChart({ data }: Props): React.ReactElement {
             <stop offset="95%" stopColor={color} stopOpacity={0.02} />
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-        <XAxis dataKey="month" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-        <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tickFormatter={(v: number) => `${v}%`} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+        <XAxis dataKey="month" tick={<XTick />} axisLine={false} tickLine={false} />
+        <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tick={<YTick />} axisLine={false} tickLine={false} />
         <ReferenceLine y={37} stroke="#d97706" strokeDasharray="4 4" strokeOpacity={0.6} />
         <ReferenceLine y={62} stroke="#16a34a" strokeDasharray="4 4" strokeOpacity={0.4} />
         <Tooltip content={<CustomTooltip />} />

@@ -78,13 +78,50 @@
   --chart-4: oklch(0.620 0.17 60);
   --chart-5: oklch(0.570 0.19 320);
   --radius: 0px;
-  --sidebar: oklch(0.175 0.022 249);
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.228 0.025 249);
+  --sidebar-primary: oklch(0.705 0.128 164);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.955 0.015 164);
+  --sidebar-accent-foreground: oklch(0.228 0.025 249);
+  --sidebar-border: oklch(0.882 0.020 164);
+  --sidebar-ring: oklch(0.705 0.128 164);
+}
+
+/* ── Dark theme ──────────────────────────────────────────────────────────── */
+.dark {
+  --background: oklch(0.155 0.022 249);
+  --foreground: oklch(0.930 0.015 164);
+  --card: oklch(0.210 0.024 249);
+  --card-foreground: oklch(0.930 0.015 164);
+  --popover: oklch(0.195 0.022 249);
+  --popover-foreground: oklch(0.930 0.015 164);
+  --primary: oklch(0.705 0.128 164);
+  --primary-foreground: oklch(0.155 0.022 249);
+  --secondary: oklch(0.255 0.030 164);
+  --secondary-foreground: oklch(0.880 0.030 164);
+  --muted: oklch(0.235 0.018 249);
+  --muted-foreground: oklch(0.560 0.020 249);
+  --accent: oklch(0.255 0.040 164);
+  --accent-foreground: oklch(0.850 0.040 164);
+  --destructive: oklch(0.600 0.211 17.6);
+  --destructive-foreground: oklch(0.930 0.015 164);
+  --border: oklch(0.280 0.025 249);
+  --input: oklch(0.210 0.024 249);
+  --input-border: oklch(0.360 0.045 164);
+  --ring: oklch(0.705 0.128 164);
+  --chart-1: oklch(0.705 0.128 164);
+  --chart-2: oklch(0.620 0.100 164);
+  --chart-3: oklch(0.820 0.090 164);
+  --chart-4: oklch(0.700 0.170 60);
+  --chart-5: oklch(0.650 0.190 320);
+  --sidebar: oklch(0.130 0.018 249);
   --sidebar-foreground: oklch(0.920 0.012 164);
   --sidebar-primary: oklch(0.705 0.128 164);
-  --sidebar-primary-foreground: oklch(0.175 0.022 249);
-  --sidebar-accent: oklch(0.240 0.022 249);
+  --sidebar-primary-foreground: oklch(0.155 0.022 249);
+  --sidebar-accent: oklch(0.200 0.025 249);
   --sidebar-accent-foreground: oklch(0.920 0.012 164);
-  --sidebar-border: oklch(0.270 0.020 249);
+  --sidebar-border: oklch(0.210 0.020 249);
   --sidebar-ring: oklch(0.705 0.128 164);
 }
 
@@ -105,6 +142,10 @@
   ::-webkit-scrollbar-thumb { background: oklch(0.820 0.035 164); }
   ::-webkit-scrollbar-thumb:hover { background: oklch(0.705 0.128 164); }
 
+  .dark ::-webkit-scrollbar-track { background: oklch(0.235 0.018 249); }
+  .dark ::-webkit-scrollbar-thumb { background: oklch(0.350 0.035 164); }
+  .dark ::-webkit-scrollbar-thumb:hover { background: oklch(0.705 0.128 164); }
+
   [data-slot="input"] {
     height: 2.75rem;
     background: var(--input);
@@ -118,6 +159,9 @@
   [data-slot="input"]:hover:not(:focus) {
     border-color: oklch(0.580 0.060 164);
   }
+  .dark [data-slot="input"]:hover:not(:focus) {
+    border-color: oklch(0.500 0.080 164);
+  }
 
   [data-slot="select-trigger"] {
     border-color: var(--input-border);
@@ -125,6 +169,9 @@
   }
   [data-slot="select-trigger"]:hover:not(:disabled) {
     border-color: oklch(0.580 0.060 164);
+  }
+  .dark [data-slot="select-trigger"]:hover:not(:disabled) {
+    border-color: oklch(0.500 0.080 164);
   }
   [data-slot="select-trigger"]:focus-visible,
   [data-slot="select-trigger"][data-open] {
@@ -142,6 +189,9 @@
   }
   [data-slot="textarea"]:hover:not(:focus) {
     border-color: oklch(0.580 0.060 164);
+  }
+  .dark [data-slot="textarea"]:hover:not(:focus) {
+    border-color: oklch(0.500 0.080 164);
   }
 
   [data-slot="button"] {
@@ -163,11 +213,23 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
+  .dark .gradient-text {
+    background: linear-gradient(135deg, oklch(0.760 0.128 164), oklch(0.660 0.120 164));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
   .card-shadow {
     box-shadow: 0 1px 3px oklch(0.228 0.025 249 / 0.06), 0 4px 12px oklch(0.228 0.025 249 / 0.06);
   }
   .card-shadow-lg {
     box-shadow: 0 2px 8px oklch(0.228 0.025 249 / 0.06), 0 12px 40px oklch(0.228 0.025 249 / 0.10);
+  }
+  .dark .card-shadow {
+    box-shadow: 0 1px 3px oklch(0 0 0 / 0.25), 0 4px 12px oklch(0 0 0 / 0.25);
+  }
+  .dark .card-shadow-lg {
+    box-shadow: 0 2px 8px oklch(0 0 0 / 0.30), 0 12px 40px oklch(0 0 0 / 0.40);
   }
   .admin-accent-blue   { color: oklch(0.705 0.128 164); }
   .admin-accent-green  { color: oklch(0.580 0.110 164); }
@@ -177,6 +239,107 @@
   .admin-bg-green      { background-color: oklch(0.580 0.110 164 / 0.10); }
   .admin-bg-amber      { background-color: oklch(0.620 0.18 75  / 0.10); }
   .admin-bg-red        { background-color: oklch(0.531 0.211 17.6 / 0.10); }
+  .dark .admin-accent-blue  { color: oklch(0.750 0.128 164); }
+  .dark .admin-accent-green { color: oklch(0.680 0.110 164); }
+  .dark .admin-bg-blue      { background-color: oklch(0.705 0.128 164 / 0.15); }
+  .dark .admin-bg-green     { background-color: oklch(0.580 0.110 164 / 0.15); }
+  .dark .admin-bg-amber     { background-color: oklch(0.620 0.18 75  / 0.15); }
+  .dark .admin-bg-red       { background-color: oklch(0.531 0.211 17.6 / 0.15); }
+
+  /* ── LP: hero section background ──────────────────────────────────────── */
+  .lp-hero-bg {
+    background: linear-gradient(160deg, oklch(0.968 0.014 164) 0%, oklch(0.978 0.010 164) 60%, oklch(0.960 0.018 200) 100%);
+  }
+  .dark .lp-hero-bg {
+    background: linear-gradient(160deg, var(--background) 0%, oklch(0.180 0.028 249) 50%, var(--background) 100%);
+  }
+
+  /* ── LP: hero h1 gradient text ─────────────────────────────────────────── */
+  .lp-hero-title {
+    background: linear-gradient(135deg, oklch(0.228 0.025 249), oklch(0.705 0.128 164));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .dark .lp-hero-title {
+    background: linear-gradient(135deg, oklch(0.940 0.015 164), oklch(0.705 0.128 164));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ── LP: alternate section background (better dark-mode contrast) ─────── */
+  .lp-section-alt {
+    background: oklch(0.965 0.008 240);
+  }
+  .dark .lp-section-alt {
+    background: oklch(0.145 0.028 249);
+  }
+
+  /* ── LP: steps section with subtle radial accent ────────────────────────── */
+  .lp-steps-section {
+    background: oklch(0.965 0.008 240);
+    position: relative;
+  }
+  .dark .lp-steps-section {
+    background: linear-gradient(160deg, oklch(0.150 0.030 249) 0%, oklch(0.138 0.020 249) 100%);
+  }
+
+  /* ── LP: feature card with top accent border ──────────────────────────── */
+  .lp-feature-card {
+    border-top: 2px solid oklch(0.705 0.128 164 / 0.40);
+    transition: border-top-color 0.2s, box-shadow 0.2s;
+  }
+  .lp-feature-card:hover {
+    border-top-color: oklch(0.705 0.128 164 / 0.80);
+  }
+  .dark .lp-feature-card {
+    border-top-color: oklch(0.705 0.128 164 / 0.50);
+  }
+  .dark .lp-feature-card:hover {
+    border-top-color: oklch(0.705 0.128 164);
+  }
+
+  /* ── LP: step number badge ────────────────────────────────────────────── */
+  .lp-step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 1rem;
+    background: oklch(0.705 0.128 164 / 0.12);
+    color: oklch(0.580 0.120 164);
+    font-size: 1.5rem;
+    font-weight: 900;
+    margin-bottom: 1rem;
+    border: 1.5px solid oklch(0.705 0.128 164 / 0.20);
+  }
+  .dark .lp-step-number {
+    background: oklch(0.705 0.128 164 / 0.18);
+    color: oklch(0.705 0.128 164);
+    border-color: oklch(0.705 0.128 164 / 0.30);
+  }
+
+  /* ── LP: problem cards (learn-more "sem o Pulse / com o Pulse") ────────── */
+  .lp-problem-card-red {
+    background: linear-gradient(135deg, oklch(0.98 0.01 25) 0%, oklch(0.97 0.005 20) 100%);
+  }
+  .dark .lp-problem-card-red {
+    background: linear-gradient(135deg, oklch(0.205 0.022 25) 0%, oklch(0.195 0.018 20) 100%);
+  }
+  .lp-problem-card-amber {
+    background: linear-gradient(135deg, oklch(0.98 0.01 80) 0%, oklch(0.97 0.005 75) 100%);
+  }
+  .dark .lp-problem-card-amber {
+    background: linear-gradient(135deg, oklch(0.205 0.022 80) 0%, oklch(0.195 0.018 75) 100%);
+  }
+  .lp-problem-card-green {
+    background: linear-gradient(135deg, oklch(0.978 0.010 164) 0%, oklch(0.960 0.018 164) 100%);
+  }
+  .dark .lp-problem-card-green {
+    background: linear-gradient(135deg, oklch(0.215 0.038 164) 0%, oklch(0.200 0.030 164) 100%);
+  }
 }
 
 /* ── Landing page animations ─────────────────────────────────────────────── */

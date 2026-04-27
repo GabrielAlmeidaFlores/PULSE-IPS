@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Menu, X, LayoutDashboard, Building2, CreditCard, FileText, LogOut, Users, ScrollText, Cpu } from "lucide-react"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { superAdminLogoutAction } from "@/app/(super-admin-public)/super-admin/logout/actions"
 
 interface NavItem {
@@ -75,6 +76,9 @@ function SidebarContent({ onNavigate }: { onNavigate?: (() => void) | undefined 
       <NavLinks items={navItems} onNavigate={onNavigate} />
 
       <div className="mt-auto border-t border-sidebar-border">
+        <div className="px-5 py-3 flex items-center justify-between">
+          <ThemeToggle variant="labeled" />
+        </div>
         <button
           onClick={handleLogout}
           disabled={pending}

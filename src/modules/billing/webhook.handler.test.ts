@@ -8,9 +8,11 @@ import {
   findFailedWebhookEvents,
   markWebhookEventProcessed,
   markWebhookEventFailed,
+  findTenantSubscriptionFeatures,
+  createSubscriptionFeatureSnapshot,
 } from "@/modules/billing/billing.repository"
 import { findOrganizationByCustomerId, updateOrganizationBillingStatus } from "@/modules/organizations/organization.repository"
-import { findPlanPriceById } from "@/modules/plans/plan.repository"
+import { findPlanPriceById, findPlanFeatures } from "@/modules/plans/plan.repository"
 
 vi.mock("@/modules/billing/billing.repository")
 vi.mock("@/modules/organizations/organization.repository")
@@ -23,9 +25,12 @@ const mockUpsertSubscription = vi.mocked(upsertSubscription)
 const mockFindFailedWebhookEvents = vi.mocked(findFailedWebhookEvents)
 const mockMarkWebhookEventProcessed = vi.mocked(markWebhookEventProcessed)
 const mockMarkWebhookEventFailed = vi.mocked(markWebhookEventFailed)
+const mockFindTenantSubscriptionFeatures = vi.mocked(findTenantSubscriptionFeatures)
+const mockCreateSubscriptionFeatureSnapshot = vi.mocked(createSubscriptionFeatureSnapshot)
 const mockFindOrgByCustomerId = vi.mocked(findOrganizationByCustomerId)
 const mockUpdateOrgBillingStatus = vi.mocked(updateOrganizationBillingStatus)
 const mockFindPlanPriceById = vi.mocked(findPlanPriceById)
+const mockFindPlanFeatures = vi.mocked(findPlanFeatures)
 
 const ORG = { id: "org-1", slug: "acme" }
 const PLAN_PRICE = {
@@ -79,8 +84,11 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockFindWebhookEvent.mockResolvedValue(null)
   mockRecordWebhookEvent.mockResolvedValue(undefined)
-  mockUpsertSubscription.mockResolvedValue(undefined)
+  mockUpsertSubscription.mockResolvedValue({ id: "sub-1" } as Awaited<ReturnType<typeof upsertSubscription>>)
   mockUpdateOrgBillingStatus.mockResolvedValue(undefined)
+  mockFindTenantSubscriptionFeatures.mockResolvedValue([])
+  mockCreateSubscriptionFeatureSnapshot.mockResolvedValue(undefined)
+  mockFindPlanFeatures.mockResolvedValue([])
   mockFindOrgByCustomerId.mockResolvedValue(ORG as Awaited<ReturnType<typeof findOrganizationByCustomerId>>)
   mockFindPlanPriceById.mockResolvedValue(PLAN_PRICE as Awaited<ReturnType<typeof findPlanPriceById>>)
 })

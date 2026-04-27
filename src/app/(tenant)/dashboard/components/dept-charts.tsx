@@ -27,13 +27,51 @@ export const CHART_PALETTE = [
   "#65a30d",
 ]
 
+const CHART_TICK_FILL = "var(--muted-foreground)"
+
 function adherenceBarColor(adherence: number): string {
   if (adherence >= 70) return "#16a34a"
   if (adherence >= 50) return "#d97706"
   return "#dc2626"
 }
 
-const MUTED_FG = "hsl(var(--muted-foreground))"
+interface TickProps {
+  x?: number
+  y?: number
+  payload?: { value: unknown }
+}
+
+function XTickLabel({ x, y, payload }: TickProps): React.ReactElement {
+  return (
+    <text x={x} y={y} dy={12} textAnchor="middle" style={{ fill: CHART_TICK_FILL, fontSize: 10 }}>
+      {String(payload?.value ?? "")}
+    </text>
+  )
+}
+
+function XTickAngled({ x, y, payload }: TickProps): React.ReactElement {
+  return (
+    <text x={x} y={y} dy={4} textAnchor="end" transform={`rotate(-30, ${x}, ${y})`} style={{ fill: CHART_TICK_FILL, fontSize: 10 }}>
+      {String(payload?.value ?? "")}
+    </text>
+  )
+}
+
+function YTickPct({ x, y, payload }: TickProps): React.ReactElement {
+  return (
+    <text x={x} y={y} dy={4} textAnchor="end" style={{ fill: CHART_TICK_FILL, fontSize: 10 }}>
+      {`${payload?.value}%`}
+    </text>
+  )
+}
+
+function YTickLabel({ x, y, payload }: TickProps): React.ReactElement {
+  return (
+    <text x={x} y={y} dy={4} textAnchor="end" style={{ fill: CHART_TICK_FILL, fontSize: 10 }}>
+      {String(payload?.value ?? "")}
+    </text>
+  )
+}
 
 interface BarTooltipPayload {
   value: number
@@ -72,18 +110,16 @@ export function DeptComparisonChart({ data }: DeptComparisonProps): React.ReactE
   return (
     <ResponsiveContainer width="100%" height={220}>
       <BarChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 32 }} barCategoryGap="30%">
-        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal vertical={false} />
         <XAxis
           dataKey="dept"
-          tick={{ fontSize: 10, fill: MUTED_FG }}
+          tick={<XTickAngled />}
           axisLine={false}
           tickLine={false}
-          angle={-30}
-          textAnchor="end"
           interval={0}
         />
-        <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tickFormatter={(v: number) => `${v}%`} tick={{ fontSize: 10, fill: MUTED_FG }} axisLine={false} tickLine={false} />
-        <Tooltip content={<DeptBarTooltip />} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
+        <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tick={<YTickPct />} axisLine={false} tickLine={false} />
+        <Tooltip content={<DeptBarTooltip />} cursor={{ fill: "var(--muted)", opacity: 0.3 }} />
         <Bar dataKey="avg" radius={[3, 3, 0, 0]} maxBarSize={48}>
           {data.map((entry) => (
             <Cell key={entry.dept} fill={healthIndexChartColor(entry.avg ?? 0)} />
@@ -102,12 +138,12 @@ export function AdherenceChart({ data }: AdherenceProps): React.ReactElement {
   return (
     <ResponsiveContainer width="100%" height={220}>
       <BarChart data={data} layout="vertical" margin={{ top: 8, right: 32, left: 8, bottom: 8 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical horizontal={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical horizontal={false} />
         <XAxis
           type="number"
           domain={[0, 100]}
           ticks={[0, 25, 50, 75, 100]}
-          tick={{ fontSize: 10, fill: MUTED_FG }}
+          tick={<YTickPct />}
           axisLine={false}
           tickLine={false}
           unit="%"
@@ -115,12 +151,12 @@ export function AdherenceChart({ data }: AdherenceProps): React.ReactElement {
         <YAxis
           dataKey="dept"
           type="category"
-          tick={{ fontSize: 10, fill: MUTED_FG }}
+          tick={<YTickLabel />}
           axisLine={false}
           tickLine={false}
           width={130}
         />
-        <Tooltip content={<DeptBarTooltip />} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
+        <Tooltip content={<DeptBarTooltip />} cursor={{ fill: "var(--muted)", opacity: 0.3 }} />
         <Bar dataKey="adherence" radius={[0, 3, 3, 0]} maxBarSize={28}>
           {data.map((entry) => (
             <Cell key={entry.dept} fill={adherenceBarColor(entry.adherence ?? 0)} />
@@ -168,9 +204,9 @@ export function DeptMultiLineChart({ data, deptNames }: MultiLineProps): React.R
   return (
     <ResponsiveContainer width="100%" height={260}>
       <LineChart data={data} margin={{ top: 8, right: 16, left: -16, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-        <XAxis dataKey="month" tick={{ fontSize: 11, fill: MUTED_FG }} axisLine={false} tickLine={false} />
-        <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tickFormatter={(v: number) => `${v}%`} tick={{ fontSize: 11, fill: MUTED_FG }} axisLine={false} tickLine={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+        <XAxis dataKey="month" tick={<XTickLabel />} axisLine={false} tickLine={false} />
+        <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tick={<YTickPct />} axisLine={false} tickLine={false} />
         <Tooltip content={<LineTooltip />} />
         <Legend wrapperStyle={{ fontSize: 11, paddingTop: 12 }} />
         {deptNames.map((name, i) => (

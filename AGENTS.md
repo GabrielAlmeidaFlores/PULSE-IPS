@@ -441,6 +441,7 @@ src/
 │   └── utils/
 │       ├── action-result.ts               # ActionResult interface
 │       ├── json.ts                        # JsonValue — tipo JSON próprio da aplicação (não usa Prisma)
+│       ├── sanitize.ts                    # sanitizeRichHtml (editor) + sanitizeLegalDocument (docs oficiais)
 │       ├── pagination.ts
 │       ├── date.ts
 │       └── slug.ts
@@ -448,6 +449,8 @@ src/
 ├── components/
 │   ├── ui/                                 # shadcn/ui (Button, Input, Select, Dialog, Table…)
 │   │                                       # Instalados em src/components/ui/ pelo CLI do shadcn
+│   ├── theme-provider.tsx                  # ThemeProvider — mantém estado do tema, escreve cookie + localStorage
+│   ├── theme-toggle.tsx                    # ThemeToggle — CSS-only (ambos ícones no DOM, dark:scale-* controla visibilidade)
 │   └── animate-in.tsx                      # Wrapper de animação de entrada via IntersectionObserver
 ├── proxy.ts                                # Next.js 16 proxy (auth + tenant resolution)
 │                                           # ⚠️ Não é middleware.ts — Next.js 16 usa proxy.ts
@@ -2154,24 +2157,41 @@ theme: {
 
 **Regra:** nenhum componente usa cores hardcoded (`text-slate-900`, `bg-white`). Sempre usar variáveis semânticas do shadcn/ui (`bg-background`, `text-foreground`, `bg-card`, `text-muted-foreground`) para que os temas funcionem automaticamente.
 
-### Seletor de tema (ThemeToggle)
+### Sistema de tema (ThemeProvider + ThemeToggle)
 
+O tema é persistido via **cookie `pulse:theme`** (lido no servidor no `layout.tsx`) e via `localStorage` (lido no cliente). Isso garante que a classe `dark` seja aplicada no `<html>` durante o SSR, sem FOUC e sem script inline.
+
+**`src/app/layout.tsx`** — aplica a classe `dark` no `<html>` com base no cookie:
 ```tsx
-"use client"
-import { useTheme } from "next-themes"
-import { Moon, Sun } from "lucide-react"
-import { Button } from "@/libs/design-system/components/ui/button"
-
-export function ThemeToggle() {
-  const { theme, setTheme } = useTheme()
+export default async function RootLayout({ children }: { children: React.ReactNode }): Promise<React.ReactElement> {
+  const cookieStore = await cookies()
+  const isDark = cookieStore.get("pulse:theme")?.value === "dark"
   return (
-    <Button variant="ghost" size="icon" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
-      <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-      <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-    </Button>
+    <html lang="pt-BR" className={`${poppins.variable} h-full antialiased${isDark ? " dark" : ""}`} suppressHydrationWarning>
+      ...
+    </html>
   )
 }
 ```
+
+**`src/components/theme-provider.tsx`** — mantém o estado no cliente e escreve `localStorage` + cookie ao mudar:
+```tsx
+const setTheme = useCallback((next: Theme): void => {
+  setThemeState(next)
+  localStorage.setItem("pulse:theme", next)
+  document.cookie = `pulse:theme=${next};path=/;max-age=31536000;SameSite=Lax`
+}, [])
+```
+
+**`src/components/theme-toggle.tsx`** — ambos os ícones sempre no DOM; visibilidade controlada por CSS (`dark:scale-*`), sem renderização condicional para evitar mismatch de hidratação:
+```tsx
+<span className="relative w-4 h-4">
+  <Sun className="absolute inset-0 w-4 h-4 scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
+  <Moon className="absolute inset-0 w-4 h-4 scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
+</span>
+```
+
+**Regra:** nunca usar renderização condicional `{isDark ? <Sun /> : <Moon />}` — causa hydration mismatch. Usar sempre o padrão CSS-only acima.
 
 ```css
 :root {
@@ -2589,7 +2609,7 @@ As três versões ativas dos documentos legais são acessíveis publicamente (se
 | `/privacy-policy` | Política de Privacidade |
 | `/consent-terms` | TCLE dos Colaboradores |
 
-Todas renderizam o HTML do documento com `sanitizeRichHtml` antes de `dangerouslySetInnerHTML`.
+Todas renderizam o HTML do documento com `sanitizeLegalDocument` antes de `dangerouslySetInnerHTML`. A função `sanitizeLegalDocument` (em `src/libs/utils/sanitize.ts`) é mais restritiva que `sanitizeRichHtml` — não permite `div`, `span`, atributos `class` ou `style`, e remove emojis via regex `\p{Extended_Pictographic}`. Use `sanitizeLegalDocument` em páginas de documentos oficiais e `sanitizeRichHtml` em editores de rich text do admin.
 
 ---
 

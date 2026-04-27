@@ -12,8 +12,8 @@ interface Props {
 
 const PRIORITY_LABELS: Record<string, string> = { low: "Baixa", medium: "Média", high: "Alta" }
 const PRIORITY_CLS: Record<string, string> = {
-  high: "bg-red-100 text-red-700 border border-red-200",
-  medium: "bg-amber-100 text-amber-700 border border-amber-200",
+  high: "bg-red-100 text-red-700 border border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
+  medium: "bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800",
   low: "bg-muted text-muted-foreground border border-border",
 }
 
