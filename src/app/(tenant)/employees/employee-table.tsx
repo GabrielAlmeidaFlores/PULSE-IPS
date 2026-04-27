@@ -4,10 +4,11 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
-import { Pencil, UserX, ChevronRight } from "lucide-react"
+import { Pencil, UserX, ChevronRight, SendHorizontal } from "lucide-react"
 import { ConfirmDeleteModal } from "@/components/confirm-delete-modal"
 import { EditEmployeeModal, type EmployeeEditData, type EmployeeFormValues } from "@/app/(tenant)/employees/edit-employee-modal"
 import { updateEmployeeAction, deactivateEmployeeAction } from "@/app/(tenant)/employees/[id]/actions"
+import { resendConsentInviteAction } from "@/app/(tenant)/employees/actions"
 
 interface Department {
   id: string
@@ -25,6 +26,7 @@ interface EmployeeRow {
   workEndTime: string | null
   workDays: number[]
   department: { name: string }
+  consentEvent: string | null
 }
 
 interface Props {
@@ -33,11 +35,48 @@ interface Props {
   departments: Department[]
 }
 
+function consentBadge(event: string | null): React.ReactElement {
+  if (event === "accepted") {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border bg-green-100 text-green-800 border-green-300">
+        Aceito
+      </span>
+    )
+  }
+  if (event === "invited") {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border bg-blue-100 text-blue-800 border-blue-300">
+        Enviado
+      </span>
+    )
+  }
+  if (event === "refused") {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border bg-red-100 text-red-800 border-red-300">
+        Recusado
+      </span>
+    )
+  }
+  if (event === "opted_out" || event === "revoked") {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border bg-amber-100 text-amber-800 border-amber-300">
+        Opt-out
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border bg-muted text-muted-foreground border-border">
+      Não enviado
+    </span>
+  )
+}
+
 export function EmployeeTable({ employees, total, departments }: Props): React.ReactElement {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [editTarget, setEditTarget] = useState<EmployeeEditData | null>(null)
   const [deactivateTarget, setDeactivateTarget] = useState<EmployeeRow | null>(null)
+  const [sendingConsentFor, setSendingConsentFor] = useState<string | null>(null)
 
   function handleEdit(emp: EmployeeRow): void {
     setEditTarget({
@@ -88,6 +127,21 @@ export function EmployeeTable({ employees, total, departments }: Props): React.R
     })
   }
 
+  function handleResendConsent(emp: EmployeeRow): void {
+    setSendingConsentFor(emp.id)
+    startTransition(async () => {
+      const result = await resendConsentInviteAction(emp.id)
+      setSendingConsentFor(null)
+      if (result.error) {
+        toast.error(result.error)
+        return
+      }
+      const label = emp.consentEvent === null ? "Convite de consentimento enviado." : "Convite de consentimento reenviado."
+      toast.success(label)
+      router.refresh()
+    })
+  }
+
   return (
     <>
       <div className="border border-border bg-card overflow-hidden">
@@ -98,14 +152,15 @@ export function EmployeeTable({ employees, total, departments }: Props): React.R
               <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Departamento</th>
               <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Telefone</th>
               <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Status</th>
-              <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-24">Ações</th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Consentimento</th>
+              <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-28">Ações</th>
               <th className="px-4 py-2.5 w-8" />
             </tr>
           </thead>
           <tbody>
             {employees.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-xs text-muted-foreground">
+                <td colSpan={7} className="px-4 py-8 text-center text-xs text-muted-foreground">
                   Nenhum funcionário cadastrado.
                 </td>
               </tr>
@@ -129,8 +184,22 @@ export function EmployeeTable({ employees, total, departments }: Props): React.R
                     {emp.status === "active" ? "ativo" : "inativo"}
                   </span>
                 </td>
-                <td className="px-4 py-3 w-24">
+                <td className="px-4 py-3">
+                  {consentBadge(emp.consentEvent)}
+                </td>
+                <td className="px-4 py-3 w-28">
                   <div className="flex items-center justify-end gap-1">
+                    {emp.consentEvent !== "accepted" && (
+                      <button
+                        onClick={() => handleResendConsent(emp)}
+                        disabled={sendingConsentFor === emp.id || pending}
+                        style={{ borderRadius: 0 }}
+                        className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider border border-primary/40 text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
+                        title={emp.consentEvent === null ? "Enviar TCLE" : "Reenviar TCLE"}
+                      >
+                        <SendHorizontal size={12} />
+                      </button>
+                    )}
                     <button
                       onClick={() => handleEdit(emp)}
                       style={{ borderRadius: 0 }}

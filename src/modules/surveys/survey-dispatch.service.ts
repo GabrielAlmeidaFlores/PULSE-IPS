@@ -93,6 +93,8 @@ async function fireDispatch(
           employeeId: employee.id,
           provider: env.MESSAGING_PROVIDER,
           type: "survey_dispatch" as const,
+          templateName: env.WHATSAPP_SURVEY_TEMPLATE_NAME,
+          templateVariables: [employee.name, surveyUrl],
         },
       }
     })

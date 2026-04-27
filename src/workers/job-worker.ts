@@ -63,13 +63,19 @@ async function processJob(jobName: JobName): Promise<void> {
 
 async function processMessageJob(data: SendMessageJobData): Promise<void> {
   const messaging = getMessagingService()
-  const result = await messaging.send({ to: data.to, body: data.body })
+  const result = await messaging.send({
+    to: data.to,
+    body: data.body,
+    ...(data.templateName !== undefined ? { templateName: data.templateName } : {}),
+    ...(data.templateVariables !== undefined ? { templateVariables: data.templateVariables } : {}),
+  })
   await createMessageLog({
     tenantId: data.tenantId,
     employeeId: data.employeeId,
     type: data.type,
     provider: data.provider,
     status: result.status === "failed" ? "failed" : "sent",
+    externalId: result.externalId,
   })
 }
 

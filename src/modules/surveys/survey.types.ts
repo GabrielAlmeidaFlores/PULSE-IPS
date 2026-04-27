@@ -116,4 +116,5 @@ export interface CreateMessageLogInput {
   type: "consent_invite" | "survey_dispatch" | "survey_resend"
   provider: string
   status: "sent" | "failed"
+  externalId?: string
 }

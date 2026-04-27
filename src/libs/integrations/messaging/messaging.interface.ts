@@ -1,6 +1,8 @@
 export interface SendMessageParams {
   to: string
   body: string
+  templateName?: string
+  templateVariables?: string[]
 }
 
 export interface SendMessageResult {
@@ -10,7 +12,7 @@ export interface SendMessageResult {
 }
 
 export interface BulkMessageParams {
-  recipients: { to: string; body: string }[]
+  recipients: { to: string; body: string; templateName?: string; templateVariables?: string[] }[]
 }
 
 export interface BulkMessageResult {

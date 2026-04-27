@@ -3,6 +3,7 @@ import Link from "next/link"
 import { getSession } from "@/modules/auth/session"
 import { getEmployees } from "@/modules/employees/employee.service"
 import { getDepartments } from "@/modules/departments/department.service"
+import { getConsentEventsByEmployeeIds } from "@/modules/consent/consent.service"
 import { PageHelp } from "@/components/page-help"
 import { EmployeeTable } from "@/app/(tenant)/employees/employee-table"
 
@@ -14,6 +15,9 @@ export default async function EmployeesPage(): Promise<React.ReactElement> {
     getEmployees(session.tenantId),
     getDepartments(session.tenantId),
   ])
+
+  const employeeIds = employees.map((e) => e.id)
+  const consentEvents = await getConsentEventsByEmployeeIds(session.tenantId, employeeIds)
 
   return (
     <div className="flex flex-col h-full">
@@ -70,6 +74,7 @@ export default async function EmployeesPage(): Promise<React.ReactElement> {
             workEndTime: emp.workEndTime,
             department: emp.department,
             workDays: emp.workDays.map((w) => w.dayOfWeek),
+            consentEvent: consentEvents.get(emp.id) ?? null,
           }))}
           total={total}
           departments={departments.map((d) => ({ id: d.id, name: d.name }))}

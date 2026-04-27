@@ -12,6 +12,7 @@ import {
   findEmployeeForConsent,
   getAllConsentTermVersions,
   createConsentTermVersion,
+  findLatestConsentEventsByEmployeeIds,
 } from "@/modules/consent/consent.repository"
 import { findTokenByValue, markTokenUsed } from "@/modules/surveys/survey.repository"
 
@@ -48,13 +49,18 @@ export async function sendConsentInvite(tenantId: string, employeeId: string): P
   })
 
   const messageQueue = getMessageQueue()
+  const consentBody = env.CONSENT_MESSAGE_TEMPLATE
+    .replace("{nome}", employee.name)
+    .replace("{link}", consentUrl)
   await messageQueue.add("send-message", {
     to: employee.phone,
-    body: `Pulse: Acesse o link abaixo para revisar e aceitar os termos de participação nas pesquisas de bem-estar: ${consentUrl}`,
+    body: consentBody,
     tenantId,
     employeeId,
     provider: env.MESSAGING_PROVIDER,
     type: "consent_invite",
+    templateName: env.WHATSAPP_CONSENT_TEMPLATE_NAME,
+    templateVariables: [employee.name, consentUrl],
   })
 }
 
@@ -123,7 +129,7 @@ export async function acceptConsentFromSurveyToken(surveyToken: string): Promise
       employeeId: tokenRecord.employeeId,
       consentTermVersionId: activeVersion.id,
       event: "accepted",
-      source: "sms_link",
+      source: "survey_form",
     })
   }
 }
@@ -165,4 +171,11 @@ export function publishNewConsentTermVersion(input: { version: string; content: 
     throw new AppError("INVALID_INPUT", "Versão e conteúdo são obrigatórios.")
   }
   return createConsentTermVersion({ version: input.version.trim(), content: input.content.trim() })
+}
+
+export function getConsentEventsByEmployeeIds(
+  tenantId: string,
+  employeeIds: string[],
+): Promise<Map<string, string>> {
+  return findLatestConsentEventsByEmployeeIds(tenantId, employeeIds)
 }

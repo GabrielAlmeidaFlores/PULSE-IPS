@@ -21,6 +21,14 @@ export const env = createEnv({
     WHATSAPP_ACCESS_TOKEN: z.string().min(1).optional(),
     WHATSAPP_API_VERSION: z.string().default("v20.0"),
     WHATSAPP_API_BASE_URL: z.string().url().default("https://graph.facebook.com"),
+    WHATSAPP_WEBHOOK_VERIFY_TOKEN: z.string().min(1).optional(),
+    WHATSAPP_TEMPLATE_LANGUAGE: z.string().default("pt_BR"),
+    WHATSAPP_CONSENT_TEMPLATE_NAME: z.string().default("pulse_consent_invite"),
+    WHATSAPP_SURVEY_TEMPLATE_NAME: z.string().default("pulse_survey_dispatch"),
+
+    CONSENT_MESSAGE_TEMPLATE: z
+      .string()
+      .default("Oi, {nome}! 👋 Você foi convidado(a) para participar das pesquisas de bem-estar da sua empresa 🌱 É rápido, anônimo e sua opinião faz toda a diferença. Acesse o link para revisar os termos e confirmar sua participação: {link}"),
 
     SURVEY_MESSAGE_TEMPLATE: z
       .string()
@@ -64,6 +72,12 @@ export const env = createEnv({
     WHATSAPP_ACCESS_TOKEN: process.env.WHATSAPP_ACCESS_TOKEN,
     WHATSAPP_API_VERSION: process.env.WHATSAPP_API_VERSION,
     WHATSAPP_API_BASE_URL: process.env.WHATSAPP_API_BASE_URL,
+    WHATSAPP_WEBHOOK_VERIFY_TOKEN: process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN,
+    WHATSAPP_TEMPLATE_LANGUAGE: process.env.WHATSAPP_TEMPLATE_LANGUAGE,
+    WHATSAPP_CONSENT_TEMPLATE_NAME: process.env.WHATSAPP_CONSENT_TEMPLATE_NAME,
+    WHATSAPP_SURVEY_TEMPLATE_NAME: process.env.WHATSAPP_SURVEY_TEMPLATE_NAME,
+
+    CONSENT_MESSAGE_TEMPLATE: process.env.CONSENT_MESSAGE_TEMPLATE,
 
     SURVEY_MESSAGE_TEMPLATE: process.env.SURVEY_MESSAGE_TEMPLATE,
 

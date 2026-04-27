@@ -78,6 +78,20 @@ export function createConsentTermVersion(data: CreateConsentTermVersionInput): P
   })
 }
 
+export async function findLatestConsentEventsByEmployeeIds(
+  tenantId: string,
+  employeeIds: string[],
+): Promise<Map<string, string>> {
+  if (employeeIds.length === 0) return new Map()
+  const records = await prisma.employeeConsent.findMany({
+    where: { tenantId, employeeId: { in: employeeIds } },
+    orderBy: { createdAt: "desc" },
+    distinct: ["employeeId"],
+    select: { employeeId: true, event: true },
+  })
+  return new Map(records.map((r) => [r.employeeId, r.event]))
+}
+
 export async function findEmployeeIdsWithAcceptedConsent(tenantId: string, employeeIds: string[]): Promise<string[]> {
   if (employeeIds.length === 0) return []
   const latestConsents = await prisma.employeeConsent.findMany({

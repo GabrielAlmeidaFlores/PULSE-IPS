@@ -19,6 +19,33 @@ function isErrorResponse(data: WhatsAppResponse): data is { error: { message: st
   return "error" in data
 }
 
+function buildTemplatePayload(to: string, templateName: string, variables: string[]): Record<string, unknown> {
+  return {
+    messaging_product: "whatsapp",
+    to,
+    type: "template",
+    template: {
+      name: templateName,
+      language: { code: env.WHATSAPP_TEMPLATE_LANGUAGE },
+      components: [
+        {
+          type: "body",
+          parameters: variables.map((text) => ({ type: "text", text })),
+        },
+      ],
+    },
+  }
+}
+
+function buildTextPayload(to: string, body: string): Record<string, unknown> {
+  return {
+    messaging_product: "whatsapp",
+    to,
+    type: "text",
+    text: { preview_url: false, body },
+  }
+}
+
 export class WhatsAppAdapter implements IMessagingService {
   async send(params: SendMessageParams): Promise<SendMessageResult> {
     const phoneNumberId = env.WHATSAPP_PHONE_NUMBER_ID
@@ -31,6 +58,12 @@ export class WhatsAppAdapter implements IMessagingService {
     }
 
     const url = `${env.WHATSAPP_API_BASE_URL}/${env.WHATSAPP_API_VERSION}/${phoneNumberId}/messages`
+    const to = params.to.replace(/^\+/, "")
+
+    const payload =
+      params.templateName && params.templateVariables !== undefined
+        ? buildTemplatePayload(to, params.templateName, params.templateVariables)
+        : buildTextPayload(to, params.body)
 
     const response = await fetch(url, {
       method: "POST",
@@ -38,12 +71,7 @@ export class WhatsAppAdapter implements IMessagingService {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        to: params.to,
-        type: "text",
-        text: { preview_url: false, body: params.body },
-      }),
+      body: JSON.stringify(payload),
     })
 
     const raw: unknown = await response.json()

@@ -28,6 +28,8 @@ export interface SendMessageJobData {
   employeeId: string
   provider: string
   type: "consent_invite" | "survey_dispatch" | "survey_resend"
+  templateName?: string
+  templateVariables?: string[]
 }
 
 export function createJobQueue(): Queue<Record<string, never>, void, JobName> {

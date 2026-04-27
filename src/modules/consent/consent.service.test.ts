@@ -47,6 +47,8 @@ vi.mock("@/env", () => ({
   env: {
     NEXT_PUBLIC_APP_URL: "http://localhost:3000",
     MESSAGING_PROVIDER: "console",
+    CONSENT_MESSAGE_TEMPLATE: "Oi, {nome}! Acesse: {link}",
+    WHATSAPP_CONSENT_TEMPLATE_NAME: "pulse_consent_invite",
   },
 }))
 
