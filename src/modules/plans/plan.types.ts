@@ -1,3 +1,28 @@
+export type PlanFeature = "action_plans" | "documents" | "anonymous_reports" | "pgr"
+
+export const ALL_PLAN_FEATURES: PlanFeature[] = ["action_plans", "documents", "anonymous_reports", "pgr"]
+
+export const PLAN_FEATURE_LABELS: Record<PlanFeature, string> = {
+  action_plans: "Planos de Ação",
+  documents: "Documentos",
+  anonymous_reports: "Relatos Anônimos",
+  pgr: "PGR",
+}
+
+export interface PlanDisplayFeature {
+  key: string
+  label: string
+  alwaysEnabled: boolean
+}
+
+export const ALL_DISPLAY_FEATURES: PlanDisplayFeature[] = [
+  { key: "surveys", label: "Pesquisas de Clima e Saúde", alwaysEnabled: true },
+  { key: "action_plans", label: "Planos de Ação", alwaysEnabled: false },
+  { key: "documents", label: "Documentos", alwaysEnabled: false },
+  { key: "anonymous_reports", label: "Relatos Anônimos", alwaysEnabled: false },
+  { key: "pgr", label: "PGR", alwaysEnabled: false },
+]
+
 export interface Plan {
   id: string
   name: string
@@ -7,6 +32,10 @@ export interface Plan {
   isActive: boolean
   createdAt: Date
   updatedAt: Date
+}
+
+export interface PlanWithFeatures extends Plan {
+  features: PlanFeature[]
 }
 
 export interface PlanPrice {
@@ -24,6 +53,7 @@ export interface CreatePlanInput {
   name: string
   description?: string | undefined
   maxEmployees: number
+  features?: PlanFeature[] | undefined
 }
 
 export interface UpdatePlanInput {
@@ -55,4 +85,9 @@ export interface AddDirectPriceInput {
   planId: string
   priceInCents: number
   interval: BillingInterval
+}
+
+export interface SetPlanFeaturesInput {
+  planId: string
+  features: PlanFeature[]
 }

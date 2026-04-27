@@ -3,6 +3,7 @@ import { MINIMUM_RESPONDENTS_FOR_DISPLAY } from "@/libs/utils/anonymity"
 import type { PgrReview, PgrQuestionResult } from "@prisma/client"
 import type { CreatePgrDeptResultInput, CreatePgrQuestionResultInput, PgrScoreDistribution } from "@/modules/pgr/pgr.types"
 import type { ScoreDirection } from "@/modules/surveys/survey.types"
+import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
 import {
   type PgrReviewWithResults,
   type PgrReviewListItem,
@@ -182,6 +183,9 @@ export async function sendPgrReviewReminders(): Promise<{ remindersCreated: numb
   let remindersCreated = 0
 
   for (const review of upcomingReviews) {
+    const hasPgrFeature = await hasTenantPlanFeature(review.tenantId, "pgr")
+    if (!hasPgrFeature) continue
+
     const existingAlert = await findExistingPgrAlert(review.tenantId)
     if (!existingAlert) {
       await createPgrAlert({

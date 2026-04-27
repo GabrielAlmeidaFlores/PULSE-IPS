@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 import { getSession } from "@/modules/auth/session"
+import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
 import { getReports } from "@/modules/anonymous-reports/anonymous-report.service"
 import { getOrganization } from "@/modules/organizations/organization.service"
 import { ReportControls } from "@/app/(tenant)/reports/report-controls"
@@ -9,6 +10,9 @@ import { PageHelp } from "@/components/page-help"
 export default async function ReportsPage(): Promise<React.ReactElement> {
   const session = await getSession()
   if (!session) redirect("/login")
+
+  const hasFeature = await hasTenantPlanFeature(session.tenantId, "anonymous_reports")
+  if (!hasFeature) redirect("/dashboard")
 
   const [reports, org] = await Promise.all([
     getReports(session.tenantId),

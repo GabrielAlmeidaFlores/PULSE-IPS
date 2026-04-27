@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation"
 import Link from "next/link"
 import { getSession } from "@/modules/auth/session"
+import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
 import { getPgrReviewById, getPgrScoreDistributions } from "@/modules/pgr/pgr.service"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
@@ -94,6 +95,9 @@ function ScoreGauge({ hi }: ScoreGaugeProps): React.ReactElement {
 export default async function PgrDetailPage({ params }: PageProps): Promise<React.ReactElement> {
   const session = await getSession()
   if (!session) redirect("/login")
+
+  const hasFeature = await hasTenantPlanFeature(session.tenantId, "pgr")
+  if (!hasFeature) redirect("/dashboard")
 
   const { id } = await params
   const review = await getPgrReviewById(session.tenantId, id)

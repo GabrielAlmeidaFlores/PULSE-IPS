@@ -1,4 +1,5 @@
 import { getAllPlansAdmin } from "@/modules/plans/plan.service"
+import { PLAN_FEATURE_LABELS } from "@/modules/plans/plan.types"
 import Link from "next/link"
 import { Plus } from "lucide-react"
 import { PlanRowActions } from "@/app/(super-admin)/super-admin/plans/plan-row-actions"
@@ -33,7 +34,7 @@ export default async function PlansPage(): Promise<React.ReactElement> {
             <thead>
               <tr className="border-b border-border bg-muted">
                 <th className="text-left px-4 py-2.5 font-bold tracking-widest uppercase text-[10px] text-muted-foreground">Plano</th>
-                <th className="text-left px-4 py-2.5 font-bold tracking-widest uppercase text-[10px] text-muted-foreground">Descrição</th>
+                <th className="text-left px-4 py-2.5 font-bold tracking-widest uppercase text-[10px] text-muted-foreground">Funcionalidades</th>
                 <th className="text-right px-4 py-2.5 font-bold tracking-widest uppercase text-[10px] text-muted-foreground">Max. Colaboradores</th>
                 <th className="text-right px-4 py-2.5 font-bold tracking-widest uppercase text-[10px] text-muted-foreground">Preços</th>
                 <th className="text-center px-4 py-2.5 font-bold tracking-widest uppercase text-[10px] text-muted-foreground">Status</th>
@@ -52,9 +53,23 @@ export default async function PlansPage(): Promise<React.ReactElement> {
                 <tr key={plan.id} className={`border-b border-border last:border-0 hover:bg-muted/40 transition-colors ${i % 2 !== 0 ? "bg-muted/20" : ""}`}>
                   <td className="px-4 py-2.5">
                     <div className="font-semibold text-foreground">{plan.name}</div>
+                    {plan.description && (
+                      <div className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">{plan.description}</div>
+                    )}
                   </td>
-                  <td className="px-4 py-2.5 text-muted-foreground max-w-[200px]">
-                    <span className="line-clamp-1">{plan.description ?? "—"}</span>
+                  <td className="px-4 py-2.5">
+                    <div className="flex flex-wrap gap-1">
+                      {plan.features.length === 0 && <span className="text-muted-foreground">—</span>}
+                      {plan.features.map((feature) => (
+                        <span
+                          key={feature}
+                          className="text-[9px] font-bold tracking-widest uppercase px-1.5 py-0.5 admin-bg-green admin-accent-green"
+                          style={{ borderRadius: 0 }}
+                        >
+                          {PLAN_FEATURE_LABELS[feature]}
+                        </span>
+                      ))}
+                    </div>
                   </td>
                   <td className="px-4 py-2.5 text-right font-mono">
                     {plan.maxEmployees >= 99999 ? "Ilimitado" : plan.maxEmployees.toLocaleString("pt-BR")}

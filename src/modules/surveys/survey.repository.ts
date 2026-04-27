@@ -364,11 +364,13 @@ export interface ActiveConfigForDispatch {
   lastDispatchedAt: Date | null
 }
 
+const ACTIVE_BILLING_STATUSES_FOR_DISPATCH = new Set(["active", "trialing"])
+
 export async function findActiveConfigsForAutoDispatch(): Promise<ActiveConfigForDispatch[]> {
   const configs = await prisma.surveyConfiguration.findMany({
     where: { isActive: true },
     include: {
-      organization: { select: { timezone: true } },
+      organization: { select: { timezone: true, billingStatus: true } },
       questions: { orderBy: { order: "asc" } },
       workDays: true,
       department: {
@@ -386,7 +388,7 @@ export async function findActiveConfigsForAutoDispatch(): Promise<ActiveConfigFo
     },
   })
   return configs
-    .filter((c) => c.department.employees.length > 0)
+    .filter((c) => c.department.employees.length > 0 && ACTIVE_BILLING_STATUSES_FOR_DISPATCH.has(c.organization.billingStatus))
     .map((c) => ({
       id: c.id,
       tenantId: c.tenantId,
@@ -394,7 +396,7 @@ export async function findActiveConfigsForAutoDispatch(): Promise<ActiveConfigFo
       workStartTime: c.workStartTime,
       workEndTime: c.workEndTime,
       workDays: c.workDays.map((w) => w.dayOfWeek),
-      organization: c.organization,
+      organization: { timezone: c.organization.timezone },
       department: {
         workStartTime: c.department.workStartTime,
         workEndTime: c.department.workEndTime,

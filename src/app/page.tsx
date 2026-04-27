@@ -1,7 +1,8 @@
 import Link from "next/link"
-import { CheckCircle2, ClipboardList, Bell, FileText, Users, BarChart3, ArrowRight, Building2, Star, MessageSquare, ChevronDown } from "lucide-react"
+import { CheckCircle2, XCircle, ClipboardList, Bell, FileText, Users, BarChart3, ArrowRight, Building2, Star, MessageSquare, ChevronDown } from "lucide-react"
 import { Logo } from "@/libs/design-system/components/logo"
 import { getAllPlans } from "@/modules/plans/plan.service"
+import { ALL_DISPLAY_FEATURES } from "@/modules/plans/plan.types"
 import { env } from "@/env"
 import { AnimateIn } from "@/components/animate-in"
 
@@ -244,6 +245,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
               const yearlyPrice = plan.prices.find((p) => p.interval === "year")
               const primaryPrice = monthlyPrice ?? yearlyPrice ?? null
               const highlightSecondary = isHighlight ? "text-white/70" : "text-muted-foreground"
+              const enabledFeatureKeys = new Set<string>(plan.features)
 
               return (
                 <AnimateIn key={plan.id} delay={index * 100} animation="scale-in">
@@ -289,6 +291,25 @@ export default async function LandingPage(): Promise<React.ReactElement> {
                       {plan.description}
                     </p>
                   )}
+
+                  <ul className="space-y-2">
+                    {ALL_DISPLAY_FEATURES.map((displayFeature) => {
+                      const isEnabled = displayFeature.alwaysEnabled || enabledFeatureKeys.has(displayFeature.key)
+                      const itemClass = isEnabled
+                        ? `text-sm flex items-center gap-2 ${isHighlight ? "text-white/90" : "text-foreground"}`
+                        : `text-sm flex items-center gap-2 ${isHighlight ? "text-white/40" : "text-muted-foreground/50"}`
+                      return (
+                        <li key={displayFeature.key} className={itemClass}>
+                          {isEnabled ? (
+                            <CheckCircle2 className={`w-4 h-4 shrink-0 ${isHighlight ? "text-white" : "text-primary"}`} />
+                          ) : (
+                            <XCircle className="w-4 h-4 shrink-0 text-destructive/60" />
+                          )}
+                          {displayFeature.label}
+                        </li>
+                      )
+                    })}
+                  </ul>
 
                   {plan.prices.length > 1 && (
                     <ul className="space-y-1.5">

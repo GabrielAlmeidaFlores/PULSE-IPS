@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { getSession } from "@/modules/auth/session"
+import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
 import { getActionPlan } from "@/modules/action-plans/action-plan.service"
 import { TaskControls } from "@/app/(tenant)/action-plans/[id]/task-controls"
 import { CompletePlanButton } from "@/app/(tenant)/action-plans/[id]/complete-plan-button"
@@ -18,6 +19,9 @@ interface Props {
 export default async function ActionPlanDetailPage({ params }: Props): Promise<React.ReactElement> {
   const session = await getSession()
   if (!session) redirect("/login")
+
+  const hasFeature = await hasTenantPlanFeature(session.tenantId, "action_plans")
+  if (!hasFeature) redirect("/dashboard")
 
   const { id } = await params
   const plan = await getActionPlan(session.tenantId, id)

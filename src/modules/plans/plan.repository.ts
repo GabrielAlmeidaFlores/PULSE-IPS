@@ -1,29 +1,38 @@
 import { prisma } from "@/libs/db"
-import type { Plan, PlanPrice } from "@prisma/client"
-import type { CreatePlanInput, UpdatePlanInput, CreatePlanPriceRecord } from "@/modules/plans/plan.types"
+import type { Plan, PlanPrice, PlanFeature as PrismaFeature } from "@prisma/client"
+import type { CreatePlanInput, UpdatePlanInput, CreatePlanPriceRecord, PlanFeature, PlanWithFeatures } from "@/modules/plans/plan.types"
 
-export type PlanWithPrices = Plan & { prices: PlanPrice[] }
+type PlanWithPrismaFeatures = Plan & { prices: PlanPrice[]; features: PrismaFeature[] }
 
-export function findAllPlans(): Promise<PlanWithPrices[]> {
+function toPlanWithFeatures(raw: PlanWithPrismaFeatures): PlanWithFeatures & { prices: PlanPrice[] } {
+  return {
+    ...raw,
+    features: raw.features.map((f) => f.feature as PlanFeature),
+  }
+}
+
+export type PlanWithPricesAndFeatures = PlanWithFeatures & { prices: PlanPrice[] }
+
+export function findAllPlans(): Promise<PlanWithPricesAndFeatures[]> {
   return prisma.plan.findMany({
     where: { isActive: true },
-    include: { prices: { where: { isActive: true } } },
+    include: { prices: { where: { isActive: true } }, features: true },
     orderBy: { createdAt: "asc" },
-  })
+  }).then((plans) => plans.map(toPlanWithFeatures))
 }
 
-export function findAllPlansIncludingInactive(): Promise<PlanWithPrices[]> {
+export function findAllPlansIncludingInactive(): Promise<PlanWithPricesAndFeatures[]> {
   return prisma.plan.findMany({
-    include: { prices: true },
+    include: { prices: true, features: true },
     orderBy: { createdAt: "asc" },
-  })
+  }).then((plans) => plans.map(toPlanWithFeatures))
 }
 
-export function findPlanById(planId: string): Promise<PlanWithPrices | null> {
+export function findPlanById(planId: string): Promise<PlanWithPricesAndFeatures | null> {
   return prisma.plan.findUnique({
     where: { id: planId },
-    include: { prices: { where: { isActive: true } } },
-  })
+    include: { prices: { where: { isActive: true } }, features: true },
+  }).then((plan) => (plan ? toPlanWithFeatures(plan) : null))
 }
 
 export function createPlan(data: CreatePlanInput & { externalProductId?: string | undefined }): Promise<Plan> {
@@ -48,6 +57,19 @@ export function updatePlan(planId: string, data: UpdatePlanInput): Promise<Plan>
       ...(data.externalProductId !== undefined && { externalProductId: data.externalProductId }),
     },
   })
+}
+
+export async function setPlanFeatures(planId: string, features: PlanFeature[]): Promise<void> {
+  await prisma.$transaction([
+    prisma.planFeature.deleteMany({ where: { planId } }),
+    prisma.planFeature.createMany({
+      data: features.map((feature) => ({ planId, feature })),
+    }),
+  ])
+}
+
+export function findPlanFeatures(planId: string): Promise<PlanFeature[]> {
+  return prisma.planFeature.findMany({ where: { planId } }).then((rows) => rows.map((r) => r.feature as PlanFeature))
 }
 
 export function createPlanPrice(data: CreatePlanPriceRecord): Promise<PlanPrice> {

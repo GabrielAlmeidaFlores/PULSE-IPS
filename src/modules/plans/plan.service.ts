@@ -12,26 +12,40 @@ import {
   countOrgsUsingPlan,
   deletePlan,
   findPlanPriceWithPlan,
-  type PlanWithPrices,
+  setPlanFeatures,
+  findPlanFeatures,
+  type PlanWithPricesAndFeatures,
 } from "@/modules/plans/plan.repository"
-import type { CreatePlanInput, CreatePlanPriceInput, UpdatePlanInput, AddDirectPriceInput } from "@/modules/plans/plan.types"
+import type { CreatePlanInput, CreatePlanPriceInput, UpdatePlanInput, AddDirectPriceInput, PlanFeature, SetPlanFeaturesInput } from "@/modules/plans/plan.types"
 import type { Plan, PlanPrice } from "@prisma/client"
 import { AppError } from "@/libs/errors/app-error"
 
-export function getAllPlans(): Promise<PlanWithPrices[]> {
+export type { PlanWithPricesAndFeatures }
+
+export function getAllPlans(): Promise<PlanWithPricesAndFeatures[]> {
   return findAllPlans()
 }
 
-export function getAllPlansAdmin(): Promise<PlanWithPrices[]> {
+export function getAllPlansAdmin(): Promise<PlanWithPricesAndFeatures[]> {
   return findAllPlansIncludingInactive()
 }
 
-export function getPlan(planId: string): Promise<PlanWithPrices | null> {
+export function getPlan(planId: string): Promise<PlanWithPricesAndFeatures | null> {
   return findPlanById(planId)
 }
 
 export function getPlanPriceWithPlan(priceId: string): Promise<(PlanPrice & { plan: Plan }) | null> {
   return findPlanPriceWithPlan(priceId)
+}
+
+export function getPlanFeatures(planId: string): Promise<PlanFeature[]> {
+  return findPlanFeatures(planId)
+}
+
+export async function updatePlanFeatures(input: SetPlanFeaturesInput): Promise<void> {
+  const plan = await findPlanById(input.planId)
+  if (!plan) throw new AppError("PLAN_NOT_FOUND", "Plano não encontrado.")
+  await setPlanFeatures(input.planId, input.features)
 }
 
 export async function createNewPlan(input: CreatePlanInput): Promise<Plan> {
@@ -40,7 +54,11 @@ export async function createNewPlan(input: CreatePlanInput): Promise<Plan> {
     name: input.name,
     ...(input.description !== undefined ? { description: input.description } : {}),
   })
-  return createPlan({ ...input, externalProductId: product.id })
+  const plan = await createPlan({ ...input, externalProductId: product.id })
+  if (input.features && input.features.length > 0) {
+    await setPlanFeatures(plan.id, input.features)
+  }
+  return plan
 }
 
 export function updatePlanDetails(planId: string, input: Pick<UpdatePlanInput, "name" | "description" | "maxEmployees">): Promise<Plan> {

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { ChevronRight } from "lucide-react"
 import { getSession } from "@/modules/auth/session"
+import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
 import { getActionPlans } from "@/modules/action-plans/action-plan.service"
 import { getPendingActionPlanSuggestions } from "@/modules/action-plans/action-plan-suggestion.service"
 import { ActionPlanSuggestionCards } from "@/app/(tenant)/action-plans/action-plan-suggestion-cards"
@@ -38,6 +39,9 @@ const PLAN_PRIORITY_STYLE: Record<string, string> = {
 export default async function ActionPlansPage(): Promise<React.ReactElement> {
   const session = await getSession()
   if (!session) redirect("/login")
+
+  const hasFeature = await hasTenantPlanFeature(session.tenantId, "action_plans")
+  if (!hasFeature) redirect("/dashboard")
 
   const [plans, suggestions] = await Promise.all([
     getActionPlans(session.tenantId),

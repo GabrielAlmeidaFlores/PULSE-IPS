@@ -1,8 +1,8 @@
 import type { BillingWebhookEvent } from "@/libs/integrations/billing/billing.interface"
-import { upsertSubscription, recordWebhookEvent, findWebhookEvent, findFailedWebhookEvents, markWebhookEventProcessed, markWebhookEventFailed } from "@/modules/billing/billing.repository"
+import { upsertSubscription, recordWebhookEvent, findWebhookEvent, findFailedWebhookEvents, markWebhookEventProcessed, markWebhookEventFailed, createSubscriptionFeatureSnapshot, findTenantSubscriptionFeatures } from "@/modules/billing/billing.repository"
 import type { BillingStatus } from "@/modules/billing/billing.types"
 import { findOrganizationByCustomerId, updateOrganizationBillingStatus } from "@/modules/organizations/organization.repository"
-import { findPlanPriceById } from "@/modules/plans/plan.repository"
+import { findPlanPriceById, findPlanFeatures } from "@/modules/plans/plan.repository"
 
 interface WebhookSubscriptionData {
   id: string
@@ -57,7 +57,7 @@ async function handleSubscriptionUpdate(subscription: WebhookSubscriptionData): 
   const planPrice = await findPlanPriceById(priceId)
   if (!planPrice) return
 
-  await upsertSubscription({
+  const sub = await upsertSubscription({
     tenantId: customer.id,
     planId: planPrice.planId,
     externalSubscriptionId: subscription.id,
@@ -71,6 +71,12 @@ async function handleSubscriptionUpdate(subscription: WebhookSubscriptionData): 
     snapshotInterval: planPrice.interval,
     snapshotExternalPriceId: priceId,
   })
+
+  const existingFeatures = await findTenantSubscriptionFeatures(customer.id)
+  if (existingFeatures.length === 0) {
+    const planFeatures = await findPlanFeatures(planPrice.planId)
+    await createSubscriptionFeatureSnapshot(sub.id, planFeatures)
+  }
 
   await updateOrganizationBillingStatus(customer.id, subscription.status as BillingStatus, planPrice.planId)
 }

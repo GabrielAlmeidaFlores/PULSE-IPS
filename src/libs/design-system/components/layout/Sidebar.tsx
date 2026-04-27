@@ -6,37 +6,43 @@ import { usePathname } from "next/navigation"
 import { Menu, X, LayoutDashboard, Users, Building2, ClipboardList, Bell, FileText, ShieldCheck, CreditCard, Settings, MessageSquare } from "lucide-react"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { Logo } from "@/libs/design-system/components/logo"
+import type { PlanFeature } from "@/modules/plans/plan.types"
 
 interface NavItem {
   href: string
   label: string
   icon: React.ReactElement
+  feature?: PlanFeature | undefined
 }
 
-function getNavItems(role: "admin" | "rh"): NavItem[] {
-  const items: NavItem[] = [
+function getNavItems(role: "admin" | "rh", features: PlanFeature[]): NavItem[] {
+  const allItems: NavItem[] = [
     { href: "/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
     { href: "/employees", label: "Funcionários", icon: <Users className="h-4 w-4" /> },
     { href: "/departments", label: "Departamentos", icon: <Building2 className="h-4 w-4" /> },
     { href: "/surveys", label: "Pesquisas", icon: <ClipboardList className="h-4 w-4" /> },
-    { href: "/action-plans", label: "Planos de Ação", icon: <ShieldCheck className="h-4 w-4" /> },
-    { href: "/documents", label: "Documentos", icon: <FileText className="h-4 w-4" /> },
     { href: "/alerts", label: "Alertas", icon: <Bell className="h-4 w-4" /> },
-    { href: "/reports", label: "Relatos", icon: <MessageSquare className="h-4 w-4" /> },
-    { href: "/pgr", label: "PGR", icon: <ShieldCheck className="h-4 w-4" /> },
+    { href: "/action-plans", label: "Planos de Ação", icon: <ShieldCheck className="h-4 w-4" />, feature: "action_plans" },
+    { href: "/documents", label: "Documentos", icon: <FileText className="h-4 w-4" />, feature: "documents" },
+    { href: "/reports", label: "Relatos", icon: <MessageSquare className="h-4 w-4" />, feature: "anonymous_reports" },
+    { href: "/pgr", label: "PGR", icon: <ShieldCheck className="h-4 w-4" />, feature: "pgr" },
   ]
+
+  const filtered = allItems.filter((item) => item.feature === undefined || features.includes(item.feature))
+
   if (role === "admin") {
-    items.push(
+    filtered.push(
       { href: "/billing", label: "Assinatura", icon: <CreditCard className="h-4 w-4" /> },
       { href: "/settings", label: "Configurações", icon: <Settings className="h-4 w-4" /> },
     )
   }
-  return items
+  return filtered
 }
 
 interface SidebarProps {
   tenantId: string
   role: "admin" | "rh"
+  features: PlanFeature[]
 }
 
 function NavLinks({ items, onNavigate }: { items: NavItem[]; onNavigate?: () => void }): React.ReactElement {
@@ -61,9 +67,9 @@ function NavLinks({ items, onNavigate }: { items: NavItem[]; onNavigate?: () => 
   )
 }
 
-export function Sidebar({ role }: SidebarProps): React.ReactElement {
+export function Sidebar({ role, features }: SidebarProps): React.ReactElement {
   const [open, setOpen] = useState(false)
-  const navItems = getNavItems(role)
+  const navItems = getNavItems(role, features)
 
   return (
     <>

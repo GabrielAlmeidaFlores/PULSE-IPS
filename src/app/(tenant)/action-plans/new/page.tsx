@@ -1,10 +1,14 @@
 import { redirect } from "next/navigation"
 import { getSession } from "@/modules/auth/session"
+import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
 import { CreateActionPlanForm } from "@/app/(tenant)/action-plans/new/create-action-plan-form"
 
 export default async function NewActionPlanPage(): Promise<React.ReactElement> {
   const session = await getSession()
   if (!session) redirect("/login")
+
+  const hasFeature = await hasTenantPlanFeature(session.tenantId, "action_plans")
+  if (!hasFeature) redirect("/dashboard")
 
   return (
     <div className="flex flex-col h-full">

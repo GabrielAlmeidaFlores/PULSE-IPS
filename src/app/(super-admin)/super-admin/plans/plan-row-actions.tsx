@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { Pencil, Power, Trash2 } from "lucide-react"
+import { LayoutGrid, Pencil, Power, Trash2 } from "lucide-react"
+import Link from "next/link"
 import { updatePlanAction, updatePlanPriceAction, addPlanPriceAction, togglePlanActiveAction, deletePlanAction } from "@/app/(super-admin)/super-admin/plans/actions"
 
 const inputCls =
@@ -126,11 +127,19 @@ export function PlanRowActions({ plan }: { plan: Plan }): React.ReactElement {
   return (
     <>
       <div className="flex items-center justify-end gap-0">
+        <Link
+          href={`/super-admin/plans/${plan.id}/features`}
+          title="Gerenciar funcionalidades"
+          className="px-2.5 py-1.5 text-muted-foreground hover:text-foreground hover:bg-muted border border-border transition-colors"
+          style={{ borderRadius: 0 }}
+        >
+          <LayoutGrid className="h-3.5 w-3.5" />
+        </Link>
         <button
           onClick={handleEditOpen}
           disabled={isPending}
           title="Editar plano"
-          className="px-2.5 py-1.5 text-muted-foreground hover:text-foreground hover:bg-muted border border-border transition-colors disabled:opacity-50"
+          className="px-2.5 py-1.5 text-muted-foreground hover:text-foreground hover:bg-muted border border-border border-l-0 transition-colors disabled:opacity-50"
           style={{ borderRadius: 0 }}
         >
           <Pencil className="h-3.5 w-3.5" />

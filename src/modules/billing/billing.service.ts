@@ -2,8 +2,10 @@ import { addMonths } from "date-fns"
 import { env } from "@/env"
 import { getBillingService } from "@/libs/integrations"
 import { AppError } from "@/libs/errors/app-error"
-import { findActiveSubscription, upsertSubscription, findPlanPriceForProvisioning } from "@/modules/billing/billing.repository"
+import { findActiveSubscription, upsertSubscription, findPlanPriceForProvisioning, createSubscriptionFeatureSnapshot, findTenantSubscriptionFeatures } from "@/modules/billing/billing.repository"
 import { findOrganizationRequired, updateOrganizationBillingStatus } from "@/modules/organizations/organization.repository"
+import { findPlanFeatures } from "@/modules/plans/plan.repository"
+import type { PlanFeature } from "@/modules/plans/plan.types"
 
 export async function createCheckoutSession(
   tenantId: string,
@@ -38,7 +40,7 @@ async function provisionSubscription(tenantId: string, externalPriceId: string):
   if (!planPrice) return
 
   const now = new Date()
-  await upsertSubscription({
+  const sub = await upsertSubscription({
     tenantId,
     planId: planPrice.planId,
     externalSubscriptionId: `fake_sub_${Date.now()}`,
@@ -52,6 +54,12 @@ async function provisionSubscription(tenantId: string, externalPriceId: string):
     snapshotInterval: planPrice.interval,
     snapshotExternalPriceId: planPrice.externalPriceId ?? "",
   })
+
+  const existingFeatures = await findTenantSubscriptionFeatures(tenantId)
+  if (existingFeatures.length === 0) {
+    const planFeatures = await findPlanFeatures(planPrice.planId)
+    await createSubscriptionFeatureSnapshot(sub.id, planFeatures)
+  }
 
   await updateOrganizationBillingStatus(tenantId, "active", planPrice.planId)
 }
@@ -70,4 +78,13 @@ export async function getBillingPortalUrl(tenantId: string): Promise<string> {
 
 export function getSubscription(tenantId: string): Promise<(import("@prisma/client").OrganizationSubscription & { plan: import("@prisma/client").Plan }) | null> {
   return findActiveSubscription(tenantId)
+}
+
+export function getTenantPlanFeatures(tenantId: string): Promise<PlanFeature[]> {
+  return findTenantSubscriptionFeatures(tenantId)
+}
+
+export async function hasTenantPlanFeature(tenantId: string, feature: PlanFeature): Promise<boolean> {
+  const features = await findTenantSubscriptionFeatures(tenantId)
+  return features.includes(feature)
 }

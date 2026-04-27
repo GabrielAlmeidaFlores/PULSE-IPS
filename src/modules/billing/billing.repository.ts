@@ -1,6 +1,7 @@
 import { prisma } from "@/libs/db"
 import type { Prisma, OrganizationSubscription, Plan, BillingWebhookEvent } from "@prisma/client"
 import type { SubscriptionUpsertInput, WebhookEventInput } from "@/modules/billing/billing.types"
+import type { PlanFeature } from "@/modules/plans/plan.types"
 
 export function findActiveSubscription(tenantId: string): Promise<(OrganizationSubscription & { plan: Plan }) | null> {
   return prisma.organizationSubscription.findUnique({
@@ -15,6 +16,24 @@ export function upsertSubscription(data: SubscriptionUpsertInput): Promise<Organ
     create: data,
     update: data,
   })
+}
+
+export function findSubscriptionByTenantId(tenantId: string): Promise<OrganizationSubscription | null> {
+  return prisma.organizationSubscription.findUnique({ where: { tenantId } })
+}
+
+export async function createSubscriptionFeatureSnapshot(subscriptionId: string, features: PlanFeature[]): Promise<void> {
+  await prisma.subscriptionFeature.createMany({
+    data: features.map((feature) => ({ subscriptionId, feature })),
+    skipDuplicates: true,
+  })
+}
+
+export function findTenantSubscriptionFeatures(tenantId: string): Promise<PlanFeature[]> {
+  return prisma.organizationSubscription.findUnique({
+    where: { tenantId },
+    include: { features: true },
+  }).then((sub) => (sub ? sub.features.map((f) => f.feature as PlanFeature) : []))
 }
 
 export function recordWebhookEvent(data: WebhookEventInput): Promise<BillingWebhookEvent> {

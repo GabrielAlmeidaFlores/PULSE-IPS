@@ -6,11 +6,13 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { z } from "zod"
 import { createPlanAction } from "@/app/(super-admin)/super-admin/plans/new/actions"
+import { ALL_PLAN_FEATURES, PLAN_FEATURE_LABELS, type PlanFeature } from "@/modules/plans/plan.types"
 
 const schema = z.object({
   name: z.string().min(1).max(100),
   description: z.string(),
   maxEmployees: z.number().int().positive(),
+  features: z.array(z.string()),
   monthlyPrice: z.string().optional(),
   yearlyPrice: z.string().optional(),
 })
@@ -58,7 +60,7 @@ export function CreatePlanForm(): React.ReactElement {
   const router = useRouter()
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { description: "", monthlyPrice: "", yearlyPrice: "" },
+    defaultValues: { description: "", monthlyPrice: "", yearlyPrice: "", features: [] },
   })
 
   async function onSubmit(values: FormValues): Promise<void> {
@@ -69,6 +71,7 @@ export function CreatePlanForm(): React.ReactElement {
       name: values.name,
       description: values.description,
       maxEmployees: values.maxEmployees,
+      features: values.features,
       ...(monthlyPriceInCents && monthlyPriceInCents > 0 ? { monthlyPriceInCents } : {}),
       ...(yearlyPriceInCents && yearlyPriceInCents > 0 ? { yearlyPriceInCents } : {}),
     })
@@ -79,6 +82,17 @@ export function CreatePlanForm(): React.ReactElement {
     }
     toast.success("Plano criado com sucesso")
     router.push("/super-admin/plans")
+  }
+
+  const selectedFeatures = form.watch("features") as PlanFeature[]
+
+  function toggleFeature(feature: PlanFeature): void {
+    const current = form.getValues("features") as PlanFeature[]
+    if (current.includes(feature)) {
+      form.setValue("features", current.filter((f) => f !== feature))
+    } else {
+      form.setValue("features", [...current, feature])
+    }
   }
 
   return (
@@ -121,6 +135,26 @@ export function CreatePlanForm(): React.ReactElement {
             {...form.register("maxEmployees", { valueAsNumber: true })}
           />
         </AdminField>
+
+        <div className="border border-border divide-y divide-border">
+          <div className="px-3 py-2 bg-muted">
+            <span className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">Funcionalidades incluídas</span>
+          </div>
+          {ALL_PLAN_FEATURES.map((feature) => (
+            <label
+              key={feature}
+              className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-muted/40 transition-colors"
+            >
+              <input
+                type="checkbox"
+                checked={selectedFeatures.includes(feature)}
+                onChange={() => { toggleFeature(feature) }}
+                className="accent-primary"
+              />
+              <span className="text-[13px] text-foreground">{PLAN_FEATURE_LABELS[feature]}</span>
+            </label>
+          ))}
+        </div>
 
         <div className="border border-border divide-y divide-border">
           <div className="px-3 py-2 bg-muted">

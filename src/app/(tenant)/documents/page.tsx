@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 import { getSession } from "@/modules/auth/session"
+import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
 import { getDocuments } from "@/modules/documents/document.service"
 import { AddDocumentForm } from "@/app/(tenant)/documents/add-document-form"
 import { DocumentsTable } from "@/app/(tenant)/documents/documents-table"
@@ -8,6 +9,9 @@ import { PageHelp } from "@/components/page-help"
 export default async function DocumentsPage(): Promise<React.ReactElement> {
   const session = await getSession()
   if (!session) redirect("/login")
+
+  const hasFeature = await hasTenantPlanFeature(session.tenantId, "documents")
+  if (!hasFeature) redirect("/dashboard")
 
   const documents = await getDocuments(session.tenantId)
 

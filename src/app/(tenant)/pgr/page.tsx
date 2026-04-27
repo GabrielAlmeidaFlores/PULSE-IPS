@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { ChevronRight } from "lucide-react"
 import { getSession } from "@/modules/auth/session"
+import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
 import { getPgrReviews } from "@/modules/pgr/pgr.service"
 import { format } from "date-fns"
 import { PgrGenerateButton } from "@/app/(tenant)/pgr/pgr-generate-button"
@@ -23,6 +24,9 @@ const PGR_STATUS_STYLE: Record<string, string> = {
 export default async function PgrPage(): Promise<React.ReactElement> {
   const session = await getSession()
   if (!session) redirect("/login")
+
+  const hasFeature = await hasTenantPlanFeature(session.tenantId, "pgr")
+  if (!hasFeature) redirect("/dashboard")
 
   const reviews = await getPgrReviews(session.tenantId)
 

@@ -33,6 +33,9 @@
 20. [Fluxos de Negócio Críticos](#20-fluxos-de-negócio-críticos)
 21. [Variáveis de Ambiente](#21-variáveis-de-ambiente)
 22. [Comandos Úteis](#22-comandos-úteis)
+23. [localStorage — Padrão de Uso](#23-localstorage--padrão-de-uso)
+24. [Labels e Badges — Valores de Enum na UI](#24-labels-e-badges--valores-de-enum-na-ui)
+25. [Padrão de Navegação em Listagens](#25-padrão-de-navegação-em-listagens)
 26. [Fronteiras de Camada](#26-fronteiras-de-camada)
 27. [Abstração de SDKs e ORM](#27-abstração-de-sdks-e-orm)
 28. [Queries Cross-tenant — Convenção de Naming para Jobs](#28-queries-cross-tenant--convenção-de-naming-para-jobs)
@@ -237,6 +240,9 @@ src/
 │   │   ├── consent/[token]/page.tsx        # Fluxo de aceite do TCLE
 │   │   ├── survey/[token]/page.tsx         # Formulário de pesquisa (sem login)
 │   │   └── report/[orgSlug]/page.tsx       # Canal de relato anônimo
+│   ├── platform-terms/page.tsx             # Termos de Uso — página pública standalone (linked no footer)
+│   ├── privacy-policy/page.tsx             # Política de Privacidade — página pública standalone
+│   └── consent-terms/page.tsx             # TCLE dos Colaboradores — página pública standalone
 │   │
 │   ├── (auth)/                             # Rotas de autenticação
 │   │   ├── login/page.tsx
@@ -272,13 +278,21 @@ src/
 │   │   │   │       ├── page.tsx
 │   │   │   │       └── billing/page.tsx    # Status de assinatura + override de limite
 │   │   │   ├── plans/
-│   │   │   │   ├── page.tsx                # Lista planos + ações (editar, desativar, excluir)
+│   │   │   │   ├── page.tsx                # Lista planos com funcionalidades inclusas
 │   │   │   │   ├── new/page.tsx
-│   │   │   │   └── [id]/pricing/page.tsx   # Gerencia preços (plan_prices) do plano
+│   │   │   │   ├── [id]/pricing/page.tsx   # Gerencia preços (plan_prices) do plano
+│   │   │   │   └── [id]/features/page.tsx  # Gerencia funcionalidades do plano (action_plans, documents, etc.)
 │   │   │   ├── terms/
-│   │   │   │   ├── page.tsx                # Lista versões de termos + criar nova
-│   │   │   │   ├── new-terms-version-form.tsx
-│   │   │   │   └── actions.ts
+│   │   │   │   ├── page.tsx                # Hub: Termos de Uso, Política de Privacidade e TCLE
+│   │   │   │   ├── terms-hub.tsx           # Tabs de navegação entre os 3 documentos legais
+│   │   │   │   ├── terms-version-list.tsx          # Lista versões de Termos de Uso
+│   │   │   │   ├── new-terms-version-form.tsx       # Formulário de nova versão de Termos
+│   │   │   │   ├── privacy-policy-version-list.tsx  # Lista versões de Política de Privacidade
+│   │   │   │   ├── new-privacy-policy-version-form.tsx
+│   │   │   │   ├── actions.ts                       # Server Actions de Termos de Uso
+│   │   │   │   └── privacy-policy-actions.ts        # Server Actions de Política de Privacidade
+│   │   │   ├── consent-terms/
+│   │   │   │   └── page.tsx                # Gerencia versões do TCLE dos colaboradores
 │   │   │   ├── admins/page.tsx
 │   │   │   ├── jobs/page.tsx               # Monitoramento de filas BullMQ (live + histórico)
 │   │   │   └── logs/page.tsx               # Logs de requests HTTP
@@ -339,6 +353,14 @@ src/
 │   │   └── survey-dispatch.service.ts      # Agendamento e disparo
 │   ├── anonymous-reports/
 │   ├── action-plans/
+│   │   ├── action-plan.repository.ts
+│   │   ├── action-plan.service.ts
+│   │   ├── action-plan.schema.ts
+│   │   ├── action-plan.types.ts
+│   │   └── suggestions/                   # Sugestões automáticas de plano de ação (job diário)
+│   │       ├── action-plan-suggestion.repository.ts
+│   │       ├── action-plan-suggestion.service.ts
+│   │       └── types.ts                   # ActionPlanSuggestion types
 │   ├── documents/
 │   ├── alerts/
 │   ├── pgr/
@@ -346,6 +368,11 @@ src/
 │   │   ├── terms.repository.ts             # CRUD de PlatformTermsVersion e PlatformTermsAcceptance
 │   │   ├── terms.service.ts                # getPendingTermsForUser, acceptTerms, createNewTermsVersion
 │   │   └── terms.types.ts                  # CreateTermsVersionInput, AcceptTermsInput
+│   ├── privacy-policy/
+│   │   ├── privacy-policy.repository.ts    # CRUD de PrivacyPolicyVersion
+│   │   ├── privacy-policy.service.ts       # getActivePrivacyPolicyVersion, createNewPrivacyPolicyVersion
+│   │   ├── privacy-policy.schema.ts
+│   │   └── privacy-policy.types.ts
 │   ├── billing/
 │   │   ├── billing.repository.ts           # CRUD de organization_subscriptions
 │   │   ├── billing.service.ts              # checkout, webhook, portal
@@ -519,6 +546,42 @@ Cada plano pode ter múltiplas variantes (mensal, anual). Preços antigos nunca 
 
 > Quando o Super Admin atualiza um preço, é criado **novo `plan_prices`** e o anterior é desativado. O Stripe não permite editar `unit_amount` — um novo Price é criado no Stripe também.
 
+#### `plan_features`
+
+Funcionalidades incluídas em cada plano. Append por transação — ao atualizar features do plano, todas as linhas antigas são deletadas e as novas inseridas atomicamente.
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| plan_id | uuid | NOT NULL, FK → plans.id ON DELETE CASCADE |
+| feature | varchar(30) | NOT NULL — `'action_plans'` \| `'documents'` \| `'anonymous_reports'` \| `'pgr'` |
+| PK | (plan_id, feature) | |
+
+> Alterar `plan_features` **não afeta** clientes que já assinaram. As features vigentes ficam imutáveis em `subscription_features`.
+
+#### `subscription_features`
+
+Snapshot imutável das funcionalidades no momento da contratação. Mesmo princípio de `organization_subscriptions` para os demais campos do plano.
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| subscription_id | uuid | NOT NULL, FK → organization_subscriptions.id ON DELETE CASCADE |
+| feature | varchar(30) | NOT NULL — mesmos valores de `plan_features` |
+| PK | (subscription_id, feature) | |
+
+> Inserido uma única vez na criação da assinatura (webhook `customer.subscription.created` ou via fake adapter em dev). Nunca alterado após isso.
+
+**Como checar se um tenant tem acesso a uma feature:**
+
+```typescript
+import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
+
+const canSeePgr = await hasTenantPlanFeature(tenantId, "pgr")
+if (!canSeePgr) return
+```
+
+**Regra para jobs com alerts de feature específica:**  
+Antes de criar alertas relacionados a uma funcionalidade (ex: `pgr_review_due`), o job deve verificar `hasTenantPlanFeature(tenantId, feature)`. Se o tenant não tem a feature → pular.
+
 #### `super_admin_users`
 
 | Coluna | Tipo | Constraints |
@@ -539,9 +602,10 @@ Versões dos Termos de Uso da plataforma Pulse. Quando uma nova versão é publi
 |---|---|---|
 | id | uuid | PK |
 | version | varchar(20) | NOT NULL, UNIQUE |
+| title | varchar(255) | NOT NULL |
 | content | text | NOT NULL — HTML completo dos termos |
 | is_active | boolean | NOT NULL, default true |
-| effective_date | date | NOT NULL |
+| effective_at | timestamptz | NOT NULL |
 | created_at | timestamptz | NOT NULL |
 
 #### `platform_terms_acceptances`
@@ -572,6 +636,22 @@ Registro imutável de cada aceite de termos por usuário admin de organização.
 #### `report_categories`
 
 Valores iniciais: `harassment`, `overload`, `conflict`, `physical_environment`, `other`.
+
+#### `privacy_policy_versions`
+
+Versões da Política de Privacidade da plataforma Pulse. Exibida publicamente em `/privacy-policy` e gerenciada pelo Super Admin no hub de documentos legais.
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| version | varchar(20) | NOT NULL, UNIQUE |
+| title | varchar(255) | NOT NULL |
+| content | text | NOT NULL — HTML completo da política |
+| is_active | boolean | NOT NULL, default false |
+| effective_at | timestamptz | NOT NULL |
+| created_at | timestamptz | NOT NULL |
+
+> Diferente dos `platform_terms_versions`, a política de privacidade **não exige aceite explícito** dos usuários — é um documento informativo público. Apenas uma versão deve ter `is_active = true` por vez.
 
 ---
 
@@ -907,6 +987,39 @@ Após o uso, `used_at` é preenchido, mas **nenhum vínculo** é criado entre to
 | created_at | timestamptz | NOT NULL |
 | updated_at | timestamptz | NOT NULL |
 
+#### `action_plan_suggestions`
+
+Sugestões automáticas de plano de ação geradas pelo job diário `action-plan-suggestion-generator`. Exibidas no painel do Admin/RH como cards que podem ser aceitos (convertendo em `action_plans`) ou descartados.
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| tenant_id | uuid | NOT NULL, FK → organizations.id ON DELETE CASCADE |
+| suggestion_key | varchar(255) | NOT NULL — chave idempotente (evita duplicatas por período) |
+| title | varchar(255) | NOT NULL |
+| description | text | NOT NULL |
+| priority | varchar(20) | NOT NULL, default `'medium'` — `'low'` \| `'medium'` \| `'high'` |
+| reason | text | NOT NULL — explicação do porquê da sugestão |
+| status | varchar(20) | NOT NULL, default `'pending'` — `'pending'` \| `'converted'` \| `'dismissed'` |
+| dismissed_at | timestamptz | |
+| dismissed_by | uuid | FK → organization_users.id |
+| action_plan_id | uuid | FK → action_plans.id — preenchido ao converter |
+| created_at | timestamptz | NOT NULL |
+| updated_at | timestamptz | NOT NULL |
+
+**Índices:** `(tenant_id, status)`, `(tenant_id, suggestion_key)`
+
+#### `action_plan_suggestion_tasks`
+
+Tarefas sugeridas vinculadas a uma `action_plan_suggestion`. Copiadas para `action_tasks` ao converter.
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| suggestion_id | uuid | NOT NULL, FK → action_plan_suggestions.id ON DELETE CASCADE |
+| title | varchar(255) | NOT NULL |
+| sort_order | integer | NOT NULL, default 0 |
+
 #### `documents`
 
 | Coluna | Tipo | Constraints |
@@ -1092,14 +1205,14 @@ Resultado por pergunta gerado na revisão PGR. Permite análise de tendência po
 
 | Grupo | Tabelas |
 |---|---|
-| **Sistêmicas** (sem tenant_id) | `plans`, `plan_prices`, `super_admin_users`, `consent_term_versions`, `report_categories`, `platform_terms_versions` |
+| **Sistêmicas** (sem tenant_id) | `plans`, `plan_prices`, `plan_features`, `super_admin_users`, `consent_term_versions`, `report_categories`, `platform_terms_versions`, `privacy_policy_versions` |
 | **Auth / Onboarding** | `organization_invitations`, `auth_tokens` |
-| **Billing** | `billing_webhook_events` |
+| **Billing** | `billing_webhook_events`, `subscription_features` |
 | **Termos da plataforma** | `platform_terms_versions`, `platform_terms_acceptances` |
 | **Tenant — estrutura** | `organizations`, `organization_subscriptions`, `organization_users`, `departments` |
 | **Tenant — colaboradores** | `employees`, `employee_consents` |
 | **Tenant — pesquisas** | `survey_configurations`, `survey_questions`, `survey_dispatches`, `survey_response_tokens`, `survey_responses`, `survey_response_items` |
-| **Tenant — ocorrências** | `anonymous_reports`, `action_plans`, `action_tasks` |
+| **Tenant — ocorrências** | `anonymous_reports`, `action_plans`, `action_tasks`, `action_plan_suggestions`, `action_plan_suggestion_tasks` |
 | **Tenant — documentos e PGR** | `documents`, `document_versions`, `pgr_reviews`, `pgr_dept_results`, `pgr_question_results` |
 | **Tenant — operacional** | `alerts`, `audit_logs` |
 | **Plataforma** | `message_logs`, `job_logs`, `request_logs` |
@@ -1869,21 +1982,19 @@ O arquivo `src/proxy.ts` com export `proxy` substitui o antigo `middleware.ts` n
 - Redirecionar para `/login` quando não autenticado
 - Bloquear acesso de `org_user` ao `/super-admin/*`
 - Bloquear acesso de `super_admin` ao `/(tenant)/*`
-- Verificar `billing_status` (suspender acesso se `cancelled`/`suspended`)
-- Adicionar header `x-billing-warning` se `past_due`
 
-**Caminhos públicos** (sem autenticação): `/login`, `/forgot-password`, `/reset-password/*`, `/invite/*`, `/consent/*`, `/survey/*`, `/report/*`, `/accept-terms`, `/api/webhooks/*`
+**Caminhos públicos** (sem autenticação): `/login`, `/forgot-password`, `/reset-password/*`, `/invite/*`, `/consent/*`, `/survey/*`, `/report/*`, `/accept-terms`, `/api/webhooks/*`, `/platform-terms`, `/privacy-policy`, `/consent-terms`
 
 ### Fluxo de login (tenant)
 
 ```
 POST /login
   ├─ Recebe: { slug, email, password }
-  ├─ Busca organization WHERE slug = ? AND is_active = true AND billing_status = 'active'
+  ├─ Busca organization WHERE slug = ? AND is_active = true
   ├─ Busca organization_users WHERE tenant_id = org.id AND email = ? AND is_active = true
   ├─ bcrypt.compare(password, user.password_hash)
   ├─ Cria session cookie (HttpOnly, Secure, SameSite=Strict)
-  └─ Redireciona para /dashboard
+  └─ Redireciona para /dashboard (BillingWallModal exibido se billing não ativo)
 ```
 
 ### Reset de senha
@@ -2158,6 +2269,29 @@ O `<body>` em `src/app/layout.tsx` tem `suppressHydrationWarning` para evitar er
   └─ Salva plan_prices { plan_id, external_price_id, interval, price_in_cents, is_active: true }
 ```
 
+### Fluxo: Super Admin configura funcionalidades do plano
+
+```
+/super-admin/plans/[id]/features → planService.updatePlanFeatures(planId, features)
+  ├─ Deleta todas plan_features existentes para o plano
+  └─ Insere novas plan_features atomicamente (transação)
+```
+
+> Alterar `plan_features` **não afeta** clientes que já assinaram. As funcionalidades vigentes ficam imutáveis em `subscription_features` (snapshot criado uma única vez no primeiro evento de assinatura).
+
+### Funcionalidades disponíveis por plano
+
+| Feature | Chave | Recursos afetados |
+|---|---|---|
+| Planos de Ação | `action_plans` | `/action-plans`, `/action-plans/new`, `/action-plans/[id]` |
+| Documentos | `documents` | `/documents` |
+| Relatos Anônimos | `anonymous_reports` | `/reports` |
+| PGR | `pgr` | `/pgr`, `/pgr/[id]`, alertas `pgr_review_due` |
+
+**Guard de acesso em páginas tenant:** o `(tenant)/layout.tsx` carrega `getTenantPlanFeatures(tenantId)` e passa para o `Sidebar`, que filtra os itens de navegação. Cada página de funcionalidade gateada chama `hasTenantPlanFeature(tenantId, feature)` e redireciona para `/dashboard` se o tenant não possui a funcionalidade no plano adquirido.
+
+**Guard em jobs:** antes de criar alertas relacionados a uma funcionalidade específica (ex: `pgr_review_due`), o job deve verificar `hasTenantPlanFeature(tenantId, "pgr")`. Se o tenant não tem a feature → pular.
+
 ### Fluxo: Checkout (organização assina um plano)
 
 ```
@@ -2246,19 +2380,32 @@ export class StripeAdapter implements IBillingService {
 
 Admin pode autogerenciar assinatura (atualizar cartão, cancelar, baixar faturas) via Stripe Billing Portal acessado em `/billing`.
 
-### Proteção no proxy (billing status)
+### Proteção de billing status no layout do tenant
+
+O controle de billing é feito no `(tenant)/layout.tsx`, não no `proxy.ts`. O usuário pode logar normalmente independentemente do billing status. O layout verifica o `billingStatus` da organização e, se não for `active` ou `trialing`, renderiza o `BillingWallModal` sobre o conteúdo.
 
 ```typescript
-// src/proxy.ts (trecho)
-const org = await organizationRepository.findBySlug(slug)
+// src/app/(tenant)/layout.tsx (trecho)
+const ACTIVE_BILLING_STATUSES = new Set(["active", "trialing"])
 
-if (org.billingStatus === "past_due") {
-  headers.set("x-billing-warning", "past_due")
-}
-if (org.billingStatus === "suspended" || org.billingStatus === "cancelled") {
-  return NextResponse.redirect(new URL(`/billing-suspended`, request.url))
-}
+const billingStatus = org?.billingStatus ?? "pending"
+const hasBillingWall = !ACTIVE_BILLING_STATUSES.has(billingStatus)
+
+return (
+  <div>
+    {/* layout normal */}
+    {hasBillingWall && <BillingWallModal billingStatus={billingStatus} />}
+  </div>
+)
 ```
+
+**`BillingWallModal`** (`src/app/(tenant)/billing/billing-wall-modal.tsx`):
+- Overlay `fixed inset-0 z-50` que bloqueia a UI
+- Mensagem personalizada por status (`pending`, `past_due`, `suspended`, `cancelled`)
+- Botão "Gerenciar assinatura" → `/billing`
+- **Não renderiza em `/billing`** (via `usePathname`) — permite ao usuário contratar um plano
+
+**Impacto nas pesquisas automáticas:** `findActiveConfigsForAutoDispatch` filtra organizações com `billingStatus` não-ativo, pausando a criação de novos dispatches. Dispatches já agendados continuam sendo processados pelo `runSurveyDispatcher` para que pesquisas emitidas possam ser respondidas.
 
 ---
 
@@ -2373,11 +2520,21 @@ Quando detectado: (1) exibe aviso CVV (188) na tela do colaborador, (2) cria ale
 
 ---
 
-## 17. Termos de Uso da Plataforma
+## 17. Documentos Legais da Plataforma
+
+O painel do Super Admin em `/super-admin/terms` é o hub central para gerenciar três tipos de documentos legais:
+
+| Tipo | Modelo | Aceite obrigatório |
+|---|---|---|
+| Termos de Uso da Plataforma | `platform_terms_versions` | Sim — por admins de organização |
+| Política de Privacidade | `privacy_policy_versions` | Não — informativo público |
+| TCLE dos Colaboradores | `consent_term_versions` | Sim — por cada colaborador |
+
+### 17.1 Termos de Uso da Plataforma
 
 Diferente do TCLE dos colaboradores (`employee_consents`), estes são os Termos de Uso da **plataforma Pulse** — aceitos pelos admins das organizações.
 
-### Fluxo
+#### Fluxo
 
 1. Super Admin cria nova versão em `/super-admin/terms` com conteúdo HTML e data de vigência
 2. `(tenant)/layout.tsx` chama `termsService.getPendingTermsForUser(userId)` em cada request
@@ -2385,7 +2542,7 @@ Diferente do TCLE dos colaboradores (`employee_consents`), estes são os Termos 
 4. Admin lê e aceita → `termsService.acceptTerms({ termsVersionId, userId, ipAddress, userAgent })`
 5. Aceite registrado em `platform_terms_acceptances` com timestamp, IP e user-agent
 
-### Módulo
+#### Módulo
 
 ```
 src/modules/terms/
@@ -2393,6 +2550,44 @@ src/modules/terms/
 ├── terms.service.ts      # getPendingTermsForUser, acceptTerms, createNewTermsVersion
 └── terms.types.ts        # CreateTermsVersionInput, AcceptTermsInput
 ```
+
+### 17.2 Política de Privacidade
+
+Documento informativo público — não exige aceite de usuários da plataforma. Gerenciado pelo Super Admin em `/super-admin/terms` e exibido publicamente em `/privacy-policy`.
+
+- Apenas uma versão ativa por vez (`is_active = true`); ativar uma nova desativa a anterior automaticamente
+- Sem tabela de aceites — é informativo, não contratual
+- Vinculada no footer das Landing Pages e páginas públicas
+
+#### Módulo
+
+```
+src/modules/privacy-policy/
+├── privacy-policy.repository.ts   # findAllPrivacyPolicyVersions, findActivePrivacyPolicyVersion, createPrivacyPolicyVersion
+├── privacy-policy.service.ts      # getActivePrivacyPolicyVersion, createNewPrivacyPolicyVersion
+├── privacy-policy.schema.ts       # Zod schemas de criação
+└── privacy-policy.types.ts        # CreatePrivacyPolicyVersionInput, PrivacyPolicyVersion
+```
+
+### 17.3 TCLE dos Colaboradores
+
+Versões do Termo de Consentimento Livre e Esclarecido enviado aos colaboradores. Gerenciado em `/super-admin/consent-terms` e exibido publicamente em `/consent-terms`.
+
+- Campo `is_current = true` marca a versão usada em novos convites de consentimento
+- Ao publicar nova versão → job `consent-renotifier` re-convida colaboradores que aceitaram a versão anterior
+- Sem aceite de admin — o aceite é feito diretamente pelo colaborador via link de convite
+
+### 17.4 Páginas públicas standalone
+
+As três versões ativas dos documentos legais são acessíveis publicamente (sem autenticação) e estão vinculadas no footer das Landing Pages:
+
+| Rota | Documento |
+|---|---|
+| `/platform-terms` | Termos de Uso da Plataforma |
+| `/privacy-policy` | Política de Privacidade |
+| `/consent-terms` | TCLE dos Colaboradores |
+
+Todas renderizam o HTML do documento com `sanitizeRichHtml` antes de `dangerouslySetInnerHTML`.
 
 ---
 
