@@ -161,7 +161,7 @@
   --status-info-subtle:    oklch(0.250 0.050 256);
   --status-info-border:    oklch(0.385 0.105 256);
   /* ── Score gradient (dark) ────────────────────────────────────────────── */
-  --score-1: oklch(0.680 0.200 17.6);
+  --score-1: oklch(0.640 0.260 22);
   --score-2: oklch(0.710 0.200 42);
   --score-3: oklch(0.740 0.165 75);
   --score-4: oklch(0.710 0.185 128);

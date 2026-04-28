@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation"
 import { getSession } from "@/modules/auth/session"
-import { getSubscription } from "@/modules/billing/billing.service"
+import { getSubscription, getTenantPlanFeatures } from "@/modules/billing/billing.service"
 import { getAllPlans } from "@/modules/plans/plan.service"
+import { ALL_PLAN_FEATURES, PLAN_FEATURE_LABELS } from "@/modules/plans/plan.types"
 import { format } from "date-fns"
+import { CheckCircle2 } from "lucide-react"
 import { PlanCard, ManageSubscriptionButton } from "@/app/(tenant)/billing/billing-actions"
 import { PageHelp } from "@/components/page-help"
 
@@ -31,9 +33,10 @@ export default async function BillingPage(): Promise<React.ReactElement> {
   if (!session) redirect("/login")
   if (session.role !== "admin") redirect("/dashboard")
 
-  const [subscription, plans] = await Promise.all([
+  const [subscription, plans, activeFeatures] = await Promise.all([
     getSubscription(session.tenantId),
     getAllPlans(),
+    getTenantPlanFeatures(session.tenantId),
   ])
 
   return (
@@ -69,7 +72,8 @@ export default async function BillingPage(): Promise<React.ReactElement> {
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
 
         {subscription ? (
-          <div className="border border-border bg-card">
+          <>
+            <div className="border border-border bg-card">
             <div className="border-b border-border px-4 py-2.5">
               <span className="text-[11px] font-bold uppercase tracking-widest">Assinatura ativa</span>
             </div>
@@ -90,11 +94,48 @@ export default async function BillingPage(): Promise<React.ReactElement> {
                   <span className="text-sm font-medium">{row.value}</span>
                 </div>
               ))}
+              <div className="flex items-center justify-between px-4 py-2.5">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Funcionalidades</span>
+                <div className="flex items-center gap-3">
+                  {ALL_PLAN_FEATURES.map((feature) => {
+                    const enabled = activeFeatures.includes(feature)
+                    return (
+                      <span key={feature} className={`flex items-center gap-1 text-[11px] ${enabled ? "text-foreground" : "text-muted-foreground/50 line-through"}`}>
+                        {enabled && <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />}
+                        {PLAN_FEATURE_LABELS[feature]}
+                      </span>
+                    )
+                  })}
+                </div>
+              </div>
             </div>
             <div className="px-4 py-3">
               <ManageSubscriptionButton />
             </div>
           </div>
+
+          {plans.length > 0 && (
+            <div className="border border-border bg-card">
+              <div className="border-b border-border px-4 py-2.5">
+                <span className="text-[11px] font-bold uppercase tracking-widest">Trocar de plano</span>
+              </div>
+              <div className="divide-y divide-border">
+                {plans.map((plan) => (
+                  <PlanCard
+                    key={plan.id}
+                    externalPriceId={plan.prices[0]?.externalPriceId ?? null}
+                    planName={plan.name}
+                    priceLabel={plan.prices[0] ? `${(plan.prices[0].priceInCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}/mês` : "—"}
+                    maxEmployees={plan.maxEmployees ?? 99999}
+                    description={plan.description}
+                    features={plan.features}
+                    isCurrent={plan.id === subscription.plan.id}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+          </>
         ) : (
           <div className="border border-border bg-card">
             <div className="border-b border-border px-4 py-2.5">

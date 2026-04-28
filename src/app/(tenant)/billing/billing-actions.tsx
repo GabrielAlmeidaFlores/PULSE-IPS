@@ -12,9 +12,10 @@ interface PlanCardProps {
   maxEmployees: number
   description: string | null
   features: PlanFeature[]
+  isCurrent?: boolean
 }
 
-export function PlanCard({ externalPriceId, planName, priceLabel, maxEmployees, description, features }: PlanCardProps): React.ReactElement {
+export function PlanCard({ externalPriceId, planName, priceLabel, maxEmployees, description, features, isCurrent = false }: PlanCardProps): React.ReactElement {
   const [pending, startTransition] = useTransition()
   const enabledFeatureKeys = new Set<string>(features)
 
@@ -25,6 +26,18 @@ export function PlanCard({ externalPriceId, planName, priceLabel, maxEmployees, 
       if (result?.error) toast.error(result.error)
     })
   }
+
+  let buttonLabel = "Assinar"
+  if (isCurrent) buttonLabel = "Plano atual"
+  else if (pending) buttonLabel = "Aguarde..."
+
+  let buttonTitle: string | undefined
+  if (isCurrent) buttonTitle = "Este é seu plano atual"
+  else if (!externalPriceId) buttonTitle = "Plano sem preço configurado"
+
+  const disabledClass = (pending || !externalPriceId) ? " opacity-40 cursor-not-allowed" : ""
+  let buttonClass = `border-primary bg-primary text-primary-foreground hover:opacity-90${disabledClass}`
+  if (isCurrent) buttonClass = "border-primary/30 bg-primary/10 text-primary cursor-default"
 
   return (
     <div className="flex flex-col gap-3 px-4 py-4">
@@ -38,12 +51,12 @@ export function PlanCard({ externalPriceId, planName, priceLabel, maxEmployees, 
           <span className="text-sm font-semibold text-foreground">{priceLabel}</span>
           <button
             onClick={handleCheckout}
-            disabled={pending || !externalPriceId}
-            title={!externalPriceId ? "Plano sem preço configurado" : undefined}
+            disabled={pending || !externalPriceId || isCurrent}
+            title={buttonTitle}
             style={{ borderRadius: 0 }}
-            className={`px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest border border-primary bg-primary text-primary-foreground hover:opacity-90 ${pending || !externalPriceId ? "opacity-40 cursor-not-allowed" : ""}`}
+            className={`px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest border ${buttonClass}`}
           >
-            {pending ? "Aguarde..." : "Assinar"}
+            {buttonLabel}
           </button>
         </div>
       </div>
