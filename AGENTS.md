@@ -533,10 +533,11 @@ Template de plano. Alterações aqui **não afetam** assinaturas existentes — 
 | max_employees | integer | NULL = ilimitado |
 | is_active | boolean | NOT NULL, default true |
 | external_product_id | varchar(255) | UNIQUE — ID do Product no Stripe |
+| deleted_at | timestamptz | NULL = ativo; NOT NULL = soft-deleted (não aparece em novas assinaturas) |
 | created_at | timestamptz | NOT NULL |
 | updated_at | timestamptz | NOT NULL |
 
-> Nota de implementação: no código, o campo é `externalProductId` (camelCase). O prefixo `external_` é intencional — abstrai o provedor de billing.
+> **Soft-delete de planos:** ao excluir um plano via Super Admin, o campo `deleted_at` é preenchido. O plano some da listagem e não pode ser mais assinado, mas todas as assinaturas existentes continuam funcionando normalmente (referenciam `plan_prices`, não `plans` diretamente).
 
 #### `plan_prices`
 
@@ -681,6 +682,7 @@ O tenant. `id` é o `tenant_id` de todas as demais tabelas.
 | stripe_customer_id | varchar(255) | UNIQUE |
 | billing_status | varchar(20) | `'pending'` \| `'active'` \| `'past_due'` \| `'suspended'` \| `'cancelled'` |
 | max_employees_override | integer | NULL = usa limite do plano |
+| deletion_scheduled_at | timestamptz | NULL = sem exclusão agendada; NOT NULL = exclusão permanente pendente |
 | is_active | boolean | NOT NULL, default true |
 | created_at | timestamptz | NOT NULL |
 | updated_at | timestamptz | NOT NULL |
@@ -2171,6 +2173,7 @@ export interface IBillingService {
   createPrice(params: CreatePriceParams): Promise<CreatePriceResult>
   createCheckoutSession(params: CreateCheckoutSessionParams): Promise<CreateCheckoutSessionResult>
   createBillingPortalSession(params: CreateBillingPortalSessionParams): Promise<CreateBillingPortalSessionResult>
+  cancelSubscription(externalSubscriptionId: string): Promise<void>
   constructWebhookEvent(params: ConstructWebhookEventParams): Promise<BillingWebhookEvent>
 }
 ```
@@ -2736,6 +2739,7 @@ Processos recorrentes gerenciados pelo **BullMQ** com Redis como broker.
 | `stripe-webhook-retry` | A cada hora | Reprocessa `billing_webhook_events` com `error IS NOT NULL` e `processed = false` |
 | `survey-response-token-cleanup` | Diário (02:00) | Remove `survey_response_tokens` expirados e não utilizados |
 | `action-plan-suggestion-generator` | Diário (06:00) | Gera sugestões de planos de ação com base em métricas de cada tenant |
+| `organization-deletion-executor` | Diário (03:30) | Exclui permanentemente organizações com `deletionScheduledAt <= now()` |
 
 ### Nomenclatura de Jobs — regra obrigatória
 
@@ -3007,6 +3011,36 @@ async getPlatformMetrics(): Promise<PlatformMetrics> {
 }
 ```
 
+### 20.11 Exclusão de conta (tenant Admin)
+
+Fluxo de exclusão voluntária de organização com período de carência.
+
+```
+Admin → /settings → "Excluir conta"
+  └─→ requestAccountDeletionAction()
+        ├─ Gera código de 6 dígitos (AuthToken, expires 15 min)
+        └─ Envia e-mail 'account_deletion_confirm' com código
+
+Admin insere código → confirmAccountDeletionAction(code)
+  ├─ Valida código (não expirado, não usado)
+  ├─ billingService.cancelSubscription(externalSubscriptionId) → cancela no Stripe
+  ├─ org.deletionScheduledAt = now() + 30 dias
+  ├─ org.billingStatus = 'cancelled'
+  ├─ Envia e-mail 'account_deletion_scheduled' com data definitiva
+  └─ Retorna { deletionScheduledAt } — sem destruir sessão
+
+Client Component recebe resultado → exibe modal de confirmação
+  └─ Admin clica "Compreendi e desejo sair" → logoutAction()
+
+Job `organization-deletion-executor` (diário 03:30)
+  └─ Busca orgs com deletionScheduledAt <= now()
+     └─ Para cada org: exclui todos os dados via ON DELETE CASCADE
+```
+
+**Regra crítica:** `confirmAccountDeletionAction` **nunca** chama `destroySession()` diretamente. A sessão é destruída apenas quando o usuário clica no botão do modal de confirmação, via `logoutAction()` no Client Component. Chamar `destroySession()` na Server Action destrói o cookie antes do client processar o resultado e renderizar o modal.
+
+**Cancelamento:** Admin ou Super Admin pode cancelar a exclusão enquanto `deletionScheduledAt > now()`. A ação `cancelScheduledOrganizationDeletion` zera `deletionScheduledAt` e `reativaCancelledAt` no Stripe (se aplicável). O `DeletionScheduledModal` exibido no `(tenant)/layout.tsx` oferece o botão de cancelamento.
+
 ---
 
 ## 21. Variáveis de Ambiente
@@ -3052,6 +3086,12 @@ CRON_SECRET=...                           # proteção dos endpoints /api/jobs/*
 
 # URL pública
 NEXT_PUBLIC_APP_URL=https://app.pulse.com
+
+# Endereços de e-mail públicos (exibidos em páginas, modais e templates)
+NEXT_PUBLIC_EMAIL_SUPPORT=suporte@usepulse.com.br
+NEXT_PUBLIC_EMAIL_PRIVACY=privacidade@usepulse.com.br
+NEXT_PUBLIC_EMAIL_CONTACT=contato@usepulse.com.br
+NEXT_PUBLIC_EMAIL_LEGAL=legal@usepulse.com.br
 ```
 
 ### Desenvolvimento (valores padrão)
