@@ -45,6 +45,7 @@
 30. [Testes Unitários](#30-testes-unitários)
 31. [Paginação — Padrão Obrigatório](#31-paginação--padrão-obrigatório)
 32. [Centralização de Cores — CSS Variables](#32-centralização-de-cores--css-variables)
+33. [Endereços de E-mail — Variáveis de Ambiente](#33-endereços-de-e-mail--variáveis-de-ambiente)
 
 ---
 
@@ -532,10 +533,11 @@ Template de plano. Alterações aqui **não afetam** assinaturas existentes — 
 | max_employees | integer | NULL = ilimitado |
 | is_active | boolean | NOT NULL, default true |
 | external_product_id | varchar(255) | UNIQUE — ID do Product no Stripe |
+| deleted_at | timestamptz | NULL = ativo; NOT NULL = soft-deleted (não aparece em novas assinaturas) |
 | created_at | timestamptz | NOT NULL |
 | updated_at | timestamptz | NOT NULL |
 
-> Nota de implementação: no código, o campo é `externalProductId` (camelCase). O prefixo `external_` é intencional — abstrai o provedor de billing.
+> **Soft-delete de planos:** ao excluir um plano via Super Admin, o campo `deleted_at` é preenchido. O plano some da listagem e não pode ser mais assinado, mas todas as assinaturas existentes continuam funcionando normalmente (referenciam `plan_prices`, não `plans` diretamente).
 
 #### `plan_prices`
 
@@ -680,6 +682,7 @@ O tenant. `id` é o `tenant_id` de todas as demais tabelas.
 | stripe_customer_id | varchar(255) | UNIQUE |
 | billing_status | varchar(20) | `'pending'` \| `'active'` \| `'past_due'` \| `'suspended'` \| `'cancelled'` |
 | max_employees_override | integer | NULL = usa limite do plano |
+| deletion_scheduled_at | timestamptz | NULL = sem exclusão agendada; NOT NULL = exclusão permanente pendente |
 | is_active | boolean | NOT NULL, default true |
 | created_at | timestamptz | NOT NULL |
 | updated_at | timestamptz | NOT NULL |
@@ -1609,7 +1612,7 @@ O comando `yarn lint` executa o ESLint sobre todos os arquivos `**/*.ts` e `**/*
 
 | Regra | Nível | Significado prático |
 |---|---|---|
-| `no-console` | error | Proibido `console.*` — use o logger (`pino`) |
+| `no-console` | error | Proibido `console.*` — use o logger centralizado (`src/libs/utils/logger.ts`) |
 | `no-debugger` | error | Proibido `debugger` |
 | `no-alert` | error | Proibido `alert/confirm/prompt` |
 | `no-var` | error | Use `const` ou `let` |
@@ -1683,10 +1686,70 @@ O comando `yarn lint` executa o ESLint sobre todos os arquivos `**/*.ts` e `**/*
 | Padrão de arquivo | Regras desativadas |
 |---|---|
 | `src/components/ui/**` | `explicit-function-return-type`, `no-unsafe-*`, `consistent-type-definitions` |
-| `src/workers/**`, `src/libs/integrations/**` | `no-console`, `require-await`, `explicit-function-return-type` |
+| `src/workers/**`, `src/libs/integrations/**`, `src/libs/utils/logger.ts` | `no-console`, `require-await`, `explicit-function-return-type` |
 | `src/lib/**`, `src/libs/db/**` | `explicit-function-return-type` |
 | `**/*.test.ts`, `**/*.spec.ts` | `no-explicit-any`, `no-unsafe-*` |
 | Arquivos de config/rota/action/page/layout | `import/no-default-export` desativado |
+
+---
+
+### Logger centralizado — regra obrigatória
+
+**`console.*` é proibido em todo o projeto.** O único local onde `console.log/warn/error` aparecem é dentro de `src/libs/utils/logger.ts` — que é a implementação do logger.
+
+#### Uso obrigatório
+
+```typescript
+// Opção 1 — singleton genérico (origin: "app")
+import { logger } from "@/libs/utils/logger"
+
+logger.info("iniciando processo")
+logger.success("operação concluída", { count: 5 })
+logger.warn("tentativa falhou, retentando...")
+logger.error("falha crítica", err.message)
+logger.debug("payload recebido", data)
+
+// Opção 2 — logger nomeado (recomendado para módulos e workers)
+import { createLogger } from "@/libs/utils/logger"
+const logger = createLogger("survey-dispatcher")
+
+logger.info("verificando dispatches pendentes")
+```
+
+#### Quando usar cada nível
+
+| Nível | Método | Cor | Quando usar |
+|---|---|---|---|
+| `success` | `logger.success` | 🟢 Verde | Operação concluída com êxito |
+| `info` | `logger.info` | 🔵 Ciano | Informação geral de fluxo |
+| `warn` | `logger.warn` | 🟡 Amarelo | Situação incomum mas não crítica |
+| `error` | `logger.error` | 🔴 Vermelho | Falha que precisa de atenção |
+| `debug` | `logger.debug` | ⚫ Cinza | Dados de depuração (dev only) |
+
+#### Localização
+
+```
+src/libs/utils/logger.ts
+```
+
+Exporta:
+- `createLogger(origin: string): Logger` — cria instância com origem nomeada
+- `logger` — singleton com `origin = "app"` para uso geral
+
+#### Regra de naming para `createLogger`
+
+O argumento `origin` deve identificar inequivocamente o módulo:
+
+```typescript
+// ❌ PROIBIDO — genérico
+createLogger("module")
+createLogger("service")
+
+// ✅ CORRETO — específico
+createLogger("survey-dispatcher")
+createLogger("fake-billing")
+createLogger("job-worker")
+```
 
 ---
 
@@ -2066,6 +2129,40 @@ export interface IEmailService {
 | `plan_subscribed` | Webhook `checkout.session.completed` |
 | `payment_failed` | Webhook `invoice.payment_failed` |
 | `plan_cancelled` | Webhook `customer.subscription.deleted` |
+| `account_deletion_confirm` | Admin solicita exclusão da conta |
+| `account_deletion_scheduled` | Exclusão agendada confirmada |
+| `email_verification` | Verificação de e-mail |
+
+#### Sincronização obrigatória com o Design System
+
+> ⚠️ **REGRA INVIOLÁVEL — Templates de e-mail:** toda alteração no design system da aplicação (cores, tipografia, logo, espaçamentos, identidade visual) **deve ser refletida imediatamente em todos os templates HTML** localizados em `assets/email/template/`.
+
+Os templates de e-mail são a extensão visual do produto. Eles devem sempre seguir o mesmo padrão da interface web:
+
+| Elemento | Valor atual | Onde está no app |
+|---|---|---|
+| Cor primária (CTA, links) | `#3DB98A` | `--primary` / `brand-500` |
+| Cor de fundo do header/sidebar | `#1a1a2e` | `--sidebar` / `brand-900` |
+| Fundo da página | `#f1f5f9` | `--background` |
+| Fundo de card / rodapé | `#f8fafc` | `--card` |
+| Cor de borda | `#e5e7eb` | `--border` |
+| Texto principal | `#374151` | `--foreground` |
+| Texto secundário | `#6b7280` | `--muted-foreground` |
+| Logo — "PULSE" | `font-weight:900`, cor `#3DB98A`, `letter-spacing:-0.02em` | `Logo` component |
+| Logo — "IPS" | `font-weight:300`, cor `rgba(255,255,255,0.4)`, `letter-spacing:0.18em` | `Logo` component |
+
+**Checklist de sincronização — obrigatório antes de marcar qualquer tarefa de UI como concluída:**
+
+1. Foram alteradas cores do tema (`globals.css`, `tailwind.config.ts`, tokens CSS)? → Atualizar `assets/email/template/*.html`
+2. Foi alterado o componente `Logo` (`src/libs/design-system/components/logo.tsx`)? → Atualizar o bloco `<!-- HEADER -->` em todos os templates
+3. Foi adicionado novo fluxo de e-mail? → Criar arquivo em `assets/email/template/`, registrar em `src/libs/email-templates/index.ts` e adicionar na tabela acima
+4. Foi alterada a tipografia principal da aplicação? → Verificar `font-family` declarado nos templates
+
+**Restrições técnicas dos templates (e-mail seguro):**
+- Sem flexbox ou CSS grid — usar apenas `<table>` para layout
+- Sem `border-radius` — manter bordas retas, igual ao design system atual
+- Sem classes CSS — todos os estilos devem ser inline
+- Sem `<script>` ou recursos externos não confiáveis
 
 ### Billing
 
@@ -2076,6 +2173,7 @@ export interface IBillingService {
   createPrice(params: CreatePriceParams): Promise<CreatePriceResult>
   createCheckoutSession(params: CreateCheckoutSessionParams): Promise<CreateCheckoutSessionResult>
   createBillingPortalSession(params: CreateBillingPortalSessionParams): Promise<CreateBillingPortalSessionResult>
+  cancelSubscription(externalSubscriptionId: string): Promise<void>
   constructWebhookEvent(params: ConstructWebhookEventParams): Promise<BillingWebhookEvent>
 }
 ```
@@ -2641,6 +2739,7 @@ Processos recorrentes gerenciados pelo **BullMQ** com Redis como broker.
 | `stripe-webhook-retry` | A cada hora | Reprocessa `billing_webhook_events` com `error IS NOT NULL` e `processed = false` |
 | `survey-response-token-cleanup` | Diário (02:00) | Remove `survey_response_tokens` expirados e não utilizados |
 | `action-plan-suggestion-generator` | Diário (06:00) | Gera sugestões de planos de ação com base em métricas de cada tenant |
+| `organization-deletion-executor` | Diário (03:30) | Exclui permanentemente organizações com `deletionScheduledAt <= now()` |
 
 ### Nomenclatura de Jobs — regra obrigatória
 
@@ -2912,6 +3011,36 @@ async getPlatformMetrics(): Promise<PlatformMetrics> {
 }
 ```
 
+### 20.11 Exclusão de conta (tenant Admin)
+
+Fluxo de exclusão voluntária de organização com período de carência.
+
+```
+Admin → /settings → "Excluir conta"
+  └─→ requestAccountDeletionAction()
+        ├─ Gera código de 6 dígitos (AuthToken, expires 15 min)
+        └─ Envia e-mail 'account_deletion_confirm' com código
+
+Admin insere código → confirmAccountDeletionAction(code)
+  ├─ Valida código (não expirado, não usado)
+  ├─ billingService.cancelSubscription(externalSubscriptionId) → cancela no Stripe
+  ├─ org.deletionScheduledAt = now() + 30 dias
+  ├─ org.billingStatus = 'cancelled'
+  ├─ Envia e-mail 'account_deletion_scheduled' com data definitiva
+  └─ Retorna { deletionScheduledAt } — sem destruir sessão
+
+Client Component recebe resultado → exibe modal de confirmação
+  └─ Admin clica "Compreendi e desejo sair" → logoutAction()
+
+Job `organization-deletion-executor` (diário 03:30)
+  └─ Busca orgs com deletionScheduledAt <= now()
+     └─ Para cada org: exclui todos os dados via ON DELETE CASCADE
+```
+
+**Regra crítica:** `confirmAccountDeletionAction` **nunca** chama `destroySession()` diretamente. A sessão é destruída apenas quando o usuário clica no botão do modal de confirmação, via `logoutAction()` no Client Component. Chamar `destroySession()` na Server Action destrói o cookie antes do client processar o resultado e renderizar o modal.
+
+**Cancelamento:** Admin ou Super Admin pode cancelar a exclusão enquanto `deletionScheduledAt > now()`. A ação `cancelScheduledOrganizationDeletion` zera `deletionScheduledAt` e `reativaCancelledAt` no Stripe (se aplicável). O `DeletionScheduledModal` exibido no `(tenant)/layout.tsx` oferece o botão de cancelamento.
+
 ---
 
 ## 21. Variáveis de Ambiente
@@ -2957,6 +3086,12 @@ CRON_SECRET=...                           # proteção dos endpoints /api/jobs/*
 
 # URL pública
 NEXT_PUBLIC_APP_URL=https://app.pulse.com
+
+# Endereços de e-mail públicos (exibidos em páginas, modais e templates)
+NEXT_PUBLIC_EMAIL_SUPPORT=suporte@usepulse.com.br
+NEXT_PUBLIC_EMAIL_PRIVACY=privacidade@usepulse.com.br
+NEXT_PUBLIC_EMAIL_CONTACT=contato@usepulse.com.br
+NEXT_PUBLIC_EMAIL_LEGAL=legal@usepulse.com.br
 ```
 
 ### Desenvolvimento (valores padrão)
@@ -3370,7 +3505,7 @@ Execute `grep` para confirmar cada item:
 | 4 | Nenhum `$queryRaw` / `$executeRaw` em qualquer arquivo | `grep -r "\$queryRaw\|\$executeRaw" src/` |
 | 5 | Todas as queries em tabelas com `tenant_id` incluem `tenantId` no `where` | Revisar manualmente qualquer novo repository |
 | 6 | Mensagens de erro em pt-BR | `grep -rn '"[A-Z].*[a-z]"' src/modules/ \| grep "throw\|AppError"` |
-| 7 | Nenhum `console.*` fora de workers/integrations | `grep -rn "console\." src/app/ src/modules/` |
+| 7 | Nenhum `console.*` em nenhum arquivo (exceto `src/libs/utils/logger.ts`) | `grep -rn "console\." src/ --include="*.ts" --include="*.tsx" \| grep -v "src/libs/utils/logger.ts"` |
 | 8 | Queries cross-tenant de jobs nomeadas com `findAllTenants*` | Revisar `src/workers/` e jobs que chamam repositories sem `tenantId` |
 | 9 | Nenhum `enum` TypeScript (use union types ou const maps) | `grep -rn "^enum \|  enum " src/` |
 | 10 | `JsonValue` de `@/libs/utils/json` — nunca `Prisma.InputJsonValue` fora de repository | `grep -rn "Prisma\.InputJsonValue\|Prisma\.JsonValue" src/modules/ src/app/` |
@@ -3887,5 +4022,57 @@ fill={healthIndexChartColor(score)}  // retorna "var(--status-success/warning/da
 4. Se for cor de saúde/aderência/tendência: adicione a função em `health-index.ts`
 5. Se for cor de badge: adicione a constant em `alert-labels.ts`
 6. Atualize esta seção do AGENTS.md
+
+---
+
+## 33. Endereços de E-mail — Variáveis de Ambiente
+
+**Nenhum endereço de e-mail pode ser hardcoded em qualquer parte do código.** Todo e-mail de contato, suporte, privacidade (DPO) ou qualquer outra finalidade deve vir das variáveis de ambiente definidas em `src/env.ts`.
+
+### Variáveis disponíveis
+
+| Variável | Padrão | Uso |
+|---|---|---|
+| `NEXT_PUBLIC_EMAIL_SUPPORT` | `suporte@usepulse.com.br` | E-mail de suporte técnico — exibido em páginas de ajuda, modais de erro, convites |
+| `NEXT_PUBLIC_EMAIL_PRIVACY` | `privacidade@usepulse.com.br` | E-mail do DPO / privacidade — exibido em páginas legais, TCLE, política de privacidade |
+| `NEXT_PUBLIC_EMAIL_CONTACT` | `contato@usepulse.com.br` | E-mail de contato comercial — exibido no footer das landing pages |
+| `NEXT_PUBLIC_EMAIL_LEGAL` | `legal@usepulse.com.br` | E-mail jurídico/contratual — exibido em termos de uso e documentos legais |
+
+> Todas as três são `NEXT_PUBLIC_` para serem acessíveis tanto em Server Components (RSC) quanto em Client Components sem necessidade de prop drilling.
+
+### Padrão de uso
+
+```typescript
+// ✅ Client Component
+import { env } from "@/env"
+<a href={`mailto:${env.NEXT_PUBLIC_EMAIL_SUPPORT}`}>{env.NEXT_PUBLIC_EMAIL_SUPPORT}</a>
+
+// ✅ Server Component (RSC) — defina constante no topo do arquivo
+import { env } from "@/env"
+const PRIVACY_EMAIL = env.NEXT_PUBLIC_EMAIL_PRIVACY
+// ... uso no JSX:
+<a href={`mailto:${PRIVACY_EMAIL}`}>{PRIVACY_EMAIL}</a>
+
+// ✅ Service (servidor)
+import { env } from "@/env"
+const supportEmail = env.NEXT_PUBLIC_EMAIL_SUPPORT
+
+// ✅ Seed (src/cli/seed/*.ts) — usa process.env diretamente com fallback
+const EMAIL_SUPPORT = process.env["NEXT_PUBLIC_EMAIL_SUPPORT"] ?? "suporte@usepulse.com.br"
+```
+
+```typescript
+// ❌ PROIBIDO — e-mail hardcoded em qualquer lugar
+const SUPPORT_EMAIL = "suporte@pulseips.com.br"
+href="mailto:privacidade@usepulse.com.br"
+```
+
+### Adicionar novo e-mail de contato
+
+1. Adicione a variável em `src/env.ts` (seções `client` e `runtimeEnv`)
+2. Adicione o valor padrão com `.default(...)` no schema Zod
+3. Adicione ao `.env.local` com o valor real de produção
+4. Documente na tabela acima
+5. Use **sempre** via `env.NEXT_PUBLIC_EMAIL_*` — nunca como string literal
 
 *Pulse — AGENTS.md | Documento interno | Abril de 2026*

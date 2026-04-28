@@ -45,7 +45,7 @@ export function PlanCard({ externalPriceId, planName, priceLabel, maxEmployees, 
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold">{planName}</p>
           {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
-          <p className="text-xs text-muted-foreground mt-0.5">Até {maxEmployees >= 99999 ? "colaboradores ilimitados" : `${maxEmployees} colaboradores`}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Até {maxEmployees} colaboradores</p>
         </div>
         <div className="flex flex-col items-end gap-2 shrink-0">
           <span className="text-sm font-semibold text-foreground">{priceLabel}</span>
@@ -62,7 +62,14 @@ export function PlanCard({ externalPriceId, planName, priceLabel, maxEmployees, 
       </div>
 
       <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1 border-t border-border">
-        {ALL_DISPLAY_FEATURES.map((displayFeature) => {
+        {[...ALL_DISPLAY_FEATURES]
+          .sort((a, b) => {
+            const aEnabled = a.alwaysEnabled || enabledFeatureKeys.has(a.key)
+            const bEnabled = b.alwaysEnabled || enabledFeatureKeys.has(b.key)
+            if (aEnabled === bEnabled) return 0
+            return aEnabled ? -1 : 1
+          })
+          .map((displayFeature) => {
           const isEnabled = displayFeature.alwaysEnabled || enabledFeatureKeys.has(displayFeature.key)
           return (
             <span key={displayFeature.key} className={`flex items-center gap-1 text-[11px] ${isEnabled ? "text-muted-foreground" : "text-muted-foreground/40 line-through"}`}>

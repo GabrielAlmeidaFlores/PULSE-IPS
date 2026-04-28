@@ -23,7 +23,11 @@ function whatsappUrl(message: string): string {
 }
 
 export default async function LandingPage(): Promise<React.ReactElement> {
-  const plansFromDb = await getAllPlans().catch(() => [])
+  const plansFromDb = (await getAllPlans().catch(() => [])).sort((a, b) => {
+    const aPrice = a.prices.find((p) => p.interval === "month")?.priceInCents ?? Infinity
+    const bPrice = b.prices.find((p) => p.interval === "month")?.priceInCents ?? Infinity
+    return aPrice - bPrice
+  })
   return (
     <div className="min-h-screen bg-background text-foreground">
 
@@ -265,7 +269,14 @@ export default async function LandingPage(): Promise<React.ReactElement> {
                   )}
 
                   <ul className="space-y-2">
-                    {ALL_DISPLAY_FEATURES.map((displayFeature) => {
+                    {[...ALL_DISPLAY_FEATURES]
+                      .sort((a, b) => {
+                        const aEnabled = a.alwaysEnabled || enabledFeatureKeys.has(a.key)
+                        const bEnabled = b.alwaysEnabled || enabledFeatureKeys.has(b.key)
+                        if (aEnabled === bEnabled) return 0
+                        return aEnabled ? -1 : 1
+                      })
+                      .map((displayFeature) => {
                       const isEnabled = displayFeature.alwaysEnabled || enabledFeatureKeys.has(displayFeature.key)
                       const itemClass = isEnabled
                         ? `text-sm flex items-center gap-2 ${isHighlight ? "text-white/90" : "text-foreground"}`
@@ -436,13 +447,14 @@ export default async function LandingPage(): Promise<React.ReactElement> {
                 <span className="text-xs font-bold tracking-widest uppercase text-foreground">Produto</span>
                 <Link href="/learn-more" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Como funciona</Link>
                 <Link href="/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Acessar plataforma</Link>
-                <a href="mailto:contato@pulse.com.br" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Contato</a>
+                <a href={`mailto:${env.NEXT_PUBLIC_EMAIL_CONTACT}`} className="text-sm text-muted-foreground hover:text-foreground transition-colors">{env.NEXT_PUBLIC_EMAIL_CONTACT}</a>
               </div>
               <div className="flex flex-col gap-3">
                 <span className="text-xs font-bold tracking-widest uppercase text-foreground">Legal</span>
                 <Link href="/platform-terms" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Termos de Uso</Link>
                 <Link href="/privacy-policy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Política de Privacidade</Link>
                 <Link href="/consent-terms" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Termo de Consentimento</Link>
+                <Link href="/data-deletion" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Exclusão de Dados</Link>
               </div>
             </div>
           </div>

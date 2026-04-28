@@ -12,8 +12,13 @@ import {
   findOrgByIdOrThrow,
   findOrgInviteByToken,
   acceptInviteTransaction,
+  findTenantPendingOrgInvitations,
+  findOrgInvitationById,
+  updateOrgInvitationToken,
+  cancelOrgInvitationById,
 } from "@/modules/auth/auth.repository"
 import { createAuditLog } from "@/modules/audit/audit.repository"
+import type { PendingOrgInvite } from "@/modules/auth/auth.types"
 
 export async function sendInvite(
   tenantId: string,
@@ -79,7 +84,46 @@ export function getInviteByToken(token: string): ReturnType<typeof findOrgInvite
   return findOrgInviteByToken(token)
 }
 
-
 export function getOrgUsers(tenantId: string): ReturnType<typeof findOrgUsersByTenant> {
   return findOrgUsersByTenant(tenantId)
+}
+
+export function getPendingOrgInvites(tenantId: string): Promise<PendingOrgInvite[]> {
+  return findTenantPendingOrgInvitations(tenantId)
+}
+
+export async function resendOrgInvite(tenantId: string, inviteId: string, actorId?: string): Promise<void> {
+  const invite = await findOrgInvitationById(inviteId, tenantId)
+  if (!invite) throw new AppError("INVITE_NOT_FOUND", "Convite não encontrado.")
+
+  const existingUser = await findOrgUserByEmailInTenant(tenantId, invite.email)
+  if (existingUser) throw new AppError("USER_ALREADY_EXISTS", "Este usuário já possui acesso ao sistema.")
+
+  const newToken = randomUUID()
+  const newExpiresAt = addDays(new Date(), 7)
+  await updateOrgInvitationToken(inviteId, tenantId, newToken, newExpiresAt)
+
+  const org = await findOrgByIdOrThrow(tenantId)
+  const inviteUrl = `${env.NEXT_PUBLIC_APP_URL}/invite/${newToken}`
+
+  const emailService = getEmailService()
+  await emailService.send({
+    to: invite.email,
+    subject: `Convite para ${org.name} no Pulse`,
+    html: renderEmailTemplate({
+      name: "org-invite",
+      props: { orgName: org.name, inviteUrl, role: invite.role as "admin" | "rh" },
+    }),
+  })
+
+  await createAuditLog({ tenantId, ...(actorId !== undefined ? { userId: actorId } : {}), action: "user.invite_resent", resource: "organization_invitations", metadata: { email: invite.email } })
+}
+
+export async function cancelOrgInvite(tenantId: string, inviteId: string, actorId?: string): Promise<void> {
+  const invite = await findOrgInvitationById(inviteId, tenantId)
+  if (!invite) throw new AppError("INVITE_NOT_FOUND", "Convite não encontrado.")
+
+  await cancelOrgInvitationById(inviteId, tenantId)
+
+  await createAuditLog({ tenantId, ...(actorId !== undefined ? { userId: actorId } : {}), action: "user.invite_cancelled", resource: "organization_invitations", metadata: { email: invite.email } })
 }

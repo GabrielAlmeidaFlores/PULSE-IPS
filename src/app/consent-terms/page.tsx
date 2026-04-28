@@ -67,6 +67,7 @@ export default async function ConsentTermsPage(): Promise<React.ReactElement> {
             <Link href="/" className="hover:text-foreground transition-colors">Início</Link>
             <Link href="/privacy-policy" className="hover:text-foreground transition-colors">Política de Privacidade</Link>
             <Link href="/platform-terms" className="hover:text-foreground transition-colors">Termos de Uso</Link>
+            <Link href="/data-deletion" className="hover:text-foreground transition-colors">Exclusão de Dados</Link>
           </div>
         </div>
       </footer>

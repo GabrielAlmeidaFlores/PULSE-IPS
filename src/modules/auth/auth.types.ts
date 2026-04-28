@@ -19,6 +19,14 @@ export interface SafeSuperAdmin {
   createdAt: Date
 }
 
+export interface PendingOrgInvite {
+  id: string
+  email: string
+  role: string
+  expiresAt: Date
+  createdAt: Date
+}
+
 export interface SessionPayload {
   userId: string
   tenantId: string

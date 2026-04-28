@@ -81,4 +81,5 @@ export interface OrgFullDetail {
   openActionPlanCount: number
   messagesThisMonth: number
   lastPgrReview: { reviewedAt: Date | null; nextReviewAt: Date | null } | null
+  deletionScheduledAt: Date | null
 }

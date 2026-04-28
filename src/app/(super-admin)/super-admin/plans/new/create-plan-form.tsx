@@ -123,12 +123,13 @@ export function CreatePlanForm(): React.ReactElement {
 
         <AdminField
           label="Limite de colaboradores"
-          hint="Use 99999 para ilimitado"
+          hint="Máximo: 300 colaboradores"
           error={form.formState.errors.maxEmployees?.message}
         >
           <input
             type="number"
             min={1}
+            max={300}
             placeholder="50"
             className={inputCls}
             style={{ borderRadius: 0 }}

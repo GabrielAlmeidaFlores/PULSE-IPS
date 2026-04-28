@@ -1,4 +1,9 @@
-import "dotenv/config";
+import "dotenv/config"
+
+const EMAIL_SUPPORT = process.env["NEXT_PUBLIC_EMAIL_SUPPORT"] ?? "suporte@usepulse.com.br"
+const EMAIL_PRIVACY = process.env["NEXT_PUBLIC_EMAIL_PRIVACY"] ?? "privacidade@usepulse.com.br"
+const EMAIL_LEGAL = process.env["NEXT_PUBLIC_EMAIL_LEGAL"] ?? "legal@usepulse.com.br"
+import { createLogger } from "../../libs/utils/logger"
 import { createHash } from "crypto";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
@@ -6,6 +11,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
+const logger = createLogger("seed")
 
 const SUPER_ADMIN = {
   email: "admin@admin.com",
@@ -125,9 +131,9 @@ const TERMS_V1 = {
 <p>Este contrato é regido pela legislação brasileira. Fica eleito o foro da Comarca de São Paulo — SP para dirimir quaisquer controvérsias decorrentes deste instrumento, com renúncia a qualquer outro, por mais privilegiado que seja.</p>
 <h2>14. Contato</h2>
 <ul>
-  <li><strong>Suporte técnico:</strong> suporte@pulseips.com.br</li>
-  <li><strong>Questões contratuais:</strong> legal@pulseips.com.br</li>
-  <li><strong>Proteção de dados (DPO):</strong> privacidade@pulseips.com.br</li>
+  <li><strong>Suporte técnico:</strong> ${EMAIL_SUPPORT}</li>
+  <li><strong>Questões contratuais:</strong> ${EMAIL_LEGAL}</li>
+  <li><strong>Proteção de dados (DPO):</strong> ${EMAIL_PRIVACY}</li>
 </ul>
 <hr/>
 <p>Ao aceitar estes Termos, você declara que leu, compreendeu e concorda com todas as disposições acima, e que possui poderes legais para contratar em nome da organização.</p>
@@ -277,7 +283,7 @@ const CONSENT_TERM = {
   <li><strong>Informação (art. 18, VII e VIII):</strong> saber com quem seus dados foram compartilhados;</li>
   <li><strong>Reclamação à ANPD (art. 18, § 1º):</strong> registrar reclamação se seus direitos forem violados.</li>
 </ul>
-<p>Para exercer qualquer desses direitos, procure o RH da sua empresa. Para questões que o RH não puder resolver, entre em contato com a Pulse pelo e-mail <strong>privacidade@pulseips.com.br</strong>. Prazo de resposta: até 15 dias corridos.</p>
+<p>Para exercer qualquer desses direitos, procure o RH da sua empresa. Para questões que o RH não puder resolver, entre em contato com a Pulse pelo e-mail <strong>${EMAIL_PRIVACY}</strong>. Prazo de resposta: até 15 dias corridos.</p>
 <h2>10. Como revogar seu consentimento</h2>
 <p>Você pode revogar este consentimento a qualquer momento. Basta comunicar o RH da sua empresa ou, ao receber o link de uma pesquisa, utilizar a opção "Não quero mais participar" disponível no próprio formulário.</p>
 <p>Ao revogar:</p>
@@ -322,7 +328,7 @@ const CONSENT_TERM = {
 <h2>15. Canais de contato e Encarregado de Dados (DPO)</h2>
 <ul>
   <li><strong>RH da sua empresa:</strong> canal preferencial para revogação de consentimento e dúvidas do dia a dia;</li>
-  <li><strong>Pulse — DPO:</strong> privacidade@pulseips.com.br — para solicitações de direitos do titular ou questões que o RH não puder resolver;</li>
+  <li><strong>Pulse — DPO:</strong> ${EMAIL_PRIVACY} — para solicitações de direitos do titular ou questões que o RH não puder resolver;</li>
   <li><strong>ANPD:</strong> www.gov.br/anpd — para reclamações sobre violação de direitos como titular.</li>
 </ul>
 <h2>16. Glossário</h2>
@@ -435,7 +441,7 @@ const PRIVACY_POLICY_V1 = {
   <li><strong>Oposição (art. 18, VI):</strong> opor-se ao tratamento realizado sem base legal adequada;</li>
   <li><strong>Reclamação à ANPD (art. 18, § 1º):</strong> registrar reclamação à Autoridade Nacional de Proteção de Dados.</li>
 </ul>
-<p>Para exercer seus direitos, entre em contato com o RH da sua empresa (para colaboradores) ou diretamente com a Pulse pelo e-mail <strong>privacidade@pulseips.com.br</strong>. O prazo de resposta é de até 15 dias corridos.</p>
+<p>Para exercer seus direitos, entre em contato com o RH da sua empresa (para colaboradores) ou diretamente com a Pulse pelo e-mail <strong>${EMAIL_PRIVACY}</strong>. O prazo de resposta é de até 15 dias corridos.</p>
 <h2>9. Cookies e rastreamento</h2>
 <p>A plataforma utiliza cookies estritamente necessários para manter a sessão autenticada dos usuários e para lembrar a preferência de tema visual (claro ou escuro). Não utilizamos cookies de rastreamento, publicidade ou análise comportamental de terceiros.</p>
 <h2>10. Transferência internacional de dados</h2>
@@ -446,9 +452,9 @@ const PRIVACY_POLICY_V1 = {
 <p>Esta Política de Privacidade pode ser atualizada periodicamente para refletir mudanças no serviço, nas práticas de privacidade ou na legislação. Alterações relevantes serão comunicadas com antecedência mínima de 15 dias por e-mail ou notificação na plataforma. A versão vigente estará sempre disponível em pulseips.com.br/privacy-policy.</p>
 <h2>13. Contato e Encarregado de Dados (DPO)</h2>
 <ul>
-  <li><strong>E-mail do DPO:</strong> privacidade@pulseips.com.br</li>
+  <li><strong>E-mail do DPO:</strong> ${EMAIL_PRIVACY}</li>
   <li><strong>Assunto sugerido:</strong> "Direitos do Titular" ou "Política de Privacidade"</li>
-  <li><strong>Suporte geral:</strong> suporte@pulseips.com.br</li>
+  <li><strong>Suporte geral:</strong> ${EMAIL_SUPPORT}</li>
 </ul>
 <p>Caso acredite que seus direitos foram violados, você pode registrar uma reclamação diretamente na <strong>Autoridade Nacional de Proteção de Dados (ANPD)</strong> em www.gov.br/anpd.</p>
 <hr/>
@@ -460,7 +466,7 @@ async function seedSuperAdmin() {
     where: { email: SUPER_ADMIN.email },
   });
   if (existing) {
-    console.log(`Admin already exists: ${SUPER_ADMIN.email}`);
+    logger.info(`Admin already exists: ${SUPER_ADMIN.email}`);
     return;
   }
 
@@ -472,7 +478,7 @@ async function seedSuperAdmin() {
       name: SUPER_ADMIN.name,
     },
   });
-  console.log(`Super admin created: ${SUPER_ADMIN.email}`);
+  logger.info(`Super admin created: ${SUPER_ADMIN.email}`);
 }
 
 async function seedTerms() {
@@ -498,7 +504,7 @@ async function seedTerms() {
       },
     });
   });
-  console.log(`Terms v${TERMS_V1.version} upserted`);
+  logger.info(`Terms v${TERMS_V1.version} upserted`);
 }
 
 async function seedConsentTerms() {
@@ -523,7 +529,7 @@ async function seedConsentTerms() {
       },
     });
   });
-  console.log(`Consent term v${CONSENT_TERM.version} upserted`);
+  logger.info(`Consent term v${CONSENT_TERM.version} upserted`);
 }
 
 async function seedPrivacyPolicy() {
@@ -549,7 +555,7 @@ async function seedPrivacyPolicy() {
       },
     });
   });
-  console.log(`Privacy policy v${PRIVACY_POLICY_V1.version} upserted`);
+  logger.info(`Privacy policy v${PRIVACY_POLICY_V1.version} upserted`);
 }
 
 const PLANS = [
@@ -575,8 +581,8 @@ const PLANS = [
   },
   {
     name: "Enterprise",
-    description: "Para grandes empresas sem limites. Colaboradores ilimitados, suporte prioritário, SLA garantido e onboarding dedicado.",
-    maxEmployees: 99999,
+    description: "Para grandes empresas. Até 300 colaboradores, suporte prioritário, SLA garantido e onboarding dedicado.",
+    maxEmployees: 300,
     externalProductId: "prod_enterprise_pulse",
     prices: [
       { interval: "monthly", priceInCents: 149900, externalPriceId: "price_enterprise_monthly" },
@@ -594,7 +600,7 @@ async function seedPlans(): Promise<void> {
 
     if (existing) {
       planId = existing.id
-      console.log(`⏭️  Plan already exists: ${plan.name}`)
+      logger.info(`⏭️  Plan already exists: ${plan.name}`)
     } else {
       const created = await prisma.plan.create({
         data: {
@@ -606,13 +612,13 @@ async function seedPlans(): Promise<void> {
         },
       })
       planId = created.id
-      console.log(`✅ Plan created: ${plan.name}`)
+      logger.info(`✅ Plan created: ${plan.name}`)
     }
 
     for (const price of plan.prices) {
       const existingPrice = await prisma.planPrice.findUnique({ where: { externalPriceId: price.externalPriceId } })
       if (existingPrice) {
-        console.log(`⏭️  Price already exists: ${plan.name} ${price.interval}`)
+        logger.info(`⏭️  Price already exists: ${plan.name} ${price.interval}`)
         continue
       }
       await prisma.planPrice.create({
@@ -626,13 +632,13 @@ async function seedPlans(): Promise<void> {
         },
       })
       const display = (price.priceInCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
-      console.log(`  💰 Price: ${display}/${price.interval}`)
+      logger.info(`  💰 Price: ${display}/${price.interval}`)
     }
   }
 }
 
 async function main() {
-  console.log("Starting seed...");
+  logger.info("Starting seed...");
 
   await seedSuperAdmin();
   await seedTerms();
@@ -640,12 +646,12 @@ async function main() {
   await seedPrivacyPolicy();
   await seedPlans();
 
-  console.log("Seed complete!");
+  logger.info("Seed complete!");
 }
 
 main()
   .catch((err) => {
-    console.error("Seed failed:", err);
+    logger.error("Seed failed:", err);
     process.exit(1);
   })
   .finally(() => {

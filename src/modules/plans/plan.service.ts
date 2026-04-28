@@ -10,7 +10,6 @@ import {
   updatePlan,
   updatePlanPriceAmount,
   updatePlanPriceRecord,
-  countOrgsUsingPlan,
   deletePlan,
   findPlanPriceWithPlan,
   setPlanFeatures,
@@ -129,8 +128,8 @@ export async function addDirectPriceToPlan(input: AddDirectPriceInput): Promise<
 }
 
 export async function deletePlanById(planId: string): Promise<void> {
-  const count = await countOrgsUsingPlan(planId)
-  if (count > 0) throw new AppError("PLAN_IN_USE", `Este plano está vinculado a ${count} organização(ões) e não pode ser excluído.`)
+  const plan = await findPlanById(planId)
+  if (!plan) throw new AppError("PLAN_NOT_FOUND", "Plano não encontrado.")
   return deletePlan(planId)
 }
 

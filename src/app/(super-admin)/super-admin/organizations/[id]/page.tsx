@@ -5,6 +5,7 @@ import {
   ArrowLeft, Building2, Users, CreditCard, AlertTriangle,
   MessageSquare, BarChart2, Activity, TrendingUp, Zap,
 } from "lucide-react"
+import { CancelDeletionBanner } from "@/app/(super-admin)/super-admin/organizations/[id]/cancel-deletion-banner"
 
 interface Props {
   params: Promise<{ id: string }>
@@ -173,6 +174,12 @@ export default async function OrganizationDetailPage({ params }: Props): Promise
       </div>
 
       <div className="flex-1 overflow-y-auto">
+        {org.deletionScheduledAt !== null && (
+          <CancelDeletionBanner
+            organizationId={org.id}
+            deletionScheduledAt={org.deletionScheduledAt}
+          />
+        )}
         <div className="p-6 space-y-6 max-w-5xl mx-auto">
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

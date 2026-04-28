@@ -30,6 +30,7 @@ export interface Plan {
   maxEmployees: number
   externalProductId: string | null
   isActive: boolean
+  deletedAt: Date | null
   createdAt: Date
   updatedAt: Date
 }

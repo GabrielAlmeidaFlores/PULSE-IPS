@@ -6,6 +6,7 @@ import { getOrganization } from "@/modules/organizations/organization.service"
 import { Sidebar } from "@/libs/design-system/components/layout/Sidebar"
 import { Header } from "@/libs/design-system/components/layout/Header"
 import { BillingWallModal } from "@/app/(tenant)/billing/billing-wall-modal"
+import { DeletionScheduledModal } from "@/app/(tenant)/deletion-scheduled-modal"
 
 const ACTIVE_BILLING_STATUSES = new Set(["active", "trialing"])
 
@@ -25,7 +26,8 @@ export default async function TenantLayout({
   if (pendingTerms) redirect("/accept-terms")
 
   const billingStatus = org?.billingStatus ?? "pending"
-  const hasBillingWall = !ACTIVE_BILLING_STATUSES.has(billingStatus)
+  const deletionScheduledAt = org?.deletionScheduledAt ?? null
+  const hasBillingWall = deletionScheduledAt === null && !ACTIVE_BILLING_STATUSES.has(billingStatus)
 
   return (
     <div className="flex h-screen bg-background">
@@ -34,7 +36,13 @@ export default async function TenantLayout({
         <Header email={session.email} />
         <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
       </div>
-      {hasBillingWall && <BillingWallModal billingStatus={billingStatus} />}
+      {deletionScheduledAt !== null && (
+        <DeletionScheduledModal
+          deletionScheduledAt={deletionScheduledAt.toISOString()}
+          role={session.role}
+        />
+      )}
+      {hasBillingWall && <BillingWallModal billingStatus={billingStatus} role={session.role} />}
     </div>
   )
 }

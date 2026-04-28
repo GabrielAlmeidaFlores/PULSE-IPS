@@ -2,10 +2,11 @@ import React from "react"
 import { redirect } from "next/navigation"
 import { getSession } from "@/modules/auth/session"
 import { getOrganization } from "@/modules/organizations/organization.service"
-import { getOrgUsers } from "@/modules/auth/invite.service"
+import { getOrgUsers, getPendingOrgInvites } from "@/modules/auth/invite.service"
 import { SettingsForm } from "@/app/(tenant)/settings/settings-form"
 import { TeamManagement } from "@/app/(tenant)/settings/team-management"
 import { ChangePasswordForm } from "@/app/(tenant)/settings/change-password-form"
+import { DeleteAccountSection } from "@/app/(tenant)/settings/delete-account-section"
 import { PageHelp } from "@/components/page-help"
 
 export default async function SettingsPage(): Promise<React.ReactElement> {
@@ -13,9 +14,10 @@ export default async function SettingsPage(): Promise<React.ReactElement> {
   if (!session) redirect("/login")
   if (session.role !== "admin") redirect("/dashboard")
 
-  const [org, users] = await Promise.all([
+  const [org, users, pendingInvites] = await Promise.all([
     getOrganization(session.tenantId),
     getOrgUsers(session.tenantId),
+    getPendingOrgInvites(session.tenantId),
   ])
 
   return (
@@ -69,11 +71,16 @@ export default async function SettingsPage(): Promise<React.ReactElement> {
           <SettingsForm name={org?.name ?? ""} timezone={org?.timezone ?? "America/Sao_Paulo"} />
         </div>
         <div className="mt-6">
-          <TeamManagement users={users} />
+          <TeamManagement users={users} pendingInvites={pendingInvites} />
         </div>
         <div className="mt-6">
           <ChangePasswordForm />
         </div>
+        {session.role === "admin" && (
+          <div className="mt-6">
+            <DeleteAccountSection />
+          </div>
+        )}
       </div>
     </div>
   )

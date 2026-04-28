@@ -71,6 +71,7 @@ export default async function PlatformTermsPage(): Promise<React.ReactElement> {
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <Link href="/" className="hover:text-foreground transition-colors">Início</Link>
             <Link href="/privacy-policy" className="hover:text-foreground transition-colors">Política de Privacidade</Link>
+            <Link href="/data-deletion" className="hover:text-foreground transition-colors">Exclusão de Dados</Link>
           </div>
         </div>
       </footer>

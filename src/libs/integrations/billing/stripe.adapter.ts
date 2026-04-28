@@ -62,6 +62,10 @@ export class StripeAdapter implements IBillingService {
     return { id: customer.id }
   }
 
+  async cancelSubscription(externalSubscriptionId: string): Promise<void> {
+    await this.stripe.subscriptions.cancel(externalSubscriptionId)
+  }
+
   constructWebhookEvent(payload: string | Buffer, signature: string): BillingWebhookEvent {
     const raw = this.stripe.webhooks.constructEvent(payload, signature, env.STRIPE_WEBHOOK_SECRET ?? "")
     return {

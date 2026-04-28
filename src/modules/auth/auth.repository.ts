@@ -1,6 +1,6 @@
 import { prisma } from "@/libs/db"
 import type { Organization, OrganizationUser, AuthToken, SuperAdmin, OrganizationInvitation } from "@prisma/client"
-import type { CreateOrgInvitationInput, AcceptInviteInput, SafeOrgUser, SafeSuperAdmin } from "@/modules/auth/auth.types"
+import type { CreateOrgInvitationInput, AcceptInviteInput, SafeOrgUser, SafeSuperAdmin, PendingOrgInvite } from "@/modules/auth/auth.types"
 
 export function findOrgBySlug(slug: string): Promise<Organization | null> {
   return prisma.organization.findUnique({ where: { slug, isActive: true } })
@@ -105,6 +105,32 @@ export function findOrgUsersByTenant(tenantId: string): Promise<SafeOrgUser[]> {
       updatedAt: true,
     },
     orderBy: { createdAt: "asc" },
+  })
+}
+
+export function findTenantPendingOrgInvitations(tenantId: string): Promise<PendingOrgInvite[]> {
+  return prisma.organizationInvitation.findMany({
+    where: { tenantId, usedAt: null, expiresAt: { gt: new Date() } },
+    select: { id: true, email: true, role: true, expiresAt: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+  })
+}
+
+export function findOrgInvitationById(inviteId: string, tenantId: string): Promise<OrganizationInvitation | null> {
+  return prisma.organizationInvitation.findFirst({ where: { id: inviteId, tenantId } })
+}
+
+export async function updateOrgInvitationToken(inviteId: string, tenantId: string, newToken: string, newExpiresAt: Date): Promise<void> {
+  await prisma.organizationInvitation.update({
+    where: { id: inviteId, tenantId },
+    data: { token: newToken, expiresAt: newExpiresAt, usedAt: null },
+  })
+}
+
+export async function cancelOrgInvitationById(inviteId: string, tenantId: string): Promise<void> {
+  await prisma.organizationInvitation.update({
+    where: { id: inviteId, tenantId },
+    data: { usedAt: new Date() },
   })
 }
 

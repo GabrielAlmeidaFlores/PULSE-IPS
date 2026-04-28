@@ -222,6 +222,7 @@ Processa os jobs agendados pelo cron. Cada job é identificado por nome:
 | `stripe-webhook-retry` | Reprocessa webhooks do Stripe que falharam |
 | `survey-response-token-cleanup` | Remove tokens de resposta expirados e não utilizados |
 | `action-plan-suggestion-generator` | Gera sugestões de plano de ação com base em alertas ativos e dados da plataforma |
+| `organization-deletion-executor` | Exclui permanentemente organizações com exclusão agendada cuja data já expirou |
 
 ### Fila de mensagens (`pulse:messages`)
 
@@ -249,6 +250,7 @@ yarn worker:schedules
 | `stripe-webhook-retry` | `0 * * * *` | A cada hora |
 | `survey-response-token-cleanup` | `0 2 * * *` | Diariamente às 02:00 |
 | `action-plan-suggestion-generator` | `0 6 * * *` | Diariamente às 06:00 |
+| `organization-deletion-executor` | `30 3 * * *` | Diariamente às 03:30 |
 
 ---
 
@@ -268,6 +270,7 @@ Todos os endpoints exigem o header `x-cron-secret: <CRON_SECRET>`.
 | `/api/jobs/stripe-webhook-retry` | POST | Reprocessa webhooks Stripe com falha |
 | `/api/jobs/survey-response-token-cleanup` | POST | Remove tokens expirados do banco |
 | `/api/jobs/action-plan-suggestion-generator` | POST | Gera sugestões de plano de ação |
+| `/api/jobs/organization-deletion-executor` | POST | Executa exclusão permanente de orgs agendadas |
 
 **Exemplo de chamada manual:**
 
@@ -326,6 +329,13 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_test_..."
 
 # ─── WhatsApp do consultor (exibido na landing page) ───────────────
 NEXT_PUBLIC_CONSULTANT_WHATSAPP="5511999999999"
+
+# ─── Endereços de e-mail públicos ──────────────────────────────────
+# Exibidos em páginas, modais e templates de e-mail
+NEXT_PUBLIC_EMAIL_SUPPORT="suporte@usepulse.com.br"
+NEXT_PUBLIC_EMAIL_PRIVACY="privacidade@usepulse.com.br"
+NEXT_PUBLIC_EMAIL_CONTACT="contato@usepulse.com.br"
+NEXT_PUBLIC_EMAIL_LEGAL="legal@usepulse.com.br"
 ```
 
 > Com `MESSAGING_PROVIDER=console` e `EMAIL_PROVIDER=console`, todas as mensagens são impressas no terminal. Nenhuma integração externa é necessária para desenvolvimento local.
@@ -354,7 +364,7 @@ NEXT_PUBLIC_CONSULTANT_WHATSAPP="5511999999999"
 | `console` | Imprime no terminal (dev) |
 | `resend` | Envia via [Resend](https://resend.com) |
 
-Templates disponíveis (React Email): verificação de e-mail, convite de organização, reset de senha, pagamento falhou, plano assinado, plano cancelado.
+Templates disponíveis (React Email): verificação de e-mail, convite de organização, reset de senha, pagamento falhou, plano assinado, plano cancelado, confirmação de solicitação de exclusão de conta, notificação de exclusão agendada.
 
 ### Faturamento
 

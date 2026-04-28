@@ -196,6 +196,7 @@ export async function findOrganizationFullDetail(id: string): Promise<OrgFullDet
     openActionPlanCount,
     messagesThisMonth,
     lastPgrReview: lastPgrReview ?? null,
+    deletionScheduledAt: org.deletionScheduledAt,
   }
 }
 

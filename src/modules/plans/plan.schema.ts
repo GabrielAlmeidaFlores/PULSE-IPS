@@ -4,7 +4,7 @@ import { ALL_PLAN_FEATURES } from "@/modules/plans/plan.types"
 export const createPlanSchema = z.object({
   name: z.string().min(1).max(100).trim(),
   description: z.string().max(500).optional(),
-  maxEmployees: z.number().int().min(0),
+  maxEmployees: z.number().int().min(1).max(300),
   features: z.array(z.enum(ALL_PLAN_FEATURES as [string, ...string[]])).default([]),
   monthlyPriceInCents: z.number().int().min(0).optional(),
   yearlyPriceInCents: z.number().int().min(0).optional(),
@@ -13,7 +13,7 @@ export const createPlanSchema = z.object({
 export const updatePlanSchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().optional(),
-  maxEmployees: z.number().int().positive(),
+  maxEmployees: z.number().int().min(1).max(300),
   isActive: z.boolean(),
 })
 

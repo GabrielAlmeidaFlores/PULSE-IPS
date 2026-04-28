@@ -47,5 +47,6 @@ export interface IBillingService {
     params: CreateBillingPortalSessionParams,
   ): Promise<CreateBillingPortalSessionResult>
   createCustomer(email: string, name: string): Promise<{ id: string }>
+  cancelSubscription(externalSubscriptionId: string): Promise<void>
   constructWebhookEvent(payload: string | Buffer, signature: string): BillingWebhookEvent
 }

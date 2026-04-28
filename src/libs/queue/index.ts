@@ -20,6 +20,7 @@ export type JobName =
   | "stripe-webhook-retry"
   | "survey-response-token-cleanup"
   | "action-plan-suggestion-generator"
+  | "organization-deletion-executor"
 
 export interface SendMessageJobData {
   to: string

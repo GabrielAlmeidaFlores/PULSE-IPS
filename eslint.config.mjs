@@ -204,6 +204,7 @@ const eslintConfig = defineConfig([
     files: [
       "src/workers/**/*.ts",
       "src/libs/integrations/**/*.ts",
+      "src/libs/utils/logger.ts",
     ],
     rules: {
       "no-console": "off",
