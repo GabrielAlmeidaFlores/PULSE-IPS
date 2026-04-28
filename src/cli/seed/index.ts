@@ -1,4 +1,8 @@
 import "dotenv/config"
+
+const EMAIL_SUPPORT = process.env["NEXT_PUBLIC_EMAIL_SUPPORT"] ?? "suporte@usepulse.com.br"
+const EMAIL_PRIVACY = process.env["NEXT_PUBLIC_EMAIL_PRIVACY"] ?? "privacidade@usepulse.com.br"
+const EMAIL_LEGAL = process.env["NEXT_PUBLIC_EMAIL_LEGAL"] ?? "legal@usepulse.com.br"
 import { createLogger } from "../../libs/utils/logger"
 import { createHash } from "crypto";
 import bcrypt from "bcryptjs";
@@ -127,9 +131,9 @@ const TERMS_V1 = {
 <p>Este contrato é regido pela legislação brasileira. Fica eleito o foro da Comarca de São Paulo — SP para dirimir quaisquer controvérsias decorrentes deste instrumento, com renúncia a qualquer outro, por mais privilegiado que seja.</p>
 <h2>14. Contato</h2>
 <ul>
-  <li><strong>Suporte técnico:</strong> suporte@pulseips.com.br</li>
-  <li><strong>Questões contratuais:</strong> legal@pulseips.com.br</li>
-  <li><strong>Proteção de dados (DPO):</strong> privacidade@pulseips.com.br</li>
+  <li><strong>Suporte técnico:</strong> ${EMAIL_SUPPORT}</li>
+  <li><strong>Questões contratuais:</strong> ${EMAIL_LEGAL}</li>
+  <li><strong>Proteção de dados (DPO):</strong> ${EMAIL_PRIVACY}</li>
 </ul>
 <hr/>
 <p>Ao aceitar estes Termos, você declara que leu, compreendeu e concorda com todas as disposições acima, e que possui poderes legais para contratar em nome da organização.</p>
@@ -279,7 +283,7 @@ const CONSENT_TERM = {
   <li><strong>Informação (art. 18, VII e VIII):</strong> saber com quem seus dados foram compartilhados;</li>
   <li><strong>Reclamação à ANPD (art. 18, § 1º):</strong> registrar reclamação se seus direitos forem violados.</li>
 </ul>
-<p>Para exercer qualquer desses direitos, procure o RH da sua empresa. Para questões que o RH não puder resolver, entre em contato com a Pulse pelo e-mail <strong>privacidade@pulseips.com.br</strong>. Prazo de resposta: até 15 dias corridos.</p>
+<p>Para exercer qualquer desses direitos, procure o RH da sua empresa. Para questões que o RH não puder resolver, entre em contato com a Pulse pelo e-mail <strong>${EMAIL_PRIVACY}</strong>. Prazo de resposta: até 15 dias corridos.</p>
 <h2>10. Como revogar seu consentimento</h2>
 <p>Você pode revogar este consentimento a qualquer momento. Basta comunicar o RH da sua empresa ou, ao receber o link de uma pesquisa, utilizar a opção "Não quero mais participar" disponível no próprio formulário.</p>
 <p>Ao revogar:</p>
@@ -324,7 +328,7 @@ const CONSENT_TERM = {
 <h2>15. Canais de contato e Encarregado de Dados (DPO)</h2>
 <ul>
   <li><strong>RH da sua empresa:</strong> canal preferencial para revogação de consentimento e dúvidas do dia a dia;</li>
-  <li><strong>Pulse — DPO:</strong> privacidade@pulseips.com.br — para solicitações de direitos do titular ou questões que o RH não puder resolver;</li>
+  <li><strong>Pulse — DPO:</strong> ${EMAIL_PRIVACY} — para solicitações de direitos do titular ou questões que o RH não puder resolver;</li>
   <li><strong>ANPD:</strong> www.gov.br/anpd — para reclamações sobre violação de direitos como titular.</li>
 </ul>
 <h2>16. Glossário</h2>
@@ -437,7 +441,7 @@ const PRIVACY_POLICY_V1 = {
   <li><strong>Oposição (art. 18, VI):</strong> opor-se ao tratamento realizado sem base legal adequada;</li>
   <li><strong>Reclamação à ANPD (art. 18, § 1º):</strong> registrar reclamação à Autoridade Nacional de Proteção de Dados.</li>
 </ul>
-<p>Para exercer seus direitos, entre em contato com o RH da sua empresa (para colaboradores) ou diretamente com a Pulse pelo e-mail <strong>privacidade@pulseips.com.br</strong>. O prazo de resposta é de até 15 dias corridos.</p>
+<p>Para exercer seus direitos, entre em contato com o RH da sua empresa (para colaboradores) ou diretamente com a Pulse pelo e-mail <strong>${EMAIL_PRIVACY}</strong>. O prazo de resposta é de até 15 dias corridos.</p>
 <h2>9. Cookies e rastreamento</h2>
 <p>A plataforma utiliza cookies estritamente necessários para manter a sessão autenticada dos usuários e para lembrar a preferência de tema visual (claro ou escuro). Não utilizamos cookies de rastreamento, publicidade ou análise comportamental de terceiros.</p>
 <h2>10. Transferência internacional de dados</h2>
@@ -448,9 +452,9 @@ const PRIVACY_POLICY_V1 = {
 <p>Esta Política de Privacidade pode ser atualizada periodicamente para refletir mudanças no serviço, nas práticas de privacidade ou na legislação. Alterações relevantes serão comunicadas com antecedência mínima de 15 dias por e-mail ou notificação na plataforma. A versão vigente estará sempre disponível em pulseips.com.br/privacy-policy.</p>
 <h2>13. Contato e Encarregado de Dados (DPO)</h2>
 <ul>
-  <li><strong>E-mail do DPO:</strong> privacidade@pulseips.com.br</li>
+  <li><strong>E-mail do DPO:</strong> ${EMAIL_PRIVACY}</li>
   <li><strong>Assunto sugerido:</strong> "Direitos do Titular" ou "Política de Privacidade"</li>
-  <li><strong>Suporte geral:</strong> suporte@pulseips.com.br</li>
+  <li><strong>Suporte geral:</strong> ${EMAIL_SUPPORT}</li>
 </ul>
 <p>Caso acredite que seus direitos foram violados, você pode registrar uma reclamação diretamente na <strong>Autoridade Nacional de Proteção de Dados (ANPD)</strong> em www.gov.br/anpd.</p>
 <hr/>

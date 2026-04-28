@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { getInviteByToken } from "@/modules/auth/invite.service"
 import { AcceptInviteForm } from "@/app/(onboarding)/invite/[token]/accept-invite-form"
+import { env } from "@/env"
 
 interface Props {
   params: Promise<{ token: string }>
@@ -76,10 +77,10 @@ export default async function InvitePage({ params }: Props): Promise<React.React
               <p className="text-[11px] text-muted-foreground">
                 Precisa de ajuda?{" "}
                 <a
-                  href="mailto:suporte@pulseips.com.br"
+                  href={`mailto:${env.NEXT_PUBLIC_EMAIL_SUPPORT}`}
                   className="text-primary hover:underline"
                 >
-                  suporte@pulseips.com.br
+                  {env.NEXT_PUBLIC_EMAIL_SUPPORT}
                 </a>
               </p>
             )}

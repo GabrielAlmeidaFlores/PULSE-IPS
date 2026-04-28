@@ -20,7 +20,10 @@ export const env = createEnv({
     WHATSAPP_PHONE_NUMBER_ID: z.string().min(1).optional(),
     WHATSAPP_ACCESS_TOKEN: z.string().min(1).optional(),
     WHATSAPP_API_VERSION: z.string().default("v20.0"),
-    WHATSAPP_API_BASE_URL: z.string().url().default("https://graph.facebook.com"),
+    WHATSAPP_API_BASE_URL: z
+      .string()
+      .url()
+      .default("https://graph.facebook.com"),
     WHATSAPP_WEBHOOK_VERIFY_TOKEN: z.string().min(1).optional(),
     WHATSAPP_TEMPLATE_LANGUAGE: z.string().default("pt_BR"),
     WHATSAPP_CONSENT_TEMPLATE_NAME: z.string().default("pulse_consent_invite"),
@@ -28,11 +31,15 @@ export const env = createEnv({
 
     CONSENT_MESSAGE_TEMPLATE: z
       .string()
-      .default("Oi, {nome}! 👋 Você foi convidado(a) para participar das pesquisas de bem-estar da sua empresa 🌱 É rápido, anônimo e sua opinião faz toda a diferença. Acesse o link para revisar os termos e confirmar sua participação: {link}"),
+      .default(
+        "Oi, {nome}! 👋 Você foi convidado(a) para participar das pesquisas de bem-estar da sua empresa 🌱 É rápido, anônimo e sua opinião faz toda a diferença. Acesse o link para revisar os termos e confirmar sua participação: {link}",
+      ),
 
     SURVEY_MESSAGE_TEMPLATE: z
       .string()
-      .default("Oi, {nome}! 👋 Tudo bem por aí? Sua opinião faz a diferença para a gente 🌱 Quando tiver um momento, aqui está o seu formulário de bem-estar: {link}"),
+      .default(
+        "Oi, {nome}! 👋 Tudo bem por aí? Sua opinião faz a diferença para a gente 🌱 Quando tiver um momento, aqui está o seu formulário de bem-estar: {link}",
+      ),
 
     EMAIL_PROVIDER: z.enum(["resend", "console"]).default("console"),
     RESEND_API_KEY: z.string().startsWith("re_").optional(),
@@ -55,6 +62,22 @@ export const env = createEnv({
     NEXT_PUBLIC_APP_URL: z.string().url(),
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().startsWith("pk_").optional(),
     NEXT_PUBLIC_CONSULTANT_WHATSAPP: z.string().default("5511999999999"),
+    NEXT_PUBLIC_EMAIL_SUPPORT: z
+      .string()
+      .email()
+      .default("suporte@usepulse.com.br"),
+    NEXT_PUBLIC_EMAIL_PRIVACY: z
+      .string()
+      .email()
+      .default("privacidade@usepulse.com.br"),
+    NEXT_PUBLIC_EMAIL_CONTACT: z
+      .string()
+      .email()
+      .default("contato@usepulse.com.br"),
+    NEXT_PUBLIC_EMAIL_LEGAL: z
+      .string()
+      .email()
+      .default("legal@usepulse.com.br"),
   },
   runtimeEnv: {
     DATABASE_URL: process.env.DATABASE_URL,
@@ -101,6 +124,11 @@ export const env = createEnv({
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
-    NEXT_PUBLIC_CONSULTANT_WHATSAPP: process.env.NEXT_PUBLIC_CONSULTANT_WHATSAPP,
+    NEXT_PUBLIC_CONSULTANT_WHATSAPP:
+      process.env.NEXT_PUBLIC_CONSULTANT_WHATSAPP,
+    NEXT_PUBLIC_EMAIL_SUPPORT: process.env.NEXT_PUBLIC_EMAIL_SUPPORT,
+    NEXT_PUBLIC_EMAIL_PRIVACY: process.env.NEXT_PUBLIC_EMAIL_PRIVACY,
+    NEXT_PUBLIC_EMAIL_CONTACT: process.env.NEXT_PUBLIC_EMAIL_CONTACT,
+    NEXT_PUBLIC_EMAIL_LEGAL: process.env.NEXT_PUBLIC_EMAIL_LEGAL,
   },
 });

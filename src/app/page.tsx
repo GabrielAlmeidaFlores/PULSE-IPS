@@ -447,7 +447,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
                 <span className="text-xs font-bold tracking-widest uppercase text-foreground">Produto</span>
                 <Link href="/learn-more" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Como funciona</Link>
                 <Link href="/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Acessar plataforma</Link>
-                <a href="mailto:contato@pulse.com.br" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Contato</a>
+                <a href={`mailto:${env.NEXT_PUBLIC_EMAIL_CONTACT}`} className="text-sm text-muted-foreground hover:text-foreground transition-colors">{env.NEXT_PUBLIC_EMAIL_CONTACT}</a>
               </div>
               <div className="flex flex-col gap-3">
                 <span className="text-xs font-bold tracking-widest uppercase text-foreground">Legal</span>

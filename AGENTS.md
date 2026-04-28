@@ -45,6 +45,7 @@
 30. [Testes Unitários](#30-testes-unitários)
 31. [Paginação — Padrão Obrigatório](#31-paginação--padrão-obrigatório)
 32. [Centralização de Cores — CSS Variables](#32-centralização-de-cores--css-variables)
+33. [Endereços de E-mail — Variáveis de Ambiente](#33-endereços-de-e-mail--variáveis-de-ambiente)
 
 ---
 
@@ -3981,5 +3982,57 @@ fill={healthIndexChartColor(score)}  // retorna "var(--status-success/warning/da
 4. Se for cor de saúde/aderência/tendência: adicione a função em `health-index.ts`
 5. Se for cor de badge: adicione a constant em `alert-labels.ts`
 6. Atualize esta seção do AGENTS.md
+
+---
+
+## 33. Endereços de E-mail — Variáveis de Ambiente
+
+**Nenhum endereço de e-mail pode ser hardcoded em qualquer parte do código.** Todo e-mail de contato, suporte, privacidade (DPO) ou qualquer outra finalidade deve vir das variáveis de ambiente definidas em `src/env.ts`.
+
+### Variáveis disponíveis
+
+| Variável | Padrão | Uso |
+|---|---|---|
+| `NEXT_PUBLIC_EMAIL_SUPPORT` | `suporte@usepulse.com.br` | E-mail de suporte técnico — exibido em páginas de ajuda, modais de erro, convites |
+| `NEXT_PUBLIC_EMAIL_PRIVACY` | `privacidade@usepulse.com.br` | E-mail do DPO / privacidade — exibido em páginas legais, TCLE, política de privacidade |
+| `NEXT_PUBLIC_EMAIL_CONTACT` | `contato@usepulse.com.br` | E-mail de contato comercial — exibido no footer das landing pages |
+| `NEXT_PUBLIC_EMAIL_LEGAL` | `legal@usepulse.com.br` | E-mail jurídico/contratual — exibido em termos de uso e documentos legais |
+
+> Todas as três são `NEXT_PUBLIC_` para serem acessíveis tanto em Server Components (RSC) quanto em Client Components sem necessidade de prop drilling.
+
+### Padrão de uso
+
+```typescript
+// ✅ Client Component
+import { env } from "@/env"
+<a href={`mailto:${env.NEXT_PUBLIC_EMAIL_SUPPORT}`}>{env.NEXT_PUBLIC_EMAIL_SUPPORT}</a>
+
+// ✅ Server Component (RSC) — defina constante no topo do arquivo
+import { env } from "@/env"
+const PRIVACY_EMAIL = env.NEXT_PUBLIC_EMAIL_PRIVACY
+// ... uso no JSX:
+<a href={`mailto:${PRIVACY_EMAIL}`}>{PRIVACY_EMAIL}</a>
+
+// ✅ Service (servidor)
+import { env } from "@/env"
+const supportEmail = env.NEXT_PUBLIC_EMAIL_SUPPORT
+
+// ✅ Seed (src/cli/seed/*.ts) — usa process.env diretamente com fallback
+const EMAIL_SUPPORT = process.env["NEXT_PUBLIC_EMAIL_SUPPORT"] ?? "suporte@usepulse.com.br"
+```
+
+```typescript
+// ❌ PROIBIDO — e-mail hardcoded em qualquer lugar
+const SUPPORT_EMAIL = "suporte@pulseips.com.br"
+href="mailto:privacidade@usepulse.com.br"
+```
+
+### Adicionar novo e-mail de contato
+
+1. Adicione a variável em `src/env.ts` (seções `client` e `runtimeEnv`)
+2. Adicione o valor padrão com `.default(...)` no schema Zod
+3. Adicione ao `.env.local` com o valor real de produção
+4. Documente na tabela acima
+5. Use **sempre** via `env.NEXT_PUBLIC_EMAIL_*` — nunca como string literal
 
 *Pulse — AGENTS.md | Documento interno | Abril de 2026*

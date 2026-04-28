@@ -1,3 +1,4 @@
+import { env } from "@/env"
 import { addDays, addMinutes, format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { AppError } from "@/libs/errors/app-error"
@@ -17,7 +18,6 @@ import {
 
 const ACCOUNT_DELETION_CODE_EXPIRES_MINUTES = 15
 const ACCOUNT_DELETION_GRACE_DAYS = 30
-const SUPPORT_EMAIL = "suporte@usepulse.com.br"
 const ACTIVE_SUBSCRIPTION_STATUSES = new Set(["active", "trialing"])
 
 function generateSixDigitCode(): string {
@@ -55,7 +55,7 @@ export async function confirmAccountDeletion(
   userId: string,
   userEmail: string,
   code: string,
-): Promise<void> {
+): Promise<{ deletionScheduledAt: Date }> {
   const authToken = await findAccountDeletionToken(userId)
 
   if (!authToken) throw new AppError("INVALID_CODE", "Código inválido ou expirado.")
@@ -70,7 +70,10 @@ export async function confirmAccountDeletion(
   const subscription = await findSubscriptionByTenantId(tenantId)
   if (subscription !== null && ACTIVE_SUBSCRIPTION_STATUSES.has(subscription.status)) {
     const billing = getBillingService()
-    await billing.cancelSubscription(subscription.externalSubscriptionId)
+    try {
+      await billing.cancelSubscription(subscription.externalSubscriptionId)
+    } catch {
+    }
   }
 
   const deletionScheduledAt = addDays(new Date(), ACCOUNT_DELETION_GRACE_DAYS)
@@ -86,10 +89,12 @@ export async function confirmAccountDeletion(
       props: {
         orgName: org.name,
         deletionDate: deletionDateFormatted,
-        supportEmail: SUPPORT_EMAIL,
+        supportEmail: env.NEXT_PUBLIC_EMAIL_SUPPORT,
       },
     }),
   })
+
+  return { deletionScheduledAt }
 }
 
 export async function runOrganizationDeletionExecutor(): Promise<{ deleted: number }> {

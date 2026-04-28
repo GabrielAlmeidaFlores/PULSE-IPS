@@ -2,6 +2,9 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { ArrowLeft, Trash2, MessageSquare, ShieldCheck, UserX, Clock, FileText, Scale, AlertTriangle, Mail } from "lucide-react"
 import { Logo } from "@/libs/design-system/components/logo"
+import { env } from "@/env"
+
+const PRIVACY_EMAIL = env.NEXT_PUBLIC_EMAIL_PRIVACY
 
 export const metadata: Metadata = {
   title: "Exclusão de Dados — Pulse IPS",
@@ -103,8 +106,8 @@ export default function DataDeletionPage(): React.ReactElement {
               <p><strong className="text-foreground">Razão social:</strong> Pulse Tecnologia em Saúde Ocupacional Ltda.</p>
               <p><strong className="text-foreground">Nome fantasia:</strong> Pulse IPS</p>
               <p><strong className="text-foreground">E-mail do Encarregado (DPO):</strong>{" "}
-                <a href="mailto:privacidade@pulseips.com.br" className="text-primary hover:underline font-medium">
-                  privacidade@pulseips.com.br
+                <a href={`mailto:${PRIVACY_EMAIL}`} className="text-primary hover:underline font-medium">
+                  {PRIVACY_EMAIL}
                 </a>
               </p>
               <p><strong className="text-foreground">Prazo de resposta:</strong> até 15 dias corridos após o recebimento da solicitação</p>
@@ -186,8 +189,8 @@ export default function DataDeletionPage(): React.ReactElement {
             <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
               Para exercer qualquer desses direitos, entre em contato com o RH da sua empresa ou diretamente
               com nosso DPO em{" "}
-              <a href="mailto:privacidade@pulseips.com.br" className="text-primary hover:underline font-medium">
-                privacidade@pulseips.com.br
+              <a href={`mailto:${PRIVACY_EMAIL}`} className="text-primary hover:underline font-medium">
+                {PRIVACY_EMAIL}
               </a>.
             </p>
           </Section>
@@ -249,7 +252,7 @@ export default function DataDeletionPage(): React.ReactElement {
               </Step>
               <Step n="2">
                 A organização entra em <strong className="text-foreground">período de carência de 30 dias</strong>. Durante esse prazo, é possível cancelar a solicitação via suporte em{" "}
-                <a href="mailto:privacidade@pulseips.com.br" className="text-primary hover:underline">privacidade@pulseips.com.br</a>.
+                <a href={`mailto:${PRIVACY_EMAIL}`} className="text-primary hover:underline">{PRIVACY_EMAIL}</a>.
               </Step>
               <Step n="3">
                 Após os 30 dias, <strong className="text-foreground">todos os dados operacionais são permanentemente excluídos</strong>: colaboradores, pesquisas, respostas, relatos, documentos, alertas e registros de auditoria.
@@ -295,10 +298,10 @@ export default function DataDeletionPage(): React.ReactElement {
                 <span>
                   Envie um e-mail para{" "}
                   <a
-                    href="mailto:privacidade@pulseips.com.br"
+                    href={`mailto:${PRIVACY_EMAIL}`}
                     className="text-primary hover:underline font-medium"
                   >
-                    privacidade@pulseips.com.br
+                    {PRIVACY_EMAIL}
                   </a>{" "}
                   com o assunto <em>&ldquo;Solicitação de Exclusão de Dados — [nome da empresa]&rdquo;</em>, informando
                   seu nome, a empresa onde trabalha e o número de telefone cadastrado.
@@ -344,11 +347,11 @@ export default function DataDeletionPage(): React.ReactElement {
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3">
                   <a
-                    href="mailto:privacidade@pulseips.com.br"
+                    href={`mailto:${PRIVACY_EMAIL}`}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-sm font-semibold rounded-md hover:bg-primary/90 transition-colors"
                   >
                     <Mail className="h-4 w-4" />
-                    privacidade@pulseips.com.br
+                    {PRIVACY_EMAIL}
                   </a>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">Prazo de resposta: até 15 dias corridos</p>

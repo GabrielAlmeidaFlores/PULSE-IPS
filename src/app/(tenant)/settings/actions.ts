@@ -1,14 +1,13 @@
 "use server"
 import { revalidatePath } from "next/cache"
-import { redirect } from "next/navigation"
 import { z } from "zod"
 import { isRedirectError } from "next/dist/client/components/redirect-error"
-import { getSession, destroySession } from "@/modules/auth/session"
+import { getSession } from "@/modules/auth/session"
 import { updateOrg } from "@/modules/organizations/organization.service"
 import { assertOrgAdmin } from "@/libs/auth/permissions"
 import { sendInvite, resendOrgInvite, cancelOrgInvite } from "@/modules/auth/invite.service"
 import { changePassword, getOrgUserById } from "@/modules/auth/auth.service"
-import { requestAccountDeletionCode, confirmAccountDeletion } from "@/modules/organizations/account-deletion.service"
+import { requestAccountDeletionCode, confirmAccountDeletion, cancelScheduledOrganizationDeletion } from "@/modules/organizations/account-deletion.service"
 import { AppError } from "@/libs/errors/app-error"
 import type { ActionResult } from "@/libs/utils/action-result"
 
@@ -142,7 +141,11 @@ const confirmAccountDeletionSchema = z.object({
   code: z.string().length(6, { message: "O código deve ter 6 dígitos." }).regex(/^\d+$/, { message: "O código deve conter apenas números." }),
 })
 
-export async function confirmAccountDeletionAction(input: { code: string }): Promise<ActionResult> {
+interface ConfirmDeletionResult extends ActionResult {
+  deletionScheduledAt?: string
+}
+
+export async function confirmAccountDeletionAction(input: { code: string }): Promise<ConfirmDeletionResult> {
   const session = await getSession()
   if (!session) return { error: SESSION_EXPIRED_ERROR }
   assertOrgAdmin(session)
@@ -151,11 +154,24 @@ export async function confirmAccountDeletionAction(input: { code: string }): Pro
   try {
     const user = await getOrgUserById(session.userId, session.tenantId)
     if (!user) return { error: "Usuário não encontrado." }
-    await confirmAccountDeletion(session.tenantId, session.userId, user.email, parsed.data.code)
-    await destroySession()
-    redirect("/")
+    const { deletionScheduledAt } = await confirmAccountDeletion(session.tenantId, session.userId, user.email, parsed.data.code)
+    return { deletionScheduledAt: deletionScheduledAt.toISOString() }
   } catch (err) {
     if (isRedirectError(err)) throw err
+    if (err instanceof AppError) return { error: err.message }
+    throw err
+  }
+}
+
+export async function cancelOrganizationDeletionAction(): Promise<ActionResult> {
+  const session = await getSession()
+  if (!session) return { error: SESSION_EXPIRED_ERROR }
+  assertOrgAdmin(session)
+  try {
+    await cancelScheduledOrganizationDeletion(session.tenantId)
+    revalidatePath("/", "layout")
+    return {}
+  } catch (err) {
     if (err instanceof AppError) return { error: err.message }
     throw err
   }

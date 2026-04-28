@@ -22,6 +22,7 @@ import {
 import { AnimateIn } from "@/components/animate-in"
 import { LearnMoreHeader } from "@/app/learn-more-header"
 import { Logo } from "@/libs/design-system/components/logo"
+import { env } from "@/env"
 
 function whatsappUrl(message: string): string {
   return `https://wa.me/5511999999999?text=${encodeURIComponent(message)}`
@@ -779,7 +780,7 @@ export default function LearnMorePage(): React.ReactElement {
                 <span className="text-xs font-bold tracking-widest uppercase text-foreground">Produto</span>
                 <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Início</Link>
                 <Link href="/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Acessar plataforma</Link>
-                <a href="mailto:contato@pulse.com.br" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Contato</a>
+                <a href={`mailto:${env.NEXT_PUBLIC_EMAIL_CONTACT}`} className="text-sm text-muted-foreground hover:text-foreground transition-colors">{env.NEXT_PUBLIC_EMAIL_CONTACT}</a>
               </div>
               <div className="flex flex-col gap-3">
                 <span className="text-xs font-bold tracking-widest uppercase text-foreground">Legal</span>
