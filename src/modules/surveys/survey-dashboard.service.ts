@@ -9,6 +9,7 @@ import {
   type SurveyDispatchListingFilters,
 } from "@/modules/surveys/survey.repository"
 import type { DispatchDashboardStats, ScoreDirection } from "@/modules/surveys/survey.types"
+import { MINIMUM_RESPONDENTS_FOR_DISPLAY } from "@/libs/utils/anonymity"
 
 export type { DispatchWithConfig } from "@/modules/surveys/survey.repository"
 
@@ -60,8 +61,9 @@ function buildDispatchStats(data: {
   questions: { id: string; text: string; order: number; scoreDirection: string }[]
   responseItems: { questionId: string; score: number }[]
 }): DispatchDashboardStats {
-  const questions = buildQuestionStats(data.questions, data.responseItems)
-  const avgScore = calcOverallAvgScore(questions, data.responseItems)
+  const hasEnoughRespondents = data.totalResponses >= MINIMUM_RESPONDENTS_FOR_DISPLAY
+  const questions = hasEnoughRespondents ? buildQuestionStats(data.questions, data.responseItems) : buildQuestionStats(data.questions, [])
+  const avgScore = hasEnoughRespondents ? calcOverallAvgScore(questions, data.responseItems) : null
   const notResponded = Math.max(0, data.totalRecipients - data.totalResponses)
   const adherenceRate = data.totalRecipients > 0 ? data.totalResponses / data.totalRecipients : 0
 
