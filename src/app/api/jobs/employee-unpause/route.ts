@@ -2,7 +2,7 @@ import { headers } from "next/headers"
 import { NextResponse } from "next/server"
 import { env } from "@/env"
 import { verifyCronSecret } from "@/libs/utils/cron-auth"
-import { unpauseDueEmployees } from "@/modules/employees/employee.service"
+import { unpauseAllTenantsDueEmployees } from "@/modules/employees/employee.service"
 
 export async function POST(): Promise<NextResponse> {
   const headersList = await headers()
@@ -13,7 +13,7 @@ export async function POST(): Promise<NextResponse> {
   }
 
   try {
-    const result = await unpauseDueEmployees()
+    const result = await unpauseAllTenantsDueEmployees()
     return NextResponse.json(result)
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 })

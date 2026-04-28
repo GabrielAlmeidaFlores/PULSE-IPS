@@ -89,8 +89,8 @@ export function SurveyForm({ token, employeeName, questions }: Props): React.Rea
       </div>
       <div className="p-6 space-y-6">
         {questions.map((q) => {
-          const leftLabel = q.scoreDirection === "higher_is_better" ? "1 — Negativo" : "1 — Positivo"
-          const rightLabel = q.scoreDirection === "higher_is_better" ? "5 — Positivo" : "5 — Negativo"
+          const leftLabel = q.scoreDirection === "higher_is_better" ? "1 = mais negativo" : "1 = mais positivo"
+          const rightLabel = q.scoreDirection === "higher_is_better" ? "5 = mais positivo" : "5 = mais negativo"
           return (
             <div key={q.id} className="space-y-3">
               <p className="text-sm font-medium">{q.text}</p>
