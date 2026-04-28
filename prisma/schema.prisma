@@ -385,7 +385,6 @@ model SurveyResponseToken {
 
   dispatch SurveyDispatch  @relation(fields: [dispatchId], references: [id], onDelete: Cascade)
   employee Employee        @relation(fields: [employeeId], references: [id])
-  response SurveyResponse?
 
   @@index([tenantId])
   @@map("survey_response_tokens")
@@ -395,12 +394,10 @@ model SurveyResponse {
   id         String   @id @default(uuid())
   tenantId   String   @map("tenant_id")
   dispatchId String   @map("dispatch_id")
-  tokenId    String   @unique @map("token_id")
   createdAt  DateTime @default(now()) @map("created_at")
 
   organization Organization         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   dispatch     SurveyDispatch       @relation(fields: [dispatchId], references: [id])
-  token        SurveyResponseToken  @relation(fields: [tokenId], references: [id])
   items        SurveyResponseItem[]
 
   @@index([tenantId])
@@ -556,6 +553,7 @@ model Alert {
   message      String
   isRead       Boolean   @default(false) @map("is_read")
   resolvedAt   DateTime? @map("resolved_at")
+  resolvedBy   String?   @map("resolved_by")
   createdAt    DateTime  @default(now()) @map("created_at")
 
   organization Organization @relation(fields: [tenantId], references: [id], onDelete: Cascade)

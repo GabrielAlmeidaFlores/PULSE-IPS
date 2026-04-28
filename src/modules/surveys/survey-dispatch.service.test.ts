@@ -3,9 +3,8 @@ import { runSurveyDispatcher, runAutoDispatchScheduler, checkDispatchAdherence }
 import {
   findAllTenantsPendingDispatches,
   findActiveConfigsForAutoDispatch,
-  createSurveyTokens,
+  createSurveyTokensAndMarkSent,
   createDispatch,
-  markDispatchSent,
   findAllTenantsDispatches48hAgo,
   countResponsesForDispatch,
   createAdherenceAlert,
@@ -30,9 +29,8 @@ vi.mock("@/env", () => ({
 
 const mockFindPendingDispatches = vi.mocked(findAllTenantsPendingDispatches)
 const mockFindActiveConfigs = vi.mocked(findActiveConfigsForAutoDispatch)
-const mockCreateSurveyTokens = vi.mocked(createSurveyTokens)
+const mockCreateSurveyTokensAndMarkSent = vi.mocked(createSurveyTokensAndMarkSent)
 const mockCreateDispatch = vi.mocked(createDispatch)
-const mockMarkDispatchSent = vi.mocked(markDispatchSent)
 const mockFindDispatches48hAgo = vi.mocked(findAllTenantsDispatches48hAgo)
 const mockCountResponses = vi.mocked(countResponsesForDispatch)
 const mockCreateAdherenceAlert = vi.mocked(createAdherenceAlert)
@@ -107,8 +105,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockGetMessageQueue.mockReturnValue(MOCK_QUEUE as unknown as ReturnType<typeof getMessageQueue>)
   mockCreateDispatch.mockResolvedValue({ id: "new-dispatch-1" } as Awaited<ReturnType<typeof createDispatch>>)
-  mockCreateSurveyTokens.mockResolvedValue(undefined)
-  mockMarkDispatchSent.mockResolvedValue(undefined)
+  mockCreateSurveyTokensAndMarkSent.mockResolvedValue(undefined)
   mockCreateAdherenceAlert.mockResolvedValue(undefined)
   mockMarkDispatchAdherenceChecked.mockResolvedValue(undefined)
   mockHasOpenAlertOfType.mockResolvedValue(false)
@@ -146,9 +143,8 @@ describe("runSurveyDispatcher", () => {
 
     const result = await runSurveyDispatcher()
     expect(result).toEqual({ dispatched: 1, errors: 0 })
-    expect(mockCreateDispatch).toHaveBeenCalledOnce()
-    expect(mockCreateSurveyTokens).toHaveBeenCalledOnce()
-    expect(mockMarkDispatchSent).toHaveBeenCalledWith(TENANT_ID, "new-dispatch-1", 1)
+    expect(mockCreateDispatch).not.toHaveBeenCalled()
+    expect(mockCreateSurveyTokensAndMarkSent).toHaveBeenCalledOnce()
     expect(MOCK_QUEUE.addBulk).toHaveBeenCalledOnce()
 
     vi.useRealTimers()
@@ -347,7 +343,9 @@ describe("runSurveyDispatcher — token work hours fallback chain", () => {
 
     await runSurveyDispatcher()
 
-    expect(mockCreateSurveyTokens).toHaveBeenCalledWith(
+    expect(mockCreateSurveyTokensAndMarkSent).toHaveBeenCalledWith(
+      TENANT_ID,
+      "dispatch-1",
       expect.arrayContaining([
         expect.objectContaining({ workStartTime: "07:00", workEndTime: "16:00" }),
       ]),
@@ -378,7 +376,9 @@ describe("runSurveyDispatcher — token work hours fallback chain", () => {
 
     await runSurveyDispatcher()
 
-    expect(mockCreateSurveyTokens).toHaveBeenCalledWith(
+    expect(mockCreateSurveyTokensAndMarkSent).toHaveBeenCalledWith(
+      TENANT_ID,
+      "dispatch-1",
       expect.arrayContaining([
         expect.objectContaining({ workStartTime: "08:00", workEndTime: "17:00" }),
       ]),

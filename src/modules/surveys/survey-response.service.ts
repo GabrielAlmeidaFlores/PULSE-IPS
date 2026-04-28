@@ -55,7 +55,6 @@ export async function validateSurveyToken(token: string): Promise<SurveyTokenVal
     token: {
       id: tokenRecord.id,
       dispatchId: tokenRecord.dispatchId,
-      employeeId: tokenRecord.employeeId,
       workStartTime: tokenRecord.workStartTime,
       workEndTime: tokenRecord.workEndTime,
       tenantId: tokenRecord.tenantId,

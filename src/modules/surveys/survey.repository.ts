@@ -1,5 +1,6 @@
 import type { SurveyConfiguration, SurveyQuestion, Department, SurveyDispatch, SurveyResponse, SurveyResponseToken, Organization, Employee, Prisma } from "@prisma/client"
 import { prisma } from "@/libs/db"
+import { AppError } from "@/libs/errors/app-error"
 import type { CreateSurveyConfigInput, CreateSurveyResponseInput, CreateSurveyTokenInput, CreateAdherenceAlertInput, CreateMessageLogInput } from "@/modules/surveys/survey.types"
 
 type SurveyConfigWithWorkDays = Prisma.SurveyConfigurationGetPayload<{ include: { workDays: true } }>
@@ -387,12 +388,20 @@ export function deleteExpiredTokens(): Promise<{ count: number }> {
 }
 
 export async function createSurveyResponseWithItems(data: CreateSurveyResponseInput): Promise<void> {
-  await prisma.$transaction([
-    prisma.surveyResponse.create({
+  await prisma.$transaction(async (tx) => {
+    const claimed = await tx.surveyResponseToken.updateMany({
+      where: { id: data.tokenId, usedAt: null },
+      data: { usedAt: new Date() },
+    })
+
+    if (claimed.count === 0) {
+      throw new AppError("SURVEY_ALREADY_ANSWERED", "Esta pesquisa já foi respondida.")
+    }
+
+    await tx.surveyResponse.create({
       data: {
         tenantId: data.tenantId,
         dispatchId: data.dispatchId,
-        tokenId: data.tokenId,
         items: {
           create: data.answers.map((a) => ({
             questionId: a.questionId,
@@ -400,16 +409,13 @@ export async function createSurveyResponseWithItems(data: CreateSurveyResponseIn
           })),
         },
       },
-    }),
-    prisma.surveyResponseToken.update({
-      where: { id: data.tokenId },
-      data: { usedAt: new Date() },
-    }),
-    prisma.surveyDispatch.update({
+    })
+
+    await tx.surveyDispatch.update({
       where: { id: data.dispatchId },
       data: { totalResponses: { increment: 1 } },
-    }),
-  ])
+    })
+  })
 }
 
 export async function createSurveyTokens(tokens: CreateSurveyTokenInput[]): Promise<void> {
@@ -421,6 +427,20 @@ export async function markDispatchSent(tenantId: string, dispatchId: string, tot
     where: { id: dispatchId, tenantId },
     data: { status: "sent", dispatchedAt: new Date(), totalRecipients },
   })
+}
+
+export async function createSurveyTokensAndMarkSent(
+  tenantId: string,
+  dispatchId: string,
+  tokens: CreateSurveyTokenInput[],
+): Promise<void> {
+  await prisma.$transaction([
+    prisma.surveyResponseToken.createMany({ data: tokens }),
+    prisma.surveyDispatch.updateMany({
+      where: { id: dispatchId, tenantId },
+      data: { status: "sent", dispatchedAt: new Date(), totalRecipients: tokens.length },
+    }),
+  ])
 }
 
 export interface DispatchEmployee {

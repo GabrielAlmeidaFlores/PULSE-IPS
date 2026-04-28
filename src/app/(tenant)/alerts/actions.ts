@@ -29,7 +29,7 @@ export async function resolveAlertAction(alertId: string): Promise<ActionResult>
   const parsed = alertIdSchema.safeParse(alertId)
   if (!parsed.success) return { error: "ID inválido." }
   try {
-    await resolve(session.tenantId, parsed.data)
+    await resolve(session.tenantId, parsed.data, session.userId)
     revalidatePath("/alerts")
     return {}
   } catch (err) {

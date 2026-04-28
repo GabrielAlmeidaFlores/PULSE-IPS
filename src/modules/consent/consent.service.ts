@@ -133,6 +133,8 @@ export async function acceptConsentFromSurveyToken(surveyToken: string): Promise
       source: "survey_form",
     })
   }
+
+  await markTokenUsed(tokenRecord.id)
 }
 
 export async function refuseConsentFromSurveyToken(surveyToken: string): Promise<void> {

@@ -6,9 +6,8 @@ import { logger } from "@/libs/logger"
 import {
   findAllTenantsPendingDispatches,
   findActiveConfigsForAutoDispatch,
-  createSurveyTokens,
+  createSurveyTokensAndMarkSent,
   createDispatch,
-  markDispatchSent,
   findAllTenantsDispatches48hAgo,
   countResponsesForDispatch,
   createAdherenceAlert,
@@ -41,6 +40,51 @@ function isWorkDay(workDays: number[], timezone: string): boolean {
   return workDays.includes(today)
 }
 
+async function sendDispatchTokensAndMessages(
+  dispatchId: string,
+  tenantId: string,
+  eligibleEmployees: DispatchEmployee[],
+  department: { workStartTime: string; workEndTime: string },
+  configWorkStartTime: string,
+  configWorkEndTime: string,
+): Promise<void> {
+  const tokens = eligibleEmployees.map((emp) => ({
+    tenantId,
+    dispatchId,
+    employeeId: emp.id,
+    token: randomUUID(),
+    expiresAt: addHours(new Date(), 48),
+    workStartTime: emp.workStartTime ?? department.workStartTime ?? configWorkStartTime,
+    workEndTime: emp.workEndTime ?? department.workEndTime ?? configWorkEndTime,
+  }))
+
+  await createSurveyTokensAndMarkSent(tenantId, dispatchId, tokens)
+
+  const messageQueue = getMessageQueue()
+  const bulkJobs = tokens
+    .map((empToken) => {
+      const employee = eligibleEmployees.find((e) => e.id === empToken.employeeId)
+      if (!employee) return null
+      const surveyUrl = `${env.NEXT_PUBLIC_APP_URL}/survey/${empToken.token}`
+      return {
+        name: "send-message" as const,
+        data: {
+          to: employee.phone,
+          body: buildSurveyMessage(env.SURVEY_MESSAGE_TEMPLATE, employee.name, surveyUrl),
+          tenantId,
+          employeeId: employee.id,
+          provider: env.MESSAGING_PROVIDER,
+          type: "survey_dispatch" as const,
+          templateName: env.WHATSAPP_SURVEY_TEMPLATE_NAME,
+          templateVariables: [employee.name, surveyUrl],
+        },
+      }
+    })
+    .filter((job): job is NonNullable<typeof job> => job !== null)
+
+  await messageQueue.addBulk(bulkJobs)
+}
+
 async function fireDispatch(
   configId: string,
   tenantId: string,
@@ -66,42 +110,15 @@ async function fireDispatch(
 
   const dispatch = await createDispatch(tenantId, configId, new Date())
 
-  const tokens = eligibleEmployees.map((emp) => ({
+  await sendDispatchTokensAndMessages(
+    dispatch.id,
     tenantId,
-    dispatchId: dispatch.id,
-    employeeId: emp.id,
-    token: randomUUID(),
-    expiresAt: addHours(new Date(), 48),
-    workStartTime: emp.workStartTime ?? department.workStartTime ?? configWorkStartTime,
-    workEndTime: emp.workEndTime ?? department.workEndTime ?? configWorkEndTime,
-  }))
+    eligibleEmployees,
+    department,
+    configWorkStartTime,
+    configWorkEndTime,
+  )
 
-  await createSurveyTokens(tokens)
-  await markDispatchSent(tenantId, dispatch.id, eligibleEmployees.length)
-
-  const messageQueue = getMessageQueue()
-  const bulkJobs = tokens
-    .map((empToken) => {
-      const employee = eligibleEmployees.find((e) => e.id === empToken.employeeId)
-      if (!employee) return null
-      const surveyUrl = `${env.NEXT_PUBLIC_APP_URL}/survey/${empToken.token}`
-      return {
-        name: "send-message" as const,
-        data: {
-          to: employee.phone,
-          body: buildSurveyMessage(env.SURVEY_MESSAGE_TEMPLATE, employee.name, surveyUrl),
-          tenantId,
-          employeeId: employee.id,
-          provider: env.MESSAGING_PROVIDER,
-          type: "survey_dispatch" as const,
-          templateName: env.WHATSAPP_SURVEY_TEMPLATE_NAME,
-          templateVariables: [employee.name, surveyUrl],
-        },
-      }
-    })
-    .filter((job): job is NonNullable<typeof job> => job !== null)
-
-  await messageQueue.addBulk(bulkJobs)
   return true
 }
 
@@ -121,29 +138,43 @@ export async function runSurveyDispatcher(): Promise<{ dispatched: number; error
     try {
       const dept = config.department
       const deptWorkDays = dept.workDays.map((w) => w.dayOfWeek)
-      const employees: DispatchEmployee[] = dept.employees.map((emp) => ({
-        id: emp.id,
-        name: emp.name,
-        phone: emp.phone,
-        workStartTime: emp.workStartTime,
-        workEndTime: emp.workEndTime,
-        workDays: emp.workDays.map((w) => w.dayOfWeek),
-      }))
+      const today = getDayOfWeekInTimezone(timezone)
 
-      const fired = await fireDispatch(
-        config.id,
+      const workDayFiltered = dept.employees.filter((emp) => {
+        const effectiveDays = emp.workDays.map((w) => w.dayOfWeek)
+        const activeDays = effectiveDays.length > 0 ? effectiveDays : deptWorkDays
+        return activeDays.includes(today)
+      })
+
+      if (workDayFiltered.length === 0) continue
+
+      const acceptedIds = await findEmployeeIdsWithAcceptedConsent(dispatch.tenantId, workDayFiltered.map((e) => e.id))
+      const eligibleEmployees: DispatchEmployee[] = workDayFiltered
+        .filter((emp) => acceptedIds.includes(emp.id))
+        .map((emp) => ({
+          id: emp.id,
+          name: emp.name,
+          phone: emp.phone,
+          workStartTime: emp.workStartTime,
+          workEndTime: emp.workEndTime,
+          workDays: emp.workDays.map((w) => w.dayOfWeek),
+        }))
+
+      if (eligibleEmployees.length === 0) continue
+
+      await sendDispatchTokensAndMessages(
+        dispatch.id,
         dispatch.tenantId,
-        employees,
-        { workStartTime: dept.workStartTime, workEndTime: dept.workEndTime, workDays: deptWorkDays },
+        eligibleEmployees,
+        { workStartTime: dept.workStartTime, workEndTime: dept.workEndTime },
         config.workStartTime,
         config.workEndTime,
-        timezone,
       )
 
-      if (fired) dispatched++
+      dispatched++
     } catch (err) {
       errors++
-      logger.error({ err, configId: config.id }, "survey-dispatcher: error processing dispatch")
+      logger.error({ err, dispatchId: dispatch.id }, "survey-dispatcher: error processing dispatch")
     }
   }
 
@@ -203,7 +234,8 @@ export async function checkDispatchAdherence(): Promise<{ processed: number; ale
 
     if (adherenceRate < ALERT_ADHERENCE_THRESHOLD) {
       const departmentId = dispatch.surveyConfiguration.departmentId
-      const alreadyOpen = await hasOpenAlertOfType(dispatch.tenantId, "low_adherence", departmentId)
+      const alertType = adherenceRate < 0.5 ? "no_response" : "low_adherence"
+      const alreadyOpen = await hasOpenAlertOfType(dispatch.tenantId, alertType, departmentId)
       if (!alreadyOpen) {
         await createAdherenceAlert({
           tenantId: dispatch.tenantId,

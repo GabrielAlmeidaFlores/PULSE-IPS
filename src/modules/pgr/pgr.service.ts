@@ -4,6 +4,7 @@ import type { PgrReview, PgrQuestionResult } from "@prisma/client"
 import type { CreatePgrDeptResultInput, CreatePgrQuestionResultInput, PgrScoreDistribution } from "@/modules/pgr/pgr.types"
 import type { ScoreDirection } from "@/modules/surveys/survey.types"
 import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
+import { AppError } from "@/libs/errors/app-error"
 import {
   type PgrReviewWithResults,
   type PgrReviewListItem,
@@ -12,9 +13,8 @@ import {
   findPgrReviewById,
   findOrgWithDepartmentsForPgr,
   findDispatchesForPgr,
-  createPgrReview,
-  createPgrDeptResults,
-  createPgrQuestionResults,
+  findPgrReviewByTenantAndPeriod,
+  createPgrReviewAtomic,
   findAllTenantsUpcomingPgrReviews,
   findExistingPgrAlert,
   createPgrAlert,
@@ -135,17 +135,18 @@ export async function generatePgrReport(tenantId: string, period: string): Promi
     const dt = new Date(d.dispatchedAt)
     return dt.getFullYear() === periodYear && dt.getMonth() + 1 === periodMonth
   })
-  const targetDispatches = periodDispatches.length > 0 ? periodDispatches : dispatches
 
-  const review = await createPgrReview({
-    tenantId,
-    period,
-    status: "generated",
-    reviewedAt: new Date(),
-  })
+  if (periodDispatches.length === 0) {
+    throw new AppError("NO_DATA_FOR_PERIOD", `Nenhum dado encontrado para o período ${period}.`)
+  }
+
+  const existingReview = await findPgrReviewByTenantAndPeriod(tenantId, period)
+  if (existingReview) {
+    throw new AppError("DUPLICATE_PGR_PERIOD", `Já existe um relatório gerado para o período ${period}.`)
+  }
 
   const deptResults: CreatePgrDeptResultInput[] = org.departments.map((dept) => {
-    const deptDispatches = targetDispatches.filter(
+    const deptDispatches = periodDispatches.filter(
       (d) => d.surveyConfiguration.departmentId === dept.id,
     )
     const allResponses = deptDispatches.flatMap((d) => d.responses)
@@ -154,7 +155,7 @@ export async function generatePgrReport(tenantId: string, period: string): Promi
     )
     const allItems = allResponses.flatMap((r) => r.items)
     const avgScore =
-      allItems.length > 0
+      allResponses.length >= MINIMUM_RESPONDENTS_FOR_DISPLAY
         ? allItems.reduce((sum, item) => {
             const dir = questionDirections.get(item.questionId) ?? "higher_is_better"
             return sum + (dir === "lower_is_better" ? 6 - item.score : item.score)
@@ -163,7 +164,7 @@ export async function generatePgrReport(tenantId: string, period: string): Promi
     const totalRecipients = deptDispatches.reduce((sum, d) => sum + d.totalRecipients, 0)
 
     return {
-      pgrReviewId: review.id,
+      pgrReviewId: "",
       departmentId: dept.id,
       departmentName: dept.name,
       employeeCount: dept.employees.length,
@@ -173,19 +174,19 @@ export async function generatePgrReport(tenantId: string, period: string): Promi
     }
   })
 
-  await createPgrDeptResults(deptResults)
-
   const questionResults = org.departments.flatMap((dept) =>
     buildDeptQuestionResults(
-      review.id,
+      "",
       dept.id,
-      targetDispatches.filter((d) => d.surveyConfiguration.departmentId === dept.id),
+      periodDispatches.filter((d) => d.surveyConfiguration.departmentId === dept.id),
     ),
   )
 
-  if (questionResults.length > 0) {
-    await createPgrQuestionResults(questionResults)
-  }
+  await createPgrReviewAtomic(
+    { tenantId, period, status: "generated", reviewedAt: new Date() },
+    deptResults,
+    questionResults,
+  )
 }
 
 export async function sendPgrReviewReminders(): Promise<{ remindersCreated: number }> {

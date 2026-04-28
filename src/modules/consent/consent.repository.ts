@@ -131,7 +131,7 @@ export async function findEmployeeIdsForConsentState(tenantId: string, consentFi
 
   if (consentFilter === "opt_out") {
     return latestEvents
-      .filter((c) => c.event === "opted_out" || c.event === "revoked")
+      .filter((c) => c.event === "opted_out")
       .map((c) => c.employeeId)
   }
 

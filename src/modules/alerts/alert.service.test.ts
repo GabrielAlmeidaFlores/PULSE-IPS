@@ -484,14 +484,14 @@ describe("resolve", () => {
   it("resolves the alert successfully", async () => {
     mockResolveAlert.mockResolvedValue({ count: 1 } as Awaited<ReturnType<typeof resolveAlert>>)
 
-    await resolve("t-1", "alert-1")
-    expect(mockResolveAlert).toHaveBeenCalledWith("t-1", "alert-1")
+    await resolve("t-1", "alert-1", "user-1")
+    expect(mockResolveAlert).toHaveBeenCalledWith("t-1", "alert-1", "user-1")
   })
 
   it("throws AppError when alert is not found", async () => {
     mockResolveAlert.mockResolvedValue({ count: 0 } as Awaited<ReturnType<typeof resolveAlert>>)
 
-    await expect(resolve("t-1", "missing-id")).rejects.toMatchObject({ code: "ALERT_NOT_FOUND" })
+    await expect(resolve("t-1", "missing-id", "user-1")).rejects.toMatchObject({ code: "ALERT_NOT_FOUND" })
   })
 })
 

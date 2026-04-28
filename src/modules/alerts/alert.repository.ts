@@ -1,6 +1,7 @@
 import { prisma } from "@/libs/db"
 import type { Alert, Prisma } from "@prisma/client"
 import type { AlertSeverity, AlertType } from "@/modules/alerts/alert.types"
+import { MINIMUM_RESPONDENTS_FOR_DISPLAY } from "@/libs/utils/anonymity"
 
 export interface CreateAlertInput {
   tenantId: string
@@ -99,10 +100,10 @@ export function markAlertRead(tenantId: string, alertId: string): Promise<{ coun
   })
 }
 
-export function resolveAlert(tenantId: string, alertId: string): Promise<{ count: number }> {
+export function resolveAlert(tenantId: string, alertId: string, resolvedBy: string): Promise<{ count: number }> {
   return prisma.alert.updateMany({
     where: { id: alertId, tenantId },
-    data: { resolvedAt: new Date(), isRead: true },
+    data: { resolvedAt: new Date(), isRead: true, resolvedBy },
   })
 }
 
@@ -179,7 +180,7 @@ export async function findAllTenantsDeptRecentDispatchAvgs(departmentId: string,
   const results: DeptDispatchAvg[] = []
   for (const config of configs) {
     for (const dispatch of config.dispatches) {
-      if (dispatch.responses.length === 0) continue
+      if (dispatch.responses.length < MINIMUM_RESPONDENTS_FOR_DISPLAY) continue
       const allScores = dispatch.responses.flatMap((r) =>
         r.items.map((item) =>
           item.question.scoreDirection === "lower_is_better" ? 6 - item.score : item.score,

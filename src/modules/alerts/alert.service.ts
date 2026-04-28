@@ -53,8 +53,8 @@ export async function markRead(tenantId: string, alertId: string): Promise<void>
   if (result.count === 0) throw new AppError("ALERT_NOT_FOUND", "Alerta não encontrado.")
 }
 
-export async function resolve(tenantId: string, alertId: string): Promise<void> {
-  const result = await resolveAlert(tenantId, alertId)
+export async function resolve(tenantId: string, alertId: string, resolvedBy: string): Promise<void> {
+  const result = await resolveAlert(tenantId, alertId, resolvedBy)
   if (result.count === 0) throw new AppError("ALERT_NOT_FOUND", "Alerta não encontrado.")
 }
 

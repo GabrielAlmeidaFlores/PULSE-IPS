@@ -13,6 +13,8 @@ export type AuditAction =
   | "user.login"
   | "user.logout"
   | "user.invited"
+  | "user.password_changed"
+  | "user.password_reset"
   | "billing.checkout_started"
   | "billing.subscription_updated"
 

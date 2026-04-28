@@ -96,6 +96,7 @@ interface DispatchProcessResult {
   overallByMonth: Map<string, MonthAgg>
   deptInfo: Map<string, DeptInfo>
   recentScores: number[]
+  recentResponseCount: number
 }
 
 interface ItemProcessParams {
@@ -139,6 +140,7 @@ function processDispatches(
   const overallByMonth = new Map<string, MonthAgg>()
   const deptInfo = new Map<string, DeptInfo>()
   const recentScores: number[] = []
+  let recentResponseCount = 0
 
   for (const dispatch of dispatches) {
     if (!dispatch.dispatchedAt) continue
@@ -158,13 +160,14 @@ function processDispatches(
     overall.responseCount += dispatch.responses.length
 
     for (const response of dispatch.responses) {
+      if (isRecent) recentResponseCount++
       processResponseItems(response, { filterActive, orderSet, overall, info, key, monthDate, isRecent, recentScores })
     }
 
     overallByMonth.set(key, overall)
   }
 
-  return { overallByMonth, deptInfo, recentScores }
+  return { overallByMonth, deptInfo, recentScores, recentResponseCount }
 }
 
 export function getAvailableQuestions(tenantId: string): Promise<UniqueQuestion[]> {
@@ -182,10 +185,10 @@ export async function getDashboardData(tenantId: string, selectedOrders: number[
     countActiveAlerts(tenantId),
   ])
 
-  const { overallByMonth, deptInfo, recentScores } = processDispatches(dispatches, thirtyDaysAgo, selectedOrders)
+  const { overallByMonth, deptInfo, recentScores, recentResponseCount } = processDispatches(dispatches, thirtyDaysAgo, selectedOrders)
 
   const rawAvg =
-    recentScores.length > 0
+    recentResponseCount >= MINIMUM_RESPONDENTS_FOR_DISPLAY
       ? roundTwo(recentScores.reduce((a, b) => a + b, 0) / recentScores.length)
       : null
 
@@ -199,7 +202,7 @@ export async function getDashboardData(tenantId: string, selectedOrders: number[
 
   const overallTrend: TrendPoint[] = sortedMonths.map((m) => ({
     month: monthLabel(m.monthDate),
-    avg: m.scoreCount > 0 ? toHealthIndex(roundTwo(m.totalScore / m.scoreCount)) : 0,
+    avg: m.responseCount >= MINIMUM_RESPONDENTS_FOR_DISPLAY ? toHealthIndex(roundTwo(m.totalScore / m.scoreCount)) : 0,
     responses: m.responseCount,
   }))
 

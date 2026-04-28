@@ -46,7 +46,7 @@ describe("updateReportStatus", () => {
   it("updates report with provided status", async () => {
     await updateReportStatus("org-1", "rep-1", { status: "analyzing" })
 
-    expect(mockUpdateReport).toHaveBeenCalledWith("org-1", "rep-1", { status: "analyzing" })
+    expect(mockUpdateReport).toHaveBeenCalledWith("org-1", "rep-1", { status: "analyzing", resolvedAt: null })
   })
 
   it("adds resolvedAt timestamp when status is resolved", async () => {
@@ -63,7 +63,7 @@ describe("updateReportStatus", () => {
     await updateReportStatus("org-1", "rep-1", { status: "open" })
 
     const callArg = mockUpdateReport.mock.calls[0]?.[2]
-    expect(callArg).not.toHaveProperty("resolvedAt")
+    expect(callArg).toHaveProperty("resolvedAt", null)
   })
 })
 

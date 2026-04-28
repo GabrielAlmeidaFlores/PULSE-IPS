@@ -31,7 +31,7 @@ export function updateReportStatus(
 ): ReturnType<typeof updateReport> {
   const data = {
     ...input,
-    ...(input.status === "resolved" ? { resolvedAt: new Date() } : {}),
+    resolvedAt: input.status === "resolved" ? new Date() : null,
   }
   return updateReport(tenantId, reportId, data)
 }

@@ -1,8 +1,8 @@
 import type { BillingWebhookEvent } from "@/libs/integrations/billing/billing.interface"
-import { upsertSubscription, recordWebhookEvent, findWebhookEvent, findFailedWebhookEvents, markWebhookEventProcessed, markWebhookEventFailed, createSubscriptionFeatureSnapshot, findTenantSubscriptionFeatures } from "@/modules/billing/billing.repository"
+import { upsertSubscription, recordWebhookEvent, findWebhookEvent, findFailedWebhookEvents, markWebhookEventProcessed, markWebhookEventFailed, createSubscriptionFeatureSnapshot, findTenantSubscriptionFeatures, findPlanPriceForProvisioning, cancelOrganizationSubscription } from "@/modules/billing/billing.repository"
 import type { BillingStatus } from "@/modules/billing/billing.types"
 import { findOrganizationByCustomerId, updateOrganizationBillingStatus } from "@/modules/organizations/organization.repository"
-import { findPlanPriceById, findPlanFeatures } from "@/modules/plans/plan.repository"
+import { findPlanFeatures } from "@/modules/plans/plan.repository"
 
 interface WebhookSubscriptionData {
   id: string
@@ -16,6 +16,14 @@ interface WebhookSubscriptionData {
 
 interface WebhookInvoiceData {
   customer: string
+}
+
+function mapStripeStatusToBillingStatus(stripeStatus: string): BillingStatus {
+  if (stripeStatus === "active" || stripeStatus === "trialing") return "active"
+  if (stripeStatus === "past_due" || stripeStatus === "unpaid") return "past_due"
+  if (stripeStatus === "canceled" || stripeStatus === "cancelled" || stripeStatus === "incomplete_expired") return "cancelled"
+  if (stripeStatus === "incomplete") return "pending"
+  return "suspended"
 }
 
 export async function handleStripeWebhook(event: BillingWebhookEvent): Promise<void> {
@@ -64,14 +72,14 @@ async function handleSubscriptionUpdate(subscription: WebhookSubscriptionData): 
   if (!customer) return
 
   const priceId = subscription.items.data[0]?.price.id ?? ""
-  const planPrice = await findPlanPriceById(priceId)
+  const planPrice = await findPlanPriceForProvisioning(priceId)
   if (!planPrice) return
 
   const sub = await upsertSubscription({
     tenantId: customer.id,
     planId: planPrice.planId,
     externalSubscriptionId: subscription.id,
-    status: subscription.status as BillingStatus,
+    status: mapStripeStatusToBillingStatus(subscription.status),
     currentPeriodStart: new Date(subscription.current_period_start * 1000),
     currentPeriodEnd: new Date(subscription.current_period_end * 1000),
     cancelAtPeriodEnd: subscription.cancel_at_period_end,
@@ -88,12 +96,13 @@ async function handleSubscriptionUpdate(subscription: WebhookSubscriptionData): 
     await createSubscriptionFeatureSnapshot(sub.id, planFeatures)
   }
 
-  await updateOrganizationBillingStatus(customer.id, subscription.status as BillingStatus, planPrice.planId)
+  await updateOrganizationBillingStatus(customer.id, mapStripeStatusToBillingStatus(subscription.status), planPrice.planId)
 }
 
 async function handleSubscriptionDeleted(subscription: WebhookSubscriptionData): Promise<void> {
   const customer = await findOrganizationByCustomerId(subscription.customer)
   if (!customer) return
+  await cancelOrganizationSubscription(subscription.id)
   await updateOrganizationBillingStatus(customer.id, "cancelled")
 }
 

@@ -43,7 +43,7 @@ const SKIP_LOG_PREFIXES = ["/api/internal/", "/api/jobs/", "/_next/", "/favicon"
 
 function isPublicPath(pathname: string): boolean {
   if (pathname === "/") return true
-  return PUBLIC_PATHS.some((p) => pathname.startsWith(p))
+  return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))
 }
 
 function isTenantPath(pathname: string): boolean {

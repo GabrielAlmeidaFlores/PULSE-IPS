@@ -6,7 +6,7 @@ export function buildDispatchSuggestion(
   existingTitles: Set<string>,
 ): ActionPlanSuggestion | null {
   const topDispatch = lowAdherenceDispatches[0]
-  if (!topDispatch) return null
+  if (!topDispatch || topDispatch.totalRecipients === 0) return null
   const deptName = topDispatch.surveyConfiguration?.department?.name ?? "geral"
   const title = `Aumentar adesão às pesquisas — ${deptName}`
   if (existingTitles.has(title.toLowerCase())) return null

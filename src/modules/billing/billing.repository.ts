@@ -77,3 +77,10 @@ export async function markWebhookEventProcessed(id: string): Promise<void> {
 export async function markWebhookEventFailed(id: string, error: string): Promise<void> {
   await prisma.billingWebhookEvent.update({ where: { id }, data: { error } })
 }
+
+export async function cancelOrganizationSubscription(externalSubscriptionId: string): Promise<void> {
+  await prisma.organizationSubscription.updateMany({
+    where: { externalSubscriptionId },
+    data: { status: "cancelled", updatedAt: new Date() },
+  })
+}

@@ -92,7 +92,7 @@ export async function changePassword(
 
   const newHash = await hashPassword(newPassword)
   await updateOrgUserPassword(userId, tenantId, newHash)
-  await createAuditLog({ tenantId, userId, action: "user.login", resource: "organization_users", resourceId: userId, metadata: { event: "password_changed" } })
+  await createAuditLog({ tenantId, userId, action: "user.password_changed", resource: "organization_users", resourceId: userId, metadata: { event: "password_changed" } })
 }
 
 export async function requestPasswordReset(email: string, orgSlug: string): Promise<void> {
@@ -128,7 +128,7 @@ export async function resetPassword(token: string, newPassword: string): Promise
 
   const newHash = await hashPassword(newPassword)
   await consumeAuthToken(authToken.id, authToken.userId, user.tenantId, newHash)
-  await createAuditLog({ tenantId: user.tenantId, userId: user.id, action: "user.login", resource: "organization_users", resourceId: user.id, metadata: { event: "password_reset" } })
+  await createAuditLog({ tenantId: user.tenantId, userId: user.id, action: "user.password_reset", resource: "organization_users", resourceId: user.id, metadata: { event: "password_reset" } })
 }
 
 export function getOrgUserById(userId: string, tenantId: string): ReturnType<typeof findOrgUserById> {

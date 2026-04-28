@@ -10,9 +10,11 @@ import {
   markWebhookEventFailed,
   findTenantSubscriptionFeatures,
   createSubscriptionFeatureSnapshot,
+  findPlanPriceForProvisioning,
+  cancelOrganizationSubscription,
 } from "@/modules/billing/billing.repository"
 import { findOrganizationByCustomerId, updateOrganizationBillingStatus } from "@/modules/organizations/organization.repository"
-import { findPlanPriceById, findPlanFeatures } from "@/modules/plans/plan.repository"
+import { findPlanFeatures } from "@/modules/plans/plan.repository"
 
 vi.mock("@/modules/billing/billing.repository")
 vi.mock("@/modules/organizations/organization.repository")
@@ -29,7 +31,8 @@ const mockFindTenantSubscriptionFeatures = vi.mocked(findTenantSubscriptionFeatu
 const mockCreateSubscriptionFeatureSnapshot = vi.mocked(createSubscriptionFeatureSnapshot)
 const mockFindOrgByCustomerId = vi.mocked(findOrganizationByCustomerId)
 const mockUpdateOrgBillingStatus = vi.mocked(updateOrganizationBillingStatus)
-const mockFindPlanPriceById = vi.mocked(findPlanPriceById)
+const mockFindPlanPriceForProvisioning = vi.mocked(findPlanPriceForProvisioning)
+const mockCancelOrganizationSubscription = vi.mocked(cancelOrganizationSubscription)
 const mockFindPlanFeatures = vi.mocked(findPlanFeatures)
 
 const ORG = { id: "org-1", slug: "acme" }
@@ -90,7 +93,8 @@ beforeEach(() => {
   mockCreateSubscriptionFeatureSnapshot.mockResolvedValue(undefined)
   mockFindPlanFeatures.mockResolvedValue([])
   mockFindOrgByCustomerId.mockResolvedValue(ORG as Awaited<ReturnType<typeof findOrganizationByCustomerId>>)
-  mockFindPlanPriceById.mockResolvedValue(PLAN_PRICE as Awaited<ReturnType<typeof findPlanPriceById>>)
+  mockFindPlanPriceForProvisioning.mockResolvedValue(PLAN_PRICE as Awaited<ReturnType<typeof findPlanPriceForProvisioning>>)
+  mockCancelOrganizationSubscription.mockResolvedValue(undefined)
 })
 
 describe("handleStripeWebhook — idempotency", () => {
@@ -134,7 +138,7 @@ describe("handleStripeWebhook — customer.subscription.created/updated", () => 
   })
 
   it("skips when plan price not found", async () => {
-    mockFindPlanPriceById.mockResolvedValue(null)
+    mockFindPlanPriceForProvisioning.mockResolvedValue(null)
 
     await handleStripeWebhook(makeSubscriptionEvent(SUBSCRIPTION_CREATED) as BillingWebhookEvent)
 
@@ -144,9 +148,10 @@ describe("handleStripeWebhook — customer.subscription.created/updated", () => 
 })
 
 describe("handleStripeWebhook — customer.subscription.deleted", () => {
-  it("sets billing status to cancelled", async () => {
+  it("sets billing status to cancelled and cancels subscription row", async () => {
     await handleStripeWebhook(makeSubscriptionEvent(SUBSCRIPTION_DELETED) as BillingWebhookEvent)
 
+    expect(mockCancelOrganizationSubscription).toHaveBeenCalledOnce()
     expect(mockUpdateOrgBillingStatus).toHaveBeenCalledWith(ORG.id, "cancelled")
     expect(mockRecordWebhookEvent).toHaveBeenCalledOnce()
   })
@@ -157,6 +162,7 @@ describe("handleStripeWebhook — customer.subscription.deleted", () => {
     await handleStripeWebhook(makeSubscriptionEvent(SUBSCRIPTION_DELETED) as BillingWebhookEvent)
 
     expect(mockUpdateOrgBillingStatus).not.toHaveBeenCalled()
+    expect(mockCancelOrganizationSubscription).not.toHaveBeenCalled()
   })
 })
 
