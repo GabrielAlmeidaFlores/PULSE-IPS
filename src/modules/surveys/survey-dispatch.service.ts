@@ -71,7 +71,7 @@ async function fireDispatch(
     dispatchId: dispatch.id,
     employeeId: emp.id,
     token: randomUUID(),
-    expiresAt: addHours(new Date(), 24),
+    expiresAt: addHours(new Date(), 48),
     workStartTime: emp.workStartTime ?? department.workStartTime ?? configWorkStartTime,
     workEndTime: emp.workEndTime ?? department.workEndTime ?? configWorkEndTime,
   }))

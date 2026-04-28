@@ -227,7 +227,7 @@ export interface EmployeeWithExpiredConsentToken {
 
 export async function findAllTenantsEmployeesWithExpiredConsentTokens(): Promise<EmployeeWithExpiredConsentToken[]> {
   const now = new Date()
-  const consents = await prisma.employeeConsent.findMany({
+  const expiredInvites = await prisma.employeeConsent.findMany({
     where: {
       event: "invited",
       tokenExpiresAt: { lt: now },
@@ -243,8 +243,28 @@ export async function findAllTenantsEmployeesWithExpiredConsentTokens(): Promise
     distinct: ["employeeId"],
   })
 
-  return consents
-    .filter((c) => c.employee.status === "active")
+  const activeExpiredInvites = expiredInvites.filter((c) => c.employee.status === "active")
+  if (activeExpiredInvites.length === 0) return []
+
+  const employeeIds = activeExpiredInvites.map((c) => c.employeeId)
+
+  const laterResolutions = await prisma.employeeConsent.findMany({
+    where: {
+      employeeId: { in: employeeIds },
+      event: { in: ["accepted", "refused", "opted_out", "revoked"] },
+    },
+    select: { employeeId: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+    distinct: ["employeeId"],
+  })
+
+  const latestResolutionByEmployee = new Map(laterResolutions.map((r) => [r.employeeId, r.createdAt]))
+
+  return activeExpiredInvites
+    .filter((c) => {
+      const latestResolution = latestResolutionByEmployee.get(c.employeeId)
+      return latestResolution === undefined || latestResolution < c.createdAt
+    })
     .map((c) => ({
       tenantId: c.tenantId,
       departmentId: c.employee.departmentId,
