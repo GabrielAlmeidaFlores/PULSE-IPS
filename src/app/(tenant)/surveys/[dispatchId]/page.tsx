@@ -17,13 +17,16 @@ import {
   Activity,
   BarChart2,
   TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 import {
   QuestionScoreChart,
   ScoreDistributionBar,
   AdherenceGauge,
   DeptTrendChart,
+  DispatchHealthComparisonChart,
   type TrendPoint,
+  type ComparisonPoint,
 } from "@/app/(tenant)/surveys/[dispatchId]/components/dispatch-charts";
 import { DeptFilter } from "@/app/(tenant)/surveys/[dispatchId]/components/dept-filter";
 import { DeptBreakdownTable } from "@/app/(tenant)/surveys/[dispatchId]/components/dept-breakdown-table";
@@ -33,7 +36,10 @@ import type {
   DispatchDashboardStats,
   ScoreDirection,
 } from "@/modules/surveys/survey.types";
-import { toHealthIndex, healthIndexAccent } from "@/libs/utils/health-index";
+import {
+  toHealthIndex,
+  healthIndexAccent,
+} from "@/libs/utils/health-index";
 
 interface Props {
   params: Promise<{ dispatchId: string }>;
@@ -63,6 +69,22 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: "Cancelado",
   failed: "Falhou",
 };
+
+interface DeptRankingItem {
+  id: string;
+  name: string;
+  healthIndex: number | null;
+  adherence: number;
+  responses: number;
+  recipients: number;
+}
+
+function sortDeptRankingItems(a: DeptRankingItem, b: DeptRankingItem): number {
+  if (a.healthIndex === null && b.healthIndex === null) return b.adherence - a.adherence;
+  if (a.healthIndex === null) return 1;
+  if (b.healthIndex === null) return -1;
+  return b.healthIndex - a.healthIndex;
+}
 
 interface MergedStatsBase {
   id: string;
@@ -283,33 +305,10 @@ function DeptChartSection({
                     <p className="text-xs text-foreground leading-relaxed">
                       {q.text}
                     </p>
-                    <span
-                      className={`inline-block text-[9px] font-bold px-1.5 py-0.5 ${
-                        q.scoreDirection === "lower_is_better"
-                          ? "bg-status-danger-subtle text-status-danger"
-                          : "bg-status-success-subtle text-status-success"
-                      }`}
-                    >
-                      {q.scoreDirection === "lower_is_better"
-                        ? "1 = bom · 5 = ruim"
-                        : "1 = ruim · 5 = bom"}
-                    </span>
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
                   <ScoreDistributionBar question={q} />
-                  <div className="flex gap-1 flex-wrap">
-                    {q.distribution
-                      .filter((d) => d.count > 0)
-                      .map((d) => (
-                        <span
-                          key={d.score}
-                          className="text-[9px] text-muted-foreground"
-                        >
-                          {d.score}★ {d.count}x
-                        </span>
-                      ))}
-                  </div>
                 </div>
                 <div className="text-right">
                   {q.avgScore !== null ? (
@@ -338,6 +337,131 @@ function DeptChartSection({
   );
 }
 
+interface HistoryBucket {
+  dayKey: string;
+  scheduledAt: Date;
+  totalRecipients: number;
+  totalResponses: number;
+  dispatchId: string;
+}
+
+function buildSameDayPerDept(
+  allDispatches: DispatchWithConfig[],
+  anchorDay: string,
+): Map<string, DispatchWithConfig> {
+  const map = new Map<string, DispatchWithConfig>();
+  for (const d of allDispatches) {
+    if (format(new Date(d.scheduledAt), DAY_FORMAT) !== anchorDay) continue;
+    const deptId = d.surveyConfiguration.departmentId;
+    const existing = map.get(deptId);
+    if (!existing || new Date(d.scheduledAt) > new Date(existing.scheduledAt)) {
+      map.set(deptId, d);
+    }
+  }
+  return map;
+}
+
+function buildHistoryBucketMap(
+  relevantDispatches: DispatchWithConfig[],
+): Map<string, HistoryBucket> {
+  const map = new Map<string, HistoryBucket>();
+  for (const d of relevantDispatches) {
+    const dayKey = format(new Date(d.scheduledAt), DAY_FORMAT);
+    const existing = map.get(dayKey);
+    if (existing !== undefined) {
+      existing.totalRecipients += d.totalRecipients;
+      existing.totalResponses += d.totalResponses;
+    } else {
+      map.set(dayKey, {
+        dayKey,
+        scheduledAt: new Date(d.scheduledAt),
+        totalRecipients: d.totalRecipients,
+        totalResponses: d.totalResponses,
+        dispatchId: d.id,
+      });
+    }
+  }
+  return map;
+}
+
+async function buildDispatchComparisonData(
+  tenantId: string,
+  relevantDispatches: DispatchWithConfig[],
+  anchorDayKey: string,
+  mergedStats: DispatchDashboardStats,
+  anchorDispatchId: string,
+  anchorScheduledAt: Date,
+): Promise<ComparisonPoint[]> {
+  const dayToIds = new Map<string, string[]>();
+  for (const d of relevantDispatches) {
+    const dayKey = format(new Date(d.scheduledAt), DAY_FORMAT);
+    const existing = dayToIds.get(dayKey);
+    if (existing !== undefined) {
+      existing.push(d.id);
+    } else {
+      dayToIds.set(dayKey, [d.id]);
+    }
+  }
+
+  const previousDayKeys = [...dayToIds.keys()]
+    .filter((k) => k < anchorDayKey)
+    .sort()
+    .slice(-12);
+
+  const allPreviousIds = previousDayKeys.flatMap((k) => dayToIds.get(k) ?? []);
+  const allPreviousStats =
+    allPreviousIds.length > 0
+      ? await getMultipleDispatchDashboards(tenantId, allPreviousIds)
+      : [];
+  const statsById = new Map(allPreviousStats.map((s) => [s.id, s]));
+
+  const previousPoints: ComparisonPoint[] = previousDayKeys
+    .map((dayKey) => {
+      const ids = dayToIds.get(dayKey) ?? [];
+      const dayStats = ids
+        .map((id) => statsById.get(id))
+        .filter((s): s is DispatchDashboardStats => s !== undefined);
+      if (dayStats.length === 0) return null;
+      const firstStat = dayStats[0];
+      if (firstStat === undefined) return null;
+      const totalRec = dayStats.reduce((s, d) => s + d.totalRecipients, 0);
+      const totalRes = dayStats.reduce((s, d) => s + d.totalResponses, 0);
+      const adherence = totalRec > 0 ? Math.round((totalRes / totalRec) * 100) : 0;
+      const firstDispatch = relevantDispatches.find(
+        (d) => format(new Date(d.scheduledAt), DAY_FORMAT) === dayKey,
+      );
+      const base: MergedStatsBase = {
+        id: ids[0] ?? "",
+        departmentId: firstStat.departmentId,
+        status: "sent",
+        scheduledAt: firstDispatch ? new Date(firstDispatch.scheduledAt) : new Date(),
+        dispatchedAt: null,
+        frequency: firstStat.frequency,
+        departmentName: firstStat.departmentName,
+      };
+      const dayMerged = mergeDispatchStats(dayStats, base);
+      return {
+        date: firstDispatch ? format(new Date(firstDispatch.scheduledAt), "dd/MM") : dayKey,
+        healthIndex: dayMerged.avgScore !== null ? toHealthIndex(dayMerged.avgScore) : null,
+        adherence,
+        isCurrent: false,
+        dispatchId: firstDispatch?.id ?? null,
+      };
+    })
+    .filter((p): p is ComparisonPoint => p !== null);
+
+  return [
+    ...previousPoints,
+    {
+      date: format(anchorScheduledAt, "dd/MM"),
+      healthIndex: mergedStats.avgScore !== null ? toHealthIndex(mergedStats.avgScore) : null,
+      adherence: Math.round(mergedStats.adherenceRate * 100),
+      isCurrent: true,
+      dispatchId: anchorDispatchId,
+    },
+  ];
+}
+
 export default async function DispatchDetailPage({
   params,
   searchParams,
@@ -356,15 +480,7 @@ export default async function DispatchDetailPage({
 
   const anchorDay = format(anchorStats.scheduledAt, DAY_FORMAT);
 
-  const sameDayPerDept = new Map<string, DispatchWithConfig>();
-  for (const d of allDispatches) {
-    if (format(new Date(d.scheduledAt), DAY_FORMAT) !== anchorDay) continue;
-    const deptId = d.surveyConfiguration.departmentId;
-    const existing = sameDayPerDept.get(deptId);
-    if (!existing || new Date(d.scheduledAt) > new Date(existing.scheduledAt)) {
-      sameDayPerDept.set(deptId, d);
-    }
-  }
+  const sameDayPerDept = buildSameDayPerDept(allDispatches, anchorDay);
 
   const allDeptOptions = Array.from(sameDayPerDept.entries()).map(
     ([id, d]) => ({
@@ -414,31 +530,7 @@ export default async function DispatchDetailPage({
     historyDeptIds.includes(d.surveyConfiguration.departmentId),
   );
 
-  interface HistoryBucket {
-    dayKey: string;
-    scheduledAt: Date;
-    totalRecipients: number;
-    totalResponses: number;
-    dispatchId: string;
-  }
-
-  const historyBucketMap = new Map<string, HistoryBucket>();
-  for (const d of relevantDispatches) {
-    const dayKey = format(new Date(d.scheduledAt), DAY_FORMAT);
-    const existing = historyBucketMap.get(dayKey);
-    if (existing !== undefined) {
-      existing.totalRecipients += d.totalRecipients;
-      existing.totalResponses += d.totalResponses;
-    } else {
-      historyBucketMap.set(dayKey, {
-        dayKey,
-        scheduledAt: new Date(d.scheduledAt),
-        totalRecipients: d.totalRecipients,
-        totalResponses: d.totalResponses,
-        dispatchId: d.id,
-      });
-    }
-  }
+  const historyBucketMap = buildHistoryBucketMap(relevantDispatches);
 
   const allDeptStatsForRanking: DispatchDashboardStats[] =
     selectedIds.length === 0
@@ -457,13 +549,7 @@ export default async function DispatchDetailPage({
       responses: d.totalResponses,
       recipients: d.totalRecipients,
     }))
-    .sort((a, b) => {
-      if (a.healthIndex === null && b.healthIndex === null)
-        return b.adherence - a.adherence;
-      if (a.healthIndex === null) return 1;
-      if (b.healthIndex === null) return -1;
-      return b.healthIndex - a.healthIndex;
-    });
+    .sort(sortDeptRankingItems);
 
   const deptsQuery =
     selectedIds.length > 0
@@ -484,6 +570,35 @@ export default async function DispatchDetailPage({
         : 0,
     dispatchId: b.dayKey,
   }));
+
+  const comparisonData = await buildDispatchComparisonData(
+    session.tenantId,
+    relevantDispatches,
+    anchorDayKey,
+    mergedStats,
+    dispatchId,
+    new Date(anchorStats.scheduledAt),
+  );
+
+  const showHealthComparison = comparisonData.length > 1;
+
+  let comparisonTrendDirection: "up" | "down" | null = null;
+  const validComparisonPoints = comparisonData.filter((p) => p.healthIndex !== null);
+  const comparisonTrendLastTwo = validComparisonPoints.slice(-2);
+  if (comparisonTrendLastTwo.length === 2) {
+    const prevHi = comparisonTrendLastTwo[0]?.healthIndex ?? 0;
+    const currHi = comparisonTrendLastTwo[1]?.healthIndex ?? 0;
+    comparisonTrendDirection = currHi >= prevHi ? "up" : "down";
+  }
+
+  let comparisonTrendIcon: React.ReactElement = (
+    <TrendingUp className="w-3.5 h-3.5 text-muted-foreground" />
+  );
+  if (comparisonTrendDirection === "up") {
+    comparisonTrendIcon = <TrendingUp className="w-3.5 h-3.5 text-status-success" />;
+  } else if (comparisonTrendDirection === "down") {
+    comparisonTrendIcon = <TrendingDown className="w-3.5 h-3.5 text-status-danger" />;
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -528,7 +643,22 @@ export default async function DispatchDetailPage({
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-0 border border-border bg-card">
+        <div className={`grid gap-0 border border-border bg-card ${mergedStats.avgScore !== null ? "grid-cols-2 md:grid-cols-5" : "grid-cols-2 md:grid-cols-4"}`}>
+          {mergedStats.avgScore !== null && (
+            <div className="px-5 py-4 border-r border-border">
+              <div className="flex items-center gap-2 mb-1">
+                <BarChart2 className="w-3.5 h-3.5 text-muted-foreground" />
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Índice de saúde
+                </p>
+              </div>
+              <p
+                className={`text-3xl font-black ${healthIndexAccent(toHealthIndex(mergedStats.avgScore))}`}
+              >
+                {toHealthIndex(mergedStats.avgScore)}%
+              </p>
+            </div>
+          )}
           <div className="px-5 py-4 border-r border-border">
             <div className="flex items-center gap-2 mb-1">
               <Users className="w-3.5 h-3.5 text-muted-foreground" />
@@ -585,6 +715,17 @@ export default async function DispatchDetailPage({
         {showDeptBreakdown && <DeptBreakdownTable items={deptRanking} />}
 
         <DeptChartSection deptStats={mergedStats} />
+
+        {showHealthComparison && (
+          <ChartCard
+            title="Evolução do Índice de Saúde"
+            subtitle={`Últimas ${comparisonData.length - 1} pesquisa${comparisonData.length - 1 !== 1 ? "s" : ""} comparadas`}
+            action={comparisonTrendIcon}
+            bodyClassName="px-5 py-4"
+          >
+            <DispatchHealthComparisonChart data={comparisonData} />
+          </ChartCard>
+        )}
 
         {trendData.length > 0 && (
           <ChartCard

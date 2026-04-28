@@ -18,21 +18,21 @@ import { healthIndexChartColor } from "@/libs/utils/health-index"
 
 export const CHART_PALETTE = [
   "#3DB98A",
-  "#16a34a",
-  "#d97706",
-  "#dc2626",
+  "var(--status-success)",
+  "var(--status-warning)",
+  "var(--status-danger)",
   "#7c3aed",
   "#0891b2",
   "#db2777",
-  "#65a30d",
+  "var(--score-4)",
 ]
 
 const CHART_TICK_FILL = "var(--muted-foreground)"
 
 function adherenceBarColor(adherence: number): string {
-  if (adherence >= 70) return "#16a34a"
-  if (adherence >= 50) return "#d97706"
-  return "#dc2626"
+  if (adherence >= 70) return "var(--status-success)"
+  if (adherence >= 50) return "var(--status-warning)"
+  return "var(--status-danger)"
 }
 
 interface TickProps {

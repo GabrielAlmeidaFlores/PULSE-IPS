@@ -151,8 +151,8 @@ export function PgrScoreComparisonChart({ depts }: PgrScoreComparisonChartProps)
           width={104}
         />
         <Tooltip content={<ScoreTooltip />} cursor={{ fill: "var(--muted)", opacity: 0.4 }} />
-        <ReferenceLine x={62} stroke="#16a34a" strokeDasharray="4 3" strokeWidth={1} opacity={0.5} />
-        <ReferenceLine x={37} stroke="#dc2626" strokeDasharray="4 3" strokeWidth={1} opacity={0.5} />
+        <ReferenceLine x={62} stroke="var(--status-success)" strokeDasharray="4 3" strokeWidth={1} opacity={0.5} />
+        <ReferenceLine x={37} stroke="var(--status-danger)" strokeDasharray="4 3" strokeWidth={1} opacity={0.5} />
         <Bar dataKey="avgScore" radius={[0, 3, 3, 0]} barSize={18} stroke="none" label={{ position: "right", fontSize: 10, fontWeight: 700, formatter: (v: unknown) => (typeof v === "number" ? `${v}%` : String(v)) }}>
           {data.map((d) => (
             <Cell key={d.id} fill={healthIndexChartColor(d.avgScore)} />
@@ -193,7 +193,7 @@ export function PgrAdherenceComparisonChart({ depts }: PgrAdherenceComparisonCha
           width={104}
         />
         <Tooltip content={<AdherenceTooltip />} cursor={{ fill: "var(--muted)", opacity: 0.4 }} />
-        <ReferenceLine x={80} stroke="#16a34a" strokeDasharray="4 3" strokeWidth={1} opacity={0.5} />
+        <ReferenceLine x={80} stroke="var(--status-success)" strokeDasharray="4 3" strokeWidth={1} opacity={0.5} />
         <Bar
           dataKey="adherencePct"
           radius={[0, 3, 3, 0]}
@@ -248,8 +248,8 @@ export function PgrDeptQuestionsChart({ questions }: PgrDeptQuestionsChartProps)
           width={28}
         />
         <Tooltip content={<QuestionTooltip />} cursor={{ fill: "var(--muted)", opacity: 0.4 }} />
-        <ReferenceLine x={62} stroke="#16a34a" strokeDasharray="4 3" strokeWidth={1} opacity={0.5} />
-        <ReferenceLine x={37} stroke="#dc2626" strokeDasharray="4 3" strokeWidth={1} opacity={0.5} />
+        <ReferenceLine x={62} stroke="var(--status-success)" strokeDasharray="4 3" strokeWidth={1} opacity={0.5} />
+        <ReferenceLine x={37} stroke="var(--status-danger)" strokeDasharray="4 3" strokeWidth={1} opacity={0.5} />
         <Bar dataKey="avgScore" radius={[0, 3, 3, 0]} barSize={16} stroke="none" label={{ position: "right", fontSize: 10, fontWeight: 700, formatter: (v: unknown) => (typeof v === "number" ? `${v}%` : String(v)) }}>
           {data.map((q) => (
             <Cell key={q.id} fill={healthIndexChartColor(q.avgScore)} />

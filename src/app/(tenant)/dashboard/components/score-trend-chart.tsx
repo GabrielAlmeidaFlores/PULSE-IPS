@@ -79,8 +79,8 @@ export function ScoreTrendChart({ data }: Props): React.ReactElement {
         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
         <XAxis dataKey="month" tick={<XTick />} axisLine={false} tickLine={false} />
         <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tick={<YTick />} axisLine={false} tickLine={false} />
-        <ReferenceLine y={37} stroke="#d97706" strokeDasharray="4 4" strokeOpacity={0.6} />
-        <ReferenceLine y={62} stroke="#16a34a" strokeDasharray="4 4" strokeOpacity={0.4} />
+        <ReferenceLine y={37} stroke="var(--status-warning)" strokeDasharray="4 4" strokeOpacity={0.6} />
+        <ReferenceLine y={62} stroke="var(--status-success)" strokeDasharray="4 4" strokeOpacity={0.4} />
         <Tooltip content={<CustomTooltip />} />
         <Area type="monotone" dataKey="avg" stroke={color} strokeWidth={2.5} fill="url(#scoreGrad)" dot={{ r: 4, fill: color, strokeWidth: 0 }} activeDot={{ r: 6, strokeWidth: 0 }} />
       </AreaChart>
