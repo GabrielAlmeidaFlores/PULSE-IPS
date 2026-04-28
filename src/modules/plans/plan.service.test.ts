@@ -20,7 +20,6 @@ import {
   updatePlan,
   updatePlanPriceAmount,
   updatePlanPriceRecord,
-  countOrgsUsingPlan,
   deletePlan,
   findAllPlans,
   findAllPlansIncludingInactive,
@@ -39,7 +38,6 @@ const mockCreatePlanPrice = vi.mocked(createPlanPrice)
 const mockUpdatePlan = vi.mocked(updatePlan)
 const mockUpdatePlanPriceAmount = vi.mocked(updatePlanPriceAmount)
 const mockUpdatePlanPriceRecord = vi.mocked(updatePlanPriceRecord)
-const mockCountOrgsUsingPlan = vi.mocked(countOrgsUsingPlan)
 const mockDeletePlan = vi.mocked(deletePlan)
 const mockGetBillingService = vi.mocked(getBillingService)
 
@@ -166,15 +164,15 @@ describe("addDirectPriceToPlan", () => {
 })
 
 describe("deletePlanById", () => {
-  it("throws when plan is in use by organizations", async () => {
-    mockCountOrgsUsingPlan.mockResolvedValue(3)
+  it("throws when plan does not exist", async () => {
+    mockFindPlanById.mockResolvedValue(null)
 
-    await expect(deletePlanById("plan-1")).rejects.toMatchObject({ code: "PLAN_IN_USE" })
+    await expect(deletePlanById("plan-1")).rejects.toMatchObject({ code: "PLAN_NOT_FOUND" })
     expect(mockDeletePlan).not.toHaveBeenCalled()
   })
 
-  it("deletes plan when not in use", async () => {
-    mockCountOrgsUsingPlan.mockResolvedValue(0)
+  it("soft-deletes plan when it exists", async () => {
+    mockFindPlanById.mockResolvedValue(PLAN as Awaited<ReturnType<typeof findPlanById>>)
 
     await deletePlanById("plan-1")
 

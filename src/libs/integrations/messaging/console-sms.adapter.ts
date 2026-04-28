@@ -5,14 +5,14 @@ import type {
   BulkMessageParams,
   BulkMessageResult,
 } from "@/libs/integrations/messaging/messaging.interface"
+import { createLogger } from "@/libs/utils/logger"
+
+const logger = createLogger("fake-sms")
 
 export class ConsoleSmsAdapter implements IMessagingService {
   async send(params: SendMessageParams): Promise<SendMessageResult> {
     const externalId = `fake-sms-${Date.now()}`
-    console.log("\n📱 [FAKE SMS]")
-    console.log(`  To:   ${params.to}`)
-    console.log(`  Body: ${params.body}`)
-    console.log(`  ID:   ${externalId}\n`)
+    logger.info("📱 FAKE SMS", { to: params.to, body: params.body, id: externalId })
     return { externalId, status: "sent" }
   }
 

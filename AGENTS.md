@@ -1609,7 +1609,7 @@ O comando `yarn lint` executa o ESLint sobre todos os arquivos `**/*.ts` e `**/*
 
 | Regra | Nível | Significado prático |
 |---|---|---|
-| `no-console` | error | Proibido `console.*` — use o logger (`pino`) |
+| `no-console` | error | Proibido `console.*` — use o logger centralizado (`src/libs/utils/logger.ts`) |
 | `no-debugger` | error | Proibido `debugger` |
 | `no-alert` | error | Proibido `alert/confirm/prompt` |
 | `no-var` | error | Use `const` ou `let` |
@@ -1683,10 +1683,70 @@ O comando `yarn lint` executa o ESLint sobre todos os arquivos `**/*.ts` e `**/*
 | Padrão de arquivo | Regras desativadas |
 |---|---|
 | `src/components/ui/**` | `explicit-function-return-type`, `no-unsafe-*`, `consistent-type-definitions` |
-| `src/workers/**`, `src/libs/integrations/**` | `no-console`, `require-await`, `explicit-function-return-type` |
+| `src/workers/**`, `src/libs/integrations/**`, `src/libs/utils/logger.ts` | `no-console`, `require-await`, `explicit-function-return-type` |
 | `src/lib/**`, `src/libs/db/**` | `explicit-function-return-type` |
 | `**/*.test.ts`, `**/*.spec.ts` | `no-explicit-any`, `no-unsafe-*` |
 | Arquivos de config/rota/action/page/layout | `import/no-default-export` desativado |
+
+---
+
+### Logger centralizado — regra obrigatória
+
+**`console.*` é proibido em todo o projeto.** O único local onde `console.log/warn/error` aparecem é dentro de `src/libs/utils/logger.ts` — que é a implementação do logger.
+
+#### Uso obrigatório
+
+```typescript
+// Opção 1 — singleton genérico (origin: "app")
+import { logger } from "@/libs/utils/logger"
+
+logger.info("iniciando processo")
+logger.success("operação concluída", { count: 5 })
+logger.warn("tentativa falhou, retentando...")
+logger.error("falha crítica", err.message)
+logger.debug("payload recebido", data)
+
+// Opção 2 — logger nomeado (recomendado para módulos e workers)
+import { createLogger } from "@/libs/utils/logger"
+const logger = createLogger("survey-dispatcher")
+
+logger.info("verificando dispatches pendentes")
+```
+
+#### Quando usar cada nível
+
+| Nível | Método | Cor | Quando usar |
+|---|---|---|---|
+| `success` | `logger.success` | 🟢 Verde | Operação concluída com êxito |
+| `info` | `logger.info` | 🔵 Ciano | Informação geral de fluxo |
+| `warn` | `logger.warn` | 🟡 Amarelo | Situação incomum mas não crítica |
+| `error` | `logger.error` | 🔴 Vermelho | Falha que precisa de atenção |
+| `debug` | `logger.debug` | ⚫ Cinza | Dados de depuração (dev only) |
+
+#### Localização
+
+```
+src/libs/utils/logger.ts
+```
+
+Exporta:
+- `createLogger(origin: string): Logger` — cria instância com origem nomeada
+- `logger` — singleton com `origin = "app"` para uso geral
+
+#### Regra de naming para `createLogger`
+
+O argumento `origin` deve identificar inequivocamente o módulo:
+
+```typescript
+// ❌ PROIBIDO — genérico
+createLogger("module")
+createLogger("service")
+
+// ✅ CORRETO — específico
+createLogger("survey-dispatcher")
+createLogger("fake-billing")
+createLogger("job-worker")
+```
 
 ---
 
@@ -2066,6 +2126,40 @@ export interface IEmailService {
 | `plan_subscribed` | Webhook `checkout.session.completed` |
 | `payment_failed` | Webhook `invoice.payment_failed` |
 | `plan_cancelled` | Webhook `customer.subscription.deleted` |
+| `account_deletion_confirm` | Admin solicita exclusão da conta |
+| `account_deletion_scheduled` | Exclusão agendada confirmada |
+| `email_verification` | Verificação de e-mail |
+
+#### Sincronização obrigatória com o Design System
+
+> ⚠️ **REGRA INVIOLÁVEL — Templates de e-mail:** toda alteração no design system da aplicação (cores, tipografia, logo, espaçamentos, identidade visual) **deve ser refletida imediatamente em todos os templates HTML** localizados em `assets/email/template/`.
+
+Os templates de e-mail são a extensão visual do produto. Eles devem sempre seguir o mesmo padrão da interface web:
+
+| Elemento | Valor atual | Onde está no app |
+|---|---|---|
+| Cor primária (CTA, links) | `#3DB98A` | `--primary` / `brand-500` |
+| Cor de fundo do header/sidebar | `#1a1a2e` | `--sidebar` / `brand-900` |
+| Fundo da página | `#f1f5f9` | `--background` |
+| Fundo de card / rodapé | `#f8fafc` | `--card` |
+| Cor de borda | `#e5e7eb` | `--border` |
+| Texto principal | `#374151` | `--foreground` |
+| Texto secundário | `#6b7280` | `--muted-foreground` |
+| Logo — "PULSE" | `font-weight:900`, cor `#3DB98A`, `letter-spacing:-0.02em` | `Logo` component |
+| Logo — "IPS" | `font-weight:300`, cor `rgba(255,255,255,0.4)`, `letter-spacing:0.18em` | `Logo` component |
+
+**Checklist de sincronização — obrigatório antes de marcar qualquer tarefa de UI como concluída:**
+
+1. Foram alteradas cores do tema (`globals.css`, `tailwind.config.ts`, tokens CSS)? → Atualizar `assets/email/template/*.html`
+2. Foi alterado o componente `Logo` (`src/libs/design-system/components/logo.tsx`)? → Atualizar o bloco `<!-- HEADER -->` em todos os templates
+3. Foi adicionado novo fluxo de e-mail? → Criar arquivo em `assets/email/template/`, registrar em `src/libs/email-templates/index.ts` e adicionar na tabela acima
+4. Foi alterada a tipografia principal da aplicação? → Verificar `font-family` declarado nos templates
+
+**Restrições técnicas dos templates (e-mail seguro):**
+- Sem flexbox ou CSS grid — usar apenas `<table>` para layout
+- Sem `border-radius` — manter bordas retas, igual ao design system atual
+- Sem classes CSS — todos os estilos devem ser inline
+- Sem `<script>` ou recursos externos não confiáveis
 
 ### Billing
 
@@ -3370,7 +3464,7 @@ Execute `grep` para confirmar cada item:
 | 4 | Nenhum `$queryRaw` / `$executeRaw` em qualquer arquivo | `grep -r "\$queryRaw\|\$executeRaw" src/` |
 | 5 | Todas as queries em tabelas com `tenant_id` incluem `tenantId` no `where` | Revisar manualmente qualquer novo repository |
 | 6 | Mensagens de erro em pt-BR | `grep -rn '"[A-Z].*[a-z]"' src/modules/ \| grep "throw\|AppError"` |
-| 7 | Nenhum `console.*` fora de workers/integrations | `grep -rn "console\." src/app/ src/modules/` |
+| 7 | Nenhum `console.*` em nenhum arquivo (exceto `src/libs/utils/logger.ts`) | `grep -rn "console\." src/ --include="*.ts" --include="*.tsx" \| grep -v "src/libs/utils/logger.ts"` |
 | 8 | Queries cross-tenant de jobs nomeadas com `findAllTenants*` | Revisar `src/workers/` e jobs que chamam repositories sem `tenantId` |
 | 9 | Nenhum `enum` TypeScript (use union types ou const maps) | `grep -rn "^enum \|  enum " src/` |
 | 10 | `JsonValue` de `@/libs/utils/json` — nunca `Prisma.InputJsonValue` fora de repository | `grep -rn "Prisma\.InputJsonValue\|Prisma\.JsonValue" src/modules/ src/app/` |

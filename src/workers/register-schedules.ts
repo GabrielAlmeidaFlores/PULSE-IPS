@@ -1,4 +1,7 @@
 import { createJobQueue, type JobName } from "@/libs/queue"
+import { createLogger } from "@/libs/utils/logger"
+
+const logger = createLogger("register-schedules")
 
 const REPEAT_SCHEDULES: Record<JobName, string> = {
   "survey-dispatcher":              "*/15 * * * *",
@@ -9,6 +12,7 @@ const REPEAT_SCHEDULES: Record<JobName, string> = {
   "stripe-webhook-retry":           "0 * * * *",
   "survey-response-token-cleanup":  "0 2 * * *",
   "action-plan-suggestion-generator": "0 6 * * *",
+  "organization-deletion-executor": "30 3 * * *",
 }
 
 async function registerScheduledJobs(): Promise<void> {
@@ -20,14 +24,14 @@ async function registerScheduledJobs(): Promise<void> {
       { pattern },
       { name: jobName, data: {} },
     )
-    console.log(`Registered job: ${jobName} → ${pattern}`)
+    logger.success(`registered: ${jobName} → ${pattern}`)
   }
 
   await queue.close()
-  console.log("All scheduled jobs registered.")
+  logger.success("all scheduled jobs registered.")
 }
 
-registerScheduledJobs().catch((err) => {
-  console.error("Failed to register scheduled jobs:", err)
+registerScheduledJobs().catch((err: Error) => {
+  logger.error("failed to register scheduled jobs", err.message)
   process.exit(1)
 })

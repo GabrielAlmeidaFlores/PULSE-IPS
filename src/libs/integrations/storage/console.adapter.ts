@@ -1,17 +1,20 @@
 import type { IStorageService, UploadFileParams, UploadFileResult } from "@/libs/integrations/storage/storage.interface"
+import { createLogger } from "@/libs/utils/logger"
+
+const logger = createLogger("fake-storage")
 
 export class ConsoleStorageAdapter implements IStorageService {
   async upload(params: UploadFileParams): Promise<UploadFileResult> {
-    console.log(`[FAKE STORAGE] upload → key: ${params.path}, size: ${params.file.size}`)
+    logger.info("upload", { key: params.path, size: params.file.size })
     return { url: params.path, key: params.path }
   }
 
   async delete(key: string): Promise<void> {
-    console.log(`[FAKE STORAGE] delete → key: ${key}`)
+    logger.info("delete", { key })
   }
 
   async getUrl(key: string): Promise<string> {
-    console.log(`[FAKE STORAGE] getUrl → key: ${key}`)
+    logger.info("getUrl", { key })
     return `http://localhost:3000/fake-storage/${key}`
   }
 }

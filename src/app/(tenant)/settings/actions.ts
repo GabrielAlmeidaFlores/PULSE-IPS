@@ -1,13 +1,18 @@
 "use server"
 import { revalidatePath } from "next/cache"
+import { redirect } from "next/navigation"
 import { z } from "zod"
-import { getSession } from "@/modules/auth/session"
+import { isRedirectError } from "next/dist/client/components/redirect-error"
+import { getSession, destroySession } from "@/modules/auth/session"
 import { updateOrg } from "@/modules/organizations/organization.service"
 import { assertOrgAdmin } from "@/libs/auth/permissions"
-import { sendInvite } from "@/modules/auth/invite.service"
-import { changePassword } from "@/modules/auth/auth.service"
+import { sendInvite, resendOrgInvite, cancelOrgInvite } from "@/modules/auth/invite.service"
+import { changePassword, getOrgUserById } from "@/modules/auth/auth.service"
+import { requestAccountDeletionCode, confirmAccountDeletion } from "@/modules/organizations/account-deletion.service"
 import { AppError } from "@/libs/errors/app-error"
 import type { ActionResult } from "@/libs/utils/action-result"
+
+const SESSION_EXPIRED_ERROR = "Sessão expirada."
 
 function isValidIanaTimezone(tz: string): boolean {
   try {
@@ -39,7 +44,7 @@ export async function updateOrganizationAction(input: {
   timezone: string
 }): Promise<ActionResult> {
   const session = await getSession()
-  if (!session) return { error: "Sessão expirada." }
+  if (!session) return { error: SESSION_EXPIRED_ERROR }
   assertOrgAdmin(session)
   const parsed = updateOrgSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
@@ -58,12 +63,40 @@ export async function inviteUserAction(input: {
   role: "admin" | "rh"
 }): Promise<ActionResult> {
   const session = await getSession()
-  if (!session) return { error: "Sessão expirada." }
+  if (!session) return { error: SESSION_EXPIRED_ERROR }
   assertOrgAdmin(session)
   const parsed = inviteUserSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
   try {
     await sendInvite(session.tenantId, parsed.data.email, parsed.data.role, session.userId)
+    revalidatePath("/settings")
+    return {}
+  } catch (err) {
+    if (err instanceof AppError) return { error: err.message }
+    throw err
+  }
+}
+
+export async function resendOrgInviteAction(inviteId: string): Promise<ActionResult> {
+  const session = await getSession()
+  if (!session) return { error: SESSION_EXPIRED_ERROR }
+  assertOrgAdmin(session)
+  try {
+    await resendOrgInvite(session.tenantId, inviteId, session.userId)
+    revalidatePath("/settings")
+    return {}
+  } catch (err) {
+    if (err instanceof AppError) return { error: err.message }
+    throw err
+  }
+}
+
+export async function cancelOrgInviteAction(inviteId: string): Promise<ActionResult> {
+  const session = await getSession()
+  if (!session) return { error: SESSION_EXPIRED_ERROR }
+  assertOrgAdmin(session)
+  try {
+    await cancelOrgInvite(session.tenantId, inviteId, session.userId)
     revalidatePath("/settings")
     return {}
   } catch (err) {
@@ -78,13 +111,51 @@ export async function changePasswordAction(input: {
   confirmPassword: string
 }): Promise<ActionResult> {
   const session = await getSession()
-  if (!session) return { error: "Sessão expirada." }
+  if (!session) return { error: SESSION_EXPIRED_ERROR }
   const parsed = changePasswordSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
   try {
     await changePassword(session.userId, session.tenantId, parsed.data.currentPassword, parsed.data.newPassword)
     return {}
   } catch (err) {
+    if (err instanceof AppError) return { error: err.message }
+    throw err
+  }
+}
+
+export async function requestAccountDeletionAction(): Promise<ActionResult> {
+  const session = await getSession()
+  if (!session) return { error: SESSION_EXPIRED_ERROR }
+  assertOrgAdmin(session)
+  try {
+    const user = await getOrgUserById(session.userId, session.tenantId)
+    if (!user) return { error: "Usuário não encontrado." }
+    await requestAccountDeletionCode(session.tenantId, session.userId, user.email, user.name)
+    return {}
+  } catch (err) {
+    if (err instanceof AppError) return { error: err.message }
+    throw err
+  }
+}
+
+const confirmAccountDeletionSchema = z.object({
+  code: z.string().length(6, { message: "O código deve ter 6 dígitos." }).regex(/^\d+$/, { message: "O código deve conter apenas números." }),
+})
+
+export async function confirmAccountDeletionAction(input: { code: string }): Promise<ActionResult> {
+  const session = await getSession()
+  if (!session) return { error: SESSION_EXPIRED_ERROR }
+  assertOrgAdmin(session)
+  const parsed = confirmAccountDeletionSchema.safeParse(input)
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Código inválido." }
+  try {
+    const user = await getOrgUserById(session.userId, session.tenantId)
+    if (!user) return { error: "Usuário não encontrado." }
+    await confirmAccountDeletion(session.tenantId, session.userId, user.email, parsed.data.code)
+    await destroySession()
+    redirect("/")
+  } catch (err) {
+    if (isRedirectError(err)) throw err
     if (err instanceof AppError) return { error: err.message }
     throw err
   }

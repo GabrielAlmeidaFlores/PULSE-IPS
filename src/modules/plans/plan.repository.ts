@@ -15,7 +15,7 @@ export type PlanWithPricesAndFeatures = PlanWithFeatures & { prices: PlanPrice[]
 
 export function findAllPlans(): Promise<PlanWithPricesAndFeatures[]> {
   return prisma.plan.findMany({
-    where: { isActive: true },
+    where: { isActive: true, deletedAt: null },
     include: { prices: { where: { isActive: true } }, features: true },
     orderBy: { createdAt: "asc" },
   }).then((plans) => plans.map(toPlanWithFeatures))
@@ -23,6 +23,7 @@ export function findAllPlans(): Promise<PlanWithPricesAndFeatures[]> {
 
 export function findAllPlansIncludingInactive(): Promise<PlanWithPricesAndFeatures[]> {
   return prisma.plan.findMany({
+    where: { deletedAt: null },
     include: { prices: true, features: true },
     orderBy: { createdAt: "asc" },
   }).then((plans) => plans.map(toPlanWithFeatures))
@@ -30,7 +31,7 @@ export function findAllPlansIncludingInactive(): Promise<PlanWithPricesAndFeatur
 
 export function findPlanById(planId: string): Promise<PlanWithPricesAndFeatures | null> {
   return prisma.plan.findUnique({
-    where: { id: planId },
+    where: { id: planId, deletedAt: null },
     include: { prices: { where: { isActive: true } }, features: true },
   }).then((plan) => (plan ? toPlanWithFeatures(plan) : null))
 }
@@ -115,13 +116,9 @@ export function updatePlanPriceAmount(priceId: string, priceInCents: number): Pr
   })
 }
 
-export function countOrgsUsingPlan(planId: string): Promise<number> {
-  return prisma.organization.count({ where: { planId } })
-}
 
 export async function deletePlan(planId: string): Promise<void> {
-  await prisma.planPrice.deleteMany({ where: { planId } })
-  await prisma.plan.delete({ where: { id: planId } })
+  await prisma.plan.update({ where: { id: planId }, data: { deletedAt: new Date(), isActive: false } })
 }
 
 export function findPlanPriceWithPlan(priceId: string): Promise<(PlanPrice & { plan: Plan }) | null> {
@@ -137,12 +134,13 @@ export async function findAllPlansPaginated(
 ): Promise<{ items: PlanWithPricesAndFeatures[]; total: number }> {
   const [raw, total] = await Promise.all([
     prisma.plan.findMany({
+      where: { deletedAt: null },
       include: { prices: true, features: true },
       orderBy: { createdAt: "asc" },
       skip,
       take,
     }),
-    prisma.plan.count(),
+    prisma.plan.count({ where: { deletedAt: null } }),
   ])
   return { items: raw.map(toPlanWithFeatures), total }
 }

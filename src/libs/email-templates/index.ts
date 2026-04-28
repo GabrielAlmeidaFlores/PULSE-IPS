@@ -1,5 +1,6 @@
 import { join } from "path"
 import { readFileSync } from "fs"
+import { env } from "@/env"
 
 interface OrgInviteProps extends Record<string, string> {
   orgName: string
@@ -32,6 +33,18 @@ interface PlanCancelledProps extends Record<string, string> {
   endDate: string
 }
 
+interface AccountDeletionConfirmProps extends Record<string, string> {
+  orgName: string
+  code: string
+  expiresInMinutes: string
+}
+
+interface AccountDeletionScheduledProps extends Record<string, string> {
+  orgName: string
+  deletionDate: string
+  supportEmail: string
+}
+
 type EmailTemplate =
   | { name: "org-invite"; props: OrgInviteProps }
   | { name: "email-verification"; props: EmailVerificationProps }
@@ -39,6 +52,8 @@ type EmailTemplate =
   | { name: "plan-subscribed"; props: PlanSubscribedProps }
   | { name: "payment-failed"; props: PaymentFailedProps }
   | { name: "plan-cancelled"; props: PlanCancelledProps }
+  | { name: "account-deletion-confirm"; props: AccountDeletionConfirmProps }
+  | { name: "account-deletion-scheduled"; props: AccountDeletionScheduledProps }
 
 function applyVars(html: string, vars: Record<string, string>): string {
   return Object.entries(vars).reduce(
@@ -56,5 +71,9 @@ export function renderEmailTemplate(template: EmailTemplate): string {
     `${template.name}.html`,
   )
   const html = readFileSync(filePath, "utf-8")
-  return applyVars(html, template.props)
+  const vars: Record<string, string> = {
+    appUrl: env.NEXT_PUBLIC_APP_URL,
+    ...template.props,
+  }
+  return applyVars(html, vars)
 }

@@ -126,7 +126,7 @@ export default async function BillingPage(): Promise<React.ReactElement> {
                     externalPriceId={plan.prices[0]?.externalPriceId ?? null}
                     planName={plan.name}
                     priceLabel={plan.prices[0] ? `${(plan.prices[0].priceInCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}/mês` : "—"}
-                    maxEmployees={plan.maxEmployees ?? 99999}
+                    maxEmployees={plan.maxEmployees}
                     description={plan.description}
                     features={plan.features}
                     isCurrent={plan.id === subscription.plan.id}

@@ -113,16 +113,6 @@ describe("createNewEmployee — employee limit checks", () => {
     expect(result).toEqual(CREATED_EMPLOYEE)
   })
 
-  it("allows creation when plan has null maxEmployees (unlimited)", async () => {
-    mockFindOrganizationById.mockResolvedValue(ORG_NO_OVERRIDE as Awaited<ReturnType<typeof findOrganizationById>>)
-    mockFindActiveSubscription.mockResolvedValue(null)
-    mockFindPlanById.mockResolvedValue({ id: "plan-1", maxEmployees: null } as unknown as Awaited<ReturnType<typeof findPlanById>>)
-    mockCountEmployees.mockResolvedValue(9999)
-
-    const result = await createNewEmployee(TENANT_ID, EMPLOYEE_INPUT)
-    expect(result).toEqual(CREATED_EMPLOYEE)
-  })
-
   it("throws when org not found", async () => {
     mockFindOrganizationById.mockResolvedValue(null)
 

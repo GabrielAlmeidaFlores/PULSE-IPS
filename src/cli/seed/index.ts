@@ -1,4 +1,5 @@
-import "dotenv/config";
+import "dotenv/config"
+import { createLogger } from "../../libs/utils/logger"
 import { createHash } from "crypto";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
@@ -6,6 +7,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
+const logger = createLogger("seed")
 
 const SUPER_ADMIN = {
   email: "admin@admin.com",
@@ -460,7 +462,7 @@ async function seedSuperAdmin() {
     where: { email: SUPER_ADMIN.email },
   });
   if (existing) {
-    console.log(`Admin already exists: ${SUPER_ADMIN.email}`);
+    logger.info(`Admin already exists: ${SUPER_ADMIN.email}`);
     return;
   }
 
@@ -472,7 +474,7 @@ async function seedSuperAdmin() {
       name: SUPER_ADMIN.name,
     },
   });
-  console.log(`Super admin created: ${SUPER_ADMIN.email}`);
+  logger.info(`Super admin created: ${SUPER_ADMIN.email}`);
 }
 
 async function seedTerms() {
@@ -498,7 +500,7 @@ async function seedTerms() {
       },
     });
   });
-  console.log(`Terms v${TERMS_V1.version} upserted`);
+  logger.info(`Terms v${TERMS_V1.version} upserted`);
 }
 
 async function seedConsentTerms() {
@@ -523,7 +525,7 @@ async function seedConsentTerms() {
       },
     });
   });
-  console.log(`Consent term v${CONSENT_TERM.version} upserted`);
+  logger.info(`Consent term v${CONSENT_TERM.version} upserted`);
 }
 
 async function seedPrivacyPolicy() {
@@ -549,7 +551,7 @@ async function seedPrivacyPolicy() {
       },
     });
   });
-  console.log(`Privacy policy v${PRIVACY_POLICY_V1.version} upserted`);
+  logger.info(`Privacy policy v${PRIVACY_POLICY_V1.version} upserted`);
 }
 
 const PLANS = [
@@ -575,8 +577,8 @@ const PLANS = [
   },
   {
     name: "Enterprise",
-    description: "Para grandes empresas sem limites. Colaboradores ilimitados, suporte prioritário, SLA garantido e onboarding dedicado.",
-    maxEmployees: 99999,
+    description: "Para grandes empresas. Até 300 colaboradores, suporte prioritário, SLA garantido e onboarding dedicado.",
+    maxEmployees: 300,
     externalProductId: "prod_enterprise_pulse",
     prices: [
       { interval: "monthly", priceInCents: 149900, externalPriceId: "price_enterprise_monthly" },
@@ -594,7 +596,7 @@ async function seedPlans(): Promise<void> {
 
     if (existing) {
       planId = existing.id
-      console.log(`⏭️  Plan already exists: ${plan.name}`)
+      logger.info(`⏭️  Plan already exists: ${plan.name}`)
     } else {
       const created = await prisma.plan.create({
         data: {
@@ -606,13 +608,13 @@ async function seedPlans(): Promise<void> {
         },
       })
       planId = created.id
-      console.log(`✅ Plan created: ${plan.name}`)
+      logger.info(`✅ Plan created: ${plan.name}`)
     }
 
     for (const price of plan.prices) {
       const existingPrice = await prisma.planPrice.findUnique({ where: { externalPriceId: price.externalPriceId } })
       if (existingPrice) {
-        console.log(`⏭️  Price already exists: ${plan.name} ${price.interval}`)
+        logger.info(`⏭️  Price already exists: ${plan.name} ${price.interval}`)
         continue
       }
       await prisma.planPrice.create({
@@ -626,13 +628,13 @@ async function seedPlans(): Promise<void> {
         },
       })
       const display = (price.priceInCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
-      console.log(`  💰 Price: ${display}/${price.interval}`)
+      logger.info(`  💰 Price: ${display}/${price.interval}`)
     }
   }
 }
 
 async function main() {
-  console.log("Starting seed...");
+  logger.info("Starting seed...");
 
   await seedSuperAdmin();
   await seedTerms();
@@ -640,12 +642,12 @@ async function main() {
   await seedPrivacyPolicy();
   await seedPlans();
 
-  console.log("Seed complete!");
+  logger.info("Seed complete!");
 }
 
 main()
   .catch((err) => {
-    console.error("Seed failed:", err);
+    logger.error("Seed failed:", err);
     process.exit(1);
   })
   .finally(() => {

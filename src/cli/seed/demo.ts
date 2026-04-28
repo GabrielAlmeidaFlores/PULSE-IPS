@@ -1,4 +1,8 @@
 import "dotenv/config"
+import { createLogger } from "../../libs/utils/logger"
+
+const logger = createLogger("seed")
+
 import { createHash, randomUUID } from "crypto"
 import bcrypt from "bcryptjs"
 import { PrismaClient } from "@prisma/client"
@@ -237,14 +241,14 @@ const EMPLOYEES_BY_DEPT: Record<string, { name: string; phone: string; email?: s
 }
 
 async function main(): Promise<void> {
-  console.log("🚀 Iniciando seed de demo...")
+  logger.info("🚀 Iniciando seed de demo...")
 
   let org = await prisma.organization.findFirst({
     where: { OR: [{ slug: ORG_SLUG_OLD }, { slug: ORG_SLUG_NEW }] },
   })
 
   if (!org) {
-    console.log("🏗️  Organização demo não encontrada. Criando...")
+    logger.info("🏗️  Organização demo não encontrada. Criando...")
     org = await prisma.organization.create({
       data: {
         id: randomUUID(),
@@ -255,13 +259,13 @@ async function main(): Promise<void> {
         isActive: true,
       },
     })
-    console.log(`✅ Organização criada: ${org.name} (${org.id})`)
+    logger.info(`✅ Organização criada: ${org.name} (${org.id})`)
   }
 
   const tenantId = org.id
-  console.log(`✅ Org: ${org.name} (${tenantId})`)
+  logger.info(`✅ Org: ${org.name} (${tenantId})`)
 
-  console.log("🗑️  Limpando dados antigos...")
+  logger.info("🗑️  Limpando dados antigos...")
   await prisma.organization.update({ where: { id: tenantId }, data: { slug: ORG_SLUG_NEW, name: ORG_NAME_NEW } })
 
   await prisma.surveyResponseItem.deleteMany({ where: { surveyResponse: { tenantId } } })
@@ -283,9 +287,9 @@ async function main(): Promise<void> {
   await prisma.messageLog.deleteMany({ where: { tenantId } })
   await prisma.organizationSubscription.deleteMany({ where: { tenantId } })
   await prisma.organizationUser.deleteMany({ where: { tenantId } })
-  console.log("✅ Dados limpos. Org renomeada para 'demo'.")
+  logger.info("✅ Dados limpos. Org renomeada para 'demo'.")
 
-  console.log("👤 Criando usuários...")
+  logger.info("👤 Criando usuários...")
   const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 10)
   const rhPasswordHash = await bcrypt.hash(RH_PASSWORD, 10)
   const consentTermVersion = await prisma.consentTermVersion.findFirst({ where: { isActive: true } })
@@ -330,9 +334,9 @@ async function main(): Promise<void> {
     },
   })
 
-  console.log(`✅ Usuários criados: ${ADMIN_EMAIL}, ${RH_EMAIL}`)
+  logger.info(`✅ Usuários criados: ${ADMIN_EMAIL}, ${RH_EMAIL}`)
 
-  console.log("💳 Criando assinatura...")
+  logger.info("💳 Criando assinatura...")
   const professionalPlanPrice = await prisma.planPrice.findFirst({
     where: { externalPriceId: "price_professional_monthly", isActive: true },
     include: { plan: true },
@@ -361,9 +365,9 @@ async function main(): Promise<void> {
       snapshotExternalPriceId: "price_professional_monthly",
     },
   })
-  console.log("✅ Assinatura Professional criada.")
+  logger.info("✅ Assinatura Professional criada.")
 
-  console.log("🏢 Criando departamentos, colaboradores e configurações...")
+  logger.info("🏢 Criando departamentos, colaboradores e configurações...")
   const deptMap: Record<string, string> = {}
   const employeeMap: Record<string, string[]> = {}
   const configMap: Record<string, string> = {}
@@ -469,9 +473,9 @@ async function main(): Promise<void> {
     questionMap[profile.name] = qIds
   }
 
-  console.log("✅ Departamentos e colaboradores criados.")
+  logger.info("✅ Departamentos e colaboradores criados.")
 
-  console.log("📊 Gerando 1 ano de pesquisas em memória...")
+  logger.info("📊 Gerando 1 ano de pesquisas em memória...")
 
   const TOTAL_WEEKS = 52
   const alertsToCreate: {
@@ -695,7 +699,7 @@ async function main(): Promise<void> {
     }
   }
 
-  console.log(`📥 Inserindo ${allDispatches.length} dispatches, ${allTokens.length} tokens, ${allResponses.length} respostas, ${allItems.length} itens em batch...`)
+  logger.info(`📥 Inserindo ${allDispatches.length} dispatches, ${allTokens.length} tokens, ${allResponses.length} respostas, ${allItems.length} itens em batch...`)
 
   const BATCH = 500
   await prisma.surveyDispatch.createMany({ data: allDispatches })
@@ -710,10 +714,10 @@ async function main(): Promise<void> {
     await prisma.surveyResponseItem.createMany({ data: allItems.slice(i, i + BATCH) })
   }
 
-  console.log(`✅ Pesquisas geradas. Inserindo ${alertsToCreate.length} alertas...`)
+  logger.info(`✅ Pesquisas geradas. Inserindo ${alertsToCreate.length} alertas...`)
   await prisma.alert.createMany({ data: alertsToCreate })
 
-  console.log("📋 Criando planos de ação...")
+  logger.info("📋 Criando planos de ação...")
   const tecDeptId = deptMap["Tecnologia"] ?? ""
   const finDeptId = deptMap["Financeiro"] ?? ""
   const opsDeptId = deptMap["Operações"] ?? ""
@@ -788,9 +792,9 @@ async function main(): Promise<void> {
     ],
   })
 
-  console.log("✅ Planos de ação criados.")
+  logger.info("✅ Planos de ação criados.")
 
-  console.log("💡 Criando sugestões de planos de ação...")
+  logger.info("💡 Criando sugestões de planos de ação...")
 
   const finDeptIdForSuggestion = deptMap["Financeiro"] ?? ""
   const opsDeptIdForSuggestion = deptMap["Operações"] ?? ""
@@ -881,9 +885,9 @@ async function main(): Promise<void> {
     ],
   })
 
-  console.log("✅ Sugestões de planos de ação criadas.")
+  logger.info("✅ Sugestões de planos de ação criadas.")
 
-  console.log("📄 Criando documentos...")
+  logger.info("📄 Criando documentos...")
   await prisma.document.createMany({
     data: DOCUMENT_TEMPLATES.map((doc) => ({
       id: randomUUID(),
@@ -893,9 +897,9 @@ async function main(): Promise<void> {
       isActive: true,
     })),
   })
-  console.log("✅ Documentos criados.")
+  logger.info("✅ Documentos criados.")
 
-  console.log("📢 Criando relatos anônimos...")
+  logger.info("📢 Criando relatos anônimos...")
   const _deptIdsArray = Object.values(deptMap)
   await prisma.anonymousReport.createMany({
     data: REPORT_TEMPLATES.map((report) => {
@@ -912,9 +916,9 @@ async function main(): Promise<void> {
       }
     }),
   })
-  console.log("✅ Relatos anônimos criados.")
+  logger.info("✅ Relatos anônimos criados.")
 
-  console.log("📋 Criando revisões PGR...")
+  logger.info("📋 Criando revisões PGR...")
   const pgrDepts = DEPT_PROFILES.map((p) => ({ name: p.name, id: deptMap[p.name] ?? "", empCount: p.employeeCount }))
 
   const pgrPeriods = [
@@ -1006,28 +1010,28 @@ async function main(): Promise<void> {
     await prisma.pgrQuestionResult.createMany({ data: questionResultRows })
   }
 
-  console.log("✅ Revisões PGR criadas.")
+  logger.info("✅ Revisões PGR criadas.")
 
   await prisma.$disconnect()
 
-  console.log("")
-  console.log("🎉 Seed de demo concluído com sucesso!")
-  console.log("")
-  console.log("  Organização: Demo (slug: demo)")
-  console.log(`  Admin:       ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`)
-  console.log(`  RH:          ${RH_EMAIL} / ${RH_PASSWORD}`)
-  console.log("")
-  console.log("  Departamentos: 6 (Tecnologia, Comercial, RH, Financeiro, Operações, Marketing)")
-  console.log("  Colaboradores: 41")
-  console.log("  Pesquisas:     ~1 ano de dados com scores variados")
-  console.log("  Alertas:       gerados automaticamente por perfil de setor")
-  console.log("  Planos de ação: 3 (1 concluído, 1 em progresso, 1 aberto)")
-  console.log("  Documentos:    7")
-  console.log("  Relatos anônimos: 6")
-  console.log("  Revisões PGR:  3")
+  logger.info("")
+  logger.info("🎉 Seed de demo concluído com sucesso!")
+  logger.info("")
+  logger.info("  Organização: Demo (slug: demo)")
+  logger.info(`  Admin:       ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`)
+  logger.info(`  RH:          ${RH_EMAIL} / ${RH_PASSWORD}`)
+  logger.info("")
+  logger.info("  Departamentos: 6 (Tecnologia, Comercial, RH, Financeiro, Operações, Marketing)")
+  logger.info("  Colaboradores: 41")
+  logger.info("  Pesquisas:     ~1 ano de dados com scores variados")
+  logger.info("  Alertas:       gerados automaticamente por perfil de setor")
+  logger.info("  Planos de ação: 3 (1 concluído, 1 em progresso, 1 aberto)")
+  logger.info("  Documentos:    7")
+  logger.info("  Relatos anônimos: 6")
+  logger.info("  Revisões PGR:  3")
 }
 
 main().catch((e) => {
-  console.error(e)
+  logger.error(e)
   process.exit(1)
 })
