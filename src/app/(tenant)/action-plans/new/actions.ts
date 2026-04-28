@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import { isRedirectError } from "next/dist/client/components/redirect-error"
 import { revalidatePath } from "next/cache"
 import { getSession } from "@/modules/auth/session"
+import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
 import { createPlan, createPlanWithTasks } from "@/modules/action-plans/action-plan.service"
 import { convertActionPlanSuggestion } from "@/modules/action-plans/action-plan-suggestion.service"
 import { AppError } from "@/libs/errors/app-error"
@@ -26,6 +27,8 @@ const createActionPlanFromSuggestionSchema = z.object({
 export async function createActionPlanAction(input: unknown): Promise<ActionResult> {
   const session = await getSession()
   if (!session) return { error: "Sessão expirada." }
+  const hasFeature = await hasTenantPlanFeature(session.tenantId, "action_plans")
+  if (!hasFeature) return { error: "Plano de ação não está disponível no seu plano atual." }
   const parsed = createPlanSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
   try {
@@ -46,6 +49,8 @@ export async function createActionPlanAction(input: unknown): Promise<ActionResu
 export async function createActionPlanFromSuggestionAction(input: unknown): Promise<ActionResult & { id?: string }> {
   const session = await getSession()
   if (!session) return { error: "Sessão expirada." }
+  const hasFeature = await hasTenantPlanFeature(session.tenantId, "action_plans")
+  if (!hasFeature) return { error: "Plano de ação não está disponível no seu plano atual." }
   const parsed = createActionPlanFromSuggestionSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
   try {

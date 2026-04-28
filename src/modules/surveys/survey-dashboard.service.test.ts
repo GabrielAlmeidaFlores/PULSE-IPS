@@ -78,7 +78,7 @@ describe("getDispatchDashboard", () => {
 
   it("returns null avgScore when question has no responses", async () => {
     const dispatchWithNoResponses = { ...DISPATCH_DATA, responseItems: [] }
-    mockFindDispatchWithDashboard.mockResolvedValue(dispatchWithNoResponses as Awaited<ReturnType<typeof findDispatchWithDashboard>>)
+    mockFindDispatchWithDashboard.mockResolvedValue(dispatchWithNoResponses as unknown as Awaited<ReturnType<typeof findDispatchWithDashboard>>)
 
     const result = await getDispatchDashboard("tenant-1", "d-1")
     expect(result?.questions[0]?.avgScore).toBeNull()

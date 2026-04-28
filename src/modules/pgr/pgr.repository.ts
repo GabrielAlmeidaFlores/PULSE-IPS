@@ -107,7 +107,7 @@ export function findAllTenantsUpcomingPgrReviews(reminderDate: Date, reminderDat
 
 export function findExistingPgrAlert(tenantId: string): Promise<Alert | null> {
   return prisma.alert.findFirst({
-    where: { tenantId, type: "pgr_review_due", isRead: false },
+    where: { tenantId, type: "pgr_review_due", resolvedAt: null },
   })
 }
 

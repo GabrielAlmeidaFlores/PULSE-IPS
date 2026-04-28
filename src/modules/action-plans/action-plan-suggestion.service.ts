@@ -1,4 +1,5 @@
 import { findAllTenantsActiveOrganizationIds } from "@/modules/organizations/organization.repository"
+import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
 import { computeRawSuggestions } from "@/modules/action-plans/suggestions"
 import {
   findExistingActionPlanSuggestionKeysForTenant,
@@ -19,6 +20,8 @@ export async function runActionPlanSuggestionGenerator(): Promise<{ created: num
   let totalSkipped = 0
 
   for (const tenant of tenants) {
+    const hasFeature = await hasTenantPlanFeature(tenant.id, "action_plans")
+    if (!hasFeature) continue
     const { created, skipped } = await generateActionPlanSuggestionsForTenant(tenant.id)
     totalCreated += created
     totalSkipped += skipped

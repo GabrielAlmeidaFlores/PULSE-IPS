@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { findTokenByValue, createSurveyResponseWithItems } from "@/modules/surveys/survey.repository"
+import type { ConsentWithTermVersion } from "@/modules/consent/consent.repository"
 import { submitSurveyResponse, validateSurveyToken } from "@/modules/surveys/survey-response.service"
 
 vi.mock("@/modules/surveys/survey.repository", () => ({
@@ -239,7 +240,7 @@ describe("validateSurveyToken", () => {
       tokenExpiresAt: null,
       cpfHash: null,
       createdAt: new Date(),
-    } as Awaited<ReturnType<typeof findTokenByValue>>)
+    } as unknown as ConsentWithTermVersion)
 
     const result = await validateSurveyToken(SURVEY_TOKEN)
     expect(result.valid).toBe(true)
@@ -269,7 +270,7 @@ describe("validateSurveyToken", () => {
       tokenExpiresAt: null,
       cpfHash: null,
       createdAt: new Date(),
-    } as Awaited<ReturnType<typeof findTokenByValue>>)
+    } as unknown as ConsentWithTermVersion)
 
     const result = await validateSurveyToken(SURVEY_TOKEN)
     expect(result.valid).toBe(true)

@@ -83,7 +83,7 @@ function makeInvoiceEvent(type: string): WebhookEventShape {
 beforeEach(() => {
   vi.clearAllMocks()
   mockFindWebhookEvent.mockResolvedValue(null)
-  mockRecordWebhookEvent.mockResolvedValue(undefined)
+  mockRecordWebhookEvent.mockResolvedValue(undefined as unknown as Awaited<ReturnType<typeof recordWebhookEvent>>)
   mockUpsertSubscription.mockResolvedValue({ id: "sub-1" } as Awaited<ReturnType<typeof upsertSubscription>>)
   mockUpdateOrgBillingStatus.mockResolvedValue(undefined)
   mockFindTenantSubscriptionFeatures.mockResolvedValue([])
@@ -207,7 +207,7 @@ describe("retryFailedWebhookEvents", () => {
       id: "webhook-log-1",
       payload: makeSubscriptionEvent(SUBSCRIPTION_CREATED),
     }
-    mockFindFailedWebhookEvents.mockResolvedValue([failedEvent] as Awaited<ReturnType<typeof findFailedWebhookEvents>>)
+    mockFindFailedWebhookEvents.mockResolvedValue([failedEvent] as unknown as Awaited<ReturnType<typeof findFailedWebhookEvents>>)
     mockMarkWebhookEventProcessed.mockResolvedValue(undefined)
 
     const result = await retryFailedWebhookEvents()
@@ -235,7 +235,7 @@ describe("retryFailedWebhookEvents", () => {
         },
       },
     }
-    mockFindFailedWebhookEvents.mockResolvedValue([failedEvent] as Awaited<ReturnType<typeof findFailedWebhookEvents>>)
+    mockFindFailedWebhookEvents.mockResolvedValue([failedEvent] as unknown as Awaited<ReturnType<typeof findFailedWebhookEvents>>)
     mockMarkWebhookEventFailed.mockResolvedValue(undefined)
     mockFindOrgByCustomerId.mockRejectedValue(new Error("DB error"))
 

@@ -15,6 +15,7 @@ import {
   type AlertStats,
 } from "@/modules/alerts/alert.repository"
 import { toHealthIndex, healthIndexLabel } from "@/libs/utils/health-index"
+import { AppError } from "@/libs/errors/app-error"
 import type { Alert, Department } from "@prisma/client"
 
 export function getAlerts(tenantId: string): Promise<(Alert & { department: Department | null })[]> {
@@ -46,12 +47,14 @@ export function getAlertStats(tenantId: string): Promise<AlertStats> {
   return findAlertStatsByTenant(tenantId)
 }
 
-export function markRead(tenantId: string, alertId: string): Promise<{ count: number }> {
-  return markAlertRead(tenantId, alertId)
+export async function markRead(tenantId: string, alertId: string): Promise<void> {
+  const result = await markAlertRead(tenantId, alertId)
+  if (result.count === 0) throw new AppError("ALERT_NOT_FOUND", "Alerta não encontrado.")
 }
 
-export function resolve(tenantId: string, alertId: string): Promise<{ count: number }> {
-  return resolveAlert(tenantId, alertId)
+export async function resolve(tenantId: string, alertId: string): Promise<void> {
+  const result = await resolveAlert(tenantId, alertId)
+  if (result.count === 0) throw new AppError("ALERT_NOT_FOUND", "Alerta não encontrado.")
 }
 
 export function normalizeItemScore(score: number, scoreDirection: string): number {

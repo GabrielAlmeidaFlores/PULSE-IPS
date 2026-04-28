@@ -552,6 +552,85 @@ async function seedPrivacyPolicy() {
   console.log(`Privacy policy v${PRIVACY_POLICY_V1.version} upserted`);
 }
 
+const PLANS = [
+  {
+    name: "Starter",
+    description: "Ideal para empresas em crescimento. Até 50 colaboradores, pesquisas semanais, alertas automáticos e acesso ao canal de relatos anônimos.",
+    maxEmployees: 50,
+    externalProductId: "prod_starter_pulse",
+    prices: [
+      { interval: "monthly", priceInCents: 29900, externalPriceId: "price_starter_monthly" },
+      { interval: "annual",  priceInCents: 287040, externalPriceId: "price_starter_annual" },
+    ],
+  },
+  {
+    name: "Professional",
+    description: "Para empresas em expansão. Até 150 colaboradores, todos os recursos do Starter mais exportação de relatórios PGR em PDF e integrações via WhatsApp.",
+    maxEmployees: 150,
+    externalProductId: "prod_professional_pulse",
+    prices: [
+      { interval: "monthly", priceInCents: 69900, externalPriceId: "price_professional_monthly" },
+      { interval: "annual",  priceInCents: 671040, externalPriceId: "price_professional_annual" },
+    ],
+  },
+  {
+    name: "Enterprise",
+    description: "Para grandes empresas sem limites. Colaboradores ilimitados, suporte prioritário, SLA garantido e onboarding dedicado.",
+    maxEmployees: 99999,
+    externalProductId: "prod_enterprise_pulse",
+    prices: [
+      { interval: "monthly", priceInCents: 149900, externalPriceId: "price_enterprise_monthly" },
+      { interval: "annual",  priceInCents: 1439040, externalPriceId: "price_enterprise_annual" },
+    ],
+  },
+] as const
+
+async function seedPlans(): Promise<void> {
+  for (const plan of PLANS) {
+    const maxEmp = plan.maxEmployees
+
+    const existing = await prisma.plan.findFirst({ where: { externalProductId: plan.externalProductId } })
+    let planId: string
+
+    if (existing) {
+      planId = existing.id
+      console.log(`⏭️  Plan already exists: ${plan.name}`)
+    } else {
+      const created = await prisma.plan.create({
+        data: {
+          name: plan.name,
+          description: plan.description,
+          maxEmployees: maxEmp,
+          externalProductId: plan.externalProductId,
+          isActive: true,
+        },
+      })
+      planId = created.id
+      console.log(`✅ Plan created: ${plan.name}`)
+    }
+
+    for (const price of plan.prices) {
+      const existingPrice = await prisma.planPrice.findUnique({ where: { externalPriceId: price.externalPriceId } })
+      if (existingPrice) {
+        console.log(`⏭️  Price already exists: ${plan.name} ${price.interval}`)
+        continue
+      }
+      await prisma.planPrice.create({
+        data: {
+          planId,
+          externalPriceId: price.externalPriceId,
+          priceInCents: price.priceInCents,
+          currency: "brl",
+          interval: price.interval,
+          isActive: true,
+        },
+      })
+      const display = (price.priceInCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+      console.log(`  💰 Price: ${display}/${price.interval}`)
+    }
+  }
+}
+
 async function main() {
   console.log("Starting seed...");
 
@@ -559,6 +638,7 @@ async function main() {
   await seedTerms();
   await seedConsentTerms();
   await seedPrivacyPolicy();
+  await seedPlans();
 
   console.log("Seed complete!");
 }

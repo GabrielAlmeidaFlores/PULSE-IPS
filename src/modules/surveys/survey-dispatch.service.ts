@@ -15,6 +15,7 @@ import {
   markDispatchAdherenceChecked,
   type DispatchEmployee,
 } from "@/modules/surveys/survey.repository"
+import { hasOpenAlertOfType } from "@/modules/alerts/alert.repository"
 import { findEmployeeIdsWithAcceptedConsent } from "@/modules/consent/consent.repository"
 
 const FREQUENCY_INTERVAL_DAYS: Record<string, number> = {
@@ -201,14 +202,18 @@ export async function checkDispatchAdherence(): Promise<{ processed: number; ale
     const adherenceRate = dispatch.totalRecipients > 0 ? responseCount / dispatch.totalRecipients : 0
 
     if (adherenceRate < ALERT_ADHERENCE_THRESHOLD) {
-      await createAdherenceAlert({
-        tenantId: dispatch.tenantId,
-        departmentId: dispatch.surveyConfiguration.departmentId,
-        adherenceRate,
-        responseCount,
-        totalRecipients: dispatch.totalRecipients,
-      })
-      alertsCreated++
+      const departmentId = dispatch.surveyConfiguration.departmentId
+      const alreadyOpen = await hasOpenAlertOfType(dispatch.tenantId, "low_adherence", departmentId)
+      if (!alreadyOpen) {
+        await createAdherenceAlert({
+          tenantId: dispatch.tenantId,
+          departmentId,
+          adherenceRate,
+          responseCount,
+          totalRecipients: dispatch.totalRecipients,
+        })
+        alertsCreated++
+      }
     }
 
     await markDispatchAdherenceChecked(dispatch.tenantId, dispatch.id, responseCount)

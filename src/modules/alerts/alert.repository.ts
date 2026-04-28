@@ -80,8 +80,8 @@ export async function findAlertStatsByTenant(tenantId: string): Promise<AlertSta
   return { total, unresolved, criticalUnresolved, resolved }
 }
 
-export function createAlert(data: CreateAlertInput): Promise<Alert> {
-  return prisma.alert.create({
+export async function createAlert(data: CreateAlertInput): Promise<void> {
+  await prisma.alert.create({
     data: {
       tenantId: data.tenantId,
       type: data.type,

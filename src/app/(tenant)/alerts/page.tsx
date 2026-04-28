@@ -133,6 +133,7 @@ export default async function AlertsPage({ searchParams }: Props): Promise<React
           columns={[
             { label: "Tipo", className: WS_NOWRAP },
             { label: "Severidade", className: WS_NOWRAP },
+            { label: "Setor", className: WS_NOWRAP },
             { label: "Mensagem" },
             { label: "Data", className: WS_NOWRAP },
             { label: "Status", className: WS_NOWRAP },
@@ -170,6 +171,9 @@ export default async function AlertsPage({ searchParams }: Props): Promise<React
                     <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${SEVERITY_DOT[alert.severity] ?? "bg-muted-foreground"}`} />
                     {SEVERITY_LABELS[alert.severity] ?? alert.severity}
                   </span>
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground">
+                  {alert.department?.name ?? <span className="text-muted-foreground/50">—</span>}
                 </td>
                 <td className="px-4 py-3 text-xs">{alert.message}</td>
                 <td className="px-4 py-3 text-xs text-muted-foreground font-mono whitespace-nowrap">{format(new Date(alert.createdAt), "dd/MM HH:mm")}</td>

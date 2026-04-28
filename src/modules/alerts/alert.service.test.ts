@@ -307,9 +307,9 @@ describe("detectConsentExpiredAlerts", () => {
 
   it("creates alert per department with expired consents", async () => {
     mockFindExpiredConsent.mockResolvedValue([
-      { tenantId: "tenant-1", departmentId: "dept-1", departmentName: "Vendas" },
-      { tenantId: "tenant-1", departmentId: "dept-1", departmentName: "Vendas" },
-    ] as Awaited<ReturnType<typeof findAllTenantsDeptRecentDispatchAvgs>>)
+      { tenantId: "tenant-1", departmentId: "dept-1", departmentName: "Vendas", employeeId: "emp-1" },
+      { tenantId: "tenant-1", departmentId: "dept-1", departmentName: "Vendas", employeeId: "emp-2" },
+    ] as Awaited<ReturnType<typeof findAllTenantsEmployeesWithExpiredConsentTokens>>)
 
     await detectConsentExpiredAlerts()
     expect(mockCreateAlert).toHaveBeenCalledOnce()
@@ -320,10 +320,10 @@ describe("detectConsentExpiredAlerts", () => {
 
   it("groups multiple employees in same dept into one alert", async () => {
     mockFindExpiredConsent.mockResolvedValue([
-      { tenantId: "t1", departmentId: "d1", departmentName: "RH" },
-      { tenantId: "t1", departmentId: "d1", departmentName: "RH" },
-      { tenantId: "t1", departmentId: "d2", departmentName: "TI" },
-    ] as Awaited<ReturnType<typeof findAllTenantsDeptRecentDispatchAvgs>>)
+      { tenantId: "t1", departmentId: "d1", departmentName: "RH", employeeId: "emp-1" },
+      { tenantId: "t1", departmentId: "d1", departmentName: "RH", employeeId: "emp-2" },
+      { tenantId: "t1", departmentId: "d2", departmentName: "TI", employeeId: "emp-3" },
+    ] as Awaited<ReturnType<typeof findAllTenantsEmployeesWithExpiredConsentTokens>>)
 
     await detectConsentExpiredAlerts()
     expect(mockCreateAlert).toHaveBeenCalledTimes(2)
@@ -331,8 +331,8 @@ describe("detectConsentExpiredAlerts", () => {
 
   it("skips when open alert already exists", async () => {
     mockFindExpiredConsent.mockResolvedValue([
-      { tenantId: "t1", departmentId: "d1", departmentName: "RH" },
-    ] as Awaited<ReturnType<typeof findAllTenantsDeptRecentDispatchAvgs>>)
+      { tenantId: "t1", departmentId: "d1", departmentName: "RH", employeeId: "emp-1" },
+    ] as Awaited<ReturnType<typeof findAllTenantsEmployeesWithExpiredConsentTokens>>)
     mockHasOpenAlert.mockResolvedValue(true)
 
     await detectConsentExpiredAlerts()
@@ -454,22 +454,32 @@ describe("getAlerts", () => {
 })
 
 describe("markRead", () => {
-  it("marks the alert as read and returns updated count", async () => {
+  it("marks the alert as read successfully", async () => {
     mockMarkAlertRead.mockResolvedValue({ count: 1 } as Awaited<ReturnType<typeof markAlertRead>>)
 
-    const result = await markRead("t-1", "alert-1")
-    expect(result).toEqual({ count: 1 })
+    await markRead("t-1", "alert-1")
     expect(mockMarkAlertRead).toHaveBeenCalledWith("t-1", "alert-1")
+  })
+
+  it("throws AppError when alert is not found", async () => {
+    mockMarkAlertRead.mockResolvedValue({ count: 0 } as Awaited<ReturnType<typeof markAlertRead>>)
+
+    await expect(markRead("t-1", "missing-id")).rejects.toMatchObject({ code: "ALERT_NOT_FOUND" })
   })
 })
 
 describe("resolve", () => {
-  it("resolves the alert and returns updated count", async () => {
+  it("resolves the alert successfully", async () => {
     mockResolveAlert.mockResolvedValue({ count: 1 } as Awaited<ReturnType<typeof resolveAlert>>)
 
-    const result = await resolve("t-1", "alert-1")
-    expect(result).toEqual({ count: 1 })
+    await resolve("t-1", "alert-1")
     expect(mockResolveAlert).toHaveBeenCalledWith("t-1", "alert-1")
+  })
+
+  it("throws AppError when alert is not found", async () => {
+    mockResolveAlert.mockResolvedValue({ count: 0 } as Awaited<ReturnType<typeof resolveAlert>>)
+
+    await expect(resolve("t-1", "missing-id")).rejects.toMatchObject({ code: "ALERT_NOT_FOUND" })
   })
 })
 

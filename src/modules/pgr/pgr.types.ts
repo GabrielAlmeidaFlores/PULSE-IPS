@@ -1,4 +1,5 @@
 import type { ScoreDirection } from "@/modules/surveys/survey.types"
+import type { AlertType, AlertSeverity } from "@/modules/alerts/alert.types"
 
 export interface PgrScoreDistribution {
   questionId: string
@@ -39,7 +40,7 @@ export interface CreatePgrQuestionResultInput {
 
 export interface CreatePgrAlertInput {
   tenantId: string
-  type: string
-  severity: string
+  type: AlertType
+  severity: AlertSeverity
   message: string
 }

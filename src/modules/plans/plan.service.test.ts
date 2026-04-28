@@ -57,17 +57,17 @@ const PLAN_PRICE = {
 beforeEach(() => {
   vi.clearAllMocks()
   mockCreatePlan.mockResolvedValue(PLAN as Awaited<ReturnType<typeof createPlan>>)
-  mockCreatePlanPrice.mockResolvedValue(PLAN_PRICE as Awaited<ReturnType<typeof createPlanPrice>>)
+  mockCreatePlanPrice.mockResolvedValue(PLAN_PRICE as unknown as Awaited<ReturnType<typeof createPlanPrice>>)
   mockUpdatePlan.mockResolvedValue(PLAN as Awaited<ReturnType<typeof updatePlan>>)
-  mockUpdatePlanPriceAmount.mockResolvedValue(PLAN_PRICE as Awaited<ReturnType<typeof updatePlanPriceAmount>>)
-  mockUpdatePlanPriceRecord.mockResolvedValue(PLAN_PRICE as Awaited<ReturnType<typeof updatePlanPriceRecord>>)
+  mockUpdatePlanPriceAmount.mockResolvedValue(PLAN_PRICE as unknown as Awaited<ReturnType<typeof updatePlanPriceAmount>>)
+  mockUpdatePlanPriceRecord.mockResolvedValue(PLAN_PRICE as unknown as Awaited<ReturnType<typeof updatePlanPriceRecord>>)
   mockDeletePlan.mockResolvedValue(undefined)
 })
 
 describe("createNewPlan", () => {
   it("creates product via billing service and persists plan", async () => {
     const mockCreateProduct = vi.fn().mockResolvedValue({ id: "prod_new" })
-    mockGetBillingService.mockReturnValue({ createProduct: mockCreateProduct } as ReturnType<typeof getBillingService>)
+    mockGetBillingService.mockReturnValue({ createProduct: mockCreateProduct } as unknown as ReturnType<typeof getBillingService>)
 
     await createNewPlan({ name: "Pro", maxEmployees: 100 })
 
@@ -77,7 +77,7 @@ describe("createNewPlan", () => {
 
   it("passes description to createProduct when provided", async () => {
     const mockCreateProduct = vi.fn().mockResolvedValue({ id: "prod_new" })
-    mockGetBillingService.mockReturnValue({ createProduct: mockCreateProduct } as ReturnType<typeof getBillingService>)
+    mockGetBillingService.mockReturnValue({ createProduct: mockCreateProduct } as unknown as ReturnType<typeof getBillingService>)
 
     await createNewPlan({ name: "Pro", maxEmployees: 100, description: "Pro plan" })
 
@@ -95,7 +95,7 @@ describe("updatePlanPriceValue", () => {
   it("creates new external price and updates record when has externalPriceId", async () => {
     mockFindPlanPriceById.mockResolvedValue(PLAN_PRICE as Awaited<ReturnType<typeof findPlanPriceById>>)
     const mockCreatePrice = vi.fn().mockResolvedValue({ id: "new_price_ext" })
-    mockGetBillingService.mockReturnValue({ createPrice: mockCreatePrice } as ReturnType<typeof getBillingService>)
+    mockGetBillingService.mockReturnValue({ createPrice: mockCreatePrice } as unknown as ReturnType<typeof getBillingService>)
 
     await updatePlanPriceValue(PLAN_PRICE.id, 9900)
 
@@ -127,7 +127,7 @@ describe("addPriceToPlan", () => {
   it("creates external price and persists plan price", async () => {
     mockFindPlanById.mockResolvedValue(PLAN as Awaited<ReturnType<typeof findPlanById>>)
     const mockCreatePrice = vi.fn().mockResolvedValue({ id: "new_price_ext" })
-    mockGetBillingService.mockReturnValue({ createPrice: mockCreatePrice } as ReturnType<typeof getBillingService>)
+    mockGetBillingService.mockReturnValue({ createPrice: mockCreatePrice } as unknown as ReturnType<typeof getBillingService>)
 
     await addPriceToPlan({ planId: "plan-1", unitAmountInCents: 9900, currency: "brl", interval: "month" })
 
@@ -144,7 +144,7 @@ describe("addDirectPriceToPlan", () => {
   it("creates price via billing and persists when plan has external product", async () => {
     mockFindPlanById.mockResolvedValue(PLAN as Awaited<ReturnType<typeof findPlanById>>)
     const mockCreatePrice = vi.fn().mockResolvedValue({ id: "price_direct" })
-    mockGetBillingService.mockReturnValue({ createPrice: mockCreatePrice } as ReturnType<typeof getBillingService>)
+    mockGetBillingService.mockReturnValue({ createPrice: mockCreatePrice } as unknown as ReturnType<typeof getBillingService>)
 
     await addDirectPriceToPlan({ planId: "plan-1", priceInCents: 4900, interval: "month" })
 

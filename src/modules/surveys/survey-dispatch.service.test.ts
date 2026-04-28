@@ -11,10 +11,12 @@ import {
   createAdherenceAlert,
   markDispatchAdherenceChecked,
 } from "@/modules/surveys/survey.repository"
+import { hasOpenAlertOfType } from "@/modules/alerts/alert.repository"
 import { findEmployeeIdsWithAcceptedConsent } from "@/modules/consent/consent.repository"
 import { getMessageQueue } from "@/libs/queue"
 
 vi.mock("@/modules/surveys/survey.repository")
+vi.mock("@/modules/alerts/alert.repository")
 vi.mock("@/modules/consent/consent.repository")
 vi.mock("@/libs/queue")
 vi.mock("@/libs/logger", () => ({ logger: { error: vi.fn(), info: vi.fn() } }))
@@ -35,6 +37,7 @@ const mockFindDispatches48hAgo = vi.mocked(findAllTenantsDispatches48hAgo)
 const mockCountResponses = vi.mocked(countResponsesForDispatch)
 const mockCreateAdherenceAlert = vi.mocked(createAdherenceAlert)
 const mockMarkDispatchAdherenceChecked = vi.mocked(markDispatchAdherenceChecked)
+const mockHasOpenAlertOfType = vi.mocked(hasOpenAlertOfType)
 const mockFindEmployeeIdsWithAcceptedConsent = vi.mocked(findEmployeeIdsWithAcceptedConsent)
 const mockGetMessageQueue = vi.mocked(getMessageQueue)
 
@@ -102,12 +105,13 @@ function makeAutoDispatchConfig(overrides?: Record<string, unknown>): Record<str
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockGetMessageQueue.mockReturnValue(MOCK_QUEUE as ReturnType<typeof getMessageQueue>)
+  mockGetMessageQueue.mockReturnValue(MOCK_QUEUE as unknown as ReturnType<typeof getMessageQueue>)
   mockCreateDispatch.mockResolvedValue({ id: "new-dispatch-1" } as Awaited<ReturnType<typeof createDispatch>>)
   mockCreateSurveyTokens.mockResolvedValue(undefined)
   mockMarkDispatchSent.mockResolvedValue(undefined)
   mockCreateAdherenceAlert.mockResolvedValue(undefined)
   mockMarkDispatchAdherenceChecked.mockResolvedValue(undefined)
+  mockHasOpenAlertOfType.mockResolvedValue(false)
   mockFindEmployeeIdsWithAcceptedConsent.mockResolvedValue([])
   MOCK_QUEUE.addBulk.mockResolvedValue([])
 })
@@ -124,7 +128,7 @@ describe("runSurveyDispatcher", () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2024-01-14T12:00:00-03:00"))
 
-    mockFindPendingDispatches.mockResolvedValue([makePendingDispatch([2, 3, 4, 5])] as Awaited<ReturnType<typeof findAllTenantsPendingDispatches>>)
+    mockFindPendingDispatches.mockResolvedValue([makePendingDispatch([2, 3, 4, 5])] as unknown as Awaited<ReturnType<typeof findAllTenantsPendingDispatches>>)
 
     const result = await runSurveyDispatcher()
     expect(result).toEqual({ dispatched: 0, errors: 0 })
@@ -137,7 +141,7 @@ describe("runSurveyDispatcher", () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
 
-    mockFindPendingDispatches.mockResolvedValue([makePendingDispatch()] as Awaited<ReturnType<typeof findAllTenantsPendingDispatches>>)
+    mockFindPendingDispatches.mockResolvedValue([makePendingDispatch()] as unknown as Awaited<ReturnType<typeof findAllTenantsPendingDispatches>>)
     mockFindEmployeeIdsWithAcceptedConsent.mockResolvedValue([EMPLOYEE.id])
 
     const result = await runSurveyDispatcher()
@@ -156,9 +160,9 @@ describe("runSurveyDispatcher", () => {
 
     const sundayEmployee = { ...EMPLOYEE, workDays: [{ dayOfWeek: 0 }] }
     const dept = { ...DEPARTMENT, workDays: [{ dayOfWeek: 1 }], employees: [sundayEmployee] }
-    const dispatch = { ...makePendingDispatch([0, 1, 2, 3, 4, 5]), surveyConfiguration: { ...makePendingDispatch().surveyConfiguration, department: dept, workDays: [{ dayOfWeek: 0 }] } }
+    const dispatch = { ...makePendingDispatch([0, 1, 2, 3, 4, 5]), surveyConfiguration: { ...(makePendingDispatch().surveyConfiguration as Record<string, unknown>), department: dept, workDays: [{ dayOfWeek: 0 }] } }
 
-    mockFindPendingDispatches.mockResolvedValue([dispatch] as Awaited<ReturnType<typeof findAllTenantsPendingDispatches>>)
+    mockFindPendingDispatches.mockResolvedValue([dispatch] as unknown as Awaited<ReturnType<typeof findAllTenantsPendingDispatches>>)
     mockFindEmployeeIdsWithAcceptedConsent.mockResolvedValue([])
 
     const result = await runSurveyDispatcher()
@@ -171,7 +175,7 @@ describe("runSurveyDispatcher", () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
 
-    mockFindPendingDispatches.mockResolvedValue([makePendingDispatch()] as Awaited<ReturnType<typeof findAllTenantsPendingDispatches>>)
+    mockFindPendingDispatches.mockResolvedValue([makePendingDispatch()] as unknown as Awaited<ReturnType<typeof findAllTenantsPendingDispatches>>)
     mockFindEmployeeIdsWithAcceptedConsent.mockRejectedValue(new Error("DB error"))
 
     const result = await runSurveyDispatcher()
@@ -193,7 +197,7 @@ describe("runAutoDispatchScheduler", () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2024-01-14T12:00:00-03:00"))
 
-    mockFindActiveConfigs.mockResolvedValue([makeAutoDispatchConfig({ workDays: [2, 3, 4, 5] })] as Awaited<ReturnType<typeof findActiveConfigsForAutoDispatch>>)
+    mockFindActiveConfigs.mockResolvedValue([makeAutoDispatchConfig({ workDays: [2, 3, 4, 5] })] as unknown as Awaited<ReturnType<typeof findActiveConfigsForAutoDispatch>>)
 
     const result = await runAutoDispatchScheduler()
     expect(result.skipped).toBe(1)
@@ -207,7 +211,7 @@ describe("runAutoDispatchScheduler", () => {
     vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
 
     const recentDispatch = new Date(Date.now() - 1000 * 60 * 60 * 2)
-    mockFindActiveConfigs.mockResolvedValue([makeAutoDispatchConfig({ lastDispatchedAt: recentDispatch, frequency: "daily" })] as Awaited<ReturnType<typeof findActiveConfigsForAutoDispatch>>)
+    mockFindActiveConfigs.mockResolvedValue([makeAutoDispatchConfig({ lastDispatchedAt: recentDispatch, frequency: "daily" })] as unknown as Awaited<ReturnType<typeof findActiveConfigsForAutoDispatch>>)
 
     const result = await runAutoDispatchScheduler()
     expect(result.skipped).toBe(1)
@@ -219,7 +223,7 @@ describe("runAutoDispatchScheduler", () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
 
-    mockFindActiveConfigs.mockResolvedValue([makeAutoDispatchConfig()] as Awaited<ReturnType<typeof findActiveConfigsForAutoDispatch>>)
+    mockFindActiveConfigs.mockResolvedValue([makeAutoDispatchConfig()] as unknown as Awaited<ReturnType<typeof findActiveConfigsForAutoDispatch>>)
     mockFindEmployeeIdsWithAcceptedConsent.mockResolvedValue([EMPLOYEE.id])
 
     const result = await runAutoDispatchScheduler()
@@ -234,7 +238,7 @@ describe("runAutoDispatchScheduler", () => {
     vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
 
     const oldDispatch = new Date(Date.now() - 1000 * 60 * 60 * 24 * 2)
-    mockFindActiveConfigs.mockResolvedValue([makeAutoDispatchConfig({ lastDispatchedAt: oldDispatch, frequency: "daily" })] as Awaited<ReturnType<typeof findActiveConfigsForAutoDispatch>>)
+    mockFindActiveConfigs.mockResolvedValue([makeAutoDispatchConfig({ lastDispatchedAt: oldDispatch, frequency: "daily" })] as unknown as Awaited<ReturnType<typeof findActiveConfigsForAutoDispatch>>)
     mockFindEmployeeIdsWithAcceptedConsent.mockResolvedValue([EMPLOYEE.id])
 
     const result = await runAutoDispatchScheduler()
@@ -247,7 +251,7 @@ describe("runAutoDispatchScheduler", () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
 
-    mockFindActiveConfigs.mockResolvedValue([makeAutoDispatchConfig()] as Awaited<ReturnType<typeof findActiveConfigsForAutoDispatch>>)
+    mockFindActiveConfigs.mockResolvedValue([makeAutoDispatchConfig()] as unknown as Awaited<ReturnType<typeof findActiveConfigsForAutoDispatch>>)
     mockFindEmployeeIdsWithAcceptedConsent.mockRejectedValue(new Error("DB fail"))
 
     const result = await runAutoDispatchScheduler()
@@ -338,7 +342,7 @@ describe("runSurveyDispatcher — token work hours fallback chain", () => {
         department: deptWithEmployee,
       },
     }
-    mockFindPendingDispatches.mockResolvedValue([dispatch] as Awaited<ReturnType<typeof findAllTenantsPendingDispatches>>)
+    mockFindPendingDispatches.mockResolvedValue([dispatch] as unknown as Awaited<ReturnType<typeof findAllTenantsPendingDispatches>>)
     mockFindEmployeeIdsWithAcceptedConsent.mockResolvedValue([EMPLOYEE.id])
 
     await runSurveyDispatcher()
@@ -369,7 +373,7 @@ describe("runSurveyDispatcher — token work hours fallback chain", () => {
         department: deptNoHours,
       },
     }
-    mockFindPendingDispatches.mockResolvedValue([dispatch] as Awaited<ReturnType<typeof findAllTenantsPendingDispatches>>)
+    mockFindPendingDispatches.mockResolvedValue([dispatch] as unknown as Awaited<ReturnType<typeof findAllTenantsPendingDispatches>>)
     mockFindEmployeeIdsWithAcceptedConsent.mockResolvedValue([EMPLOYEE.id])
 
     await runSurveyDispatcher()
@@ -389,7 +393,7 @@ describe("runAutoDispatchScheduler — edge cases", () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
 
-    mockFindActiveConfigs.mockResolvedValue([makeAutoDispatchConfig()] as Awaited<ReturnType<typeof findActiveConfigsForAutoDispatch>>)
+    mockFindActiveConfigs.mockResolvedValue([makeAutoDispatchConfig()] as unknown as Awaited<ReturnType<typeof findActiveConfigsForAutoDispatch>>)
     mockFindEmployeeIdsWithAcceptedConsent.mockResolvedValue([])
 
     const result = await runAutoDispatchScheduler()
@@ -404,7 +408,7 @@ describe("runAutoDispatchScheduler — edge cases", () => {
     vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
 
     const eightDaysAgo = new Date(Date.now() - 1000 * 60 * 60 * 24 * 8)
-    mockFindActiveConfigs.mockResolvedValue([makeAutoDispatchConfig({ frequency: "unknown_frequency", lastDispatchedAt: eightDaysAgo })] as Awaited<ReturnType<typeof findActiveConfigsForAutoDispatch>>)
+    mockFindActiveConfigs.mockResolvedValue([makeAutoDispatchConfig({ frequency: "unknown_frequency", lastDispatchedAt: eightDaysAgo })] as unknown as Awaited<ReturnType<typeof findActiveConfigsForAutoDispatch>>)
     mockFindEmployeeIdsWithAcceptedConsent.mockResolvedValue([EMPLOYEE.id])
 
     const result = await runAutoDispatchScheduler()
@@ -418,7 +422,7 @@ describe("runAutoDispatchScheduler — edge cases", () => {
     vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
 
     const fiveDaysAgo = new Date(Date.now() - 1000 * 60 * 60 * 24 * 5)
-    mockFindActiveConfigs.mockResolvedValue([makeAutoDispatchConfig({ frequency: "unknown_frequency", lastDispatchedAt: fiveDaysAgo })] as Awaited<ReturnType<typeof findActiveConfigsForAutoDispatch>>)
+    mockFindActiveConfigs.mockResolvedValue([makeAutoDispatchConfig({ frequency: "unknown_frequency", lastDispatchedAt: fiveDaysAgo })] as unknown as Awaited<ReturnType<typeof findActiveConfigsForAutoDispatch>>)
 
     const result = await runAutoDispatchScheduler()
     expect(result.skipped).toBe(1)

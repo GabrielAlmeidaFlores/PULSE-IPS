@@ -431,6 +431,7 @@ model AnonymousReport {
   updatedAt  DateTime  @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actionPlans  ActionPlan[] @relation("ActionPlanOriginReport")
 
   @@index([tenantId])
   @@map("anonymous_reports")
@@ -439,6 +440,8 @@ model AnonymousReport {
 model ActionPlan {
   id          String    @id @default(uuid())
   tenantId    String    @map("tenant_id")
+  alertId     String?   @map("alert_id")
+  reportId    String?   @map("report_id")
   title       String
   description String?
   status      String    @default("open")
@@ -448,8 +451,11 @@ model ActionPlan {
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
-  organization Organization     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  organization Organization               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  alert        Alert?                     @relation("ActionPlanOriginAlert", fields: [alertId], references: [id])
+  report       AnonymousReport?           @relation("ActionPlanOriginReport", fields: [reportId], references: [id])
   tasks        ActionPlanTask[]
+  suggestion   ActionPlanSuggestion?      @relation("ActionPlanSuggestionConvertedPlan")
 
   @@index([tenantId])
   @@map("action_plans")
@@ -484,12 +490,13 @@ model ActionPlanSuggestion {
   status        String    @default("pending")
   dismissedAt   DateTime? @map("dismissed_at")
   dismissedBy   String?   @map("dismissed_by")
-  actionPlanId  String?   @map("action_plan_id")
+  actionPlanId  String?   @unique @map("action_plan_id")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
   organization Organization               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   dismisser    OrganizationUser?          @relation("ActionPlanSuggestionDismisser", fields: [dismissedBy], references: [id])
+  actionPlan   ActionPlan?                @relation("ActionPlanSuggestionConvertedPlan", fields: [actionPlanId], references: [id])
   tasks        ActionPlanSuggestionTask[]
 
   @@index([tenantId, status])
@@ -553,6 +560,7 @@ model Alert {
 
   organization Organization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   department   Department?  @relation(fields: [departmentId], references: [id])
+  actionPlans  ActionPlan[] @relation("ActionPlanOriginAlert")
 
   @@index([tenantId])
   @@map("alerts")

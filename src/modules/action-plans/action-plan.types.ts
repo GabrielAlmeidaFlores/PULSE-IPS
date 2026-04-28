@@ -26,6 +26,8 @@ export interface CreateActionPlanInput {
   description?: string | undefined
   priority?: "low" | "medium" | "high" | undefined
   dueDate?: Date | undefined
+  alertId?: string | undefined
+  reportId?: string | undefined
 }
 
 export interface CreateActionPlanTaskInput {
@@ -37,7 +39,7 @@ export interface CreateActionPlanTaskInput {
 export interface UpdateActionPlanInput {
   title?: string | undefined
   description?: string | undefined
-  status?: "open" | "in_progress" | "completed" | undefined
+  status?: "open" | "in_progress" | "completed" | "cancelled" | undefined
   priority?: "low" | "medium" | "high" | undefined
   dueDate?: Date | null | undefined
   completedAt?: Date | null | undefined

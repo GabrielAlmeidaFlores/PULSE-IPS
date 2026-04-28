@@ -327,7 +327,7 @@ describe("optOutFromSurveyToken — opt-out via survey link", () => {
     mockFindTokenByValue.mockResolvedValue(tokenRecord as Awaited<ReturnType<typeof findTokenByValue>>)
     mockGetActiveConsentTermVersion.mockResolvedValue(activeTermVersion)
     mockCreateConsentRecord.mockResolvedValue(baseConsentInvite as Awaited<ReturnType<typeof createConsentRecord>>)
-    mockMarkTokenUsed.mockResolvedValue(undefined)
+    mockMarkTokenUsed.mockResolvedValue(undefined as unknown as Awaited<ReturnType<typeof markTokenUsed>>)
   })
 
   it("creates opted_out consent record with correct fields", async () => {
@@ -466,7 +466,7 @@ describe("getActiveTermVersion", () => {
   })
 
   it("returns the active consent term version", async () => {
-    const termVersion = { id: TERM_VERSION_ID, version: "1.0", content: TERMS_CONTENT, isCurrent: true }
+    const termVersion = { id: TERM_VERSION_ID, version: "1.0", content: TERMS_CONTENT, isActive: true, contentHash: "hash123", createdAt: new Date() }
     mockGetActiveConsentTermVersion.mockResolvedValue(termVersion as Awaited<ReturnType<typeof getActiveConsentTermVersion>>)
 
     const result = await getActiveTermVersion()
@@ -474,7 +474,7 @@ describe("getActiveTermVersion", () => {
   })
 
   it("calls repository once to fetch active term version", async () => {
-    const termVersion = { id: TERM_VERSION_ID, version: "1.0", content: TERMS_CONTENT, isCurrent: true }
+    const termVersion = { id: TERM_VERSION_ID, version: "1.0", content: TERMS_CONTENT, isActive: true, contentHash: "hash123", createdAt: new Date() }
     mockGetActiveConsentTermVersion.mockResolvedValue(termVersion as Awaited<ReturnType<typeof getActiveConsentTermVersion>>)
 
     await getActiveTermVersion()
@@ -492,7 +492,7 @@ describe("acceptConsentFromSurveyToken", () => {
     usedAt: null,
     expiresAt: new Date(Date.now() + 86400000),
   }
-  const activeVersion = { id: TERM_VERSION_ID, version: "1.0", content: TERMS_CONTENT, isCurrent: true }
+  const activeVersion = { id: TERM_VERSION_ID, version: "1.0", content: TERMS_CONTENT, isActive: true, contentHash: "hash123", createdAt: new Date() }
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -542,7 +542,7 @@ describe("refuseConsentFromSurveyToken", () => {
     usedAt: null,
     expiresAt: new Date(Date.now() + 86400000),
   }
-  const activeVersion = { id: TERM_VERSION_ID, version: "1.0", content: TERMS_CONTENT, isCurrent: true }
+  const activeVersion = { id: TERM_VERSION_ID, version: "1.0", content: TERMS_CONTENT, isActive: true, contentHash: "hash123", createdAt: new Date() }
 
   beforeEach(() => {
     vi.clearAllMocks()

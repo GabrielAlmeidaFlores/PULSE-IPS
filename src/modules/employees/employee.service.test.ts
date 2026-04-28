@@ -51,7 +51,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockCreateEmployee.mockResolvedValue(CREATED_EMPLOYEE as Awaited<ReturnType<typeof createEmployee>>)
   mockCreateAuditLog.mockResolvedValue(undefined)
-  mockDeactivateEmployee.mockResolvedValue(undefined)
+  mockDeactivateEmployee.mockResolvedValue({ count: 0 } as Awaited<ReturnType<typeof deactivateEmployee>>)
 })
 
 describe("createNewEmployee — employee limit checks", () => {
@@ -116,7 +116,7 @@ describe("createNewEmployee — employee limit checks", () => {
   it("allows creation when plan has null maxEmployees (unlimited)", async () => {
     mockFindOrganizationById.mockResolvedValue(ORG_NO_OVERRIDE as Awaited<ReturnType<typeof findOrganizationById>>)
     mockFindActiveSubscription.mockResolvedValue(null)
-    mockFindPlanById.mockResolvedValue({ id: "plan-1", maxEmployees: null } as Awaited<ReturnType<typeof findPlanById>>)
+    mockFindPlanById.mockResolvedValue({ id: "plan-1", maxEmployees: null } as unknown as Awaited<ReturnType<typeof findPlanById>>)
     mockCountEmployees.mockResolvedValue(9999)
 
     const result = await createNewEmployee(TENANT_ID, EMPLOYEE_INPUT)
@@ -174,7 +174,7 @@ describe("unpauseAllTenantsDueEmployees", () => {
 describe("getEmployees", () => {
   it("returns paginated employees for the given tenant", async () => {
     const employees = [CREATED_EMPLOYEE]
-    mockFindEmployeesByTenant.mockResolvedValue(employees as Awaited<ReturnType<typeof findEmployeesByTenant>>)
+    mockFindEmployeesByTenant.mockResolvedValue(employees as unknown as Awaited<ReturnType<typeof findEmployeesByTenant>>)
 
     const result = await getEmployees(TENANT_ID, 1, 20)
     expect(result).toEqual(employees)
@@ -195,7 +195,7 @@ describe("getEmployee", () => {
 describe("updateExistingEmployee", () => {
   it("updates employee fields and returns updated record", async () => {
     const updated = { ...CREATED_EMPLOYEE, name: "Ana Updated" }
-    mockUpdateEmployee.mockResolvedValue(updated as Awaited<ReturnType<typeof updateEmployee>>)
+    mockUpdateEmployee.mockResolvedValue(updated as unknown as Awaited<ReturnType<typeof updateEmployee>>)
 
     const result = await updateExistingEmployee(TENANT_ID, "emp-1", { name: "Ana Updated" })
     expect(result).toEqual(updated)

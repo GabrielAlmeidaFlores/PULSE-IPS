@@ -68,8 +68,8 @@ const mockDestroySession = vi.mocked(destroySession)
 const mockDestroySuperAdminSession = vi.mocked(destroySuperAdminSession)
 const mockFindAllSuperAdmins = vi.mocked(findAllSuperAdmins)
 const mockCreateAuditLog = vi.mocked(createAuditLog)
-const mockBcryptHash = vi.mocked(bcrypt.hash)
-const mockBcryptCompare = vi.mocked(bcrypt.compare)
+const mockBcryptHash = vi.mocked(bcrypt.hash as (data: string, saltOrRounds: number) => Promise<string>)
+const mockBcryptCompare = vi.mocked(bcrypt.compare as (data: string, encrypted: string) => Promise<boolean>)
 
 const ORG = { id: "org-1", slug: "acme", isActive: true, billingStatus: "active" }
 const USER = {
@@ -176,7 +176,15 @@ describe("login", () => {
 })
 
 describe("superAdminLogin", () => {
-  const ADMIN = { id: "sa-1", email: "admin@pulse.com", passwordHash: "hashed", isActive: true, name: "Admin" }
+  const ADMIN = {
+    id: "sa-1",
+    email: "admin@pulse.com",
+    passwordHash: "hashed",
+    isActive: true,
+    name: "Admin",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }
 
   it("throws when admin not found", async () => {
     mockFindSuperAdminByEmail.mockResolvedValue(null)

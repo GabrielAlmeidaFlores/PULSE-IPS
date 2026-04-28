@@ -22,7 +22,7 @@ const mockCreateTermsVersion = vi.mocked(createTermsVersion)
 const mockFindAllTermsVersions = vi.mocked(findAllTermsVersions)
 const mockFindAcceptancesByVersion = vi.mocked(findAcceptancesByVersion)
 
-const TERMS = { id: "terms-1", version: "1.0", content: "<p>Termos</p>", isActive: true, effectiveDate: new Date() }
+const TERMS = { id: "terms-1", version: "1.0", title: "Termos v1.0", content: "<p>Termos</p>", isActive: true, effectiveAt: new Date(), createdAt: new Date() }
 const ACCEPTANCE = { id: "acc-1", userId: "user-1", termsVersionId: "terms-1", acceptedAt: new Date(), createdAt: new Date() }
 
 beforeEach(() => {
@@ -114,7 +114,7 @@ describe("createNewTermsVersion", () => {
     const newTerms = { ...TERMS, id: "terms-2", version: "2.0" }
     mockCreateTermsVersion.mockResolvedValue(newTerms as Awaited<ReturnType<typeof createTermsVersion>>)
 
-    const result = await createNewTermsVersion({ version: "2.0", content: "<p>v2</p>", effectiveDate: new Date(), isActive: true } as CreateTermsVersionInput)
+    const result = await createNewTermsVersion({ version: "2.0", title: "Termos v2.0", content: "<p>v2</p>", effectiveAt: new Date() } as CreateTermsVersionInput)
     expect(result).toEqual(newTerms)
     expect(mockCreateTermsVersion).toHaveBeenCalledOnce()
   })

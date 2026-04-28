@@ -8,6 +8,7 @@ import {
   findActionPlanById,
   createActionPlanTask,
 } from "@/modules/action-plans/action-plan.repository"
+import type { CreateActionPlanTaskInput } from "@/modules/action-plans/action-plan.types"
 
 vi.mock("@/modules/action-plans/action-plan.repository")
 vi.mock("@/env", () => ({ env: { NEXT_PUBLIC_APP_URL: "http://localhost:3000" } }))
@@ -95,11 +96,20 @@ describe("getActionPlan", () => {
 
 describe("addTask", () => {
   it("adds task to action plan and returns the created task", async () => {
-    const task = { id: "task-1", description: "Tarefa", responsible: "João", dueDate: new Date("2024-06-01"), status: "pending" }
+    const task = {
+      id: "task-1",
+      tenantId: TENANT_ID,
+      actionPlanId: PLAN.id,
+      title: "Tarefa",
+      assigneeId: null,
+      dueDate: new Date("2024-06-01"),
+      completedAt: null,
+      createdAt: new Date(),
+    }
     mockCreateActionPlanTask.mockResolvedValue(task as Awaited<ReturnType<typeof createActionPlanTask>>)
 
-    const input = { description: "Tarefa", responsible: "João", dueDate: new Date("2024-06-01") }
-    const result = await addTask(TENANT_ID, PLAN.id, input as CreateActionPlanTaskInput)
+    const input: CreateActionPlanTaskInput = { title: "Tarefa", dueDate: new Date("2024-06-01") }
+    const result = await addTask(TENANT_ID, PLAN.id, input)
     expect(result).toEqual(task)
     expect(mockCreateActionPlanTask).toHaveBeenCalledWith(TENANT_ID, PLAN.id, input)
   })

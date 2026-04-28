@@ -49,7 +49,7 @@ describe("createOrg", () => {
   it("creates org and registers billing customer when slug is available", async () => {
     mockFindOrgBySlug.mockResolvedValue(null)
     const mockCreateCustomer = vi.fn().mockResolvedValue({ id: "cus_new123" })
-    mockGetBillingService.mockReturnValue({ createCustomer: mockCreateCustomer } as ReturnType<typeof getBillingService>)
+    mockGetBillingService.mockReturnValue({ createCustomer: mockCreateCustomer } as unknown as ReturnType<typeof getBillingService>)
 
     const result = await createOrg({ slug: "acme", name: "Acme Corp" })
 

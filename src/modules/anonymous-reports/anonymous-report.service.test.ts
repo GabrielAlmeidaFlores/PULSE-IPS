@@ -20,7 +20,7 @@ const CREATED_REPORT = { id: "rep-1", ...REPORT_INPUT, tenantId: "org-1", status
 beforeEach(() => {
   vi.clearAllMocks()
   mockCreateReport.mockResolvedValue(CREATED_REPORT as Awaited<ReturnType<typeof createReport>>)
-  mockUpdateReport.mockResolvedValue(CREATED_REPORT as Awaited<ReturnType<typeof updateReport>>)
+  mockUpdateReport.mockResolvedValue({ count: 1 })
 })
 
 describe("submitReport", () => {

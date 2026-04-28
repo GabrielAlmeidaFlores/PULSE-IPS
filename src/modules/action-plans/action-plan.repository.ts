@@ -27,6 +27,8 @@ export function createActionPlan(tenantId: string, data: CreateActionPlanInput):
       ...(data.description !== undefined && { description: data.description }),
       ...(data.priority !== undefined && { priority: data.priority }),
       ...(data.dueDate !== undefined && { dueDate: data.dueDate }),
+      ...(data.alertId !== undefined && { alertId: data.alertId }),
+      ...(data.reportId !== undefined && { reportId: data.reportId }),
     },
   })
 }
@@ -44,6 +46,7 @@ export function updateActionPlan(
       ...(data.dueDate !== undefined && { dueDate: data.dueDate }),
       ...(data.status !== undefined && { status: data.status }),
       ...(data.priority !== undefined && { priority: data.priority }),
+      ...(data.completedAt !== undefined && { completedAt: data.completedAt }),
     },
   })
 }
@@ -81,6 +84,9 @@ export function createActionPlanWithTasks(
         title: data.title,
         ...(data.description !== undefined && { description: data.description }),
         ...(data.priority !== undefined && { priority: data.priority }),
+        ...(data.dueDate !== undefined && { dueDate: data.dueDate }),
+        ...(data.alertId !== undefined && { alertId: data.alertId }),
+        ...(data.reportId !== undefined && { reportId: data.reportId }),
       },
     })
     if (taskTitles.length > 0) {

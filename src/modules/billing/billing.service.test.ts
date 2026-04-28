@@ -59,7 +59,7 @@ describe("createCheckoutSession", () => {
   it("returns checkout URL from billing service", async () => {
     mockFindOrgRequired.mockResolvedValue(ORG as Awaited<ReturnType<typeof findOrganizationRequired>>)
     const mockCreateCheckout = vi.fn().mockResolvedValue({ url: "https://checkout.stripe.com/session" })
-    mockGetBillingService.mockReturnValue({ createCheckoutSession: mockCreateCheckout } as ReturnType<typeof getBillingService>)
+    mockGetBillingService.mockReturnValue({ createCheckoutSession: mockCreateCheckout } as unknown as ReturnType<typeof getBillingService>)
 
     const url = await createCheckoutSession("org-1", "price_ext")
 
@@ -73,7 +73,7 @@ describe("createCheckoutSession", () => {
     mockFindOrgRequired.mockResolvedValue(ORG as Awaited<ReturnType<typeof findOrganizationRequired>>)
     const successUrl = "http://localhost:3000/billing?success=true"
     const mockCreateCheckout = vi.fn().mockResolvedValue({ url: successUrl })
-    mockGetBillingService.mockReturnValue({ createCheckoutSession: mockCreateCheckout } as ReturnType<typeof getBillingService>)
+    mockGetBillingService.mockReturnValue({ createCheckoutSession: mockCreateCheckout } as unknown as ReturnType<typeof getBillingService>)
     mockFindPlanPriceForProvisioning.mockResolvedValue(PLAN_PRICE as Awaited<ReturnType<typeof findPlanPriceForProvisioning>>)
 
     await createCheckoutSession("org-1", "price_ext")
@@ -86,7 +86,7 @@ describe("createCheckoutSession", () => {
     mockFindOrgRequired.mockResolvedValue(ORG as Awaited<ReturnType<typeof findOrganizationRequired>>)
     const successUrl = "http://localhost:3000/billing?success=true"
     const mockCreateCheckout = vi.fn().mockResolvedValue({ url: successUrl })
-    mockGetBillingService.mockReturnValue({ createCheckoutSession: mockCreateCheckout } as ReturnType<typeof getBillingService>)
+    mockGetBillingService.mockReturnValue({ createCheckoutSession: mockCreateCheckout } as unknown as ReturnType<typeof getBillingService>)
     mockFindPlanPriceForProvisioning.mockResolvedValue(null)
 
     await createCheckoutSession("org-1", "price_ext")
@@ -97,7 +97,7 @@ describe("createCheckoutSession", () => {
   it("uses custom successUrl and cancelUrl when provided", async () => {
     mockFindOrgRequired.mockResolvedValue(ORG as Awaited<ReturnType<typeof findOrganizationRequired>>)
     const mockCreateCheckout = vi.fn().mockResolvedValue({ url: "https://custom-success.com" })
-    mockGetBillingService.mockReturnValue({ createCheckoutSession: mockCreateCheckout } as ReturnType<typeof getBillingService>)
+    mockGetBillingService.mockReturnValue({ createCheckoutSession: mockCreateCheckout } as unknown as ReturnType<typeof getBillingService>)
 
     await createCheckoutSession("org-1", "price_ext", {
       successUrl: "https://custom-success.com",
@@ -122,7 +122,7 @@ describe("getBillingPortalUrl", () => {
   it("returns portal URL from billing service", async () => {
     mockFindOrgRequired.mockResolvedValue(ORG as Awaited<ReturnType<typeof findOrganizationRequired>>)
     const mockCreatePortal = vi.fn().mockResolvedValue({ url: "https://billing.stripe.com/portal" })
-    mockGetBillingService.mockReturnValue({ createBillingPortalSession: mockCreatePortal } as ReturnType<typeof getBillingService>)
+    mockGetBillingService.mockReturnValue({ createBillingPortalSession: mockCreatePortal } as unknown as ReturnType<typeof getBillingService>)
 
     const url = await getBillingPortalUrl("org-1")
 

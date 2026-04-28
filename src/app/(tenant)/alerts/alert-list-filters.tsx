@@ -15,17 +15,15 @@ const ALERT_TYPE_OPTIONS = [
   { value: "low_score", label: "Bem-estar abaixo do esperado" },
   { value: "negative_trend", label: "Tendência de piora" },
   { value: "low_adherence", label: "Adesão baixa" },
-  { value: "crisis_report", label: "Relato de crise" },
+  { value: "no_response", label: "Sem resposta" },
+  { value: "consent_expired", label: "Consentimento expirado" },
   { value: "pgr_review_due", label: "Revisão PGR pendente" },
 ]
 
 const ALERT_SEVERITY_OPTIONS = [
   { value: "critical", label: "Crítico" },
-  { value: "high", label: "Crítico" },
   { value: "warning", label: "Atenção" },
-  { value: "medium", label: "Atenção" },
   { value: "info", label: "Informativo" },
-  { value: "low", label: "Informativo" },
 ]
 
 const ALERT_STATUS_OPTIONS = [
