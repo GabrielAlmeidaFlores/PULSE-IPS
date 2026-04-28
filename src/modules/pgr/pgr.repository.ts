@@ -21,6 +21,27 @@ export function findPgrReviewsByTenant(tenantId: string): Promise<PgrReviewListI
   })
 }
 
+export async function findPgrReviewsByTenantPaginated(
+  tenantId: string,
+  skip: number,
+  take: number,
+): Promise<{ items: PgrReviewListItem[]; total: number }> {
+  const where = { tenantId }
+  const [items, total] = await prisma.$transaction([
+    prisma.pgrReview.findMany({
+      where,
+      skip,
+      take,
+      orderBy: { createdAt: "desc" },
+      include: {
+        deptResults: { select: { avgScore: true, responseCount: true } },
+      },
+    }),
+    prisma.pgrReview.count({ where }),
+  ])
+  return { items, total }
+}
+
 export function findPgrReviewById(tenantId: string, id: string): Promise<PgrReviewWithResults | null> {
   return prisma.pgrReview.findFirst({
     where: { id, tenantId },

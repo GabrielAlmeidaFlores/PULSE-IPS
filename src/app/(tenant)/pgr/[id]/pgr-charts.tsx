@@ -203,9 +203,9 @@ export function PgrAdherenceComparisonChart({ depts }: PgrAdherenceComparisonCha
         >
           {data.map((d) => {
             const fill = (() => {
-              if (d.adherencePct >= 80) return "#16a34a"
-              if (d.adherencePct >= 50) return "#d97706"
-              return "#dc2626"
+              if (d.adherencePct >= 80) return "var(--status-success)"
+              if (d.adherencePct >= 50) return "var(--status-warning)"
+              return "var(--status-danger)"
             })()
             return <Cell key={d.id} fill={fill} />
           })}

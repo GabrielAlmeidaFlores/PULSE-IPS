@@ -123,34 +123,34 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
 
         {deptCards.length > 0 && (
           <div className="grid grid-cols-3 gap-3">
-            <div className="border border-green-200 bg-green-50 dark:bg-primary/10 dark:border-primary/30 p-4 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-green-100 dark:bg-primary/20 flex items-center justify-center shrink-0">
-                <TrendingUp className="w-4 h-4 text-green-600 dark:text-primary" />
+            <div className="border border-status-success-border bg-status-success-subtle p-4 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-status-success-subtle flex items-center justify-center shrink-0">
+                <TrendingUp className="w-4 h-4 text-status-success" />
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-green-700 dark:text-primary">Saudáveis</p>
-                <p className="text-2xl font-black font-mono text-green-700 dark:text-primary">{healthyDeptCount}</p>
-                <p className="text-[10px] text-green-600/70 dark:text-primary/60">setores</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-status-success">Saudáveis</p>
+                <p className="text-2xl font-black font-mono text-status-success">{healthyDeptCount}</p>
+                <p className="text-[10px] text-status-success/70">setores</p>
               </div>
             </div>
-            <div className="border border-amber-200 bg-amber-50 dark:bg-amber-400/10 dark:border-amber-400/30 p-4 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-400/20 flex items-center justify-center shrink-0">
-                <Minus className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            <div className="border border-status-warning-border bg-status-warning-subtle p-4 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-status-warning-subtle flex items-center justify-center shrink-0">
+                <Minus className="w-4 h-4 text-status-warning" />
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-400">Atenção</p>
-                <p className="text-2xl font-black font-mono text-amber-700 dark:text-amber-400">{warningDeptCount}</p>
-                <p className="text-[10px] text-amber-600/70 dark:text-amber-400/60">setores</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-status-warning">Atenção</p>
+                <p className="text-2xl font-black font-mono text-status-warning">{warningDeptCount}</p>
+                <p className="text-[10px] text-status-warning/70">setores</p>
               </div>
             </div>
-            <div className="border border-red-200 bg-red-50 dark:bg-red-400/10 dark:border-red-400/30 p-4 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-red-100 dark:bg-red-400/20 flex items-center justify-center shrink-0">
-                <TrendingDown className="w-4 h-4 text-red-600 dark:text-red-400" />
+            <div className="border border-status-danger-border bg-status-danger-subtle p-4 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-status-danger-subtle flex items-center justify-center shrink-0">
+                <TrendingDown className="w-4 h-4 text-status-danger" />
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-red-700 dark:text-red-400">Críticos</p>
-                <p className="text-2xl font-black font-mono text-red-700 dark:text-red-400">{criticalDeptCount}</p>
-                <p className="text-[10px] text-red-600/70 dark:text-red-400/60">setores</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-status-danger">Críticos</p>
+                <p className="text-2xl font-black font-mono text-status-danger">{criticalDeptCount}</p>
+                <p className="text-[10px] text-status-danger/70">setores</p>
               </div>
             </div>
           </div>
@@ -165,8 +165,8 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
                   <p className="text-sm font-bold text-foreground truncate">{topDept.dept}</p>
                   <div className="shrink-0 flex flex-col items-end">
                     <div className="flex items-center gap-1">
-                      <TrendingUp className="w-3.5 h-3.5 text-green-600" />
-                      <p className="text-xl font-black font-mono text-green-600">{topDept.avg}%</p>
+                      <TrendingUp className="w-3.5 h-3.5 text-status-success" />
+                      <p className="text-xl font-black font-mono text-status-success">{topDept.avg}%</p>
                     </div>
                     <p className="text-[10px] text-muted-foreground">índice de saúde</p>
                   </div>
@@ -183,11 +183,11 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
                   <div className="shrink-0 flex flex-col items-end">
                     <div className="flex items-center gap-1">
                       {bottomDept.avg < 37 ? (
-                        <TrendingDown className="w-3.5 h-3.5 text-red-600" />
+                        <TrendingDown className="w-3.5 h-3.5 text-status-danger" />
                       ) : (
-                        <Minus className="w-3.5 h-3.5 text-amber-600" />
+                        <Minus className="w-3.5 h-3.5 text-status-warning" />
                       )}
-                      <p className={`text-xl font-black font-mono ${bottomDept.avg < 37 ? "text-red-600" : "text-amber-600"}`}>{bottomDept.avg}%</p>
+                      <p className={`text-xl font-black font-mono ${bottomDept.avg < 37 ? "text-status-danger" : "text-status-warning"}`}>{bottomDept.avg}%</p>
                     </div>
                     <p className="text-[10px] text-muted-foreground">índice de saúde</p>
                   </div>
@@ -252,13 +252,13 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
                   let statusCls: string
                   let statusLabel: string
                   if (alert.resolvedAt) {
-                    statusCls = "bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800"
+                    statusCls = `badge-success`
                     statusLabel = "resolvido"
                   } else if (alert.isRead) {
                     statusCls = BADGE_DEFAULT
                     statusLabel = "lido"
                   } else {
-                    statusCls = "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800"
+                    statusCls = `badge-warning`
                     statusLabel = "novo"
                   }
                   return (

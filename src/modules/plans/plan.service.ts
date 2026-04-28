@@ -2,6 +2,7 @@ import { getBillingService } from "@/libs/integrations"
 import {
   findAllPlans,
   findAllPlansIncludingInactive,
+  findAllPlansPaginated,
   findPlanById,
   findPlanPriceById,
   createPlan,
@@ -28,6 +29,18 @@ export function getAllPlans(): Promise<PlanWithPricesAndFeatures[]> {
 
 export function getAllPlansAdmin(): Promise<PlanWithPricesAndFeatures[]> {
   return findAllPlansIncludingInactive()
+}
+
+interface PlanAdminListingQuery {
+  page: number
+  pageSize: number
+}
+
+export function getAllPlansPaginated(
+  query: PlanAdminListingQuery,
+): ReturnType<typeof findAllPlansPaginated> {
+  const skip = (query.page - 1) * query.pageSize
+  return findAllPlansPaginated(skip, query.pageSize)
 }
 
 export function getPlan(planId: string): Promise<PlanWithPricesAndFeatures | null> {

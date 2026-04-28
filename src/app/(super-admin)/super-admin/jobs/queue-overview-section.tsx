@@ -7,12 +7,12 @@ interface Props {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  active:   "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800",
-  waiting:  "bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800",
-  delayed:  "bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800",
-  failed:   "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
-  completed:"bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800",
-  paused:   "bg-neutral-100 text-neutral-800 border-neutral-300 dark:bg-neutral-800/40 dark:text-neutral-400 dark:border-neutral-700",
+  active:   "badge-info",
+  waiting:  "badge-warning",
+  delayed:  "badge-info",
+  failed:   "badge-danger",
+  completed:"badge-success",
+  paused:   "bg-muted text-muted-foreground border-border",
 }
 
 const QUEUE_LABELS: Record<string, string> = {
@@ -53,7 +53,7 @@ function LiveJobRow({ job }: { job: LiveJobSummary }): React.ReactElement {
         </span>
       )}
       {Boolean(job.failedReason) && (
-        <span className="text-red-600 text-xs truncate max-w-[200px]" title={job.failedReason}>
+        <span className="text-status-danger text-xs truncate max-w-[200px]" title={job.failedReason}>
           {job.failedReason}
         </span>
       )}
@@ -77,7 +77,7 @@ export function QueueOverviewSection({ queue }: Props): React.ReactElement {
         {(["active", "waiting", "delayed", "failed", "completed", "paused"] as const).map((status) => (
           <Card key={status} className="text-center py-3">
             <CardContent className="p-0">
-              <div className={`text-2xl font-bold ${status === "failed" && queue.counts[status] > 0 ? "text-red-600" : ""} ${status === "active" && queue.counts[status] > 0 ? "text-blue-600" : ""}`}>
+              <div className={`text-2xl font-bold ${status === "failed" && queue.counts[status] > 0 ? "text-status-danger" : ""} ${status === "active" && queue.counts[status] > 0 ? "text-status-info" : ""}`}>
                 {queue.counts[status]}
               </div>
               <div className="text-[11px] text-muted-foreground mt-1 capitalize">{status}</div>

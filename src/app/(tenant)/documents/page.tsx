@@ -1,19 +1,31 @@
 import { redirect } from "next/navigation"
 import { getSession } from "@/modules/auth/session"
 import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
-import { getDocuments } from "@/modules/documents/document.service"
+import { getDocumentsPaginated } from "@/modules/documents/document.service"
+import { buildPaginationParams } from "@/libs/utils/pagination"
 import { AddDocumentForm } from "@/app/(tenant)/documents/add-document-form"
 import { DocumentsTable } from "@/app/(tenant)/documents/documents-table"
+import { FilterBar } from "@/libs/design-system"
 import { PageHelp } from "@/components/page-help"
 
-export default async function DocumentsPage(): Promise<React.ReactElement> {
+export default async function DocumentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>
+}): Promise<React.ReactElement> {
   const session = await getSession()
   if (!session) redirect("/login")
 
   const hasFeature = await hasTenantPlanFeature(session.tenantId, "documents")
   if (!hasFeature) redirect("/dashboard")
 
-  const documents = await getDocuments(session.tenantId)
+  const params = await searchParams
+  const { page, pageSize } = buildPaginationParams(params["page"], params["pageSize"])
+
+  const docQuery: { page: number; pageSize: number; q?: string } = { page, pageSize }
+  if (params["q"] !== undefined) docQuery.q = params["q"]
+
+  const { items: documents, total } = await getDocumentsPaginated(session.tenantId, docQuery)
 
   return (
     <div className="flex flex-col h-full">
@@ -42,12 +54,16 @@ export default async function DocumentsPage(): Promise<React.ReactElement> {
               </div>
             } />
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">{documents.length} documentos</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{total} documentos</p>
         </div>
         <AddDocumentForm />
       </div>
-      <div className="flex-1 overflow-y-auto p-6">
-        <DocumentsTable documents={documents} />
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <FilterBar
+          fields={[{ type: "text", key: "q", label: "Buscar", placeholder: "Título do documento...", width: "w-[240px]" }]}
+          values={{ q: params["q"] }}
+        />
+        <DocumentsTable documents={documents} total={total} />
       </div>
     </div>
   )

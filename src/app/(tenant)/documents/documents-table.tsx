@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Upload, History } from "lucide-react"
+import { TablePagination } from "@/libs/design-system"
 import { DocumentVersionModal } from "@/app/(tenant)/documents/document-version-modal"
 import { DocumentVersionsHistoryModal } from "@/app/(tenant)/documents/document-versions-history-modal"
 
@@ -23,6 +24,7 @@ interface DocumentRow {
 
 interface Props {
   documents: DocumentRow[]
+  total: number
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -33,7 +35,7 @@ const TYPE_LABELS: Record<string, string> = {
   other: "Outro",
 }
 
-export function DocumentsTable({ documents }: Props): React.ReactElement {
+export function DocumentsTable({ documents, total }: Props): React.ReactElement {
   const [versionDoc, setVersionDoc] = useState<{ id: string; title: string } | null>(null)
   const [historyDoc, setHistoryDoc] = useState<{ id: string; title: string } | null>(null)
 
@@ -125,6 +127,8 @@ export function DocumentsTable({ documents }: Props): React.ReactElement {
           </tbody>
         </table>
       </div>
+
+      <TablePagination total={total} />
 
       {versionDoc && (
         <DocumentVersionModal

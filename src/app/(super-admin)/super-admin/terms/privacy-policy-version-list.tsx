@@ -41,7 +41,7 @@ export function PrivacyPolicyVersionList({ versions }: Props): React.ReactElemen
                   </div>
                 </div>
                 {v.isActive ? (
-                  <span className="flex items-center gap-1 text-[10px] font-bold tracking-widest uppercase text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 shrink-0">
+                  <span className="flex items-center gap-1 text-[10px] font-bold tracking-widest uppercase text-status-success bg-status-success-subtle border border-status-success-border px-2 py-0.5 shrink-0">
                     <CheckCircle className="h-3 w-3" /> Ativa
                   </span>
                 ) : (
@@ -78,7 +78,7 @@ export function PrivacyPolicyVersionList({ versions }: Props): React.ReactElemen
             <div className="flex items-center gap-3 mt-1">
               <span className="text-[11px] text-muted-foreground">Versão {preview?.version}</span>
               {preview?.isActive && (
-                <span className="flex items-center gap-1 text-[10px] font-bold tracking-widest uppercase text-green-600 bg-green-50 border border-green-200 px-2 py-0.5">
+                <span className="flex items-center gap-1 text-[10px] font-bold tracking-widest uppercase text-status-success bg-status-success-subtle border border-status-success-border px-2 py-0.5">
                   <CheckCircle className="h-3 w-3" /> Ativa
                 </span>
               )}

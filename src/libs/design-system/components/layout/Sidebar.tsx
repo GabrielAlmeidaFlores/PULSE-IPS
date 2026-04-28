@@ -101,7 +101,7 @@ export function Sidebar({ role, features }: SidebarProps): React.ReactElement {
         </div>
         <NavLinks items={navItems} />
         <div className="px-4 py-3 border-t border-sidebar-border flex items-center justify-between">
-          <p className="text-[10px] text-muted-foreground/50 font-bold tracking-widest uppercase">v0.1.0</p>
+          <p className="text-[10px] text-muted-foreground/50 font-bold tracking-widest uppercase">v{process.env.NEXT_PUBLIC_APP_VERSION}</p>
           <ThemeToggle variant="icon" />
         </div>
       </aside>

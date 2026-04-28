@@ -1,4 +1,10 @@
 import type { NextConfig } from "next"
+import { readFileSync } from "fs"
+import { join } from "path"
+
+const { version: appVersion } = JSON.parse(
+  readFileSync(join(process.cwd(), "package.json"), "utf-8")
+) as { version: string }
 
 const CSP_DIRECTIVES = [
   "default-src 'self'",
@@ -27,6 +33,9 @@ const SECURITY_HEADERS = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  env: {
+    NEXT_PUBLIC_APP_VERSION: appVersion,
+  },
   headers(): Promise<{ source: string; headers: { key: string; value: string }[] }[]> {
     return Promise.resolve([{ source: "/(.*)", headers: SECURITY_HEADERS }])
   },

@@ -103,17 +103,17 @@ export function TermsHub({
               {tab.icon}
               {tab.label}
               {tab.id === "platform" && activePlatform && (
-                <span className="text-[9px] font-bold bg-green-100 text-green-700 border border-green-200 px-1.5 py-0.5 tracking-wider dark:bg-green-900/30 dark:text-green-400 dark:border-green-800">
+                <span className="text-[9px] font-bold bg-status-success-subtle text-status-success border border-status-success-border px-1.5 py-0.5 tracking-wider">
                   v{activePlatform.version}
                 </span>
               )}
               {tab.id === "tcle" && activeConsent && (
-                <span className="text-[9px] font-bold bg-green-100 text-green-700 border border-green-200 px-1.5 py-0.5 tracking-wider dark:bg-green-900/30 dark:text-green-400 dark:border-green-800">
+                <span className="text-[9px] font-bold bg-status-success-subtle text-status-success border border-status-success-border px-1.5 py-0.5 tracking-wider">
                   v{activeConsent.version}
                 </span>
               )}
               {tab.id === "privacy" && activePrivacy && (
-                <span className="text-[9px] font-bold bg-green-100 text-green-700 border border-green-200 px-1.5 py-0.5 tracking-wider dark:bg-green-900/30 dark:text-green-400 dark:border-green-800">
+                <span className="text-[9px] font-bold bg-status-success-subtle text-status-success border border-status-success-border px-1.5 py-0.5 tracking-wider">
                   v{activePrivacy.version}
                 </span>
               )}
@@ -125,8 +125,8 @@ export function TermsHub({
       <div className="flex-1 overflow-y-auto p-6">
         {activeTab === "platform" && (
           <>
-            <div className="flex items-start gap-2 p-3 mb-6 bg-amber-50 border border-amber-200" style={{ borderRadius: 0 }}>
-              <p className="text-[11px] text-amber-800">
+            <div className="flex items-start gap-2 p-3 mb-6 bg-status-warning-subtle border border-status-warning-border" style={{ borderRadius: 0 }}>
+              <p className="text-[11px] text-status-warning">
                 <strong>Atenção:</strong> ao publicar uma nova versão, todos os admins e gestores de RH de todas as
                 organizações precisarão aceitar os novos termos antes de continuar acessando a plataforma.
               </p>
@@ -145,8 +145,8 @@ export function TermsHub({
 
         {activeTab === "tcle" && (
           <>
-            <div className="flex items-start gap-2 p-3 mb-6 bg-amber-50 border border-amber-200" style={{ borderRadius: 0 }}>
-              <p className="text-[11px] text-amber-800">
+            <div className="flex items-start gap-2 p-3 mb-6 bg-status-warning-subtle border border-status-warning-border" style={{ borderRadius: 0 }}>
+              <p className="text-[11px] text-status-warning">
                 <strong>Atenção:</strong> ao publicar uma nova versão, todos os colaboradores de todas as organizações
                 precisarão aceitar o novo TCLE antes de responder qualquer pesquisa. Versões anteriores ficam inativas
                 e não podem ser editadas.
@@ -166,8 +166,8 @@ export function TermsHub({
 
         {activeTab === "privacy" && (
           <>
-            <div className="flex items-start gap-2 p-3 mb-6 bg-blue-50 border border-blue-200" style={{ borderRadius: 0 }}>
-              <p className="text-[11px] text-blue-800">
+            <div className="flex items-start gap-2 p-3 mb-6 bg-status-info-subtle border border-status-info-border" style={{ borderRadius: 0 }}>
+              <p className="text-[11px] text-status-info">
                 <strong>Informação:</strong> a versão ativa da política de privacidade é exibida publicamente em{" "}
                 <code className="font-mono">/privacy-policy</code>. Ao publicar uma nova versão, a anterior fica inativa automaticamente.
               </p>

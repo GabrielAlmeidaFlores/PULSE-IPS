@@ -4,25 +4,13 @@ import React, { useTransition } from "react"
 import { TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { getDeptHealthSummaryAction } from "@/app/(tenant)/dashboard/actions"
-import { healthIndexLabel, healthIndexAccent, healthIndexBarColor } from "@/libs/utils/health-index"
+import { healthIndexLabel, healthIndexAccent, healthIndexBarColor, adherenceRateTextColor, adherenceRateBarClass } from "@/libs/utils/health-index"
 import { BADGE_BASE, BADGE_DEFAULT, SEVERITY_LABELS, SEVERITY_STYLE, SEVERITY_DOT, TYPE_LABELS } from "@/libs/design-system/alert-labels"
 import type { DeptCard, DeptHealthSummary } from "@/modules/dashboard/dashboard.service"
 
-function adherenceTextColor(rate: number): string {
-  if (rate >= 80) return "text-green-600"
-  if (rate >= 50) return "text-yellow-600"
-  return "text-red-600"
-}
-
-function adherenceBarColor(rate: number): string {
-  if (rate >= 80) return "bg-green-500"
-  if (rate >= 50) return "bg-yellow-500"
-  return "bg-red-500"
-}
-
 function trendIcon(trend: DeptCard["trend"]): React.ReactElement {
-  if (trend === "up") return <TrendingUp className="w-3.5 h-3.5 text-green-600" />
-  if (trend === "down") return <TrendingDown className="w-3.5 h-3.5 text-red-500" />
+  if (trend === "up") return <TrendingUp className="w-3.5 h-3.5 text-status-success" />
+  if (trend === "down") return <TrendingDown className="w-3.5 h-3.5 text-status-danger" />
   return <Minus className="w-3.5 h-3.5 text-muted-foreground" />
 }
 
@@ -149,7 +137,7 @@ export function DeptHealthSummaryDrawer({ card, onClose }: DeptHealthSummaryDraw
                       <p className="text-[11px] text-muted-foreground mt-0.5">Alertas não resolvidos neste setor, de qualquer período.</p>
                     </div>
                     {summary.activeAlerts.length === 0 ? (
-                      <div className="flex items-center gap-2 text-green-600">
+                      <div className="flex items-center gap-2 text-status-success">
                         <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                         <p className="text-xs">Nenhum alerta ativo neste setor.</p>
                       </div>
@@ -157,7 +145,7 @@ export function DeptHealthSummaryDrawer({ card, onClose }: DeptHealthSummaryDraw
                       <div className="space-y-2">
                         {summary.activeAlerts.map((alert, idx) => (
                           <div key={idx} className="flex items-start gap-2 border border-border bg-muted/20 px-3 py-2">
-                            <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-500" />
+                            <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0 text-status-warning" />
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2 flex-wrap mb-0.5">
                                 <span className={`${BADGE_BASE} ${SEVERITY_STYLE[alert.severity] ?? BADGE_DEFAULT}`}>
@@ -185,13 +173,13 @@ export function DeptHealthSummaryDrawer({ card, onClose }: DeptHealthSummaryDraw
                       <div>
                         <div className="flex items-end justify-between mb-1.5">
                           <p className="text-xs text-muted-foreground">{summary.responseCount} respostas de {summary.totalRecipients} enviados</p>
-                          <span className={`text-lg font-black ${adherenceTextColor(summary.adherenceRate)}`}>
+                          <span className={`text-lg font-black ${adherenceRateTextColor(summary.adherenceRate)}`}>
                             {summary.adherenceRate}%
                           </span>
                         </div>
                         <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
                           <div
-                            className={`h-full rounded-full transition-all ${adherenceBarColor(summary.adherenceRate)}`}
+                            className={`h-full rounded-full transition-all ${adherenceRateBarClass(summary.adherenceRate)}`}
                             style={{ width: `${Math.min(summary.adherenceRate, 100)}%` }}
                           />
                         </div>

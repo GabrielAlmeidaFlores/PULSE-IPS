@@ -12,8 +12,8 @@ interface Props {
 
 const PRIORITY_LABELS: Record<string, string> = { low: "Baixa", medium: "Média", high: "Alta" }
 const PRIORITY_CLS: Record<string, string> = {
-  high: "bg-red-100 text-red-700 border border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
-  medium: "bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800",
+  high: "border badge-danger",
+  medium: "border badge-warning",
   low: "bg-muted text-muted-foreground border border-border",
 }
 
@@ -56,7 +56,7 @@ function ActionPlanSuggestionCard({ suggestion, onDismiss }: { suggestion: Actio
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setOpen((v) => !v) }}
           className="flex-1 min-w-0 flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors cursor-pointer group"
         >
-          <span className="shrink-0 text-amber-500 mt-0.5">
+          <span className="shrink-0 text-status-warning mt-0.5">
             <Lightbulb className="h-3.5 w-3.5" />
           </span>
           <span className="flex-1 min-w-0">
@@ -124,7 +124,7 @@ export function ActionPlanSuggestionCards({ suggestions }: Props): React.ReactEl
   return (
     <div className="mb-5">
       <div className="flex items-center gap-2 mb-2">
-        <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
+        <Lightbulb className="h-3.5 w-3.5 text-status-warning" />
         <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
           Sugestões com base nos dados
         </span>

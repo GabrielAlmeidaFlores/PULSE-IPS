@@ -1,6 +1,7 @@
 "use client"
 
 import { useQueryState, parseAsArrayOf, parseAsString } from "nuqs"
+import { healthIndexAccent, adherenceRateTextColor } from "@/libs/utils/health-index"
 
 interface DeptBreakdownItem {
   id: string
@@ -13,19 +14,6 @@ interface DeptBreakdownItem {
 
 interface Props {
   items: DeptBreakdownItem[]
-}
-
-function hiTextColorClass(hi: number | null): string {
-  if (hi === null) return "text-muted-foreground"
-  if (hi >= 62) return "text-green-600 dark:text-green-500"
-  if (hi >= 37) return "text-amber-600 dark:text-amber-500"
-  return "text-red-600 dark:text-red-500"
-}
-
-function adherenceTextColorClass(adherence: number): string {
-  if (adherence >= 80) return "text-green-600 dark:text-green-500"
-  if (adherence >= 50) return "text-amber-600 dark:text-amber-500"
-  return "text-red-600 dark:text-red-500"
 }
 
 export function DeptBreakdownTable({ items }: Props): React.ReactElement {
@@ -70,7 +58,7 @@ export function DeptBreakdownTable({ items }: Props): React.ReactElement {
         {items.map((dept, idx) => {
           const isSelected = selectedIds.length === 0 || selectedIds.includes(dept.id)
           const hi = dept.healthIndex
-          const hiTextColor = hiTextColorClass(hi)
+          const hiTextColor = healthIndexAccent(hi)
 
           return (
             <button
@@ -81,7 +69,7 @@ export function DeptBreakdownTable({ items }: Props): React.ReactElement {
                 isSelected ? "bg-primary/5" : "opacity-50"
               }`}
             >
-              <span className={`text-[11px] font-black font-mono w-6 shrink-0 ${idx === 0 ? "text-amber-500" : "text-muted-foreground"}`}>
+              <span className={`text-[11px] font-black font-mono w-6 shrink-0 ${idx === 0 ? "text-status-warning" : "text-muted-foreground"}`}>
                 #{idx + 1}
               </span>
 
@@ -105,7 +93,7 @@ export function DeptBreakdownTable({ items }: Props): React.ReactElement {
                 </span>
               )}
 
-              <span className={`text-sm font-black font-mono w-16 text-center shrink-0 ${adherenceTextColorClass(dept.adherence)}`}>
+              <span className={`text-sm font-black font-mono w-16 text-center shrink-0 ${adherenceRateTextColor(dept.adherence)}`}>
                 {dept.adherence}%
               </span>
             </button>

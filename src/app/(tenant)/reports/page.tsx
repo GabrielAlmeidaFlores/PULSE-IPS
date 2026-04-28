@@ -1,21 +1,34 @@
 import { redirect } from "next/navigation"
 import { getSession } from "@/modules/auth/session"
 import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
-import { getReports } from "@/modules/anonymous-reports/anonymous-report.service"
+import { getReportsPaginated } from "@/modules/anonymous-reports/anonymous-report.service"
 import { getOrganization } from "@/modules/organizations/organization.service"
+import { buildPaginationParams } from "@/libs/utils/pagination"
 import { ReportControls } from "@/app/(tenant)/reports/report-controls"
 import { CopyReportLink } from "@/app/(tenant)/reports/copy-report-link"
+import { FilterBar } from "@/libs/design-system"
 import { PageHelp } from "@/components/page-help"
 
-export default async function ReportsPage(): Promise<React.ReactElement> {
+export default async function ReportsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>
+}): Promise<React.ReactElement> {
   const session = await getSession()
   if (!session) redirect("/login")
 
   const hasFeature = await hasTenantPlanFeature(session.tenantId, "anonymous_reports")
   if (!hasFeature) redirect("/dashboard")
 
-  const [reports, org] = await Promise.all([
-    getReports(session.tenantId),
+  const params = await searchParams
+  const { page, pageSize } = buildPaginationParams(params["page"], params["pageSize"])
+
+  const reportQuery: { page: number; pageSize: number; status?: string; category?: string } = { page, pageSize }
+  if (params["status"] !== undefined) reportQuery.status = params["status"]
+  if (params["category"] !== undefined) reportQuery.category = params["category"]
+
+  const [{ items: reports, total }, org] = await Promise.all([
+    getReportsPaginated(session.tenantId, reportQuery),
     getOrganization(session.tenantId),
   ])
 
@@ -51,12 +64,46 @@ export default async function ReportsPage(): Promise<React.ReactElement> {
               </div>
             } />
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">{reports.length} total</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{total} total</p>
         </div>
         {org && <CopyReportLink orgSlug={org.slug} />}
       </div>
-      <div className="flex-1 overflow-y-auto p-6">
-        <ReportControls reports={reports} />
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <FilterBar
+          fields={[
+            {
+              type: "select",
+              key: "status",
+              label: "Status",
+              width: "w-[160px]",
+              options: [
+                { value: "open", label: "Aberto" },
+                { value: "analyzing", label: "Em análise" },
+                { value: "resolved", label: "Resolvido" },
+                { value: "archived", label: "Arquivado" },
+              ],
+            },
+            {
+              type: "select",
+              key: "category",
+              label: "Categoria",
+              width: "w-[200px]",
+              options: [
+                { value: "harassment", label: "Assédio" },
+                { value: "discrimination", label: "Discriminação" },
+                { value: "conflict", label: "Conflito interpessoal" },
+                { value: "overload", label: "Sobrecarga de trabalho" },
+                { value: "mental_health", label: "Saúde mental" },
+                { value: "safety", label: "Segurança no trabalho" },
+                { value: "physical_environment", label: "Ambiente físico" },
+                { value: "management", label: "Gestão / liderança" },
+                { value: "other", label: "Outro" },
+              ],
+            },
+          ]}
+          values={{ status: params["status"], category: params["category"] }}
+        />
+        <ReportControls reports={reports} total={total} />
       </div>
     </div>
   )

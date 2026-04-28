@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { TrendingUp, TrendingDown, Minus } from "lucide-react"
 import type { DeptCard } from "@/modules/dashboard/dashboard.service"
-import { healthIndexAccent, healthIndexBarColor } from "@/libs/utils/health-index"
+import { healthIndexAccent, healthIndexBarColor, trendDirectionTextColor } from "@/libs/utils/health-index"
 import { DeptHealthSummaryDrawer } from "@/app/(tenant)/dashboard/components/dept-health-summary-drawer"
 
 function ScoreBar({ score }: { score: number }): React.ReactElement {
@@ -12,12 +12,6 @@ function ScoreBar({ score }: { score: number }): React.ReactElement {
       <div className={`h-full ${healthIndexBarColor(score)} transition-all`} style={{ width: `${Math.min(score, 100)}%` }} />
     </div>
   )
-}
-
-function trendTextColor(trend: DeptCard["trend"]): string {
-  if (trend === "up") return "text-green-600"
-  if (trend === "down") return "text-red-500"
-  return "text-muted-foreground"
 }
 
 interface Props {
@@ -46,7 +40,7 @@ export function DeptScoreCards({ cards }: Props): React.ReactElement {
               </div>
               <div className="flex flex-col items-end gap-1">
                 {card.prevAvg !== null && (
-                  <span className={`flex items-center gap-0.5 text-[10px] font-bold ${trendTextColor(card.trend)}`}>
+                  <span className={`flex items-center gap-0.5 text-[10px] font-bold ${trendDirectionTextColor(card.trend)}`}>
                     {card.trend === "up" && <TrendingUp className="w-3 h-3" />}
                     {card.trend === "down" && <TrendingDown className="w-3 h-3" />}
                     {card.trend === "stable" && <Minus className="w-3 h-3" />}

@@ -341,7 +341,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
             {[
               {
                 q: "Os colaboradores precisam instalar algum aplicativo?",
-                a: "Não. Eles recebem um link pelo WhatsApp ou SMS e respondem diretamente no navegador do celular. Sem cadastro, sem download, sem fricção.",
+                a: "Não. O colaborador recebe um link pelo WhatsApp e responde diretamente no navegador do celular. Sem cadastro, sem download, sem fricção.",
               },
               {
                 q: "Quanto tempo leva para configurar e começar?",
@@ -357,7 +357,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
               },
               {
                 q: "E se o colaborador não quiser participar?",
-                a: "Participação é sempre voluntária. Na primeira pesquisa, o colaborador pode recusar os termos e sair a qualquer momento. A recusa fica registrada no sistema.",
+                a: "Participação é sempre voluntária. O colaborador recebe um link exclusivo de consentimento (TCLE) antes de qualquer pesquisa. Pode recusar a qualquer momento — a recusa fica registrada no sistema.",
               },
               {
                 q: "Posso cancelar quando quiser?",

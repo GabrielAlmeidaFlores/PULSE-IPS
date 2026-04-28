@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import {
   createNewEmployee,
   deactivateExistingEmployee,
-  unpauseDueEmployees,
+  unpauseAllTenantsDueEmployees,
   getEmployees,
   getEmployee,
   updateExistingEmployee,
@@ -12,7 +12,7 @@ import {
   countEmployees,
   createEmployee,
   deactivateEmployee,
-  reactivateDueEmployees,
+  reactivateAllTenantsDueEmployees,
   findEmployeesByTenant,
   findEmployeeById,
   updateEmployee,
@@ -32,7 +32,7 @@ vi.mock("@/env", () => ({ env: { NEXT_PUBLIC_APP_URL: "http://localhost:3000" } 
 const mockCountEmployees = vi.mocked(countEmployees)
 const mockCreateEmployee = vi.mocked(createEmployee)
 const mockDeactivateEmployee = vi.mocked(deactivateEmployee)
-const mockReactivateDueEmployees = vi.mocked(reactivateDueEmployees)
+const mockReactivateAllTenantsDueEmployees = vi.mocked(reactivateAllTenantsDueEmployees)
 const mockFindEmployeesByTenant = vi.mocked(findEmployeesByTenant)
 const mockFindEmployeeById = vi.mocked(findEmployeeById)
 const mockUpdateEmployee = vi.mocked(updateEmployee)
@@ -161,13 +161,13 @@ describe("deactivateExistingEmployee", () => {
   })
 })
 
-describe("unpauseDueEmployees", () => {
+describe("unpauseAllTenantsDueEmployees", () => {
   it("reactivates paused employees whose pause period ended and returns count", async () => {
-    mockReactivateDueEmployees.mockResolvedValue({ reactivated: 3 })
+    mockReactivateAllTenantsDueEmployees.mockResolvedValue({ reactivated: 3 })
 
-    const result = await unpauseDueEmployees()
+    const result = await unpauseAllTenantsDueEmployees()
     expect(result).toEqual({ reactivated: 3 })
-    expect(mockReactivateDueEmployees).toHaveBeenCalledOnce()
+    expect(mockReactivateAllTenantsDueEmployees).toHaveBeenCalledOnce()
   })
 })
 

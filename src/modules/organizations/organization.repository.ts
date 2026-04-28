@@ -1,4 +1,4 @@
-import type { Organization, Plan, OrganizationSubscription } from "@prisma/client"
+import type { Prisma, Organization, Plan, OrganizationSubscription } from "@prisma/client"
 import { prisma } from "@/libs/db"
 import type { CreateOrganizationInput, UpdateOrganizationInput, OrgFullDetail } from "@/modules/organizations/organization.types"
 
@@ -197,4 +197,30 @@ export async function findOrganizationFullDetail(id: string): Promise<OrgFullDet
     messagesThisMonth,
     lastPgrReview: lastPgrReview ?? null,
   }
+}
+
+export interface OrganizationAdminListingFilters {
+  q?: string
+}
+
+export async function findAllOrganizationsPaginatedAdmin(
+  filters: OrganizationAdminListingFilters,
+  skip: number,
+  take: number,
+): Promise<{ items: (Organization & { plan: Plan | null; _count: { employees: number } })[]; total: number }> {
+  const where: Prisma.OrganizationWhereInput = {}
+  if (filters.q !== undefined) {
+    where.name = { contains: filters.q, mode: "insensitive" }
+  }
+  const [items, total] = await Promise.all([
+    prisma.organization.findMany({
+      where,
+      include: { plan: true, _count: { select: { employees: true } } },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take,
+    }),
+    prisma.organization.count({ where }),
+  ])
+  return { items, total }
 }

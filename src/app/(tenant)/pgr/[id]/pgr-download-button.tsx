@@ -59,7 +59,7 @@ export function PgrDownloadButton({ reviewId }: PgrDownloadButtonProps): React.R
         {loading ? "Gerando PDF..." : "Exportar PDF"}
       </Button>
       {error !== null && (
-        <span className="text-[10px] text-red-600 dark:text-red-400">{error}</span>
+        <span className="text-[10px] text-status-danger">{error}</span>
       )}
     </div>
   )

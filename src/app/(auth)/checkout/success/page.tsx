@@ -13,8 +13,8 @@ export default function CheckoutSuccessPage(): React.ReactElement {
 
       <div className="p-6 space-y-5">
         <div className="flex items-start gap-4">
-          <div className="w-12 h-12 bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0" style={{ borderRadius: 0 }}>
-            <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+          <div className="w-12 h-12 bg-status-success-subtle border border-status-success-border flex items-center justify-center shrink-0" style={{ borderRadius: 0 }}>
+            <CheckCircle2 className="w-6 h-6 text-status-success" />
           </div>
           <div>
             <h1 className="text-[13px] font-black uppercase tracking-wider mb-1">Conta sendo criada</h1>

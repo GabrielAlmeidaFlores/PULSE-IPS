@@ -87,7 +87,7 @@ describe("isValidSlug", () => {
 describe("buildPaginationParams", () => {
   it("returns defaults when inputs are undefined", () => {
     const result = buildPaginationParams(undefined, undefined)
-    expect(result).toEqual({ page: 1, pageSize: 50 })
+    expect(result).toEqual({ page: 1, pageSize: 10 })
   })
 
   it("parses valid page and pageSize", () => {
@@ -104,13 +104,13 @@ describe("buildPaginationParams", () => {
     expect(buildPaginationParams("1", "500").pageSize).toBe(100)
   })
 
-  it("uses default pageSize of 50 when 0 is provided (falsy input)", () => {
-    expect(buildPaginationParams("1", "0").pageSize).toBe(50)
+  it("uses default pageSize of 10 when 0 is provided (falsy input)", () => {
+    expect(buildPaginationParams("1", "0").pageSize).toBe(10)
   })
 
   it("handles non-numeric input by using defaults", () => {
     const result = buildPaginationParams("abc", "xyz")
-    expect(result).toEqual({ page: 1, pageSize: 50 })
+    expect(result).toEqual({ page: 1, pageSize: 10 })
   })
 })
 

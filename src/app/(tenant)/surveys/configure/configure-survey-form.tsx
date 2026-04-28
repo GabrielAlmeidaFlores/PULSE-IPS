@@ -253,11 +253,11 @@ export function ConfigureSurveyForm({ departments }: Props): React.ReactElement 
                 </p>
                 <ul className="mt-2 space-y-2 text-foreground">
                   <li className="flex items-start gap-2">
-                    <span className="mt-0.5 font-bold text-green-600">1→5 bom</span>
+                    <span className="mt-0.5 font-bold text-status-success">1→5 bom</span>
                     <span className="text-muted-foreground">Nota alta é positiva. Ex: <em>&ldquo;Qual seu nível de entusiasmo?&rdquo;</em> — 5 = muito entusiasmado (bom)</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="mt-0.5 font-bold text-red-500 whitespace-nowrap">1→5 ruim</span>
+                    <span className="mt-0.5 font-bold text-status-danger whitespace-nowrap">1→5 ruim</span>
                     <span className="text-muted-foreground">Nota alta é negativa. Ex: <em>&ldquo;Qual seu nível de estresse?&rdquo;</em> — 5 = muito estressado (ruim)</span>
                   </li>
                 </ul>
@@ -294,8 +294,8 @@ export function ConfigureSurveyForm({ departments }: Props): React.ReactElement 
                   onClick={() => toggleDirection(i)}
                   className={`px-2 py-0.5 text-[10px] font-bold border transition-colors ${
                     q.scoreDirection === "higher_is_better"
-                      ? "border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/40 dark:text-green-400"
-                      : "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400"
+                      ? "border-status-success-border bg-status-success-subtle text-status-success"
+                      : "border-status-danger-border bg-status-danger-subtle text-status-danger"
                   }`}
                   style={{ borderRadius: 0 }}
                 >

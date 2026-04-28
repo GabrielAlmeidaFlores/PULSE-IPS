@@ -148,7 +148,7 @@ export function PlanRowActions({ plan }: { plan: Plan }): React.ReactElement {
           onClick={handleToggleActive}
           disabled={isPending}
           title={plan.isActive ? "Desativar plano" : "Ativar plano"}
-          className={`px-2.5 py-1.5 border border-border border-l-0 transition-colors disabled:opacity-50 ${plan.isActive ? "text-amber-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20" : "text-muted-foreground hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-950/20"}`}
+          className={`px-2.5 py-1.5 border border-border border-l-0 transition-colors disabled:opacity-50 ${plan.isActive ? "text-status-warning hover:text-status-warning hover:bg-status-warning-subtle" : "text-muted-foreground hover:text-status-success hover:bg-status-success-subtle"}`}
           style={{ borderRadius: 0 }}
         >
           <Power className="h-3.5 w-3.5" />
@@ -202,7 +202,7 @@ export function PlanRowActions({ plan }: { plan: Plan }): React.ReactElement {
                 </div>
               </div>
 
-              <p className="text-[10px] text-muted-foreground border-l-2 border-amber-400 pl-2 py-0.5">
+              <p className="text-[10px] text-muted-foreground border-l-2 border-status-warning-border pl-2 py-0.5">
                 Alterações afetam apenas novos contratos. Assinaturas ativas não são modificadas.
               </p>
             </div>

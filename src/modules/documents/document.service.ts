@@ -4,8 +4,10 @@ import {
   findDocumentById,
   findVersionsByDocument,
   findVersionByIdForDownload,
+  findDocumentsForListingPage,
   createDocument,
   createDocumentVersion,
+  type DocumentListingFilters,
 } from "@/modules/documents/document.repository"
 import type { CreateDocumentInput } from "@/modules/documents/document.types"
 
@@ -46,4 +48,20 @@ export async function addDocumentVersion(
     fileUrl,
     uploadedBy,
   })
+}
+
+interface DocumentListingQuery {
+  q?: string
+  page: number
+  pageSize: number
+}
+
+export function getDocumentsPaginated(
+  tenantId: string,
+  query: DocumentListingQuery,
+): ReturnType<typeof findDocumentsForListingPage> {
+  const skip = (query.page - 1) * query.pageSize
+  const filters: DocumentListingFilters = {}
+  if (query.q !== undefined) filters.q = query.q
+  return findDocumentsForListingPage(tenantId, filters, skip, query.pageSize)
 }

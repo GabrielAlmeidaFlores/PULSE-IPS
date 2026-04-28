@@ -1,3 +1,4 @@
+export { DataTable } from "@/libs/design-system/components/data-display/DataTable"
 export { PageHeader } from "@/libs/design-system/components/layout/PageHeader"
 export { Header } from "@/libs/design-system/components/layout/Header"
 export { Sidebar } from "@/libs/design-system/components/layout/Sidebar"

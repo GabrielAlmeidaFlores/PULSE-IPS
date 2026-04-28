@@ -8,6 +8,7 @@ import {
   type PgrReviewWithResults,
   type PgrReviewListItem,
   findPgrReviewsByTenant,
+  findPgrReviewsByTenantPaginated,
   findPgrReviewById,
   findOrgWithDepartmentsForPgr,
   findDispatchesForPgr,
@@ -42,6 +43,20 @@ function toSummary(review: PgrReviewListItem): PgrReviewSummary {
 
 export function getPgrReviews(tenantId: string): Promise<PgrReviewSummary[]> {
   return findPgrReviewsByTenant(tenantId).then((list) => list.map(toSummary))
+}
+
+export interface PgrReviewPageQuery {
+  page: number
+  pageSize: number
+}
+
+export async function getPgrReviewsPaginated(
+  tenantId: string,
+  query: PgrReviewPageQuery,
+): Promise<{ items: PgrReviewSummary[]; total: number }> {
+  const skip = (query.page - 1) * query.pageSize
+  const { items, total } = await findPgrReviewsByTenantPaginated(tenantId, skip, query.pageSize)
+  return { items: items.map(toSummary), total }
 }
 
 export function getPgrReviewById(tenantId: string, id: string): Promise<PgrReviewWithResults | null> {

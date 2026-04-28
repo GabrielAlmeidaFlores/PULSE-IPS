@@ -3,10 +3,12 @@ import Link from "next/link"
 import { ChevronRight } from "lucide-react"
 import { getSession } from "@/modules/auth/session"
 import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
-import { getPgrReviews } from "@/modules/pgr/pgr.service"
+import { getPgrReviewsPaginated } from "@/modules/pgr/pgr.service"
+import { buildPaginationParams } from "@/libs/utils/pagination"
 import { format } from "date-fns"
 import { PgrGenerateButton } from "@/app/(tenant)/pgr/pgr-generate-button"
 import { PageHelp } from "@/components/page-help"
+import { DataTable, TablePagination } from "@/libs/design-system"
 import { toHealthIndex as _toHealthIndex, healthIndexAccent, healthIndexLabel } from "@/libs/utils/health-index"
 
 const PGR_STATUS_LABELS: Record<string, string> = {
@@ -18,17 +20,24 @@ const PGR_STATUS_LABELS: Record<string, string> = {
 const PGR_STATUS_STYLE: Record<string, string> = {
   pending: "bg-muted text-muted-foreground border-border",
   generated: "bg-primary/10 text-primary border-primary/20",
-  reviewed: "bg-green-50 text-green-700 border-green-200",
+  reviewed: "badge-success",
 }
 
-export default async function PgrPage(): Promise<React.ReactElement> {
+interface Props {
+  searchParams: Promise<Record<string, string | undefined>>
+}
+
+export default async function PgrPage({ searchParams }: Props): Promise<React.ReactElement> {
   const session = await getSession()
   if (!session) redirect("/login")
 
   const hasFeature = await hasTenantPlanFeature(session.tenantId, "pgr")
   if (!hasFeature) redirect("/dashboard")
 
-  const reviews = await getPgrReviews(session.tenantId)
+  const params = await searchParams
+  const { page, pageSize } = buildPaginationParams(params["page"], params["pageSize"])
+
+  const { items: reviews, total } = await getPgrReviewsPaginated(session.tenantId, { page, pageSize })
 
   return (
     <div className="flex flex-col h-full">
@@ -62,57 +71,61 @@ export default async function PgrPage(): Promise<React.ReactElement> {
               </div>
             } />
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">{reviews.length} revisões</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{total} {total === 1 ? "revisão" : "revisões"}</p>
         </div>
         <PgrGenerateButton />
       </div>
       <div className="flex-1 overflow-y-auto p-6">
-        <div className="border border-border bg-card overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/40">
-                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Período</th>
-                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Status</th>
-                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Índice de saúde</th>
-                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Gerado em</th>
-                <th className="px-4 py-2.5 w-8" />
-              </tr>
-            </thead>
-            <tbody>
-              {reviews.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-xs text-muted-foreground">Nenhuma revisão PGR.</td></tr>
-              )}
-              {reviews.map((review, i) => (
-                <tr key={review.id} className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors group ${i % 2 !== 0 ? "bg-muted/10" : ""}`}>
-                  <td className="px-4 py-3 font-mono text-xs">{review.period}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${PGR_STATUS_STYLE[review.status] ?? "bg-muted text-muted-foreground border-border"}`}>
-                      {PGR_STATUS_LABELS[review.status] ?? review.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    {review.overallHealthIndex !== null ? (
-                      <span className={`text-sm font-bold ${healthIndexAccent(review.overallHealthIndex)}`}>
-                        {review.overallHealthIndex}%
-                        <span className="ml-1.5 text-[10px] font-normal text-muted-foreground">{healthIndexLabel(review.overallHealthIndex)}</span>
-                      </span>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-xs font-mono text-muted-foreground">
-                    {review.reviewedAt ? format(review.reviewedAt, "dd/MM/yyyy") : "—"}
-                  </td>
-                  <td className="px-3 py-3 text-right">
-                    <Link href={`/pgr/${review.id}`} className="block">
-                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors ml-auto" />
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={[
+            { label: "Período" },
+            { label: "Status" },
+            { label: "Índice de saúde" },
+            { label: "Gerado em" },
+            { label: "", className: "w-8" },
+          ]}
+          total={total}
+          pagination={<TablePagination total={total} />}
+        >
+          {reviews.length === 0 && (
+            <tr>
+              <td colSpan={5} className="px-4 py-8 text-center text-xs text-muted-foreground">
+                Nenhuma revisão PGR.
+              </td>
+            </tr>
+          )}
+          {reviews.map((review, i) => (
+            <tr
+              key={review.id}
+              className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors group ${i % 2 !== 0 ? "bg-muted/10" : ""}`}
+            >
+              <td className="px-4 py-3 font-mono text-xs">{review.period}</td>
+              <td className="px-4 py-3">
+                <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${PGR_STATUS_STYLE[review.status] ?? "bg-muted text-muted-foreground border-border"}`}>
+                  {PGR_STATUS_LABELS[review.status] ?? review.status}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                {review.overallHealthIndex !== null ? (
+                  <span className={`text-sm font-bold ${healthIndexAccent(review.overallHealthIndex)}`}>
+                    {review.overallHealthIndex}%
+                    <span className="ml-1.5 text-[10px] font-normal text-muted-foreground">{healthIndexLabel(review.overallHealthIndex)}</span>
+                  </span>
+                ) : (
+                  <span className="text-xs text-muted-foreground">—</span>
+                )}
+              </td>
+              <td className="px-4 py-3 text-xs font-mono text-muted-foreground">
+                {review.reviewedAt ? format(review.reviewedAt, "dd/MM/yyyy") : "—"}
+              </td>
+              <td className="px-3 py-3 text-right">
+                <Link href={`/pgr/${review.id}`} className="block">
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors ml-auto" />
+                </Link>
+              </td>
+            </tr>
+          ))}
+        </DataTable>
       </div>
     </div>
   )

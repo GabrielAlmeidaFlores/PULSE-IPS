@@ -1,11 +1,11 @@
 import React from "react"
 import { Document, Page, View, Text, StyleSheet, renderToBuffer, type DocumentProps } from "@react-pdf/renderer"
-import type { PgrPdfInput, PgrPdfDept, PgrPdfAggregatedQuestion } from "@/libs/integrations/pdf/pgr-pdf.types"
+import type { PgrPdfInput, PgrPdfDept } from "@/libs/integrations/pdf/pgr-pdf.types"
 
 const FONT_BOLD = "Helvetica-Bold"
-const BLUE = "#3DB98A"
-const BLUE_LIGHT = "#dbeafe"
-const BLUE_DARK = "#1a1a2e"
+const BRAND = "#3DB98A"
+const BRAND_LIGHT = "#d1faf0"
+const BRAND_DARK = "#1a1a2e"
 const GREEN = "#16a34a"
 const GREEN_LIGHT = "#dcfce7"
 const GREEN_BORDER = "#86efac"
@@ -34,7 +34,7 @@ const styles = StyleSheet.create({
     paddingBottom: 52,
   },
   pageHeader: {
-    backgroundColor: BLUE_DARK,
+    backgroundColor: BRAND_DARK,
     paddingHorizontal: 36,
     paddingTop: 28,
     paddingBottom: 20,
@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
   },
   docTitle: {
     fontSize: 7,
-    color: "#93c5fd",
+    color: "#6ee7b7",
     letterSpacing: 2,
     textTransform: "uppercase",
     marginTop: 2,
@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
   },
   periodText: {
     fontSize: 9,
-    color: "#93c5fd",
+    color: "#6ee7b7",
     marginTop: 3,
     textTransform: "capitalize",
   },
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   },
   nextReviewText: {
     fontSize: 8,
-    color: BLUE,
+    color: BRAND,
     fontFamily: FONT_BOLD,
     marginLeft: 8,
   },
@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
   },
   complianceBadge: {
     fontSize: 6,
-    color: BLUE,
+    color: BRAND,
     fontFamily: FONT_BOLD,
     letterSpacing: 0.5,
   },
@@ -442,15 +442,15 @@ const styles = StyleSheet.create({
   },
   noteBox: {
     borderWidth: 1,
-    borderColor: BLUE_LIGHT,
-    backgroundColor: "#eff6ff",
+    borderColor: BRAND_LIGHT,
+    backgroundColor: "#f0fdf9",
     padding: 10,
     marginBottom: 16,
   },
   noteLabel: {
     fontSize: 6,
     fontFamily: FONT_BOLD,
-    color: BLUE,
+    color: BRAND,
     letterSpacing: 1,
     textTransform: "uppercase",
     marginBottom: 4,
@@ -485,12 +485,6 @@ function healthBgColor(hi: number): string {
   if (hi >= 62) return GREEN_LIGHT
   if (hi >= 37) return AMBER_LIGHT
   return RED_LIGHT
-}
-
-function _healthBorderColor(hi: number): string {
-  if (hi >= 62) return GREEN_BORDER
-  if (hi >= 37) return AMBER_BORDER
-  return RED_BORDER
 }
 
 function healthColor(hi: number): string {
@@ -562,9 +556,9 @@ interface CoverPageProps {
 
 function CoverPage({ data }: CoverPageProps): React.ReactElement {
   const statusLabel = data.status === "reviewed" ? "Revisado" : "Gerado"
-  const statusColor = data.status === "reviewed" ? GREEN : BLUE
-  const statusBg = data.status === "reviewed" ? GREEN_LIGHT : BLUE_LIGHT
-  const statusBorder = data.status === "reviewed" ? GREEN_BORDER : "#93c5fd"
+  const statusColor = data.status === "reviewed" ? GREEN : BRAND
+  const statusBg = data.status === "reviewed" ? GREEN_LIGHT : BRAND_LIGHT
+  const statusBorder = data.status === "reviewed" ? GREEN_BORDER : "#6ee7b7"
 
   const sortedDepts = [...data.departments].sort((a, b) => {
     const ha = a.healthIndex ?? 0
@@ -579,6 +573,10 @@ function CoverPage({ data }: CoverPageProps): React.ReactElement {
           <View>
             <Text style={styles.brandText}>Pulse</Text>
             <Text style={styles.docTitle}>Relatório PGR</Text>
+          </View>
+          <View style={styles.headerRight}>
+            <Text style={styles.orgName}>{data.orgName}</Text>
+            <Text style={styles.periodText}>{data.periodLabel}</Text>
           </View>
         </View>
       </View>
@@ -943,155 +941,6 @@ function DeptPage({ dept, orgName, periodLabel }: DeptPageProps): React.ReactEle
   )
 }
 
-interface ConsolidatedQuestionsPageProps {
-  aggregatedQuestions: PgrPdfAggregatedQuestion[]
-  orgName: string
-  periodLabel: string
-}
-
-function ConsolidatedQuestionsPage({ aggregatedQuestions, orgName, periodLabel }: ConsolidatedQuestionsPageProps): React.ReactElement {
-  return (
-    <Page size="A4" style={styles.page}>
-      <View style={styles.pageHeader}>
-        <View style={styles.pageHeaderRow}>
-          <View>
-            <Text style={styles.brandText}>Pulse · Perguntas Consolidadas</Text>
-            <Text style={styles.docTitle}>Relatório PGR</Text>
-          </View>
-          <View style={styles.headerRight}>
-            <Text style={styles.orgName}>{orgName}</Text>
-            <Text style={styles.periodText}>{periodLabel}</Text>
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.body}>
-        <Text style={styles.sectionTitle}>Ranking de Perguntas — Visão Organizacional</Text>
-        <Text style={{ fontSize: 7, color: GRAY_500, marginBottom: 12, lineHeight: 1.4 }}>
-          Todas as perguntas ordenadas pelo Índice de Saúde (menor = maior risco). Dados consolidados de todos os setores.
-        </Text>
-
-        <View style={styles.tableHeader}>
-          <Text style={[styles.tableHeaderCell, { width: 24 }]}>#</Text>
-          <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Pergunta</Text>
-          <Text style={[styles.tableHeaderCell, { width: 54 }]}>Direção</Text>
-          <Text style={[styles.tableHeaderCell, { width: 84 }]}>Índice de Saúde</Text>
-          <Text style={[styles.tableHeaderCell, { width: 50 }]}>Respostas</Text>
-          <Text style={[styles.tableHeaderCell, { width: 46 }]}>Status</Text>
-        </View>
-        {aggregatedQuestions.map((q, i) => (
-          <View key={i} style={[styles.tableRow, i % 2 !== 0 ? styles.tableRowAlt : {}]}>
-            <Text style={[styles.tableCell, { width: 24, color: GRAY_500 }]}>P{q.order}</Text>
-            <Text style={[styles.questionText, { flex: 1 }]}>{q.text}</Text>
-            <Text style={[styles.directionBadge, { width: 54 }]}>{directionLabel(q.scoreDirection)}</Text>
-            <View style={{ width: 84, flexDirection: "row", alignItems: "center", gap: 4 }}>
-              <View style={[styles.barContainer, { width: 44, flex: 0 }]}>
-                <View style={[styles.bar, { width: `${q.healthIndex}%`, backgroundColor: healthColor(q.healthIndex) }]} />
-              </View>
-              <Text style={[styles.scoreText, { color: healthColor(q.healthIndex) }]}>{q.healthIndex}%</Text>
-            </View>
-            <Text style={[styles.tableCell, { width: 50 }]}>{q.responseCount}</Text>
-            <Text style={[styles.tableCell, { width: 46, color: healthColor(q.healthIndex), fontFamily: FONT_BOLD, fontSize: 6 }]}>
-              {healthLabel(q.healthIndex)}
-            </Text>
-          </View>
-        ))}
-      </View>
-
-      <PageFooter orgName={orgName} pageLabel="Perguntas Consolidadas" />
-    </Page>
-  )
-}
-
-interface MethodologyPageProps {
-  orgName: string
-  periodLabel: string
-  generatedAt: Date
-}
-
-function MethodologyPage({ orgName, periodLabel, generatedAt }: MethodologyPageProps): React.ReactElement {
-  return (
-    <Page size="A4" style={styles.page}>
-      <View style={styles.pageHeader}>
-        <View style={styles.pageHeaderRow}>
-          <View>
-            <Text style={styles.brandText}>Pulse · Metodologia e Conformidade</Text>
-            <Text style={styles.docTitle}>Relatório PGR</Text>
-          </View>
-          <View style={styles.headerRight}>
-            <Text style={styles.orgName}>{orgName}</Text>
-            <Text style={styles.periodText}>{periodLabel}</Text>
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.body}>
-        <Text style={styles.sectionTitle}>Contexto Regulatório</Text>
-
-        <View style={styles.methodologyBox}>
-          <Text style={styles.methodologyTitle}>Gerenciamento de Riscos Ocupacionais</Text>
-          <Text style={styles.methodologyText}>
-            A legislação trabalhista exige que as empresas incluam no Programa de Gerenciamento de Riscos (PGR)
-            a identificação e controle de fatores de risco psicossocial — incluindo estresse ocupacional,
-            sobrecarga de trabalho e clima organizacional.
-            Este relatório constitui evidência documental do cumprimento desta exigência.
-          </Text>
-        </View>
-
-        <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Metodologia de Coleta</Text>
-
-        <View style={styles.methodologyBox}>
-          <Text style={styles.methodologyTitle}>Pesquisas Periódicas por Setor</Text>
-          <Text style={styles.methodologyText}>
-            O Pulse envia pesquisas curtas e anônimas aos colaboradores via SMS ou WhatsApp, de acordo com a
-            frequência configurada por setor (diária, semanal, quinzenal ou mensal). As pesquisas são enviadas
-            apenas dentro do horário de expediente de cada setor.{"\n\n"}
-            Cada pergunta utiliza escala Likert de 1 a 5 pontos. A direção da escala é configurável por pergunta:
-            {`para questões de bem-estar (ex: "Como você se sente?"), nota 5 = melhor. Para questões de risco (ex: "Com que frequência se sente sobrecarregado?"), nota 1 = melhor.`}
-          </Text>
-        </View>
-
-        <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Cálculo do Índice de Saúde</Text>
-
-        <View style={styles.methodologyBox}>
-          <Text style={styles.methodologyTitle}>Fórmula e Interpretação</Text>
-          <Text style={styles.methodologyText}>
-            {"Índice de Saúde = ((Nota Média – 1) / 4) × 100\n\n"}
-            {"• Saudável (≥ 62%): risco psicossocial baixo — sem intervenção urgente necessária\n"}
-            {"• Atenção (37%–61%): risco moderado — monitoramento próximo e plano de ação recomendado\n"}
-            {"• Crítico (< 37%): risco elevado — intervenção urgente necessária\n\n"}
-            Para garantir anonimato, métricas por setor são exibidas apenas quando há mínimo de 5 respondentes.
-            {`Notas de perguntas com direção "menor melhor" são invertidas antes do cálculo.`}
-          </Text>
-        </View>
-
-        <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Conformidade com a LGPD</Text>
-
-        <View style={styles.methodologyBox}>
-          <Text style={styles.methodologyTitle}>Proteção de Dados e Anonimato</Text>
-          <Text style={styles.methodologyText}>
-            {"• Todas as respostas são completamente anônimas — nenhuma resposta é vinculada a um colaborador\n"}
-            {"• Os colaboradores aceitaram o TCLE (Termo de Consentimento Livre e Esclarecido) antes de participar\n"}
-            {"• Dados coletados apenas dentro do horário de expediente configurado\n"}
-            {"• Armazenamento em conformidade com a LGPD (Lei nº 13.709/2018)\n"}
-            {"• CPF coletado apenas como hash SHA-256 no momento do aceite do TCLE"}
-          </Text>
-        </View>
-
-        <View style={{ marginTop: 20, borderTopWidth: 1, borderTopColor: GRAY_200, paddingTop: 12 }}>
-          <Text style={{ fontSize: 7, color: GRAY_500, textAlign: "center", lineHeight: 1.5 }}>
-            Relatório gerado automaticamente pelo sistema Pulse em {formatDateTime(generatedAt)}.{"\n"}
-            Este documento é de uso interno e serve como evidência documental para o PGR.{"\n"}
-            Pulse — Monitoramento de Saúde Ocupacional · Conformidade Legal
-          </Text>
-        </View>
-      </View>
-
-      <PageFooter orgName={orgName} pageLabel="Metodologia e Conformidade" />
-    </Page>
-  )
-}
-
 interface PgrDocumentProps {
   data: PgrPdfInput
 }
@@ -1109,14 +958,6 @@ function PgrDocument({ data }: PgrDocumentProps): React.ReactElement {
       {data.departments.map((dept, i) => (
         <DeptPage key={i} dept={dept} orgName={data.orgName} periodLabel={data.periodLabel} />
       ))}
-      {data.aggregatedQuestions.length > 0 && (
-        <ConsolidatedQuestionsPage
-          aggregatedQuestions={data.aggregatedQuestions}
-          orgName={data.orgName}
-          periodLabel={data.periodLabel}
-        />
-      )}
-      <MethodologyPage orgName={data.orgName} periodLabel={data.periodLabel} generatedAt={data.generatedAt} />
     </Document>
   )
 }

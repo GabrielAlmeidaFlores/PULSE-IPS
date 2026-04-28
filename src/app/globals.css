@@ -7,6 +7,18 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-status-success:        var(--status-success);
+  --color-status-success-subtle: var(--status-success-subtle);
+  --color-status-success-border: var(--status-success-border);
+  --color-status-warning:        var(--status-warning);
+  --color-status-warning-subtle: var(--status-warning-subtle);
+  --color-status-warning-border: var(--status-warning-border);
+  --color-status-danger:         var(--status-danger);
+  --color-status-danger-subtle:  var(--status-danger-subtle);
+  --color-status-danger-border:  var(--status-danger-border);
+  --color-status-info:           var(--status-info);
+  --color-status-info-subtle:    var(--status-info-subtle);
+  --color-status-info-border:    var(--status-info-border);
   --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, monospace;
   --font-heading: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
@@ -78,6 +90,19 @@
   --chart-4: oklch(0.620 0.17 60);
   --chart-5: oklch(0.570 0.19 320);
   --radius: 0px;
+  /* ── Status colors ────────────────────────────────────────────────────── */
+  --status-success:        oklch(0.527 0.154 150);
+  --status-success-subtle: oklch(0.960 0.040 150);
+  --status-success-border: oklch(0.780 0.110 150);
+  --status-warning:        oklch(0.600 0.170 65);
+  --status-warning-subtle: oklch(0.968 0.038 75);
+  --status-warning-border: oklch(0.790 0.130 75);
+  --status-danger:         oklch(0.531 0.211 17.6);
+  --status-danger-subtle:  oklch(0.972 0.030 20);
+  --status-danger-border:  oklch(0.760 0.140 20);
+  --status-info:           oklch(0.450 0.170 256);
+  --status-info-subtle:    oklch(0.964 0.035 256);
+  --status-info-border:    oklch(0.785 0.130 256);
   --sidebar: oklch(1 0 0);
   --sidebar-foreground: oklch(0.228 0.025 249);
   --sidebar-primary: oklch(0.705 0.128 164);
@@ -116,6 +141,19 @@
   --chart-4: oklch(0.700 0.170 60);
   --chart-5: oklch(0.650 0.190 320);
   --sidebar: oklch(0.130 0.018 249);
+  /* ── Status colors (dark) ─────────────────────────────────────────────── */
+  --status-success:        oklch(0.720 0.154 150);
+  --status-success-subtle: oklch(0.250 0.055 150);
+  --status-success-border: oklch(0.360 0.085 150);
+  --status-warning:        oklch(0.740 0.165 75);
+  --status-warning-subtle: oklch(0.255 0.050 75);
+  --status-warning-border: oklch(0.390 0.100 65);
+  --status-danger:         oklch(0.680 0.200 17.6);
+  --status-danger-subtle:  oklch(0.255 0.045 20);
+  --status-danger-border:  oklch(0.415 0.125 18);
+  --status-info:           oklch(0.700 0.165 256);
+  --status-info-subtle:    oklch(0.250 0.050 256);
+  --status-info-border:    oklch(0.385 0.105 256);
   --sidebar-foreground: oklch(0.920 0.012 164);
   --sidebar-primary: oklch(0.705 0.128 164);
   --sidebar-primary-foreground: oklch(0.155 0.022 249);
@@ -245,6 +283,28 @@
   .dark .admin-bg-green     { background-color: oklch(0.580 0.110 164 / 0.15); }
   .dark .admin-bg-amber     { background-color: oklch(0.620 0.18 75  / 0.15); }
   .dark .admin-bg-red       { background-color: oklch(0.531 0.211 17.6 / 0.15); }
+
+  /* ── Status badge utilities ──────────────────────────────────────────── */
+  .badge-success {
+    background-color: var(--status-success-subtle);
+    color: var(--status-success);
+    border-color: var(--status-success-border);
+  }
+  .badge-warning {
+    background-color: var(--status-warning-subtle);
+    color: var(--status-warning);
+    border-color: var(--status-warning-border);
+  }
+  .badge-danger {
+    background-color: var(--status-danger-subtle);
+    color: var(--status-danger);
+    border-color: var(--status-danger-border);
+  }
+  .badge-info {
+    background-color: var(--status-info-subtle);
+    color: var(--status-info);
+    border-color: var(--status-info-border);
+  }
 
   /* ── LP: hero section background ──────────────────────────────────────── */
   .lp-hero-bg {

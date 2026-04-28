@@ -59,42 +59,42 @@ describe("healthIndexAccent", () => {
   })
 
   it("returns green for healthy range", () => {
-    expect(healthIndexAccent(75)).toBe("text-green-600")
+    expect(healthIndexAccent(75)).toBe("text-status-success")
   })
 
   it("returns yellow for warning range", () => {
-    expect(healthIndexAccent(50)).toBe("text-yellow-600")
+    expect(healthIndexAccent(50)).toBe("text-status-warning")
   })
 
   it("returns red for critical range", () => {
-    expect(healthIndexAccent(20)).toBe("text-red-600")
+    expect(healthIndexAccent(20)).toBe("text-status-danger")
   })
 })
 
 describe("healthIndexBarColor", () => {
   it("returns green for healthy", () => {
-    expect(healthIndexBarColor(80)).toBe("bg-green-500")
+    expect(healthIndexBarColor(80)).toBe("bg-status-success")
   })
 
   it("returns yellow for warning", () => {
-    expect(healthIndexBarColor(50)).toBe("bg-yellow-500")
+    expect(healthIndexBarColor(50)).toBe("bg-status-warning")
   })
 
   it("returns red for critical", () => {
-    expect(healthIndexBarColor(10)).toBe("bg-red-500")
+    expect(healthIndexBarColor(10)).toBe("bg-status-danger")
   })
 })
 
 describe("healthIndexChartColor", () => {
   it("returns green hex for healthy", () => {
-    expect(healthIndexChartColor(70)).toBe("#16a34a")
+    expect(healthIndexChartColor(70)).toBe("var(--status-success)")
   })
 
   it("returns amber hex for warning", () => {
-    expect(healthIndexChartColor(50)).toBe("#d97706")
+    expect(healthIndexChartColor(50)).toBe("var(--status-warning)")
   })
 
   it("returns red hex for critical", () => {
-    expect(healthIndexChartColor(20)).toBe("#dc2626")
+    expect(healthIndexChartColor(20)).toBe("var(--status-danger)")
   })
 })

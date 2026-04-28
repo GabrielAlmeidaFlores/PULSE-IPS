@@ -130,3 +130,19 @@ export function findPlanPriceWithPlan(priceId: string): Promise<(PlanPrice & { p
     include: { plan: true },
   })
 }
+
+export async function findAllPlansPaginated(
+  skip: number,
+  take: number,
+): Promise<{ items: PlanWithPricesAndFeatures[]; total: number }> {
+  const [raw, total] = await Promise.all([
+    prisma.plan.findMany({
+      include: { prices: true, features: true },
+      orderBy: { createdAt: "asc" },
+      skip,
+      take,
+    }),
+    prisma.plan.count(),
+  ])
+  return { items: raw.map(toPlanWithFeatures), total }
+}

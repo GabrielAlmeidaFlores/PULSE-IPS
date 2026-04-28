@@ -75,8 +75,8 @@ export function PgrScoreDistributionWidget({ distributions }: Props): React.Reac
                   <p className="text-xs text-foreground leading-relaxed">{d.questionText}</p>
                   <span className={`inline-block text-[9px] font-bold px-1.5 py-0.5 ${
                     d.scoreDirection === "lower_is_better"
-                      ? "bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400"
-                      : "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400"
+                      ? "bg-status-danger-subtle text-status-danger"
+                      : "bg-status-success-subtle text-status-success"
                   }`}>
                     {d.scoreDirection === "lower_is_better" ? "1 = bom · 5 = ruim" : "1 = ruim · 5 = bom"}
                   </span>

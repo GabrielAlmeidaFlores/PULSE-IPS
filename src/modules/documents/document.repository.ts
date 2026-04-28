@@ -1,5 +1,5 @@
 import { prisma } from "@/libs/db"
-import type { Document, DocumentVersion } from "@prisma/client"
+import type { Prisma, Document, DocumentVersion } from "@prisma/client"
 import type { CreateDocumentInput, CreateDocumentVersionInput } from "@/modules/documents/document.types"
 
 export type DocumentWithVersions = Document & { versions: DocumentVersion[] }
@@ -47,4 +47,31 @@ export function updateDocument(
   data: Partial<CreateDocumentInput & { isActive: boolean }>,
 ): Promise<{ count: number }> {
   return prisma.document.updateMany({ where: { id: documentId, tenantId }, data })
+}
+
+export interface DocumentListingFilters {
+  q?: string
+}
+
+export async function findDocumentsForListingPage(
+  tenantId: string,
+  filters: DocumentListingFilters,
+  skip: number,
+  take: number,
+): Promise<{ items: DocumentWithLatestVersion[]; total: number }> {
+  const where: Prisma.DocumentWhereInput = { tenantId, isActive: true }
+  if (filters.q !== undefined) {
+    where.title = { contains: filters.q, mode: "insensitive" }
+  }
+  const [items, total] = await Promise.all([
+    prisma.document.findMany({
+      where,
+      include: { versions: { orderBy: { version: "desc" }, take: 1 } },
+      orderBy: { updatedAt: "desc" },
+      skip,
+      take,
+    }),
+    prisma.document.count({ where }),
+  ])
+  return { items, total }
 }

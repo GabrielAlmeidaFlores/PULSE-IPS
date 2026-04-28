@@ -2,10 +2,12 @@ import {
   findDepartmentsByTenant,
   findDepartmentById,
   findActiveDepartmentsByTenant,
+  findDepartmentsForListingPage,
   createDepartment,
   updateDepartment,
   deactivateDepartment,
   type DepartmentWithWorkDays,
+  type DepartmentListingFilters,
 } from "@/modules/departments/department.repository"
 import type { CreateDepartmentInput, UpdateDepartmentInput } from "@/modules/departments/department.types"
 
@@ -35,4 +37,20 @@ export function removeDept(tenantId: string, departmentId: string): ReturnType<t
 
 export function getActiveDepartments(tenantId: string): Promise<DepartmentWithWorkDays[]> {
   return findActiveDepartmentsByTenant(tenantId)
+}
+
+interface DepartmentListingQuery {
+  q?: string
+  page: number
+  pageSize: number
+}
+
+export function getDepartmentsForListingPage(
+  tenantId: string,
+  query: DepartmentListingQuery,
+): ReturnType<typeof findDepartmentsForListingPage> {
+  const skip = (query.page - 1) * query.pageSize
+  const filters: DepartmentListingFilters = {}
+  if (query.q !== undefined) filters.q = query.q
+  return findDepartmentsForListingPage(tenantId, filters, skip, query.pageSize)
 }

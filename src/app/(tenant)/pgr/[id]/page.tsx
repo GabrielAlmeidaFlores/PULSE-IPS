@@ -30,7 +30,7 @@ import { PgrMarkReviewedButton } from "@/app/(tenant)/pgr/[id]/pgr-mark-reviewed
 import { PgrDownloadButton } from "@/app/(tenant)/pgr/[id]/pgr-download-button"
 import { ChartCard } from "@/components/chart-card"
 import type { ScoreDirection } from "@/modules/surveys/survey.types"
-import { toHealthIndex, healthIndexAccent, healthIndexBarColor, healthIndexChartColor } from "@/libs/utils/health-index"
+import { toHealthIndex, healthIndexAccent, healthIndexBarColor, healthIndexChartColor, adherenceRateBarClass, adherenceRateTextColor } from "@/libs/utils/health-index"
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -45,15 +45,11 @@ function scoreBg(hi: number): string {
 }
 
 function adherenceBg(pct: number): string {
-  if (pct >= 80) return "bg-green-500"
-  if (pct >= 50) return "bg-amber-500"
-  return "bg-red-500"
+  return adherenceRateBarClass(pct)
 }
 
 function adherenceColor(pct: number): string {
-  if (pct >= 80) return "text-green-600 dark:text-green-500"
-  if (pct >= 50) return "text-amber-600 dark:text-amber-500"
-  return "text-red-600 dark:text-red-500"
+  return adherenceRateTextColor(pct)
 }
 
 interface ScoreGaugeProps { hi: number }
@@ -222,7 +218,7 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
             <PgrDownloadButton reviewId={review.id} />
             {review.status === "generated" && <PgrMarkReviewedButton reviewId={review.id} />}
             {review.status === "reviewed" && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border bg-status-success-subtle text-status-success border-status-success-border">
                 <CheckCircle2 className="w-3 h-3" />
                 Revisado
               </span>
@@ -304,34 +300,34 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
               </div>
 
               <div className="grid grid-cols-3 gap-3">
-                <div className="border border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-900/50 p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center shrink-0">
-                    <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-500" />
+                <div className="border border-status-success-border bg-status-success-subtle p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-status-success-subtle flex items-center justify-center shrink-0">
+                    <TrendingUp className="w-5 h-5 text-status-success" />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-green-700 dark:text-green-500">Saudáveis</p>
-                    <p className="text-3xl font-black font-mono text-green-700 dark:text-green-500">{healthyDepts}</p>
-                    <p className="text-[10px] text-green-600/70 dark:text-green-500/70">departamentos</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-status-success">Saudáveis</p>
+                    <p className="text-3xl font-black font-mono text-status-success">{healthyDepts}</p>
+                    <p className="text-[10px] text-status-success/70">departamentos</p>
                   </div>
                 </div>
-                <div className="border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900/50 p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
-                    <Minus className="w-5 h-5 text-amber-600 dark:text-amber-500" />
+                <div className="border border-status-warning-border bg-status-warning-subtle p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-status-warning-subtle flex items-center justify-center shrink-0">
+                    <Minus className="w-5 h-5 text-status-warning" />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-500">Atenção</p>
-                    <p className="text-3xl font-black font-mono text-amber-700 dark:text-amber-500">{warningDepts}</p>
-                    <p className="text-[10px] text-amber-600/70 dark:text-amber-500/70">departamentos</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-status-warning">Atenção</p>
+                    <p className="text-3xl font-black font-mono text-status-warning">{warningDepts}</p>
+                    <p className="text-[10px] text-status-warning/70">departamentos</p>
                   </div>
                 </div>
-                <div className="border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900/50 p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
-                    <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-500" />
+                <div className="border border-status-danger-border bg-status-danger-subtle p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-status-danger-subtle flex items-center justify-center shrink-0">
+                    <AlertTriangle className="w-5 h-5 text-status-danger" />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-red-700 dark:text-red-500">Críticos</p>
-                    <p className="text-3xl font-black font-mono text-red-700 dark:text-red-500">{criticalDepts}</p>
-                    <p className="text-[10px] text-red-600/70 dark:text-red-500/70">departamentos</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-status-danger">Críticos</p>
+                    <p className="text-3xl font-black font-mono text-status-danger">{criticalDepts}</p>
+                    <p className="text-[10px] text-status-danger/70">departamentos</p>
                   </div>
                 </div>
               </div>
@@ -450,18 +446,18 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground shrink-0">Distribuição:</p>
                         <div className="flex items-center gap-4">
                           <span className="inline-flex items-center gap-1.5 text-[11px] font-medium">
-                            <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
-                            <span className="text-green-700 dark:text-green-400 font-bold">{healthyQs}</span>
+                            <span className="w-2 h-2 rounded-full bg-status-success shrink-0" />
+                            <span className="text-status-success font-bold">{healthyQs}</span>
                             <span className="text-muted-foreground">saudáveis</span>
                           </span>
                           <span className="inline-flex items-center gap-1.5 text-[11px] font-medium">
-                            <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
-                            <span className="text-amber-700 dark:text-amber-400 font-bold">{warningQs}</span>
+                            <span className="w-2 h-2 rounded-full bg-status-warning shrink-0" />
+                            <span className="text-status-warning font-bold">{warningQs}</span>
                             <span className="text-muted-foreground">atenção</span>
                           </span>
                           <span className="inline-flex items-center gap-1.5 text-[11px] font-medium">
-                            <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
-                            <span className="text-red-700 dark:text-red-400 font-bold">{criticalQs}</span>
+                            <span className="w-2 h-2 rounded-full bg-status-danger shrink-0" />
+                            <span className="text-status-danger font-bold">{criticalQs}</span>
                             <span className="text-muted-foreground">críticos</span>
                           </span>
                         </div>
@@ -469,7 +465,7 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                           <div className="ml-auto flex items-center gap-4">
                             {bestDeptQuestion && (
                               <span className="text-[10px] text-muted-foreground">
-                                Melhor: <span className="font-bold text-green-600 dark:text-green-500">P{bestDeptQuestion.order} ({bestDeptQuestion.avgScore}%)</span>
+                                Melhor: <span className="font-bold text-status-success">P{bestDeptQuestion.order} ({bestDeptQuestion.avgScore}%)</span>
                               </span>
                             )}
                             {worstDeptQuestion && (
@@ -558,11 +554,11 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                     <th className="px-4 py-2.5 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap">
                       Perguntas
                       <span className="block text-[8px] font-normal normal-case tracking-normal text-muted-foreground/70">
-                        <span className="text-green-600 dark:text-green-500">saud.</span>
+                        <span className="text-status-success">saud.</span>
                         {" · "}
-                        <span className="text-amber-600 dark:text-amber-500">aten.</span>
+                        <span className="text-status-warning">aten.</span>
                         {" · "}
-                        <span className="text-red-600 dark:text-red-500">crít.</span>
+                        <span className="text-status-danger">crít.</span>
                       </span>
                     </th>
                   </tr>
@@ -603,11 +599,11 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="inline-flex items-center gap-2 text-[11px] font-mono">
-                            <span className="text-green-600 dark:text-green-500 font-bold">{hq}</span>
+                            <span className="text-status-success font-bold">{hq}</span>
                             <span className="text-muted-foreground">·</span>
-                            <span className="text-amber-600 dark:text-amber-500 font-bold">{wq}</span>
+                            <span className="text-status-warning font-bold">{wq}</span>
                             <span className="text-muted-foreground">·</span>
-                            <span className="text-red-600 dark:text-red-500 font-bold">{cq}</span>
+                            <span className="text-status-danger font-bold">{cq}</span>
                           </div>
                         </td>
                       </tr>
@@ -620,7 +616,7 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                   <span className="font-bold">Responderam de enviados:</span> quantidade de colaboradores que responderam a pesquisa em relação ao total que recebeu o link. Participação é voluntária, por isso o número pode ser menor.
                 </p>
                 <p className="text-[10px] text-muted-foreground">
-                  <span className="font-bold">Perguntas</span> (<span className="text-green-600 dark:text-green-500 font-bold">saudável</span> · <span className="text-amber-600 dark:text-amber-500 font-bold">atenção</span> · <span className="text-red-600 dark:text-red-500 font-bold">crítico</span>): quantas perguntas do questionário deste setor estão em cada nível de saúde.
+                  <span className="font-bold">Perguntas</span> (<span className="text-status-success font-bold">saudável</span> · <span className="text-status-warning font-bold">atenção</span> · <span className="text-status-danger font-bold">crítico</span>): quantas perguntas do questionário deste setor estão em cada nível de saúde.
                 </p>
               </div>
             </div>

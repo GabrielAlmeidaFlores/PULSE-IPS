@@ -81,9 +81,9 @@ export function SurveyForm({ token, employeeName, questions }: Props): React.Rea
           Olá, {employeeName.split(" ")[0]}! Avalie cada item de 1 a 5.
         </p>
       </div>
-      <div className="flex items-start gap-2 px-6 py-3 bg-green-50 border-b border-green-200">
-        <EyeOff className="w-4 h-4 text-green-700 shrink-0 mt-0.5" />
-        <p className="text-xs text-green-800 leading-relaxed">
+      <div className="flex items-start gap-2 px-6 py-3 bg-status-success-subtle border-b border-status-success-border">
+        <EyeOff className="w-4 h-4 text-status-success shrink-0 mt-0.5" />
+        <p className="text-xs text-status-success leading-relaxed">
           <strong>100% anônimo.</strong> Suas respostas não são vinculadas ao seu nome — ninguém sabe quem respondeu o quê.
         </p>
       </div>

@@ -70,9 +70,9 @@ export function ConsentGate({ token, employeeName, content, onAccepted }: Props)
           />
         </div>
 
-        <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200">
-          <EyeOff className="w-4 h-4 text-green-700 shrink-0 mt-0.5" />
-          <p className="text-xs text-green-800 leading-relaxed">
+        <div className="flex items-start gap-2 p-3 bg-status-success-subtle border border-status-success-border">
+          <EyeOff className="w-4 h-4 text-status-success shrink-0 mt-0.5" />
+          <p className="text-xs text-status-success leading-relaxed">
             <strong>Suas respostas são 100% anônimas.</strong> Não é possível identificar quem respondeu o quê — nem pelo RH, nem pela gestão, nem por ninguém.
           </p>
         </div>

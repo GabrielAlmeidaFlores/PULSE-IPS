@@ -1,12 +1,20 @@
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { getSession } from "@/modules/auth/session"
-import { getDispatches, type DispatchWithConfig } from "@/modules/surveys/survey-dashboard.service"
+import { getDispatchesPaginatedByDay, type DispatchWithConfig } from "@/modules/surveys/survey-dashboard.service"
 import { getSurveyConfigs } from "@/modules/surveys/survey-config.service"
+import { buildPaginationParams } from "@/libs/utils/pagination"
 import { format } from "date-fns"
 import { ScheduleDispatchButton } from "@/app/(tenant)/surveys/schedule-dispatch-button"
+import { SurveyListFilters } from "@/app/(tenant)/surveys/survey-list-filters"
+import { adherenceRateBarClass } from "@/libs/utils/health-index"
+import { DataTable, TablePagination } from "@/libs/design-system"
 import { PageHelp } from "@/components/page-help"
 import { CheckCircle2, XCircle, ChevronRight } from "lucide-react"
+
+interface Props {
+  searchParams: Promise<Record<string, string | undefined>>
+}
 
 const STATUS_PRIORITY: Record<string, number> = {
   failed: 0,
@@ -18,7 +26,7 @@ const STATUS_PRIORITY: Record<string, number> = {
 const STATUS_STYLE: Record<string, string> = {
   scheduled: "bg-muted text-muted-foreground border-border",
   sent: "bg-primary/10 text-primary border-primary/20",
-  cancelled: "bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800",
+  cancelled: "badge-warning",
   failed: "bg-destructive/10 text-destructive border-destructive/20",
 }
 
@@ -27,12 +35,6 @@ const STATUS_LABELS: Record<string, string> = {
   sent: "Enviado",
   cancelled: "Cancelado",
   failed: "Falhou",
-}
-
-function adherenceColor(rate: number): string {
-  if (rate >= 0.8) return "bg-green-500"
-  if (rate >= 0.5) return "bg-yellow-500"
-  return "bg-red-500"
 }
 
 interface DayGroup {
@@ -77,18 +79,33 @@ function groupDispatchesByDay(dispatches: DispatchWithConfig[]): DayGroup[] {
   )
 }
 
-export default async function SurveysPage(): Promise<React.ReactElement> {
+export default async function SurveysPage({ searchParams }: Props): Promise<React.ReactElement> {
   const session = await getSession()
   if (!session) redirect("/login")
 
-  const [dispatches, configs] = await Promise.all([
-    getDispatches(session.tenantId),
+  const params = await searchParams
+  const statusFilter = params["status"]
+  const dateFromStr = params["dateFrom"]
+  const dateToStr = params["dateTo"]
+  const dateFrom = dateFromStr !== undefined ? new Date(`${dateFromStr}T00:00:00`) : undefined
+  const dateTo = dateToStr !== undefined ? new Date(`${dateToStr}T23:59:59`) : undefined
+  const pageParams = buildPaginationParams(params["page"], params["pageSize"])
+
+  const dispatchQuery: { page: number; pageSize: number; status?: string; dateFrom?: Date; dateTo?: Date } = {
+    page: pageParams.page,
+    pageSize: pageParams.pageSize,
+  }
+  if (statusFilter !== undefined) dispatchQuery.status = statusFilter
+  if (dateFrom !== undefined) dispatchQuery.dateFrom = dateFrom
+  if (dateTo !== undefined) dispatchQuery.dateTo = dateTo
+
+  const [{ items: pageDispatches, total }, configs] = await Promise.all([
+    getDispatchesPaginatedByDay(session.tenantId, dispatchQuery),
     getSurveyConfigs(session.tenantId),
   ])
 
-  const dayGroups = groupDispatchesByDay(dispatches)
-  const totalResponses = dispatches.reduce((s, d) => s + d.totalResponses, 0)
-  const totalSent = dispatches.reduce((s, d) => s + d.totalRecipients, 0)
+  const dayGroups = groupDispatchesByDay(pageDispatches)
+  const hasAnyDispatches = total > 0
 
   return (
     <div className="flex flex-col h-full">
@@ -122,9 +139,8 @@ export default async function SurveysPage(): Promise<React.ReactElement> {
             } />
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {dayGroups.length} rodadas · {totalResponses} respostas de {totalSent} enviados
-          </p>
-        </div>
+            {total} {total === 1 ? "rodada" : "rodadas"}
+          </p>        </div>
         <div className="flex gap-0">
           <Link
             href="/surveys/configure"
@@ -137,7 +153,7 @@ export default async function SurveysPage(): Promise<React.ReactElement> {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
 
         {configs.length === 0 && (
           <div className="border border-primary/30 bg-primary/5 px-4 py-3 flex items-start gap-3 mb-6">
@@ -154,7 +170,15 @@ export default async function SurveysPage(): Promise<React.ReactElement> {
           </div>
         )}
 
-        {dispatches.length === 0 && configs.length > 0 && (
+        {hasAnyDispatches && (
+          <SurveyListFilters filters={{
+            ...(statusFilter !== undefined ? { status: statusFilter } : {}),
+            ...(dateFromStr !== undefined ? { dateFrom: dateFromStr } : {}),
+            ...(dateToStr !== undefined ? { dateTo: dateToStr } : {}),
+          }} />
+        )}
+
+        {!hasAnyDispatches && configs.length > 0 && (
           <div className="border border-border bg-card px-5 py-10 text-center">
             <p className="text-sm font-bold text-muted-foreground">Nenhuma pesquisa disparada ainda</p>
             <p className="text-xs text-muted-foreground mt-1">Agende um disparo manual ou aguarde o envio automático.</p>
@@ -162,99 +186,86 @@ export default async function SurveysPage(): Promise<React.ReactElement> {
         )}
 
         {dayGroups.length > 0 && (
-          <div className="border border-border bg-card overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/40">
-                  <th className="px-5 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    Data
-                  </th>
-                  <th className="px-5 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    Departamentos
-                  </th>
-                  <th className="px-5 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    Status
-                  </th>
-                  <th className="px-5 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    Respostas
-                  </th>
-                  <th className="px-5 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    Adesão
-                  </th>
-                  <th className="px-5 py-2.5 w-8" />
-                </tr>
-              </thead>
-              <tbody>
-                {dayGroups.map((g, i) => {
-                  const notResponded = Math.max(0, g.totalRecipients - g.totalResponses)
-                  const adherenceRate = g.totalRecipients > 0 ? g.totalResponses / g.totalRecipients : 0
-                  const adhPct = Math.round(adherenceRate * 100)
+          <DataTable
+            columns={[
+              { label: "Data" },
+              { label: "Departamentos" },
+              { label: "Status" },
+              { label: "Respostas" },
+              { label: "Adesão" },
+              { label: "", className: "w-8" },
+            ]}
+            total={total}
+            pagination={<TablePagination total={total} />}
+          >
+            {dayGroups.map((g, i) => {
+              const notResponded = Math.max(0, g.totalRecipients - g.totalResponses)
+              const adherenceRate = g.totalRecipients > 0 ? g.totalResponses / g.totalRecipients : 0
+              const adhPct = Math.round(adherenceRate * 100)
 
-                  return (
-                    <tr
-                      key={g.dayKey}
-                      className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors group ${i % 2 !== 0 ? "bg-muted/10" : ""}`}
-                    >
-                      <td className="px-5 py-3">
-                        <Link href={`/surveys/${g.anchorId}`} className="block font-mono text-xs text-foreground">
-                          {format(g.scheduledAt, "dd/MM/yyyy")}
-                        </Link>
-                      </td>
-                      <td className="px-5 py-3">
-                        <Link href={`/surveys/${g.anchorId}`} className="block text-xs text-muted-foreground">
-                          {g.deptCount} {g.deptCount === 1 ? "departamento" : "departamentos"}
-                        </Link>
-                      </td>
-                      <td className="px-5 py-3">
-                        <Link href={`/surveys/${g.anchorId}`} className="block">
-                          <span className={`inline-flex items-center px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider border ${STATUS_STYLE[g.status] ?? "bg-muted text-muted-foreground border-border"}`}>
-                            {STATUS_LABELS[g.status] ?? g.status}
-                          </span>
-                        </Link>
-                      </td>
-                      <td className="px-5 py-3">
-                        <Link href={`/surveys/${g.anchorId}`} className="flex items-center gap-3 text-[11px]">
-                          <span className="flex items-center gap-1 text-muted-foreground">
-                            <CheckCircle2 className="h-3 w-3 text-green-500" />
-                            <span className="font-bold text-foreground">{g.totalResponses}</span>
-                          </span>
-                          <span className="flex items-center gap-1 text-muted-foreground">
-                            <XCircle className="h-3 w-3 text-red-400" />
-                            <span className="font-bold text-foreground">{notResponded}</span>
-                          </span>
-                        </Link>
-                      </td>
-                      <td className="px-5 py-3">
-                        <Link href={`/surveys/${g.anchorId}`} className="block">
-                          {g.totalRecipients > 0 ? (
-                            <div className="flex flex-col gap-1 w-24">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[9px] text-muted-foreground uppercase tracking-wider">Adesão</span>
-                                <span className="text-[10px] font-bold">{adhPct}%</span>
-                              </div>
-                              <div className="w-full h-1.5 bg-muted overflow-hidden">
-                                <div
-                                  className={`h-full transition-all ${adherenceColor(adherenceRate)}`}
-                                  style={{ width: `${adhPct}%` }}
-                                />
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          )}
-                        </Link>
-                      </td>
-                      <td className="px-3 py-3 text-right">
-                        <Link href={`/surveys/${g.anchorId}`} className="block">
-                          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
-                        </Link>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+              return (
+                <tr
+                  key={g.dayKey}
+                  className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors group ${i % 2 !== 0 ? "bg-muted/10" : ""}`}
+                >
+                  <td className="px-4 py-3">
+                    <Link href={`/surveys/${g.anchorId}`} className="block font-mono text-xs text-foreground">
+                      {format(g.scheduledAt, "dd/MM/yyyy")}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Link href={`/surveys/${g.anchorId}`} className="block text-xs text-muted-foreground">
+                      {g.deptCount} {g.deptCount === 1 ? "departamento" : "departamentos"}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Link href={`/surveys/${g.anchorId}`} className="block">
+                      <span className={`inline-flex items-center px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider border ${STATUS_STYLE[g.status] ?? "bg-muted text-muted-foreground border-border"}`}>
+                        {STATUS_LABELS[g.status] ?? g.status}
+                      </span>
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Link href={`/surveys/${g.anchorId}`} className="flex items-center gap-3 text-[11px]">
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <CheckCircle2 className="h-3 w-3 text-status-success" />
+                        <span className="font-bold text-foreground">{g.totalResponses}</span>
+                      </span>
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <XCircle className="h-3 w-3 text-status-danger" />
+                        <span className="font-bold text-foreground">{notResponded}</span>
+                      </span>
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Link href={`/surveys/${g.anchorId}`} className="block">
+                      {g.totalRecipients > 0 ? (
+                        <div className="flex flex-col gap-1 w-24">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[9px] text-muted-foreground uppercase tracking-wider">Adesão</span>
+                            <span className="text-[10px] font-bold">{adhPct}%</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-muted overflow-hidden">
+                            <div
+                              className={`h-full transition-all ${adherenceRateBarClass(adhPct)}`}
+                              style={{ width: `${adhPct}%` }}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </Link>
+                  </td>
+                  <td className="px-3 py-3 text-right">
+                    <Link href={`/surveys/${g.anchorId}`} className="block">
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                    </Link>
+                  </td>
+                </tr>
+              )
+            })}
+          </DataTable>
         )}
 
       </div>

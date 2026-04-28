@@ -1,23 +1,32 @@
 import { redirect } from "next/navigation"
 import { getSuperAdminSession } from "@/modules/auth/session"
-import { listSuperAdmins } from "@/modules/auth/auth.service"
+import { listSuperAdminsPaginated } from "@/modules/auth/auth.service"
+import { buildPaginationParams } from "@/libs/utils/pagination"
+import { TablePagination } from "@/libs/design-system"
 
-export default async function SuperAdminsPage(): Promise<React.ReactElement> {
+export default async function SuperAdminsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>
+}): Promise<React.ReactElement> {
   const session = await getSuperAdminSession()
   if (!session) redirect("/super-admin/login")
 
-  const admins = await listSuperAdmins()
+  const params = await searchParams
+  const { page, pageSize } = buildPaginationParams(params["page"], params["pageSize"])
+
+  const { items: admins, total } = await listSuperAdminsPaginated({ page, pageSize })
 
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-card shrink-0">
         <div>
           <h1 className="text-[13px] font-black tracking-[0.2em] uppercase text-foreground">Super Admins</h1>
-          <p className="text-[11px] text-muted-foreground">{admins.length} usuário(s) com acesso à plataforma</p>
+          <p className="text-[11px] text-muted-foreground">{total} usuário(s) com acesso à plataforma</p>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
         <div className="border border-border bg-card">
           <table className="w-full text-[12px]">
             <thead>
@@ -56,12 +65,8 @@ export default async function SuperAdminsPage(): Promise<React.ReactElement> {
               ))}
             </tbody>
           </table>
-          {admins.length > 0 && (
-            <div className="border-t border-border px-4 py-2">
-              <span className="text-[10px] text-muted-foreground">{admins.length} registros</span>
-            </div>
-          )}
         </div>
+        <TablePagination total={total} />
       </div>
     </div>
   )

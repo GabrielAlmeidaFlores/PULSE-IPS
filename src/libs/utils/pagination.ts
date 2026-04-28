@@ -15,7 +15,7 @@ export interface PaginatedResult<TItem> {
 
 export function buildPaginationParams(rawPage: unknown, rawPageSize: unknown): PaginationParams {
   const page = Math.max(1, Number(rawPage) || 1)
-  const pageSize = Math.min(100, Math.max(1, Number(rawPageSize) || 50))
+  const pageSize = Math.min(100, Math.max(1, Number(rawPageSize) || 10))
   return { page, pageSize }
 }
 

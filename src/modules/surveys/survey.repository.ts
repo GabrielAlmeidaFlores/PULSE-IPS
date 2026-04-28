@@ -96,6 +96,94 @@ export function findDispatchesByTenant(tenantId: string): Promise<DispatchWithCo
   })
 }
 
+export interface SurveyDispatchListingFilters {
+  status?: string
+  dateFrom?: Date
+  dateTo?: Date
+}
+
+function buildDispatchWhereInput(tenantId: string, filters: SurveyDispatchListingFilters): Prisma.SurveyDispatchWhereInput {
+  const where: Prisma.SurveyDispatchWhereInput = { tenantId }
+  if (filters.status !== undefined) where.status = filters.status
+  if (filters.dateFrom !== undefined || filters.dateTo !== undefined) {
+    where.scheduledAt = {
+      ...(filters.dateFrom !== undefined ? { gte: filters.dateFrom } : {}),
+      ...(filters.dateTo !== undefined ? { lte: filters.dateTo } : {}),
+    }
+  }
+  return where
+}
+
+function toDateKey(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, "0")
+  const day = String(d.getDate()).padStart(2, "0")
+  return `${y}-${m}-${day}`
+}
+
+export interface DispatchDayPageResult {
+  dates: string[]
+  total: number
+}
+
+export async function findDispatchDaysPaginated(
+  tenantId: string,
+  filters: SurveyDispatchListingFilters,
+  skip: number,
+  take: number,
+): Promise<DispatchDayPageResult> {
+  const where = buildDispatchWhereInput(tenantId, filters)
+  const allScheduledAts = await prisma.surveyDispatch.findMany({
+    where,
+    select: { scheduledAt: true },
+    orderBy: { scheduledAt: "desc" },
+  })
+  const seenDates = new Set<string>()
+  const distinctDates: string[] = []
+  for (const { scheduledAt } of allScheduledAts) {
+    const dayKey = toDateKey(new Date(scheduledAt))
+    if (!seenDates.has(dayKey)) {
+      seenDates.add(dayKey)
+      distinctDates.push(dayKey)
+    }
+  }
+  return { dates: distinctDates.slice(skip, skip + take), total: distinctDates.length }
+}
+
+export function findDispatchesForDates(
+  tenantId: string,
+  dates: string[],
+  filters: SurveyDispatchListingFilters,
+): Promise<DispatchWithConfig[]> {
+  if (dates.length === 0) return Promise.resolve([])
+  const where: Prisma.SurveyDispatchWhereInput = {
+    tenantId,
+    OR: dates.map((d) => ({
+      scheduledAt: {
+        gte: new Date(`${d}T00:00:00`),
+        lte: new Date(`${d}T23:59:59`),
+      },
+    })),
+  }
+  if (filters.status !== undefined) where.status = filters.status
+  return prisma.surveyDispatch.findMany({
+    where,
+    include: { surveyConfiguration: { include: { department: true } } },
+    orderBy: { scheduledAt: "desc" },
+  })
+}
+
+export function findDispatchesByTenantFiltered(
+  tenantId: string,
+  filters: SurveyDispatchListingFilters,
+): Promise<DispatchWithConfig[]> {
+  return prisma.surveyDispatch.findMany({
+    where: buildDispatchWhereInput(tenantId, filters),
+    include: { surveyConfiguration: { include: { department: true } } },
+    orderBy: { scheduledAt: "desc" },
+  })
+}
+
 export interface DispatchResponseItem {
   questionId: string
   score: number

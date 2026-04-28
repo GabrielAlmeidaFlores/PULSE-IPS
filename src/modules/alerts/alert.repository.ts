@@ -1,5 +1,5 @@
 import { prisma } from "@/libs/db"
-import type { Alert } from "@prisma/client"
+import type { Alert, Prisma } from "@prisma/client"
 import type { AlertSeverity, AlertType } from "@/modules/alerts/alert.types"
 
 export interface CreateAlertInput {
@@ -17,6 +17,67 @@ export function findAlertsByTenant(tenantId: string): Promise<(Alert & { departm
     orderBy: { createdAt: "desc" },
     take: 100,
   })
+}
+
+export interface AlertListingFilters {
+  type?: string
+  severity?: string
+  status?: string
+}
+
+export async function findAlertsByTenantPaginated(
+  tenantId: string,
+  filters: AlertListingFilters,
+  skip: number,
+  take: number,
+): Promise<{ alerts: (Alert & { department: import("@prisma/client").Department | null })[]; total: number }> {
+  const where: Prisma.AlertWhereInput = { tenantId }
+
+  if (filters.type !== undefined) {
+    where.type = filters.type
+  }
+  if (filters.severity !== undefined) {
+    where.severity = filters.severity
+  }
+  if (filters.status === "resolved") {
+    where.resolvedAt = { not: null }
+  } else if (filters.status === "read") {
+    where.isRead = true
+    where.resolvedAt = null
+  } else if (filters.status === "new") {
+    where.isRead = false
+    where.resolvedAt = null
+  }
+
+  const [alerts, total] = await Promise.all([
+    prisma.alert.findMany({
+      where,
+      include: { department: true },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take,
+    }),
+    prisma.alert.count({ where }),
+  ])
+
+  return { alerts, total }
+}
+
+export interface AlertStats {
+  total: number
+  unresolved: number
+  criticalUnresolved: number
+  resolved: number
+}
+
+export async function findAlertStatsByTenant(tenantId: string): Promise<AlertStats> {
+  const [total, unresolved, criticalUnresolved, resolved] = await Promise.all([
+    prisma.alert.count({ where: { tenantId } }),
+    prisma.alert.count({ where: { tenantId, resolvedAt: null } }),
+    prisma.alert.count({ where: { tenantId, resolvedAt: null, severity: "critical" } }),
+    prisma.alert.count({ where: { tenantId, resolvedAt: { not: null } } }),
+  ])
+  return { total, unresolved, criticalUnresolved, resolved }
 }
 
 export function createAlert(data: CreateAlertInput): Promise<Alert> {

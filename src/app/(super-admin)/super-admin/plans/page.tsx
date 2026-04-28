@@ -1,22 +1,31 @@
-import { getAllPlansAdmin } from "@/modules/plans/plan.service"
+import { getAllPlansPaginated } from "@/modules/plans/plan.service"
+import { buildPaginationParams } from "@/libs/utils/pagination"
 import { PLAN_FEATURE_LABELS } from "@/modules/plans/plan.types"
 import Link from "next/link"
 import { Plus } from "lucide-react"
+import { TablePagination } from "@/libs/design-system"
 import { PlanRowActions } from "@/app/(super-admin)/super-admin/plans/plan-row-actions"
 
 function formatBRL(cents: number): string {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
 }
 
-export default async function PlansPage(): Promise<React.ReactElement> {
-  const plans = await getAllPlansAdmin()
+export default async function PlansPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>
+}): Promise<React.ReactElement> {
+  const params = await searchParams
+  const { page, pageSize } = buildPaginationParams(params["page"], params["pageSize"])
+
+  const { items: plans, total } = await getAllPlansPaginated({ page, pageSize })
 
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-card shrink-0">
         <div>
           <h1 className="text-[13px] font-black tracking-[0.2em] uppercase text-foreground">Planos</h1>
-          <p className="text-[11px] text-muted-foreground">{plans.length} planos configurados</p>
+          <p className="text-[11px] text-muted-foreground">{total} planos configurados</p>
         </div>
         <Link
           href="/super-admin/plans/new"
@@ -28,7 +37,7 @@ export default async function PlansPage(): Promise<React.ReactElement> {
         </Link>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
         <div className="border border-border bg-card">
           <table className="w-full text-[12px]">
             <thead>
@@ -99,12 +108,8 @@ export default async function PlansPage(): Promise<React.ReactElement> {
               ))}
             </tbody>
           </table>
-          {plans.length > 0 && (
-            <div className="border-t border-border px-4 py-2">
-              <span className="text-[10px] text-muted-foreground">{plans.length} planos</span>
-            </div>
-          )}
         </div>
+        <TablePagination total={total} />
       </div>
     </div>
   )

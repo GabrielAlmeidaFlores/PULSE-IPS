@@ -11,19 +11,37 @@ export function healthIndexLabel(hi: number | null): string {
 
 export function healthIndexAccent(hi: number | null): string {
   if (hi === null) return "text-muted-foreground"
-  if (hi >= 62) return "text-green-600"
-  if (hi >= 37) return "text-yellow-600"
-  return "text-red-600"
+  if (hi >= 62) return "text-status-success"
+  if (hi >= 37) return "text-status-warning"
+  return "text-status-danger"
 }
 
 export function healthIndexBarColor(hi: number): string {
-  if (hi >= 62) return "bg-green-500"
-  if (hi >= 37) return "bg-yellow-500"
-  return "bg-red-500"
+  if (hi >= 62) return "bg-status-success"
+  if (hi >= 37) return "bg-status-warning"
+  return "bg-status-danger"
 }
 
 export function healthIndexChartColor(hi: number): string {
-  if (hi >= 62) return "#16a34a"
-  if (hi >= 37) return "#d97706"
-  return "#dc2626"
+  if (hi >= 62) return "var(--status-success)"
+  if (hi >= 37) return "var(--status-warning)"
+  return "var(--status-danger)"
+}
+
+export function adherenceRateTextColor(pct: number): string {
+  if (pct >= 80) return "text-status-success"
+  if (pct >= 50) return "text-status-warning"
+  return "text-status-danger"
+}
+
+export function adherenceRateBarClass(pct: number): string {
+  if (pct >= 80) return "bg-status-success"
+  if (pct >= 50) return "bg-status-warning"
+  return "bg-status-danger"
+}
+
+export function trendDirectionTextColor(trend: string | null): string {
+  if (trend === "up") return "text-status-success"
+  if (trend === "down") return "text-status-danger"
+  return "text-muted-foreground"
 }

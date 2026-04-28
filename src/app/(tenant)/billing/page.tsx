@@ -19,7 +19,7 @@ const BILLING_STATUS_LABELS: Record<string, string> = {
 const BILLING_STATUS_STYLE: Record<string, string> = {
   pending: "bg-muted text-muted-foreground border-border",
   active: "bg-primary/10 text-primary border-primary/20",
-  trialing: "bg-yellow-50 text-yellow-700 border-yellow-200",
+  trialing: "badge-warning",
   past_due: "bg-destructive/10 text-destructive border-destructive/20",
   canceled: "bg-destructive/10 text-destructive border-destructive/20",
   paused: "bg-muted text-muted-foreground border-border",

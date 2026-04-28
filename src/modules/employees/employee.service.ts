@@ -1,8 +1,9 @@
-import { countEmployees, createEmployee, findEmployeeById, findEmployeesByTenant, updateEmployee, deactivateEmployee, reactivateDueEmployees } from "@/modules/employees/employee.repository"
+import { countEmployees, createEmployee, findEmployeeById, findEmployeesByTenant, updateEmployee, deactivateEmployee, reactivateAllTenantsDueEmployees, findEmployeesForListingPage, type EmployeeListingFilters } from "@/modules/employees/employee.repository"
 import { findOrganizationById } from "@/modules/organizations/organization.repository"
 import { findPlanById } from "@/modules/plans/plan.repository"
 import { findActiveSubscription } from "@/modules/billing/billing.repository"
 import { createAuditLog } from "@/modules/audit/audit.repository"
+import { getEmployeeIdsForConsentState } from "@/modules/consent/consent.service"
 import type { CreateEmployeeInput, UpdateEmployeeInput } from "@/modules/employees/employee.types"
 import { AppError } from "@/libs/errors/app-error"
 
@@ -54,6 +55,37 @@ export function getTotalEmployeeCount(tenantId: string): Promise<number> {
   return countEmployees(tenantId)
 }
 
-export function unpauseDueEmployees(): Promise<{ reactivated: number }> {
-  return reactivateDueEmployees()
+export function unpauseAllTenantsDueEmployees(): Promise<{ reactivated: number }> {
+  return reactivateAllTenantsDueEmployees()
+}
+
+export interface EmployeeListingQuery {
+  q?: string
+  departmentId?: string
+  status?: string
+  consent?: string
+  page: number
+  pageSize: number
+}
+
+export async function getEmployeesForListingPage(
+  tenantId: string,
+  query: EmployeeListingQuery,
+): Promise<{ employees: Awaited<ReturnType<typeof findEmployeesForListingPage>>["employees"]; total: number }> {
+  const skip = (query.page - 1) * query.pageSize
+
+  const filters: EmployeeListingFilters = {}
+  if (query.q !== undefined) filters.q = query.q
+  if (query.departmentId !== undefined) filters.departmentId = query.departmentId
+  if (query.status !== undefined) filters.status = query.status
+
+  if (query.consent !== undefined) {
+    const ids = await getEmployeeIdsForConsentState(tenantId, query.consent)
+    filters.consentEmployeeIds = ids
+    if (ids.length === 0) {
+      return { employees: [], total: 0 }
+    }
+  }
+
+  return findEmployeesForListingPage(tenantId, filters, skip, query.pageSize)
 }

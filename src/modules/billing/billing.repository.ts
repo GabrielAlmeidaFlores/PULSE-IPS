@@ -29,11 +29,15 @@ export async function createSubscriptionFeatureSnapshot(subscriptionId: string, 
   })
 }
 
-export function findTenantSubscriptionFeatures(tenantId: string): Promise<PlanFeature[]> {
-  return prisma.organizationSubscription.findUnique({
+export async function findTenantSubscriptionFeatures(tenantId: string): Promise<PlanFeature[]> {
+  const sub = await prisma.organizationSubscription.findUnique({
     where: { tenantId },
     include: { features: true },
-  }).then((sub) => (sub ? sub.features.map((f) => f.feature as PlanFeature) : []))
+  })
+  if (!sub) return []
+  if (sub.features.length > 0) return sub.features.map((f) => f.feature as PlanFeature)
+  const planFeatures = await prisma.planFeature.findMany({ where: { planId: sub.planId } })
+  return planFeatures.map((f) => f.feature as PlanFeature)
 }
 
 export function recordWebhookEvent(data: WebhookEventInput): Promise<BillingWebhookEvent> {

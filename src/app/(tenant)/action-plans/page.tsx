@@ -3,10 +3,12 @@ import Link from "next/link"
 import { ChevronRight } from "lucide-react"
 import { getSession } from "@/modules/auth/session"
 import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
-import { getActionPlans } from "@/modules/action-plans/action-plan.service"
+import { getActionPlansPaginated } from "@/modules/action-plans/action-plan.service"
 import { getPendingActionPlanSuggestions } from "@/modules/action-plans/action-plan-suggestion.service"
 import { ActionPlanSuggestionCards } from "@/app/(tenant)/action-plans/action-plan-suggestion-cards"
 import { PageHelp } from "@/components/page-help"
+import { buildPaginationParams } from "@/libs/utils/pagination"
+import { DataTable, FilterBar, TablePagination } from "@/libs/design-system"
 
 const PLAN_STATUS_LABELS: Record<string, string> = {
   open: "Aberto",
@@ -19,7 +21,7 @@ const BADGE_DEFAULT = "bg-muted text-muted-foreground border-border"
 
 const PLAN_STATUS_STYLE: Record<string, string> = {
   open: BADGE_DEFAULT,
-  in_progress: "bg-yellow-50 text-yellow-700 border-yellow-200",
+  in_progress: "badge-warning",
   completed: "bg-primary/10 text-primary border-primary/20",
   cancelled: "bg-destructive/10 text-destructive border-destructive/20",
 }
@@ -32,19 +34,30 @@ const PLAN_PRIORITY_LABELS: Record<string, string> = {
 
 const PLAN_PRIORITY_STYLE: Record<string, string> = {
   low: BADGE_DEFAULT,
-  medium: "bg-yellow-50 text-yellow-700 border-yellow-200",
+  medium: "badge-warning",
   high: "bg-destructive/10 text-destructive border-destructive/20",
 }
 
-export default async function ActionPlansPage(): Promise<React.ReactElement> {
+export default async function ActionPlansPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>
+}): Promise<React.ReactElement> {
   const session = await getSession()
   if (!session) redirect("/login")
 
   const hasFeature = await hasTenantPlanFeature(session.tenantId, "action_plans")
   if (!hasFeature) redirect("/dashboard")
 
-  const [plans, suggestions] = await Promise.all([
-    getActionPlans(session.tenantId),
+  const params = await searchParams
+  const { page, pageSize } = buildPaginationParams(params["page"], params["pageSize"])
+
+  const planQuery: { page: number; pageSize: number; q?: string; status?: string } = { page, pageSize }
+  if (params["q"] !== undefined) planQuery.q = params["q"]
+  if (params["status"] !== undefined) planQuery.status = params["status"]
+
+  const [{ items: plans, total }, suggestions] = await Promise.all([
+    getActionPlansPaginated(session.tenantId, planQuery),
     getPendingActionPlanSuggestions(session.tenantId),
   ])
 
@@ -79,51 +92,63 @@ export default async function ActionPlansPage(): Promise<React.ReactElement> {
               </div>
             } />
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">{plans.length} planos</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{total} planos</p>
         </div>
         <Link href="/action-plans/new" className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90 transition-colors border border-primary" style={{ borderRadius: 0 }}>Novo Plano</Link>
       </div>
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
         <ActionPlanSuggestionCards suggestions={suggestions} />
-        <div className="border border-border bg-card overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/40">
-                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Título</th>
-                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Prioridade</th>
-                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Status</th>
-                <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Tarefas</th>
-                <th className="px-4 py-2.5 w-8" />
-              </tr>
-            </thead>
-            <tbody>
-              {plans.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-xs text-muted-foreground">Nenhum plano de ação.</td></tr>
-              )}
-              {plans.map((plan, i) => (
-                <tr key={plan.id} className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors group ${  i % 2 !== 0 ? "bg-muted/10" : ""}`}>
-                  <td className="px-4 py-3 font-medium text-xs">{plan.title}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${PLAN_PRIORITY_STYLE[plan.priority] ?? BADGE_DEFAULT}`}>
-                      {PLAN_PRIORITY_LABELS[plan.priority] ?? plan.priority}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${PLAN_STATUS_STYLE[plan.status] ?? BADGE_DEFAULT}`}>
-                      {PLAN_STATUS_LABELS[plan.status] ?? plan.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-muted-foreground">{plan.tasks.length}</td>
-                  <td className="px-3 py-3 text-right">
-                    <Link href={`/action-plans/${plan.id}`} className="block">
-                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors ml-auto" />
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <FilterBar
+          fields={[
+            { type: "text", key: "q", label: "Buscar", placeholder: "Título do plano...", width: "w-[240px]" },
+            {
+              type: "select",
+              key: "status",
+              label: "Status",
+              width: "w-[160px]",
+              options: [
+                { value: "open", label: "Aberto" },
+                { value: "in_progress", label: "Em andamento" },
+                { value: "completed", label: "Concluído" },
+              ],
+            },
+          ]}
+          values={{ q: params["q"], status: params["status"] }}
+        />
+        <DataTable
+          columns={[
+            { label: "Título" },
+            { label: "Prioridade" },
+            { label: "Status" },
+            { label: "Tarefas", align: "right" },
+            { label: "", align: "right", className: "w-8" },
+          ]}
+          total={total}
+          emptyMessage="Nenhum plano de ação."
+          pagination={<TablePagination total={total} />}
+        >
+          {plans.map((plan, i) => (
+            <tr key={plan.id} className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors group ${i % 2 !== 0 ? "bg-muted/10" : ""}`}>
+              <td className="px-4 py-3 font-medium text-xs">{plan.title}</td>
+              <td className="px-4 py-3">
+                <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${PLAN_PRIORITY_STYLE[plan.priority] ?? BADGE_DEFAULT}`}>
+                  {PLAN_PRIORITY_LABELS[plan.priority] ?? plan.priority}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${PLAN_STATUS_STYLE[plan.status] ?? BADGE_DEFAULT}`}>
+                  {PLAN_STATUS_LABELS[plan.status] ?? plan.status}
+                </span>
+              </td>
+              <td className="px-4 py-3 text-right font-mono text-muted-foreground">{plan.tasks.length}</td>
+              <td className="px-3 py-3 text-right">
+                <Link href={`/action-plans/${plan.id}`} className="block">
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors ml-auto" />
+                </Link>
+              </td>
+            </tr>
+          ))}
+        </DataTable>
       </div>
     </div>
   )

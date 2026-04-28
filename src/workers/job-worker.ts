@@ -3,7 +3,7 @@ import { getMessagingService } from "@/libs/integrations"
 import { prisma } from "@/libs/db"
 import { runSurveyDispatcher, checkDispatchAdherence, runAutoDispatchScheduler } from "@/modules/surveys/survey-dispatch.service"
 import { detectLowScoreAlerts, detectScoreDropAlerts, detectNegativeTrendAlerts, detectConsentExpiredAlerts } from "@/modules/alerts/alert.service"
-import { unpauseDueEmployees } from "@/modules/employees/employee.service"
+import { unpauseAllTenantsDueEmployees } from "@/modules/employees/employee.service"
 import { sendPgrReviewReminders } from "@/modules/pgr/pgr.service"
 import { retryFailedWebhookEvents } from "@/modules/billing/webhook.handler"
 import { createMessageLog, deleteExpiredTokens } from "@/modules/surveys/survey.repository"
@@ -34,7 +34,7 @@ async function processJob(jobName: JobName): Promise<void> {
       break
     }
     case "employee-unpause": {
-      const result = await unpauseDueEmployees()
+      const result = await unpauseAllTenantsDueEmployees()
       console.log(`[worker] employee-unpause: ${JSON.stringify(result)}`)
       break
     }

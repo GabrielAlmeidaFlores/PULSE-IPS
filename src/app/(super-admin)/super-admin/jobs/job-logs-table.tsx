@@ -8,14 +8,11 @@ import { Badge } from "@/components/ui/badge"
 interface Props {
   rows: JobLogRow[]
   total: number
-  page: number
-  pageSize: number
-  totalPages: number
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  completed: "bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800",
-  failed:    "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
+  completed: "badge-success",
+  failed:    "badge-danger",
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -53,7 +50,7 @@ function formatDuration(ms: number | null): string {
   return `${(ms / 1_000).toFixed(1)}s`
 }
 
-export function JobLogsTable({ rows, total, page, pageSize, totalPages }: Props): React.ReactElement {
+export function JobLogsTable({ rows, total }: Props): React.ReactElement {
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   return (
@@ -82,7 +79,7 @@ export function JobLogsTable({ rows, total, page, pageSize, totalPages }: Props)
             {rows.map((row) => (
               <Fragment key={row.id}>
                 <tr
-                  className={`cursor-pointer text-xs hover:bg-muted/30 ${Boolean(row.errorMessage) ? "bg-red-50 dark:bg-red-950/20" : ""}`}
+                  className={`cursor-pointer text-xs hover:bg-muted/30 ${Boolean(row.errorMessage) ? "bg-status-danger-subtle/50" : ""}`}
                   style={{ borderBottom: "1px solid var(--border)" }}
                   onClick={() => { setExpandedId(expandedId === row.id ? null : row.id) }}
                 >
@@ -100,7 +97,7 @@ export function JobLogsTable({ rows, total, page, pageSize, totalPages }: Props)
                     {row.attemptNumber}/{row.maxAttempts}
                   </td>
                   <td className="px-3 py-2 font-mono">{formatDuration(row.durationMs)}</td>
-                  <td className="px-3 py-2 text-red-600 max-w-[220px] truncate" title={row.errorMessage ?? undefined}>
+                  <td className="px-3 py-2 text-status-danger max-w-[220px] truncate" title={row.errorMessage ?? undefined}>
                     {row.errorMessage ?? "—"}
                   </td>
                 </tr>
@@ -143,8 +140,8 @@ export function JobLogsTable({ rows, total, page, pageSize, totalPages }: Props)
                       )}
                       {Boolean(row.errorStack) && (
                         <div>
-                          <div className="text-xs font-semibold text-red-600 mb-1">Stack trace:</div>
-                          <pre className="text-[11px] bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 p-2 rounded overflow-x-auto max-h-52 whitespace-pre-wrap">
+                          <div className="text-xs font-semibold text-status-danger mb-1">Stack trace:</div>
+                          <pre className="text-[11px] bg-status-danger-subtle/50 text-status-danger p-2 rounded overflow-x-auto max-h-52 whitespace-pre-wrap">
                             {row.errorStack}
                           </pre>
                         </div>
@@ -159,10 +156,7 @@ export function JobLogsTable({ rows, total, page, pageSize, totalPages }: Props)
       </div>
 
       <TablePagination
-        page={page}
-        totalPages={totalPages}
         total={total}
-        pageSize={pageSize}
         pageSizeOptions={[10, 20, 30, 50]}
       />
     </div>

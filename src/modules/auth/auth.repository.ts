@@ -114,3 +114,19 @@ export function findAllSuperAdmins(): Promise<SafeSuperAdmin[]> {
     orderBy: { createdAt: "asc" },
   })
 }
+
+export async function findSuperAdminsPaginated(
+  skip: number,
+  take: number,
+): Promise<{ items: SafeSuperAdmin[]; total: number }> {
+  const [items, total] = await Promise.all([
+    prisma.superAdmin.findMany({
+      select: { id: true, name: true, email: true, createdAt: true },
+      orderBy: { createdAt: "asc" },
+      skip,
+      take,
+    }),
+    prisma.superAdmin.count(),
+  ])
+  return { items, total }
+}

@@ -1,5 +1,5 @@
 import { prisma } from "@/libs/db"
-import type { ActionPlan, ActionPlanTask } from "@prisma/client"
+import type { Prisma, ActionPlan, ActionPlanTask } from "@prisma/client"
 import type { CreateActionPlanInput, CreateActionPlanTaskInput, UpdateActionPlanInput } from "@/modules/action-plans/action-plan.types"
 
 export type ActionPlanWithTasks = ActionPlan & { tasks: ActionPlanTask[] }
@@ -191,4 +191,29 @@ export async function findSuggestionContextData(tenantId: string): Promise<Sugge
     recentDispatches,
     deptNamesById,
   }
+}
+
+export interface ActionPlanListingFilters {
+  q?: string
+  status?: string
+}
+
+export async function findActionPlansForListingPage(
+  tenantId: string,
+  filters: ActionPlanListingFilters,
+  skip: number,
+  take: number,
+): Promise<{ items: ActionPlanWithTasks[]; total: number }> {
+  const where: Prisma.ActionPlanWhereInput = { tenantId }
+  if (filters.q !== undefined) {
+    where.title = { contains: filters.q, mode: "insensitive" }
+  }
+  if (filters.status !== undefined) {
+    where.status = filters.status
+  }
+  const [items, total] = await Promise.all([
+    prisma.actionPlan.findMany({ where, include: { tasks: true }, orderBy: { createdAt: "desc" }, skip, take }),
+    prisma.actionPlan.count({ where }),
+  ])
+  return { items, total }
 }

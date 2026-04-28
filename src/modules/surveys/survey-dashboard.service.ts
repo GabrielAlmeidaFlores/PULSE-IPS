@@ -3,6 +3,10 @@ import {
   findDispatchWithDashboard,
   findMultipleDispatchesWithDashboard,
   createDispatch,
+  findDispatchesByTenantFiltered,
+  findDispatchDaysPaginated,
+  findDispatchesForDates,
+  type SurveyDispatchListingFilters,
 } from "@/modules/surveys/survey.repository"
 import type { DispatchDashboardStats, ScoreDirection } from "@/modules/surveys/survey.types"
 
@@ -80,6 +84,48 @@ function buildDispatchStats(data: {
 
 export function getDispatches(tenantId: string): ReturnType<typeof findDispatchesByTenant> {
   return findDispatchesByTenant(tenantId)
+}
+
+export interface SurveyDispatchListingQuery {
+  status?: string
+  dateFrom?: Date
+  dateTo?: Date
+}
+
+export interface SurveyDispatchDayPageQuery extends SurveyDispatchListingQuery {
+  page: number
+  pageSize: number
+}
+
+export interface SurveyDispatchDayPageResult {
+  items: import("@/modules/surveys/survey.repository").DispatchWithConfig[]
+  total: number
+}
+
+export function getDispatchesFiltered(
+  tenantId: string,
+  query: SurveyDispatchListingQuery,
+): ReturnType<typeof findDispatchesByTenantFiltered> {
+  const filters: SurveyDispatchListingFilters = {}
+  if (query.status !== undefined) filters.status = query.status
+  if (query.dateFrom !== undefined) filters.dateFrom = query.dateFrom
+  if (query.dateTo !== undefined) filters.dateTo = query.dateTo
+  return findDispatchesByTenantFiltered(tenantId, filters)
+}
+
+export async function getDispatchesPaginatedByDay(
+  tenantId: string,
+  query: SurveyDispatchDayPageQuery,
+): Promise<SurveyDispatchDayPageResult> {
+  const skip = (query.page - 1) * query.pageSize
+  const filters: SurveyDispatchListingFilters = {}
+  if (query.status !== undefined) filters.status = query.status
+  if (query.dateFrom !== undefined) filters.dateFrom = query.dateFrom
+  if (query.dateTo !== undefined) filters.dateTo = query.dateTo
+  const { dates, total } = await findDispatchDaysPaginated(tenantId, filters, skip, query.pageSize)
+  if (dates.length === 0) return { items: [], total }
+  const items = await findDispatchesForDates(tenantId, dates, filters)
+  return { items, total }
 }
 
 export function scheduleDispatch(tenantId: string, configId: string, scheduledAt: Date): ReturnType<typeof createDispatch> {

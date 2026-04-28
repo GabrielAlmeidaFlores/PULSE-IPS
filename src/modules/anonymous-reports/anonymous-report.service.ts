@@ -2,8 +2,10 @@ import { AppError } from "@/libs/errors/app-error"
 import {
   findReportsByTenant,
   findReportById,
+  findReportsForListingPage,
   createReport,
   updateReport,
+  type AnonymousReportListingFilters,
 } from "@/modules/anonymous-reports/anonymous-report.repository"
 import { findOrganizationBySlug } from "@/modules/organizations/organization.repository"
 import type { CreateAnonymousReportInput, UpdateAnonymousReportInput } from "@/modules/anonymous-reports/anonymous-report.types"
@@ -32,4 +34,22 @@ export function updateReportStatus(
     ...(input.status === "resolved" ? { resolvedAt: new Date() } : {}),
   }
   return updateReport(tenantId, reportId, data)
+}
+
+interface AnonymousReportListingQuery {
+  status?: string
+  category?: string
+  page: number
+  pageSize: number
+}
+
+export function getReportsPaginated(
+  tenantId: string,
+  query: AnonymousReportListingQuery,
+): ReturnType<typeof findReportsForListingPage> {
+  const skip = (query.page - 1) * query.pageSize
+  const filters: AnonymousReportListingFilters = {}
+  if (query.status !== undefined) filters.status = query.status
+  if (query.category !== undefined) filters.category = query.category
+  return findReportsForListingPage(tenantId, filters, skip, query.pageSize)
 }

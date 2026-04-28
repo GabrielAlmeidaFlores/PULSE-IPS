@@ -94,7 +94,7 @@ export default function ImportPreviewPage(): React.ReactElement {
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
         <div className="flex gap-4">
           <div className="flex items-center gap-1.5">
-            <CheckCircle2 className="h-4 w-4 text-green-500" />
+            <CheckCircle2 className="h-4 w-4 text-status-success" />
             <span className="text-[13px] font-bold text-foreground">{preview.valid} válidos</span>
           </div>
           {preview.invalid > 0 && (
@@ -130,7 +130,7 @@ export default function ImportPreviewPage(): React.ReactElement {
                   <td className="px-4 py-2.5 font-mono text-muted-foreground">{item.email ?? "—"}</td>
                   <td className="px-4 py-2.5 text-center">
                     {item.valid ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-green-600 dark:text-green-400">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-status-success">
                         <CheckCircle2 className="h-3.5 w-3.5" />
                         Válido
                       </span>

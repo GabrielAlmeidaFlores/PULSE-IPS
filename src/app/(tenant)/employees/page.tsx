@@ -1,18 +1,37 @@
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { getSession } from "@/modules/auth/session"
-import { getEmployees } from "@/modules/employees/employee.service"
+import { getEmployeesForListingPage, type EmployeeListingQuery } from "@/modules/employees/employee.service"
 import { getDepartments } from "@/modules/departments/department.service"
 import { getConsentEventsByEmployeeIds } from "@/modules/consent/consent.service"
+import { buildPaginationParams } from "@/libs/utils/pagination"
 import { PageHelp } from "@/components/page-help"
 import { EmployeeTable } from "@/app/(tenant)/employees/employee-table"
+import { EmployeeListFilters } from "@/app/(tenant)/employees/employee-list-filters"
 
-export default async function EmployeesPage(): Promise<React.ReactElement> {
+interface Props {
+  searchParams: Promise<Record<string, string | undefined>>
+}
+
+export default async function EmployeesPage({ searchParams }: Props): Promise<React.ReactElement> {
   const session = await getSession()
   if (!session) redirect("/login")
 
+  const params = await searchParams
+  const q = params["q"]
+  const departmentId = params["departmentId"]
+  const statusFilter = params["status"]
+  const consentFilter = params["consent"]
+  const pageParams = buildPaginationParams(params["page"], params["pageSize"])
+
+  const employeeQuery: EmployeeListingQuery = { page: pageParams.page, pageSize: pageParams.pageSize }
+  if (q !== undefined) employeeQuery.q = q
+  if (departmentId !== undefined) employeeQuery.departmentId = departmentId
+  if (statusFilter !== undefined) employeeQuery.status = statusFilter
+  if (consentFilter !== undefined) employeeQuery.consent = consentFilter
+
   const [{ employees, total }, departments] = await Promise.all([
-    getEmployees(session.tenantId),
+    getEmployeesForListingPage(session.tenantId, employeeQuery),
     getDepartments(session.tenantId),
   ])
 
@@ -50,7 +69,7 @@ export default async function EmployeesPage(): Promise<React.ReactElement> {
               </div>
             } />
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">{total} total</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{total} colaboradores</p>
         </div>
         <div className="flex gap-0">
           <Link href="/employees/import" className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
@@ -61,7 +80,11 @@ export default async function EmployeesPage(): Promise<React.ReactElement> {
           </Link>
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <EmployeeListFilters
+          filters={{ ...(q !== undefined && { q }), ...(departmentId !== undefined && { departmentId }), ...(statusFilter !== undefined && { status: statusFilter }), ...(consentFilter !== undefined && { consent: consentFilter }) }}
+          departments={departments.map((d) => ({ id: d.id, name: d.name }))}
+        />
         <EmployeeTable
           employees={employees.map((emp) => ({
             id: emp.id,

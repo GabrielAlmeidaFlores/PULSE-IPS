@@ -119,7 +119,7 @@ export function deactivateEmployee(tenantId: string, employeeId: string): Promis
   })
 }
 
-export async function reactivateDueEmployees(): Promise<{ reactivated: number }> {
+export async function reactivateAllTenantsDueEmployees(): Promise<{ reactivated: number }> {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const result = await prisma.employee.updateMany({
@@ -134,4 +134,46 @@ export async function reactivateDueEmployees(): Promise<{ reactivated: number }>
     },
   })
   return { reactivated: result.count }
+}
+
+export interface EmployeeListingFilters {
+  q?: string
+  departmentId?: string
+  status?: string
+  consentEmployeeIds?: string[]
+}
+
+export async function findEmployeesForListingPage(
+  tenantId: string,
+  filters: EmployeeListingFilters,
+  skip: number,
+  take: number,
+): Promise<{ employees: EmployeeWithDepartment[]; total: number }> {
+  const where: Prisma.EmployeeWhereInput = { tenantId }
+
+  if (filters.q !== undefined && filters.q.length > 0) {
+    where.name = { contains: filters.q, mode: "insensitive" }
+  }
+  if (filters.departmentId !== undefined) {
+    where.departmentId = filters.departmentId
+  }
+  if (filters.status !== undefined) {
+    where.status = filters.status
+  }
+  if (filters.consentEmployeeIds !== undefined) {
+    where.id = { in: filters.consentEmployeeIds }
+  }
+
+  const [employees, total] = await Promise.all([
+    prisma.employee.findMany({
+      where,
+      include: { department: true, workDays: true },
+      orderBy: { name: "asc" },
+      skip,
+      take,
+    }),
+    prisma.employee.count({ where }),
+  ])
+
+  return { employees, total }
 }

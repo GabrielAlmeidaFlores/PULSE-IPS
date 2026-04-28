@@ -103,15 +103,19 @@ export function FilterBar({ fields, values, title = "Filtros" }: FilterBarProps)
       <div className="px-4 py-3 flex flex-wrap gap-3 items-end">
         {fields.map((field) => {
           if (field.type === "select") {
+            const currentValue = values[field.key] ?? "all"
+            const displayLabel = currentValue === "all"
+              ? (field.allLabel ?? "Todos")
+              : (field.options.find((o) => o.value === currentValue)?.label ?? currentValue)
             return (
               <div key={field.key} className="flex flex-col gap-1">
                 <span className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">{field.label}</span>
                 <Select
-                  value={values[field.key] ?? "all"}
+                  value={currentValue}
                   onValueChange={(v) => { updateFilter(field.key, v) }}
                 >
                   <SelectTrigger className={`h-8 text-xs ${field.width ?? "min-w-[130px]"}`} style={{ borderRadius: 0 }}>
-                    <SelectValue placeholder={field.allLabel ?? "Todos"} />
+                    <SelectValue>{displayLabel}</SelectValue>
                   </SelectTrigger>
                   <SelectContent className="text-xs p-1" style={{ borderRadius: 4 }} align="start">
                     <SelectItem value="all" className="text-xs py-1.5 px-2 rounded-sm whitespace-nowrap">{field.allLabel ?? "Todos"}</SelectItem>
@@ -147,7 +151,7 @@ export function FilterBar({ fields, values, title = "Filtros" }: FilterBarProps)
               <span className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">{field.label}</span>
               <Input
                 type="date"
-                className={`${field.width ?? "w-[140px]"} h-8 text-xs`}
+                className={`${field.width ?? "w-[140px]"} h-8 text-xs [color-scheme:light] dark:[color-scheme:dark] [accent-color:#3DB98A]`}
                 style={{ borderRadius: 0 }}
                 defaultValue={values[field.key] ?? ""}
                 onChange={(e) => { updateFilter(field.key, e.target.value) }}

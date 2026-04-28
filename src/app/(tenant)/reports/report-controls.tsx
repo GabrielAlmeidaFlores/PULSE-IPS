@@ -3,6 +3,7 @@
 import React, { useState, useTransition } from "react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import { TablePagination } from "@/libs/design-system"
 import { updateReportStatusAction } from "@/app/(tenant)/reports/actions"
 import type { AnonymousReport } from "@/modules/anonymous-reports/anonymous-report.types"
 
@@ -34,9 +35,10 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 interface Props {
   reports: AnonymousReport[]
+  total: number
 }
 
-export function ReportControls({ reports }: Props): React.ReactElement {
+export function ReportControls({ reports, total }: Props): React.ReactElement {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -55,13 +57,17 @@ export function ReportControls({ reports }: Props): React.ReactElement {
 
   if (reports.length === 0) {
     return (
-      <div className="border border-border bg-card px-6 py-12 text-center">
-        <p className="text-xs text-muted-foreground">Nenhum relato recebido.</p>
+      <div className="space-y-4">
+        <div className="border border-border bg-card px-6 py-12 text-center">
+          <p className="text-xs text-muted-foreground">Nenhum relato recebido.</p>
+        </div>
+        <TablePagination total={total} />
       </div>
     )
   }
 
   return (
+    <div className="space-y-4">
     <div className="border border-border bg-card overflow-hidden">
       <table className="w-full text-sm">
         <thead>
@@ -130,6 +136,8 @@ export function ReportControls({ reports }: Props): React.ReactElement {
           ))}
         </tbody>
       </table>
+    </div>
+    <TablePagination total={total} />
     </div>
   )
 }

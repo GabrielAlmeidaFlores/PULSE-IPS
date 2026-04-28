@@ -1,8 +1,9 @@
 "use client"
 import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { Pencil, Trash2 } from "lucide-react"
+import { DataTable, FilterBar, TablePagination } from "@/libs/design-system"
 import { createDepartmentAction, updateDepartmentAction, deleteDepartmentAction } from "@/app/(tenant)/departments/actions"
 import { PageHelp } from "@/components/page-help"
 import { ConfirmDeleteModal } from "@/components/confirm-delete-modal"
@@ -19,6 +20,7 @@ interface DepartmentRow {
 
 interface Props {
   departments: DepartmentRow[]
+  total: number
 }
 
 interface DeptFormState {
@@ -148,14 +150,17 @@ function WorkScheduleFields({ form, onChange }: WorkScheduleFieldsProps): React.
   )
 }
 
-export function DepartmentControls({ departments }: Props): React.ReactElement {
+export function DepartmentControls({ departments, total }: Props): React.ReactElement {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [pending, startTransition] = useTransition()
   const [showAddModal, setShowAddModal] = useState(false)
   const [addForm, setAddForm] = useState<DeptFormState>(DEFAULT_FORM)
   const [editTarget, setEditTarget] = useState<DepartmentRow | null>(null)
   const [editForm, setEditForm] = useState<DeptFormState>(DEFAULT_FORM)
   const [deleteTarget, setDeleteTarget] = useState<DepartmentRow | null>(null)
+
+  const q = searchParams.get("q") ?? ""
 
   function openEdit(dept: DepartmentRow): void {
     setEditTarget(dept)
@@ -242,7 +247,7 @@ export function DepartmentControls({ departments }: Props): React.ReactElement {
               </div>
             } />
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">{departments.length} departamentos</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{total} departamentos</p>
         </div>
         <button
           onClick={() => { setShowAddModal(true); setAddForm(DEFAULT_FORM) }}
@@ -253,53 +258,52 @@ export function DepartmentControls({ departments }: Props): React.ReactElement {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="border border-border bg-card overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/40">
-                <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Nome</th>
-                <th className="px-4 py-2.5 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Dias</th>
-                <th className="px-4 py-2.5 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Horário</th>
-                <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Funcionários</th>
-                <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-24">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {departments.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-xs text-muted-foreground">Nenhum departamento cadastrado.</td></tr>
-              )}
-              {departments.map((dept, i) => (
-                <tr key={dept.id} className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors ${i % 2 !== 0 ? "bg-muted/10" : ""}`}>
-                  <td className="px-4 py-3 font-medium">{dept.name}</td>
-                  <td className="px-4 py-3 text-center text-xs text-muted-foreground">{formatDays(dept.workDays)}</td>
-                  <td className="px-4 py-3 text-center font-mono text-xs text-muted-foreground">{formatHours(dept.workStartTime, dept.workEndTime)}</td>
-                  <td className="px-4 py-3 text-right font-mono text-muted-foreground">{dept.employeeCount}</td>
-                  <td className="px-4 py-3 w-24">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => openEdit(dept)}
-                        style={{ borderRadius: 0 }}
-                        className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider border border-border text-muted-foreground hover:bg-muted"
-                        title="Editar"
-                      >
-                        <Pencil size={12} />
-                      </button>
-                      <button
-                        onClick={() => setDeleteTarget(dept)}
-                        style={{ borderRadius: 0 }}
-                        className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider border border-destructive/40 text-destructive hover:bg-destructive/10"
-                        title="Excluir"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <FilterBar
+          fields={[{ type: "text", key: "q", label: "Buscar", placeholder: "Nome do departamento...", width: "w-[240px]" }]}
+          values={{ q: q.length > 0 ? q : undefined }}
+        />
+        <DataTable
+          columns={[
+            { label: "Nome" },
+            { label: "Dias", align: "center" },
+            { label: "Horário", align: "center" },
+            { label: "Funcionários", align: "right" },
+            { label: "Ações", align: "right", className: "w-24" },
+          ]}
+          total={total}
+          emptyMessage="Nenhum departamento encontrado."
+          pagination={<TablePagination total={total} />}
+        >
+          {departments.map((dept, i) => (
+            <tr key={dept.id} className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors ${i % 2 !== 0 ? "bg-muted/10" : ""}`}>
+              <td className="px-4 py-3 font-medium">{dept.name}</td>
+              <td className="px-4 py-3 text-center text-xs text-muted-foreground">{formatDays(dept.workDays)}</td>
+              <td className="px-4 py-3 text-center font-mono text-xs text-muted-foreground">{formatHours(dept.workStartTime, dept.workEndTime)}</td>
+              <td className="px-4 py-3 text-right font-mono text-muted-foreground">{dept.employeeCount}</td>
+              <td className="px-4 py-3 w-24">
+                <div className="flex items-center justify-end gap-1">
+                  <button
+                    onClick={() => openEdit(dept)}
+                    style={{ borderRadius: 0 }}
+                    className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider border border-border text-muted-foreground hover:bg-muted"
+                    title="Editar"
+                  >
+                    <Pencil size={12} />
+                  </button>
+                  <button
+                    onClick={() => setDeleteTarget(dept)}
+                    style={{ borderRadius: 0 }}
+                    className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider border border-destructive/40 text-destructive hover:bg-destructive/10"
+                    title="Excluir"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </DataTable>
       </div>
 
       <Dialog open={showAddModal} onOpenChange={(o) => { if (!o) { setShowAddModal(false); setAddForm(DEFAULT_FORM) } }}>

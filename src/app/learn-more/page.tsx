@@ -60,8 +60,8 @@ function FlowCard({
     voce: {
       label: "VOCÊ",
       bg: "bg-card",
-      border: "border-blue-200 dark:border-blue-800/60",
-      badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
+      border: "border-status-info-border",
+      badge: "bg-status-info-subtle text-status-info",
       badgeText: "Sua ação",
     },
     pulse: {
@@ -74,8 +74,8 @@ function FlowCard({
     colaborador: {
       label: "COLABORADOR",
       bg: "bg-card",
-      border: "border-green-200 dark:border-green-800/60",
-      badge: "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300",
+      border: "border-status-success-border",
+      badge: "bg-status-success-subtle text-status-success",
       badgeText: "Colaborador",
     },
   }
@@ -187,8 +187,8 @@ export default function LearnMorePage(): React.ReactElement {
                     "Histórico de ações espalhado, difícil de consultar",
                   ].map((item) => (
                     <div key={item} className="flex items-start gap-3 text-sm text-foreground">
-                      <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center shrink-0 mt-0.5">
-                        <X className="w-3 h-3 text-red-500" />
+                      <div className="w-5 h-5 rounded-full bg-status-danger-subtle flex items-center justify-center shrink-0 mt-0.5">
+                        <X className="w-3 h-3 text-status-danger" />
                       </div>
                       {item}
                     </div>
@@ -199,18 +199,18 @@ export default function LearnMorePage(): React.ReactElement {
             <div className="space-y-4">
               {[
                 {
-                  border: "border-red-100 dark:border-red-900/30",
+                  border: "border-status-danger-border",
                   bgClass: "lp-problem-card-red",
                   label: "Sem o Pulse",
-                  labelColor: "text-red-700 dark:text-red-400",
+                  labelColor: "text-status-danger",
                   title: "Gestão no escuro",
                   desc: "decisões tomadas sem dados reais sobre como a equipe está",
                 },
                 {
-                  border: "border-amber-100 dark:border-amber-900/30",
+                  border: "border-status-warning-border",
                   bgClass: "lp-problem-card-amber",
                   label: "Problema invisível",
-                  labelColor: "text-amber-700 dark:text-amber-400",
+                  labelColor: "text-status-warning",
                   title: "Crise silenciosa",
                   desc: "turnover alto, afastamentos e queda de produtividade sem sinal de alerta",
                 },
@@ -267,7 +267,7 @@ export default function LearnMorePage(): React.ReactElement {
               {
                 icon: <UserCheck className="w-5 h-5" />,
                 title: "Consentimento no piloto automático",
-                desc: "Na primeira pesquisa, o colaborador lê os termos de participação e decide se quer continuar. O aceite fica registrado automaticamente.",
+                desc: "Ao ser cadastrado, o colaborador recebe automaticamente um link exclusivo de consentimento (TCLE) por WhatsApp. Ele lê os termos e decide se quer participar. O aceite fica registrado e é imutável.",
                 benefit: "Participação voluntária e documentada",
               },
               {
@@ -341,9 +341,9 @@ export default function LearnMorePage(): React.ReactElement {
 
           <div className="flex flex-wrap justify-center gap-4 mb-10">
             {[
-              { color: "bg-blue-100 border-blue-200 text-blue-700 dark:bg-blue-900/50 dark:border-blue-800/60 dark:text-blue-300", label: "Você faz" },
+              { color: "bg-status-info-subtle border-status-info-border text-status-info", label: "Você faz" },
               { color: "bg-primary/10 border-primary/30 text-primary", label: "Pulse faz automaticamente" },
-              { color: "bg-green-100 border-green-200 text-green-700 dark:bg-green-900/50 dark:border-green-800/60 dark:text-green-300", label: "Colaborador faz" },
+              { color: "bg-status-success-subtle border-status-success-border text-status-success", label: "Colaborador faz" },
             ].map((item) => (
               <div key={item.label} className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold ${item.color}`}>
                 <div className="w-2 h-2 rounded-full bg-current opacity-60" />
@@ -354,12 +354,12 @@ export default function LearnMorePage(): React.ReactElement {
 
           <div className="max-w-xl mx-auto">
             {([
+              { actor: "voce", icon: <ClipboardList className="w-5 h-5" />, title: "Você cria os departamentos", desc: "Cadastra os setores da empresa com os horários de expediente e dias de trabalho de cada equipe." },
+              { actor: "voce", icon: <Clock className="w-5 h-5" />, title: "Você configura a pesquisa uma vez", desc: "Define as perguntas e a frequência de envio para cada setor — diariamente, semanalmente, quinzenalmente ou mensalmente." },
               { actor: "voce", icon: <Users className="w-5 h-5" />, title: "Você cadastra sua equipe", desc: "Registra os colaboradores por setor — um a um ou importando uma planilha Excel. Leva minutos." },
-              { actor: "pulse", icon: <MessageSquare className="w-5 h-5" />, title: "Pulse envia a primeira pesquisa", desc: "O colaborador recebe o link da pesquisa pelo WhatsApp ou SMS, dentro do horário de expediente." },
-              { actor: "colaborador", icon: <UserCheck className="w-5 h-5" />, title: "Colaborador aceita ao responder", desc: "Na primeira vez, o colaborador lê os termos e confirma a participação. Sem papel, sem burocracia. O aceite fica registrado automaticamente." },
-              { actor: "voce", icon: <ClipboardList className="w-5 h-5" />, title: "Você configura a pesquisa uma vez", desc: "Define as perguntas e com que frequência enviar — diariamente, semanalmente, quinzenalmente ou mensalmente." },
-              { actor: "voce", icon: <Clock className="w-5 h-5" />, title: "Você define o expediente de cada equipe", desc: "Configura os dias da semana e o horário de trabalho de cada setor. Equipes com turnos diferentes têm suas próprias configurações." },
-              { actor: "pulse", icon: <Zap className="w-5 h-5" />, title: "Pulse dispara as pesquisas automaticamente", desc: "Só envia dentro do horário de expediente configurado. O colaborador recebe a mensagem quando está trabalhando." },
+              { actor: "pulse", icon: <MessageSquare className="w-5 h-5" />, title: "Pulse envia o convite de consentimento (TCLE)", desc: "Cada colaborador recebe automaticamente um link exclusivo por WhatsApp para ler e aceitar os Termos de Consentimento." },
+              { actor: "colaborador", icon: <UserCheck className="w-5 h-5" />, title: "Colaborador lê e aceita os termos", desc: "Via link exclusivo, o colaborador lê o TCLE e confirma a participação. Sem papel, sem burocracia. O aceite fica registrado e é imutável." },
+              { actor: "pulse", icon: <Zap className="w-5 h-5" />, title: "Pulse dispara as pesquisas automaticamente", desc: "Apenas para quem aceitou o TCLE. Só envia dentro do horário de expediente configurado — o colaborador recebe quando está trabalhando." },
               { actor: "colaborador", icon: <EyeOff className="w-5 h-5" />, title: "Colaborador responde — com total anonimato", desc: "Sem login, sem identificação. Só as respostas. Ninguém na empresa sabe quem disse o quê." },
               { actor: "pulse", icon: <BarChart3 className="w-5 h-5" />, title: "Pulse analisa e atualiza o painel", desc: "Os indicadores de cada setor são calculados automaticamente. Você vê tudo no painel em tempo real." },
               { actor: "pulse", icon: <Bell className="w-5 h-5" />, title: "Pulse avisa quando há algo a resolver", desc: "Se algum setor tiver queda nos resultados ou baixa participação, você recebe um alerta para agir." },
@@ -477,7 +477,7 @@ export default function LearnMorePage(): React.ReactElement {
                   {
                     icon: <UserCheck className="w-5 h-5" />,
                     title: "Consentimento formal registrado",
-                    desc: "Na primeira pesquisa, o colaborador lê os termos e decide se quer participar. O aceite fica registrado e guardado permanentemente.",
+                    desc: "Antes de receber qualquer pesquisa, o colaborador recebe um link exclusivo de TCLE para ler e aceitar os termos. O aceite fica registrado e guardado permanentemente — e é imutável.",
                   },
                   {
                     icon: <CheckCircle2 className="w-5 h-5" />,
@@ -625,41 +625,84 @@ export default function LearnMorePage(): React.ReactElement {
           <div className="text-center mb-14">
             <SectionLabel>✦ Dúvidas frequentes</SectionLabel>
             <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">
-              Respostas para as perguntas mais comuns
+              Dúvidas frequentes
             </h2>
             <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-              Tudo o que você precisa saber antes de começar.
+              Tudo o que você precisa saber antes de começar. Se ainda tiver alguma dúvida, é só chamar no WhatsApp.
             </p>
           </div>
           <div className="space-y-4">
             {[
               {
                 q: "Os colaboradores precisam criar uma conta ou instalar algum aplicativo?",
-                a: "Não. Eles recebem um link pelo WhatsApp ou SMS e respondem diretamente no navegador do celular. Sem cadastro, sem download, sem fricção.",
+                a: (
+                  <span>
+                    <strong className="text-foreground">Não.</strong> O colaborador recebe um link pelo WhatsApp e responde diretamente no navegador do celular. Não é necessário criar conta, fazer login ou instalar nada.{"\n\n"}
+                    O link funciona em qualquer smartphone, sem dependência de sistema operacional ou versão de app.
+                  </span>
+                ),
               },
               {
                 q: "As respostas são realmente anônimas?",
-                a: "Sim, por garantia técnica. Após o colaborador abrir o link, qualquer vínculo entre o token e a resposta é eliminado automaticamente. Ninguém no sistema — nem o RH, nem o gestor, nem o administrador — consegue saber quem respondeu o quê.",
+                a: (
+                  <span>
+                    <strong className="text-foreground">Sim — por garantia técnica, não apenas por política.</strong> Após o colaborador abrir o link, qualquer vínculo entre o token de acesso e as respostas é eliminado automaticamente antes de salvar no banco de dados. A resposta é gravada sem nenhum identificador do colaborador.{"\n\n"}
+                    Para reforçar ainda mais: as métricas de um setor só aparecem no painel quando há <strong className="text-foreground">pelo menos 5 respondentes</strong>. Mesmo que alguém soubesse quem participou, não conseguiria isolar as respostas de uma única pessoa.
+                  </span>
+                ),
               },
               {
                 q: "Posso configurar frequências diferentes por setor?",
-                a: "Sim. Cada setor tem sua própria configuração: frequência de envio (diária, semanal, quinzenal ou mensal), dias da semana e horário de expediente. Equipes com turnos especiais também têm configuração individual por colaborador.",
+                a: (
+                  <span>
+                    <strong className="text-foreground">Sim, com bastante flexibilidade.</strong> Cada setor tem sua própria configuração independente:{"\n\n"}
+                    <strong className="text-foreground">Frequência:</strong> diária, semanal, quinzenal ou mensal.{"\n"}
+                    <strong className="text-foreground">Dias da semana:</strong> você escolhe em quais dias o Pulse deve enviar.{"\n"}
+                    <strong className="text-foreground">Horário de expediente:</strong> o envio só acontece dentro da janela configurada.{"\n\n"}
+                    Para colaboradores com turnos especiais, é possível configurar horário individual por colaborador — substituindo a configuração do setor.
+                  </span>
+                ),
               },
               {
                 q: "Como funcionam os alertas automáticos?",
-                a: "O Pulse monitora continuamente os resultados de cada setor e detecta três situações: queda brusca na pontuação, tendência negativa em múltiplos períodos e baixa taxa de resposta. Quando qualquer uma dessas situações ocorre, um alerta aparece no painel para o RH agir.",
+                a: (
+                  <span>
+                    O Pulse monitora os resultados de cada setor continuamente e dispara alertas em três situações:{"\n\n"}
+                    <strong className="text-foreground">Queda brusca de score:</strong> quando a pontuação de um setor cai mais de 1 ponto em relação ao período anterior.{"\n"}
+                    <strong className="text-foreground">Tendência negativa:</strong> quando o setor fica abaixo da média histórica por 3 períodos consecutivos.{"\n"}
+                    <strong className="text-foreground">Baixa adesão:</strong> quando menos de 80% dos colaboradores responderam após 48h do envio.{"\n\n"}
+                    Todos os alertas aparecem no painel com severidade classificada e ficam abertos até que você registre uma ação.
+                  </span>
+                ),
               },
               {
                 q: "O que é o relatório em PDF?",
-                a: "É um documento consolidado com métricas por setor, histórico de alertas, planos de ação e resultados de pesquisas. Você escolhe o período, clica em gerar e baixa o arquivo em segundos — pronto para apresentar a diretores, sócios ou qualquer interessado.",
+                a: (
+                  <span>
+                    É o documento oficial do <strong className="text-foreground">Programa de Gerenciamento de Riscos (PGR)</strong> — exigido pela legislação trabalhista para comprovar o monitoramento de fatores de risco psicossocial.{"\n\n"}
+                    O relatório consolida, para o período escolhido: métricas por setor, histórico de alertas, planos de ação registrados, lista de colaboradores que aceitaram o TCLE e a data de revisão do PGR.{"\n\n"}
+                    <strong className="text-foreground">Você escolhe o período, clica em gerar e baixa o arquivo em segundos.</strong> Pronto para apresentar a diretores, auditores ou qualquer parte interessada.
+                  </span>
+                ),
               },
               {
                 q: "E se um colaborador não quiser participar?",
-                a: "Participação é sempre voluntária. Na primeira pesquisa, o colaborador pode recusar os termos e sair a qualquer momento. Essa escolha fica registrada no sistema e o colaborador deixa de receber pesquisas.",
+                a: (
+                  <span>
+                    <strong className="text-foreground">Participação é sempre voluntária.</strong> Ao ser cadastrado, o colaborador recebe um link exclusivo de consentimento (TCLE) antes de qualquer pesquisa. Ele lê os termos e decide se quer participar.{"\n\n"}
+                    Se recusar — ou quiser sair a qualquer momento — basta indicar isso no link. A recusa fica registrada no sistema e o colaborador deixa de receber novas pesquisas.{"\n\n"}
+                    Todo esse histórico de consentimento é imutável e pode ser apresentado como evidência legal caso necessário.
+                  </span>
+                ),
               },
               {
                 q: "Posso cancelar quando quiser?",
-                a: "Sim. Sem fidelidade, sem multa. Você cancela quando quiser pelo próprio painel. Seus dados ficam disponíveis para exportação por 30 dias após o cancelamento.",
+                a: (
+                  <span>
+                    <strong className="text-foreground">Sim. Sem fidelidade, sem multa de cancelamento.</strong> Você cancela diretamente pelo painel, na seção de faturamento, em qualquer momento.{"\n\n"}
+                    Após o cancelamento, seus dados ficam disponíveis para exportação por 30 dias. Depois disso, são removidos definitivamente dos nossos servidores.
+                  </span>
+                ),
               },
             ].map((item) => (
               <details
@@ -670,7 +713,7 @@ export default function LearnMorePage(): React.ReactElement {
                   {item.q}
                   <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 transition-transform group-open:rotate-180" />
                 </summary>
-                <div className="px-6 pb-5 text-sm text-muted-foreground leading-relaxed border-t border-border pt-4">
+                <div className="px-6 pb-5 text-sm text-muted-foreground leading-relaxed border-t border-border pt-4 whitespace-pre-line">
                   {item.a}
                 </div>
               </details>

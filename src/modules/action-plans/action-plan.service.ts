@@ -1,12 +1,14 @@
 import {
   findActionPlansByTenant,
   findActionPlanById,
+  findActionPlansForListingPage,
   createActionPlan,
   updateActionPlan,
   createActionPlanTask,
   completeActionPlanTask,
   createActionPlanWithTasks,
   type ActionPlanWithTasks,
+  type ActionPlanListingFilters,
 } from "@/modules/action-plans/action-plan.repository"
 import type { CreateActionPlanInput, UpdateActionPlanInput, CreateActionPlanTaskInput } from "@/modules/action-plans/action-plan.types"
 import type { ActionPlan, ActionPlanTask } from "@prisma/client"
@@ -49,4 +51,22 @@ export function createPlanWithTasks(
   taskTitles: string[],
 ): Promise<ActionPlan> {
   return createActionPlanWithTasks(tenantId, input, taskTitles)
+}
+
+interface ActionPlanListingQuery {
+  q?: string
+  status?: string
+  page: number
+  pageSize: number
+}
+
+export function getActionPlansPaginated(
+  tenantId: string,
+  query: ActionPlanListingQuery,
+): ReturnType<typeof findActionPlansForListingPage> {
+  const skip = (query.page - 1) * query.pageSize
+  const filters: ActionPlanListingFilters = {}
+  if (query.q !== undefined) filters.q = query.q
+  if (query.status !== undefined) filters.status = query.status
+  return findActionPlansForListingPage(tenantId, filters, skip, query.pageSize)
 }

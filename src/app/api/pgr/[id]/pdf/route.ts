@@ -147,7 +147,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams): Promise<N
   }
 
   const buffer = await generatePgrPdf(input)
-  const filename = `pgr-${review.period}-${org.name.toLowerCase().replace(/\s+/g, "-")}.pdf`
+  const filename = `pgr-${review.period}.pdf`
   const body = new Uint8Array(buffer)
 
   return new NextResponse(body, {

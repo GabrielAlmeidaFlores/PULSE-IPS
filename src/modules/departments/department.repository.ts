@@ -70,3 +70,30 @@ export function findActiveDepartmentsByTenant(tenantId: string): Promise<Departm
     include: { workDays: true },
   })
 }
+
+export interface DepartmentListingFilters {
+  q?: string
+}
+
+export async function findDepartmentsForListingPage(
+  tenantId: string,
+  filters: DepartmentListingFilters,
+  skip: number,
+  take: number,
+): Promise<{ items: (DepartmentWithWorkDays & { _count: { employees: number } })[]; total: number }> {
+  const where: Prisma.DepartmentWhereInput = { tenantId, isActive: true }
+  if (filters.q !== undefined) {
+    where.name = { contains: filters.q, mode: "insensitive" }
+  }
+  const [items, total] = await Promise.all([
+    prisma.department.findMany({
+      where,
+      include: { workDays: true, _count: { select: { employees: true } } },
+      orderBy: { name: "asc" },
+      skip,
+      take,
+    }),
+    prisma.department.count({ where }),
+  ])
+  return { items, total }
+}

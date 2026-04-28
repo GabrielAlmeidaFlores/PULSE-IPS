@@ -30,7 +30,7 @@ export function PgrGenerateButton(): React.ReactElement {
         type="month"
         value={period}
         onChange={(e) => setPeriod(e.target.value)}
-        className="bg-input border border-border text-foreground text-[12px] px-3 py-2 focus:outline-none focus:border-primary"
+        className="bg-input border border-border text-foreground text-[12px] px-3 py-2 focus:outline-none focus:border-primary [color-scheme:light] dark:[color-scheme:dark]"
         style={{ borderRadius: 0 }}
         disabled={isPending}
       />

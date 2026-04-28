@@ -7,25 +7,26 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface TablePaginationProps {
-  page: number
-  totalPages: number
   total: number
-  pageSize: number
+  defaultPageSize?: number
   pageSizeOptions?: number[]
 }
 
+const DEFAULT_PAGE_SIZE = 10
 const DEFAULT_PAGE_SIZE_OPTIONS = [10, 20, 30, 40, 50]
 
 export function TablePagination({
-  page,
-  totalPages,
   total,
-  pageSize,
+  defaultPageSize = DEFAULT_PAGE_SIZE,
   pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
 }: TablePaginationProps): React.ReactElement {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const router = useRouter()
+
+  const page = Math.max(1, Number(searchParams.get("page")) || 1)
+  const pageSize = Math.min(100, Math.max(1, Number(searchParams.get("pageSize")) || defaultPageSize))
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
   function buildUrl(overrides: Record<string, string | undefined>): string {
     const params = new URLSearchParams(searchParams.toString())
@@ -40,7 +41,7 @@ export function TablePagination({
   }
 
   function handlePageSizeChange(value: string | null): void {
-    router.push(buildUrl({ pageSize: value ?? String(pageSizeOptions[0] ?? 10), page: "1" }))
+    router.push(buildUrl({ pageSize: value ?? String(pageSizeOptions[0] ?? DEFAULT_PAGE_SIZE), page: "1" }))
   }
 
   const windowStart = Math.max(1, page - 2)

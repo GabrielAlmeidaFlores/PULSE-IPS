@@ -104,3 +104,36 @@ export async function findEmployeeIdsWithAcceptedConsent(tenantId: string, emplo
     .filter((c) => c.event === "accepted")
     .map((c) => c.employeeId)
 }
+
+export async function findEmployeeIdsForConsentState(tenantId: string, consentFilter: string): Promise<string[]> {
+  if (consentFilter === "not_sent") {
+    const [withConsent, allEmployees] = await Promise.all([
+      prisma.employeeConsent.findMany({
+        where: { tenantId },
+        distinct: ["employeeId"],
+        select: { employeeId: true },
+      }),
+      prisma.employee.findMany({
+        where: { tenantId },
+        select: { id: true },
+      }),
+    ])
+    const withConsentIds = new Set(withConsent.map((c) => c.employeeId))
+    return allEmployees.filter((e) => !withConsentIds.has(e.id)).map((e) => e.id)
+  }
+
+  const latestEvents = await prisma.employeeConsent.findMany({
+    where: { tenantId },
+    orderBy: { createdAt: "desc" },
+    distinct: ["employeeId"],
+    select: { employeeId: true, event: true },
+  })
+
+  if (consentFilter === "opt_out") {
+    return latestEvents
+      .filter((c) => c.event === "opted_out" || c.event === "revoked")
+      .map((c) => c.employeeId)
+  }
+
+  return latestEvents.filter((c) => c.event === consentFilter).map((c) => c.employeeId)
+}

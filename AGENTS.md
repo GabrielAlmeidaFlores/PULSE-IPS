@@ -4,6 +4,8 @@
 
 > 🚫 **PROIBIDO ABSOLUTO — Git:** agentes de IA **nunca** devem executar `git commit`, `git push`, `git merge`, `git rebase` ou qualquer comando que altere o histórico ou envie código para repositórios remotos. Todas as alterações de código devem ser feitas nos arquivos locais e apresentadas ao desenvolvedor humano, que decide se e quando commitar e fazer push.
 
+> 📝 **MANUTENÇÃO ATIVA DESTE DOCUMENTO — Obrigatório:** Sempre que um agente de IA implementar um padrão novo, uma boa prática que não estava documentada, uma decisão arquitetural, ou qualquer convenção que surgiu organicamente do código, **ele deve atualizar este AGENTS.md imediatamente**, na mesma sessão de trabalho, sem precisar de instrução explícita do desenvolvedor. Este documento deve sempre refletir o estado real do código. Se você implementou algo e não está descrito aqui — adicione. Se uma regra existente ficou desatualizada — corrija. O AGENTS.md é um documento vivo.
+
 **Versão da stack implementada:** Next.js 16 (App Router) + PostgreSQL + Prisma v7 + TypeScript strict  
 **Última revisão:** Abril de 2026
 
@@ -41,6 +43,8 @@
 28. [Queries Cross-tenant — Convenção de Naming para Jobs](#28-queries-cross-tenant--convenção-de-naming-para-jobs)
 29. [Checklist de Conformidade Pré-PR](#29-checklist-de-conformidade-pré-pr)
 30. [Testes Unitários](#30-testes-unitários)
+31. [Paginação — Padrão Obrigatório](#31-paginação--padrão-obrigatório)
+32. [Centralização de Cores — CSS Variables](#32-centralização-de-cores--css-variables)
 
 ---
 
@@ -3119,19 +3123,25 @@ O fallback `?? item.type` é permitido apenas como segurança (para tipos futuro
 
 ### Cores de badges
 
-Use classes Tailwind com shades `-100` (fundo) / `-800` (texto) / `-300` (borda). Essas shades são visíveis e já existem no CSS gerado pelo projeto.
+**Nunca use classes Tailwind hardcoded de cor** (`bg-red-100 text-red-800`, etc.) — use as utilitárias semânticas de badge definidas em `src/app/globals.css` e os constants de `src/libs/design-system/alert-labels.ts`.
 
 ```tsx
-// Padrão visual de badge
-const BADGE_DEFAULT = "bg-muted text-muted-foreground border-border"  // neutro/cinza
+// ✅ CORRETO — constants centralizados
+import { BADGE_BASE, BADGE_RED, BADGE_GREEN, BADGE_AMBER, BADGE_BLUE } from "@/libs/design-system/alert-labels"
 
-// Cores semânticas
-"bg-red-100 text-red-800 border-red-300"      // erro / crítico
-"bg-amber-100 text-amber-800 border-amber-300" // atenção / queda
-"bg-yellow-100 text-yellow-800 border-yellow-300" // aviso leve
-"bg-blue-100 text-blue-800 border-blue-300"   // informativo
-"bg-green-100 text-green-800 border-green-300" // sucesso / resolvido
+<span className={`${BADGE_BASE} ${BADGE_GREEN}`}>Resolvido</span>
+<span className={`${BADGE_BASE} ${BADGE_RED}`}>Falhou</span>
 ```
+
+| Constant | Classe CSS gerada | Semântica |
+|---|---|---|
+| `BADGE_GREEN` | `badge-success` | Sucesso / resolvido / ativo |
+| `BADGE_RED` | `badge-danger` | Erro / crítico / falhou |
+| `BADGE_AMBER` | `badge-warning` | Atenção / queda / pendente |
+| `BADGE_BLUE` | `badge-info` | Informativo / agendado |
+| `BADGE_DEFAULT` | `bg-muted text-muted-foreground border-border` | Neutro / sem status |
+
+As classes `badge-*` são utilitárias definidas em `@layer utilities` em `globals.css` e usam as variáveis `--status-*` — adaptam-se automaticamente ao tema dark/light sem precisar de prefixo `dark:`.
 
 **Não use inline `style={{ color, backgroundColor }}`** para badges — usar className garante consistência com o tema e o Tailwind JIT/oxide inclui as classes por serem literais no fonte.
 
@@ -3534,3 +3544,348 @@ await expect(fn()).rejects.toMatchObject({ code: "EMPLOYEE_LIMIT_REACHED" })
 1. Criar `src/modules/{dominio}/{nome}.service.test.ts`
 2. Adicionar o caminho em `vitest.config.ts` → `coverage.include`
 3. Rodar `yarn test:coverage` e garantir ≥ 90% nas linhas do arquivo
+
+---
+
+## 31. Paginação — Padrão Obrigatório
+
+**Toda listagem de dados no sistema usa paginação real no banco de dados.** Fake pagination (carregar todos os registros e fatiar em memória) é explicitamente proibido.
+
+### Regra principal
+
+> **Qualquer página que exibe uma tabela ou lista de itens DEVE ter paginação real via `skip`/`take` no Prisma, usar `buildPaginationParams` para parsear os parâmetros da URL, e renderizar `<TablePagination total={total} />`.**
+
+Isso se aplica a todas as áreas: painel tenant (admin/RH), painel super-admin, e qualquer nova tela adicionada ao projeto.
+
+### Utilitários centralizados
+
+```typescript
+// src/libs/utils/pagination.ts — ÚNICA fonte de verdade para lógica de paginação
+buildPaginationParams(rawPage, rawPageSize)  // parseia e valida page/pageSize da URL
+buildSkipTake(params)                         // converte para skip/take do Prisma
+buildPaginatedResult(items, total, params)    // monta PaginatedResult<T> completo
+```
+
+**Default:** `pageSize = 10` (bate com o `TablePagination` component).  
+**Máximo:** `pageSize = 100` (cap de segurança no `buildPaginationParams`).
+
+**Nunca** duplique a lógica de parsear `page`/`pageSize` da URL. Não crie funções `parseFilters()` locais que reinventam `buildPaginationParams`.
+
+### Componente de paginação
+
+```typescript
+// src/libs/design-system/components/data-display/TablePagination.tsx
+// Lê page/pageSize diretamente dos searchParams da URL — é um Client Component
+<TablePagination total={total} />
+// Opcionalmente:
+<TablePagination total={total} defaultPageSize={20} pageSizeOptions={[10, 20, 50]} />
+```
+
+**O `TablePagination` lê a URL internamente via `useSearchParams()`.** Não passe `page`, `totalPages` ou `pageSize` como props — esses campos não existem mais na interface.
+
+### Fluxo padrão completo — página de listagem
+
+```typescript
+// 1. Page component (RSC) — recebe searchParams como prop
+interface Props {
+  searchParams: Promise<Record<string, string | undefined>>
+}
+
+export default async function EntityListPage({ searchParams }: Props): Promise<React.ReactElement> {
+  const session = await getSession()
+  if (!session) redirect("/login")
+
+  const params = await searchParams
+
+  // 2. Parsear page/pageSize centralizados
+  const { page, pageSize } = buildPaginationParams(params["page"], params["pageSize"])
+
+  // 3. Montar filtros com exactOptionalPropertyTypes (sem undefined inline)
+  const query: EntityListingQuery = { page, pageSize }
+  if (params["status"] !== undefined) query.status = params["status"]
+  if (params["q"] !== undefined) query.q = params["q"]
+
+  // 4. Chamar service — retorna { items, total }
+  const { items, total } = await entityService.listEntities(session.tenantId, query)
+
+  return (
+    <DataTable
+      columns={[...]}
+      total={total}
+      pagination={<TablePagination total={total} />}
+    >
+      {items.map((item) => (...))}
+    </DataTable>
+  )
+}
+```
+
+### Fluxo no service
+
+```typescript
+// src/modules/entity/entity.service.ts
+export interface EntityListingQuery {
+  q?: string
+  status?: string
+  page: number
+  pageSize: number
+}
+
+export async function listEntities(
+  tenantId: string,
+  query: EntityListingQuery,
+): Promise<{ items: Entity[]; total: number }> {
+  const skip = (query.page - 1) * query.pageSize
+  const take = query.pageSize
+
+  const filters: EntityListingFilters = {}
+  if (query.q !== undefined) filters.q = query.q
+  if (query.status !== undefined) filters.status = query.status
+
+  return entityRepository.findEntitiesPaginated(tenantId, filters, skip, take)
+}
+```
+
+### Fluxo no repository
+
+```typescript
+// src/modules/entity/entity.repository.ts
+export interface EntityListingFilters {
+  q?: string
+  status?: string
+}
+
+export async function findEntitiesPaginated(
+  tenantId: string,
+  filters: EntityListingFilters,
+  skip: number,
+  take: number,
+): Promise<{ items: Entity[]; total: number }> {
+  const where: Prisma.EntityWhereInput = { tenantId }
+  if (filters.q !== undefined) {
+    where.name = { contains: filters.q, mode: "insensitive" }
+  }
+  if (filters.status !== undefined) where.status = filters.status
+
+  const [items, total] = await prisma.$transaction([
+    prisma.entity.findMany({ where, orderBy: { createdAt: "desc" }, skip, take }),
+    prisma.entity.count({ where }),
+  ])
+  return { items, total }
+}
+```
+
+**Sempre use `prisma.$transaction([findMany, count])`** para buscar itens e total em um único round-trip ao banco.
+
+### Padrão com filtros com datas (conversão de string → Date)
+
+Filtros de data recebem strings da URL e precisam ser convertidos para `Date`:
+
+```typescript
+// No page.tsx — converta para Date no ponto de entrada
+if (params["dateFrom"] !== undefined) {
+  const d = new Date(`${params["dateFrom"]}T00:00:00`)
+  if (!isNaN(d.getTime())) filters.dateFrom = d
+}
+if (params["dateTo"] !== undefined) {
+  const d = new Date(`${params["dateTo"]}T23:59:59`)
+  if (!isNaN(d.getTime())) filters.dateTo = d
+}
+```
+
+Valide `isNaN(d.getTime())` antes de atribuir — strings inválidas na URL não devem causar erro.
+
+### `exactOptionalPropertyTypes` — regra obrigatória
+
+Com `exactOptionalPropertyTypes: true` no `tsconfig.json`, é proibido passar `string | undefined` onde a interface espera `string?`. Construa objetos condicionalmente:
+
+```typescript
+// ❌ PROIBIDO — undefined vazando para dentro do objeto
+const query: EntityListingQuery = {
+  q: params["q"],           // pode ser undefined — ERRO de tipo
+  status: params["status"], // idem
+  page,
+  pageSize,
+}
+
+// ✅ CORRETO — construção condicional
+const query: EntityListingQuery = { page, pageSize }
+if (params["q"] !== undefined) query.q = params["q"]
+if (params["status"] !== undefined) query.status = params["status"]
+```
+
+A mesma regra vale para props de componentes de filtro:
+
+```typescript
+// ❌ PROIBIDO
+<EntityFilters filters={{ status: params["status"], q: params["q"] }} />
+
+// ✅ CORRETO — spread condicional
+<EntityFilters filters={{
+  ...(params["status"] !== undefined && { status: params["status"] }),
+  ...(params["q"] !== undefined && { q: params["q"] }),
+}} />
+```
+
+### Páginas com agrupamento — exceção documentada
+
+A listagem de pesquisas (`/surveys`) exibe dispatches agrupados por data. Como o Prisma não suporta `DISTINCT ON` ou `DATE_TRUNC` sem `$queryRaw` (que é proibido), o padrão de paginação é híbrido:
+
+1. **Query leve**: busca apenas `scheduledAt` (sem includes) — filtra e deduplicata datas no app layer
+2. **Query pesada**: busca dados completos **apenas para as datas da página atual** (via `OR` com date ranges)
+
+Este é o único caso aceitável de paginação parcialmente em app layer. O `total` reflete o número real de datas distintas. A query pesada é sempre limitada à página atual.
+
+```typescript
+// ✅ Exceção documentada — agrupamento por data sem $queryRaw
+const { dates, total } = await findDispatchDaysPaginated(tenantId, filters, skip, take)
+const dispatches = await findDispatchesForDates(tenantId, dates, filters)
+```
+
+### Listagens que NÃO precisam de paginação
+
+Conjuntos de dados genuinamente pequenos e com crescimento finito:
+
+| Listagem | Motivo |
+|---|---|
+| Versões de Termos de Uso | < 10 registros no lifetime do produto |
+| Versões de Política de Privacidade | < 10 registros no lifetime do produto |
+| Versões de TCLE | < 10 registros no lifetime do produto |
+| Planos de billing | Geralmente < 5 planos ativos |
+
+Mesmo nesses casos, se a lista ultrapassar 20 itens, adicione paginação.
+
+### Checklist ao criar nova listagem
+
+| # | Item |
+|---|---|
+| 1 | Page component tem `searchParams: Promise<Record<string, string \| undefined>>` como prop |
+| 2 | Chama `buildPaginationParams(params["page"], params["pageSize"])` |
+| 3 | Monta query object condicionalmente (sem `undefined` inline) |
+| 4 | Service recebe `page` e `pageSize` na interface de query |
+| 5 | Repository usa `skip`/`take` do Prisma + `$transaction([findMany, count])` |
+| 6 | Retorna `{ items, total }` do service |
+| 7 | Página renderiza `<TablePagination total={total} />` dentro do `DataTable` |
+| 8 | Tenant guard: toda query inclui `tenantId` no `where` |
+
+---
+
+## 32. Centralização de Cores — CSS Variables
+
+### Princípio
+
+**Nenhum componente usa classes de cor Tailwind hardcoded** (`text-green-600`, `bg-red-100`, `text-amber-800`, etc.) para representar estados de status (sucesso, erro, atenção, informação). Todas as cores semânticas vivem em variáveis CSS centralizadas em `src/app/globals.css` e se adaptam automaticamente ao tema dark/light sem nenhum prefixo `dark:`.
+
+### Variáveis disponíveis
+
+Definidas em `:root` (light) e `.dark` em `src/app/globals.css`:
+
+| Variável | Semântica | Uso |
+|---|---|---|
+| `--status-success` | Verde — saúde, sucesso, ativo | texto, SVG fill |
+| `--status-success-subtle` | Verde claro — fundo de badge/card | background |
+| `--status-success-border` | Verde médio — borda de badge | border |
+| `--status-warning` | Âmbar — atenção, queda, pendente | texto, SVG fill |
+| `--status-warning-subtle` | Âmbar claro — fundo de badge/card | background |
+| `--status-warning-border` | Âmbar médio — borda de badge | border |
+| `--status-danger` | Vermelho — erro, crítico, falhou | texto, SVG fill |
+| `--status-danger-subtle` | Vermelho claro — fundo de badge/card | background |
+| `--status-danger-border` | Vermelho médio — borda de badge | border |
+| `--status-info` | Azul — informativo, agendado | texto, SVG fill |
+| `--status-info-subtle` | Azul claro — fundo de badge/card | background |
+| `--status-info-border` | Azul médio — borda de badge | border |
+
+### Classes Tailwind geradas (`@theme inline`)
+
+As variáveis são registradas em `@theme inline` no `globals.css`, gerando utilitárias Tailwind automáticas:
+
+```
+text-status-success      bg-status-success      border-status-success
+text-status-warning      bg-status-warning      border-status-warning
+text-status-danger       bg-status-danger       border-status-danger
+text-status-info         bg-status-info         border-status-info
+(idem para -subtle e -border)
+```
+
+Suporte a modificador de opacidade Tailwind v4: `bg-status-danger-subtle/50`, `text-status-success/70`.
+
+### Utilitárias de badge (`.badge-*`)
+
+Definidas em `@layer utilities` em `globals.css`. Aplicam background, color e border-color via CSS vars num único token:
+
+| Classe | Semântica |
+|---|---|
+| `badge-success` | Verde — sucesso, ativo, concluído |
+| `badge-warning` | Âmbar — atenção, em andamento, média prioridade |
+| `badge-danger` | Vermelho — erro, crítico, alta prioridade |
+| `badge-info` | Azul — informativo, agendado |
+
+### Fontes únicas de verdade
+
+| Artefato | Localização | O que centraliza |
+|---|---|---|
+| Variáveis CSS + badge utilities | `src/app/globals.css` | Valores OKLCH por tema |
+| Constants de badge | `src/libs/design-system/alert-labels.ts` | `BADGE_BASE`, `BADGE_RED/GREEN/AMBER/BLUE/DEFAULT` |
+| Cores de saúde/aderência/tendência | `src/libs/utils/health-index.ts` | `healthIndexAccent`, `healthIndexBarColor`, `healthIndexChartColor`, `adherenceRateTextColor`, `adherenceRateBarClass`, `trendDirectionTextColor` |
+
+### Regras obrigatórias
+
+```tsx
+// ❌ PROIBIDO — hardcoded Tailwind color para status
+<span className="bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-400">Ativo</span>
+const color = score >= 70 ? "text-green-600" : "text-red-600"
+fill="#16a34a"
+
+// ✅ CORRETO — classes semânticas centralizadas
+import { BADGE_BASE, BADGE_GREEN } from "@/libs/design-system/alert-labels"
+import { healthIndexAccent } from "@/libs/utils/health-index"
+
+<span className={`${BADGE_BASE} ${BADGE_GREEN}`}>Ativo</span>
+const color = healthIndexAccent(score)
+fill="var(--status-success)"
+// ou via health-index:
+fill={healthIndexChartColor(score)}  // retorna "var(--status-success/warning/danger)"
+```
+
+### Padrão para stat-cards coloridos (verde/âmbar/vermelho)
+
+```tsx
+// ❌ PROIBIDO
+<div className="border border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-900/50">
+  <p className="text-green-700 dark:text-green-500">Saudáveis</p>
+
+// ✅ CORRETO
+<div className="border border-status-success-border bg-status-success-subtle">
+  <p className="text-status-success">Saudáveis</p>
+```
+
+### Padrão para caixas de aviso/info
+
+```tsx
+// ❌ PROIBIDO
+<div className="bg-amber-50 border border-amber-200 dark:bg-amber-950/20 dark:border-amber-800">
+  <p className="text-amber-800 dark:text-amber-400">
+
+// ✅ CORRETO
+<div className="bg-status-warning-subtle border border-status-warning-border">
+  <p className="text-status-warning">
+```
+
+### Exceções intencionais
+
+| Exceção | Justificativa |
+|---|---|
+| `bg-primary hover:bg-primary/90` em botões sólidos de ação | Cor de identidade visual (brand), não status. Usa `--primary` que já é variável CSS. |
+| `BADGE_PURPLE` em `alert-labels.ts` | Não há semântica purple no domínio. Mantido com classes Tailwind `dark:` explícitas até surgir necessidade. |
+| Cores da sidebar (`--sidebar*`) | Já centralizadas em suas próprias variáveis CSS — não são status, são layout. |
+
+### Ao adicionar nova cor de status
+
+1. Adicione as 3 variáveis em `:root` e `.dark` em `globals.css` (main + subtle + border)
+2. Registre as 3 variantes em `@theme inline`
+3. Adicione a utilitária `.badge-novoStatus` em `@layer utilities`
+4. Se for cor de saúde/aderência/tendência: adicione a função em `health-index.ts`
+5. Se for cor de badge: adicione a constant em `alert-labels.ts`
+6. Atualize esta seção do AGENTS.md
+
+*Pulse — AGENTS.md | Documento interno | Abril de 2026*

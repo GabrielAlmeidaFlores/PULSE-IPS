@@ -19,6 +19,7 @@ import {
   findAuthToken,
   consumeAuthToken,
   findAllSuperAdmins,
+  findSuperAdminsPaginated,
 } from "@/modules/auth/auth.repository"
 import { createAuditLog } from "@/modules/audit/audit.repository"
 
@@ -138,4 +139,16 @@ export function getOrgUserById(userId: string, tenantId: string): ReturnType<typ
 
 export function listSuperAdmins(): Promise<SafeSuperAdmin[]> {
   return findAllSuperAdmins()
+}
+
+interface SuperAdminListingQuery {
+  page: number
+  pageSize: number
+}
+
+export function listSuperAdminsPaginated(
+  query: SuperAdminListingQuery,
+): ReturnType<typeof findSuperAdminsPaginated> {
+  const skip = (query.page - 1) * query.pageSize
+  return findSuperAdminsPaginated(skip, query.pageSize)
 }

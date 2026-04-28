@@ -44,10 +44,10 @@ function formatDate(date: Date): string {
 }
 
 const BADGE_CLS: Record<BadgeColor, string> = {
-  green: "bg-green-100 text-green-800 border border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800",
-  amber: "bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800",
-  red: "bg-red-100 text-red-800 border border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
-  blue: "bg-blue-100 text-blue-800 border border-blue-300 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800",
+  green: "badge-success",
+  amber: "badge-warning",
+  red: "badge-danger",
+  blue: "badge-info",
   muted: "bg-muted text-muted-foreground border border-border",
 }
 
@@ -92,8 +92,8 @@ function TopStat({ icon, label, value, note, color }: {
   note?: string
   color: "blue" | "green" | "amber" | "red" | "neutral"
 }): React.ReactElement {
-  const iconCls = { blue: "text-blue-500", green: "text-green-500", amber: "text-amber-500", red: "text-red-500", neutral: "text-muted-foreground" }[color]
-  const valCls = { blue: "text-blue-600", green: "text-green-600", amber: "text-amber-600", red: "text-red-600", neutral: "text-foreground" }[color]
+  const iconCls = { blue: "text-status-info", green: "text-status-success", amber: "text-status-warning", red: "text-status-danger", neutral: "text-muted-foreground" }[color]
+  const valCls = { blue: "text-status-info", green: "text-status-success", amber: "text-status-warning", red: "text-status-danger", neutral: "text-foreground" }[color]
   return (
     <Card className="p-5">
       <div className="flex items-start gap-3">
@@ -116,7 +116,7 @@ function SubscriptionCard({ sub }: { sub: NonNullable<OrgFullDetail["subscriptio
           <div>
             <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground mb-1">Plano contratado</p>
             <p className="text-[17px] font-black text-foreground leading-tight">{sub.snapshotPlanName}</p>
-            <p className="text-[13px] font-semibold text-blue-600 mt-0.5">
+            <p className="text-[13px] font-semibold text-status-info mt-0.5">
               {formatBRL(sub.snapshotPriceInCents)}<span className="text-[11px] font-normal text-muted-foreground">/{INTERVAL_LABELS[sub.snapshotInterval] ?? sub.snapshotInterval}</span>
             </p>
           </div>
@@ -230,7 +230,7 @@ export default async function OrganizationDetailPage({ params }: Props): Promise
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-0.5">Colaboradores</p>
                     <p className="text-[13px] text-foreground">
-                      <span className="font-black text-blue-600">{org.employeeCounts.active}</span>
+                      <span className="font-black text-status-info">{org.employeeCounts.active}</span>
                       <span className="text-muted-foreground"> ativos · </span>
                       <span className="text-muted-foreground">{org.employeeCounts.inactive} inativos · {org.employeeCounts.paused} pausados</span>
                     </p>
@@ -252,15 +252,15 @@ export default async function OrganizationDetailPage({ params }: Props): Promise
                 <CardHeader icon={<Activity className="h-4 w-4" />} title="Resumo de atividade" />
                 <div className="px-5 py-4 grid grid-cols-3 gap-4">
                   <div className="text-center py-2">
-                    <p className="text-2xl font-black text-green-600">{org.dispatchCount}</p>
+                    <p className="text-2xl font-black text-status-success">{org.dispatchCount}</p>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">Pesquisas</p>
                   </div>
                   <div className="text-center py-2 border-x border-border">
-                    <p className={`text-2xl font-black ${org.openAlertCount > 0 ? "text-red-600" : "text-foreground"}`}>{org.openAlertCount}</p>
+                    <p className={`text-2xl font-black ${org.openAlertCount > 0 ? "text-status-danger" : "text-foreground"}`}>{org.openAlertCount}</p>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">Alertas abertos</p>
                   </div>
                   <div className="text-center py-2">
-                    <p className={`text-2xl font-black ${org.openReportCount > 0 ? "text-amber-600" : "text-foreground"}`}>{org.openReportCount}</p>
+                    <p className={`text-2xl font-black ${org.openReportCount > 0 ? "text-status-warning" : "text-foreground"}`}>{org.openReportCount}</p>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">Relatos abertos</p>
                   </div>
                 </div>
@@ -272,7 +272,7 @@ export default async function OrganizationDetailPage({ params }: Props): Promise
                     <MetricRow
                       label="Próxima revisão PGR"
                       value={
-                        <span className={new Date(org.lastPgrReview.nextReviewAt) < new Date() ? "text-red-600 font-semibold" : ""}>
+                        <span className={new Date(org.lastPgrReview.nextReviewAt) < new Date() ? "text-status-danger font-semibold" : ""}>
                           {formatDate(org.lastPgrReview.nextReviewAt)}
                         </span>
                       }
@@ -350,12 +350,12 @@ export default async function OrganizationDetailPage({ params }: Props): Promise
                 <div className="px-5 py-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] text-muted-foreground">Ativos</span>
-                    <span className="text-[15px] font-black text-blue-600">{org.employeeCounts.active}</span>
+                    <span className="text-[15px] font-black text-status-info">{org.employeeCounts.active}</span>
                   </div>
                   {effectiveLimit !== null && (
                     <div className="w-full bg-muted h-1.5" style={{ borderRadius: 1 }}>
                       <div
-                        className="bg-blue-500 h-1.5"
+                        className="bg-status-info h-1.5"
                         style={{ borderRadius: 1, width: `${Math.min(100, (org.employeeCounts.active / effectiveLimit) * 100)}%` }}
                       />
                     </div>

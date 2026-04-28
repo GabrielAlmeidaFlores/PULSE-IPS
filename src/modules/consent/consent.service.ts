@@ -13,6 +13,7 @@ import {
   getAllConsentTermVersions,
   createConsentTermVersion,
   findLatestConsentEventsByEmployeeIds,
+  findEmployeeIdsForConsentState,
 } from "@/modules/consent/consent.repository"
 import { findTokenByValue, markTokenUsed } from "@/modules/surveys/survey.repository"
 
@@ -178,4 +179,8 @@ export function getConsentEventsByEmployeeIds(
   employeeIds: string[],
 ): Promise<Map<string, string>> {
   return findLatestConsentEventsByEmployeeIds(tenantId, employeeIds)
+}
+
+export function getEmployeeIdsForConsentState(tenantId: string, consentFilter: string): Promise<string[]> {
+  return findEmployeeIdsForConsentState(tenantId, consentFilter)
 }

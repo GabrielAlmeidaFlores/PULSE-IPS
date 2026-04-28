@@ -20,7 +20,7 @@ export function Header({ email }: HeaderProps): React.ReactElement {
   return (
     <header className="h-12 border-b border-border bg-card flex items-center justify-between px-4 pl-16 md:pl-4 shrink-0">
       <div className="flex items-center gap-2">
-        <div className="w-1.5 h-1.5 bg-emerald-500" />
+        <div className="w-1.5 h-1.5 bg-status-success" />
         <span className="text-[10px] text-muted-foreground font-bold tracking-widest uppercase">Online</span>
       </div>
       <div className="flex items-center gap-3">

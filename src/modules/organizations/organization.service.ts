@@ -3,6 +3,7 @@ import {
   findOrganizationById,
   findOrganizationBySlug,
   findAllOrganizations,
+  findAllOrganizationsPaginatedAdmin,
   createOrganization,
   updateOrganization,
   updateOrganizationCustomerId,
@@ -10,6 +11,7 @@ import {
   findOrganizationBilling,
   findAllOrganizationsForExport,
   findOrganizationFullDetail,
+  type OrganizationAdminListingFilters,
 } from "@/modules/organizations/organization.repository"
 import type { CreateOrganizationInput, UpdateOrganizationInput } from "@/modules/organizations/organization.types"
 import type { Organization } from "@prisma/client"
@@ -56,5 +58,20 @@ export function getOrganizationsForExport(): ReturnType<typeof findAllOrganizati
 
 export function getOrganizationFullDetail(id: string): ReturnType<typeof findOrganizationFullDetail> {
   return findOrganizationFullDetail(id)
+}
+
+interface OrganizationAdminListingQuery {
+  q?: string
+  page: number
+  pageSize: number
+}
+
+export function getAllOrganizationsPaginatedAdmin(
+  query: OrganizationAdminListingQuery,
+): ReturnType<typeof findAllOrganizationsPaginatedAdmin> {
+  const skip = (query.page - 1) * query.pageSize
+  const filters: OrganizationAdminListingFilters = {}
+  if (query.q !== undefined) filters.q = query.q
+  return findAllOrganizationsPaginatedAdmin(filters, skip, query.pageSize)
 }
 

@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Menu, X, LayoutDashboard, Building2, CreditCard, FileText, LogOut, Users, ScrollText, Cpu } from "lucide-react"
+import { Menu, X, LayoutDashboard, Building2, CreditCard, FileText, Users, ScrollText, Cpu } from "lucide-react"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
+import { Logo } from "@/libs/design-system/components/logo"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { superAdminLogoutAction } from "@/app/(super-admin-public)/super-admin/logout/actions"
 
 interface NavItem {
   href: string
@@ -24,10 +24,10 @@ const navItems: NavItem[] = [
   { href: "/super-admin/jobs", label: "Workers", icon: <Cpu className="h-4 w-4" /> },
 ]
 
-function NavLinks({ items, onNavigate }: { items: NavItem[]; onNavigate?: (() => void) | undefined }): React.ReactElement {
+function NavLinks({ items, onNavigate }: { items: NavItem[]; onNavigate?: () => void }): React.ReactElement {
   const pathname = usePathname()
   return (
-    <nav className="flex-1 py-2">
+    <nav className="flex-1 px-2 py-3 space-y-0.5">
       {items.map((item) => {
         const isActive = pathname.startsWith(item.href)
         return (
@@ -35,61 +35,14 @@ function NavLinks({ items, onNavigate }: { items: NavItem[]; onNavigate?: (() =>
             key={item.href}
             href={item.href}
             onClick={() => { onNavigate?.() }}
-            className={`flex items-center gap-3 px-5 py-3 text-[13px] font-semibold tracking-wide uppercase transition-colors border-l-2 ${
-              isActive
-                ? "border-l-primary bg-primary/10 text-primary"
-                : "border-l-transparent text-muted-foreground hover:bg-primary/5 hover:text-foreground"
-            }`}
-            style={{ borderRadius: 0 }}
+            className={`flex items-center gap-3 px-3 py-2.5 text-xs font-bold uppercase tracking-wider transition-all duration-150 ${isActive ? "bg-primary/8 text-primary border-l-[3px] border-primary pl-[calc(0.75rem-3px)]" : "text-muted-foreground hover:bg-muted hover:text-foreground border-l-[3px] border-transparent pl-[calc(0.75rem-3px)]"}`}
           >
-            {item.icon}
+            <span className={isActive ? "text-primary" : "text-muted-foreground"}>{item.icon}</span>
             {item.label}
           </Link>
         )
       })}
     </nav>
-  )
-}
-
-function SidebarContent({ onNavigate }: { onNavigate?: (() => void) | undefined }): React.ReactElement {
-  const [pending, startTransition] = useTransition()
-
-  function handleLogout(): void {
-    startTransition(async () => {
-      await superAdminLogoutAction()
-    })
-  }
-
-  return (
-    <div className="flex flex-col h-full bg-sidebar">
-      <div className="h-14 flex items-center px-5 border-b border-sidebar-border shrink-0">
-        <div className="flex flex-col leading-none">
-          <span className="text-[15px] font-black tracking-widest uppercase text-foreground">PULSE</span>
-          <span className="text-[9px] font-semibold tracking-[0.25em] uppercase text-primary">ADMIN CONSOLE</span>
-        </div>
-      </div>
-
-      <div className="px-5 pt-4 pb-1">
-        <span className="text-[9px] font-bold tracking-[0.2em] uppercase text-muted-foreground">Navegação</span>
-      </div>
-
-      <NavLinks items={navItems} onNavigate={onNavigate} />
-
-      <div className="mt-auto border-t border-sidebar-border">
-        <div className="px-5 py-3 flex items-center justify-between">
-          <ThemeToggle variant="labeled" />
-        </div>
-        <button
-          onClick={handleLogout}
-          disabled={pending}
-          style={{ borderRadius: 0 }}
-          className="w-full flex items-center gap-3 px-5 py-3 text-[12px] font-semibold tracking-wide uppercase text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-40"
-        >
-          <LogOut className="h-4 w-4" />
-          {pending ? "Saindo..." : "Sair"}
-        </button>
-      </div>
-    </div>
   )
 }
 
@@ -99,33 +52,35 @@ export function SuperAdminSidebar(): React.ReactElement {
   return (
     <>
       <button
-        className="md:hidden fixed top-4 left-4 z-40 bg-card border border-border p-2 text-foreground"
+        className="md:hidden fixed top-4 left-4 z-40 p-2 border border-border bg-card text-foreground hover:bg-muted transition-colors"
         onClick={() => setOpen(true)}
         aria-label="Abrir menu"
-        style={{ borderRadius: 0 }}
       >
-        <Menu className="h-5 w-5" />
+        <Menu className="h-4 w-4" />
       </button>
 
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="left" className="w-60 p-0 border-r border-border">
+        <SheetContent side="left" className="w-60 p-0 bg-sidebar border-sidebar-border" style={{ borderRadius: 0 }}>
           <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
-          <div className="absolute top-3 right-3 z-10">
-            <button
-              onClick={() => setOpen(false)}
-              className="p-1 text-muted-foreground hover:text-foreground"
-              style={{ borderRadius: 0 }}
-              aria-label="Fechar menu"
-            >
-              <X className="h-4 w-4" />
+          <div className="h-14 flex items-center justify-between px-4 border-b border-sidebar-border">
+            <Logo size="sm" />
+            <button onClick={() => setOpen(false)} aria-label="Fechar menu">
+              <X className="h-4 w-4 text-muted-foreground" />
             </button>
           </div>
-          <SidebarContent onNavigate={() => setOpen(false)} />
+          <NavLinks items={navItems} onNavigate={() => setOpen(false)} />
         </SheetContent>
       </Sheet>
 
-      <aside className="hidden md:flex w-56 border-r border-sidebar-border flex-col shrink-0 bg-sidebar">
-        <SidebarContent />
+      <aside className="hidden md:flex w-60 flex-col shrink-0 bg-sidebar border-r border-sidebar-border">
+        <div className="h-14 flex items-center px-4 border-b border-sidebar-border">
+          <Logo size="sm" />
+        </div>
+        <NavLinks items={navItems} />
+        <div className="px-4 py-3 border-t border-sidebar-border flex items-center justify-between">
+          <p className="text-[10px] text-muted-foreground/50 font-bold tracking-widest uppercase">v{process.env.NEXT_PUBLIC_APP_VERSION}</p>
+          <ThemeToggle variant="icon" />
+        </div>
       </aside>
     </>
   )

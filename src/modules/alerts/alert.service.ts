@@ -9,12 +9,41 @@ import {
   findAllTenantsDeptRecentDispatchAvgs,
   findAllTenantsEmployeesWithExpiredConsentTokens,
   hasOpenAlertOfType,
+  findAlertsByTenantPaginated,
+  findAlertStatsByTenant,
+  type AlertListingFilters,
+  type AlertStats,
 } from "@/modules/alerts/alert.repository"
 import { toHealthIndex, healthIndexLabel } from "@/libs/utils/health-index"
 import type { Alert, Department } from "@prisma/client"
 
 export function getAlerts(tenantId: string): Promise<(Alert & { department: Department | null })[]> {
   return findAlertsByTenant(tenantId)
+}
+
+export interface AlertListingQuery {
+  type?: string
+  severity?: string
+  status?: string
+  page: number
+  pageSize: number
+}
+
+export function getAlertsPaginated(
+  tenantId: string,
+  query: AlertListingQuery,
+): Promise<{ alerts: (Alert & { department: Department | null })[]; total: number }> {
+  const filters: AlertListingFilters = {}
+  if (query.type !== undefined) filters.type = query.type
+  if (query.severity !== undefined) filters.severity = query.severity
+  if (query.status !== undefined) filters.status = query.status
+
+  const skip = (query.page - 1) * query.pageSize
+  return findAlertsByTenantPaginated(tenantId, filters, skip, query.pageSize)
+}
+
+export function getAlertStats(tenantId: string): Promise<AlertStats> {
+  return findAlertStatsByTenant(tenantId)
 }
 
 export function markRead(tenantId: string, alertId: string): Promise<{ count: number }> {

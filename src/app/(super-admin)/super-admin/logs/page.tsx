@@ -1,6 +1,7 @@
 import { type ReactElement, Suspense } from "react"
 import { requestLogService } from "@/modules/request-logs/request-log.service"
 import type { RequestLogFilters } from "@/modules/request-logs/request-log.types"
+import { buildPaginationParams } from "@/libs/utils/pagination"
 import { LogsTable } from "@/app/(super-admin)/super-admin/logs/logs-table"
 import { LogsFilters } from "@/app/(super-admin)/super-admin/logs/logs-filters"
 
@@ -8,46 +9,31 @@ interface Props {
   searchParams: Promise<Record<string, string | undefined>>
 }
 
-const STATUS_GROUPS = ["2xx", "3xx", "4xx", "5xx"] as const
-
-function parseFilters(params: Record<string, string | undefined>): RequestLogFilters {
-  const dateFromStr = params["dateFrom"]
-  const dateToStr = params["dateTo"]
-  const pageStr = params["page"]
-  const dateFrom = dateFromStr !== undefined ? new Date(dateFromStr) : undefined
-  const dateTo = dateToStr !== undefined ? new Date(dateToStr) : undefined
-  const page = pageStr !== undefined ? parseInt(pageStr, 10) : 1
-  const statusGroup = params["statusGroup"] as RequestLogFilters["statusGroup"] | undefined
-
-  const pageSizeStr = params["pageSize"]
-  const pageSizeRaw = pageSizeStr !== undefined ? parseInt(pageSizeStr, 10) : 10
-  const pageSize = [10, 20, 30, 40, 50].includes(pageSizeRaw) ? pageSizeRaw : 10
-
-  const filters: RequestLogFilters = {
-    pageSize,
-    page: !isNaN(page) && page > 0 ? page : 1,
-  }
-
-  const method = params["method"]
-  if (method !== undefined) filters.method = method
-
-  const path = params["path"]
-  if (path !== undefined) filters.pathContains = path
-
-  if (statusGroup !== undefined && STATUS_GROUPS.includes(statusGroup)) filters.statusGroup = statusGroup
-
-  const userType = params["userType"]
-  if (userType !== undefined) filters.userType = userType
-
-  if (dateFrom !== undefined && !isNaN(dateFrom.getTime())) filters.dateFrom = dateFrom
-  if (dateTo !== undefined && !isNaN(dateTo.getTime())) filters.dateTo = dateTo
-
-  return filters
-}
+const VALID_STATUS_GROUPS = ["2xx", "3xx", "4xx", "5xx"] as const
 
 export default async function LogsPage({ searchParams }: Props): Promise<ReactElement> {
   const params = await searchParams
-  const filters = parseFilters(params)
+  const { page, pageSize } = buildPaginationParams(params["page"], params["pageSize"])
+  const filters: RequestLogFilters = { page, pageSize }
+
+  if (params["method"] !== undefined) filters.method = params["method"]
+  if (params["path"] !== undefined) filters.pathContains = params["path"]
+  if (params["userType"] !== undefined) filters.userType = params["userType"]
+
+  const rawStatusGroup = params["statusGroup"] as RequestLogFilters["statusGroup"] | undefined
+  if (rawStatusGroup !== undefined && VALID_STATUS_GROUPS.includes(rawStatusGroup)) {
+    filters.statusGroup = rawStatusGroup
+  }
+
+  if (params["dateFrom"] !== undefined) {
+    const d = new Date(params["dateFrom"])
+    if (!isNaN(d.getTime())) filters.dateFrom = d
+  }
+  if (params["dateTo"] !== undefined) {
+    const d = new Date(params["dateTo"])
+    if (!isNaN(d.getTime())) filters.dateTo = d
+  }
+
   const data = await requestLogService.getLogs(filters)
 
   return (
