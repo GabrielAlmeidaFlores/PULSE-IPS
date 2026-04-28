@@ -20,33 +20,43 @@ interface WebhookInvoiceData {
 
 export async function handleStripeWebhook(event: BillingWebhookEvent): Promise<void> {
   const existing = await findWebhookEvent(event.id)
-  if (existing) return
+  if (existing?.processedAt) return
 
-  switch (event.type) {
-    case "customer.subscription.created":
-    case "customer.subscription.updated": {
-      const subscription = event.data.object as unknown as WebhookSubscriptionData
-      await handleSubscriptionUpdate(subscription)
-      break
+  const record = existing ?? await recordWebhookEvent({
+    externalEventId: event.id,
+    type: event.type,
+    payload: event as unknown as import("@/libs/utils/json").JsonValue,
+  })
+
+  try {
+    switch (event.type) {
+      case "customer.subscription.created":
+      case "customer.subscription.updated": {
+        const subscription = event.data.object as unknown as WebhookSubscriptionData
+        await handleSubscriptionUpdate(subscription)
+        break
+      }
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object as unknown as WebhookSubscriptionData
+        await handleSubscriptionDeleted(subscription)
+        break
+      }
+      case "invoice.payment_failed": {
+        const invoice = event.data.object as unknown as WebhookInvoiceData
+        await handlePaymentFailed(invoice)
+        break
+      }
+      case "invoice.payment_succeeded": {
+        const invoice = event.data.object as unknown as WebhookInvoiceData
+        await handlePaymentSucceeded(invoice)
+        break
+      }
     }
-    case "customer.subscription.deleted": {
-      const subscription = event.data.object as unknown as WebhookSubscriptionData
-      await handleSubscriptionDeleted(subscription)
-      break
-    }
-    case "invoice.payment_failed": {
-      const invoice = event.data.object as unknown as WebhookInvoiceData
-      await handlePaymentFailed(invoice)
-      break
-    }
-    case "invoice.payment_succeeded": {
-      const invoice = event.data.object as unknown as WebhookInvoiceData
-      await handlePaymentSucceeded(invoice)
-      break
-    }
+    await markWebhookEventProcessed(record.id)
+  } catch (err) {
+    await markWebhookEventFailed(record.id, String(err))
+    throw err
   }
-
-  await recordWebhookEvent({ externalEventId: event.id, type: event.type, payload: event as unknown as import("@/libs/utils/json").JsonValue, processedAt: new Date() })
 }
 
 async function handleSubscriptionUpdate(subscription: WebhookSubscriptionData): Promise<void> {
@@ -109,10 +119,8 @@ export async function retryFailedWebhookEvents(): Promise<{ retried: number; suc
     try {
       const webhookEvent = event.payload as unknown as BillingWebhookEvent
       await handleStripeWebhook(webhookEvent)
-      await markWebhookEventProcessed(event.id)
       succeeded++
-    } catch (err) {
-      await markWebhookEventFailed(event.id, String(err))
+    } catch {
       failed++
     }
   }

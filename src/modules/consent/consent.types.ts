@@ -1,4 +1,4 @@
-export type ConsentEvent = "accepted" | "refused" | "opted_out" | "invited"
+export type ConsentEvent = "accepted" | "refused" | "opted_out" | "revoked" | "invited"
 export type ConsentSource = "sms_link" | "admin" | "import" | "survey_form"
 
 export interface ConsentRecord {

@@ -148,7 +148,7 @@ export async function refuseConsentFromSurveyToken(surveyToken: string): Promise
     employeeId: tokenRecord.employeeId,
     consentTermVersionId: activeVersion.id,
     event: "refused",
-    source: "sms_link",
+    source: "survey_form",
   })
 
   await markTokenUsed(tokenRecord.id)

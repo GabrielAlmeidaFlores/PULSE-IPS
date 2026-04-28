@@ -15,6 +15,7 @@ import {
   type AlertStats,
 } from "@/modules/alerts/alert.repository"
 import { toHealthIndex, healthIndexLabel } from "@/libs/utils/health-index"
+import { MINIMUM_RESPONDENTS_FOR_DISPLAY } from "@/libs/utils/anonymity"
 import { AppError } from "@/libs/errors/app-error"
 import type { Alert, Department } from "@prisma/client"
 
@@ -140,6 +141,7 @@ export async function detectLowScoreAlerts(): Promise<void> {
   const byDept = groupByDept(responses)
 
   for (const [, data] of Array.from(byDept.entries())) {
+    if (data.responses.length < MINIMUM_RESPONDENTS_FOR_DISPLAY) continue
     const avgScore = calcAvgFromResponses(data.responses)
     if (avgScore >= LOW_SCORE_THRESHOLD) continue
 
@@ -172,6 +174,8 @@ export async function detectScoreDropAlerts(): Promise<void> {
   for (const [key, current] of Array.from(currentByDept.entries())) {
     const previous = previousByDept.get(key)
     if (!previous) continue
+    if (current.responses.length < MINIMUM_RESPONDENTS_FOR_DISPLAY) continue
+    if (previous.responses.length < MINIMUM_RESPONDENTS_FOR_DISPLAY) continue
 
     const currentAvg = calcAvgFromResponses(current.responses)
     const previousAvg = calcAvgFromResponses(previous.responses)

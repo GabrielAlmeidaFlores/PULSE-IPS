@@ -1,4 +1,5 @@
 import { prisma } from "@/libs/db"
+import { AppError } from "@/libs/errors/app-error"
 import type { Prisma, ActionPlan, ActionPlanTask } from "@prisma/client"
 import type { CreateActionPlanInput, CreateActionPlanTaskInput, UpdateActionPlanInput } from "@/modules/action-plans/action-plan.types"
 
@@ -53,7 +54,7 @@ export function updateActionPlan(
 
 export async function createActionPlanTask(tenantId: string, actionPlanId: string, data: CreateActionPlanTaskInput): Promise<ActionPlanTask> {
   const plan = await prisma.actionPlan.findFirst({ where: { id: actionPlanId, tenantId } })
-  if (!plan) throw new Error("Plano de ação não encontrado.")
+  if (!plan) throw new AppError("ACTION_PLAN_NOT_FOUND", "Plano de ação não encontrado.")
   return prisma.actionPlanTask.create({
     data: {
       tenantId,

@@ -83,7 +83,7 @@ function makeInvoiceEvent(type: string): WebhookEventShape {
 beforeEach(() => {
   vi.clearAllMocks()
   mockFindWebhookEvent.mockResolvedValue(null)
-  mockRecordWebhookEvent.mockResolvedValue(undefined as unknown as Awaited<ReturnType<typeof recordWebhookEvent>>)
+  mockRecordWebhookEvent.mockResolvedValue({ id: "webhook-record-1" } as Awaited<ReturnType<typeof recordWebhookEvent>>)
   mockUpsertSubscription.mockResolvedValue({ id: "sub-1" } as Awaited<ReturnType<typeof upsertSubscription>>)
   mockUpdateOrgBillingStatus.mockResolvedValue(undefined)
   mockFindTenantSubscriptionFeatures.mockResolvedValue([])
@@ -95,7 +95,7 @@ beforeEach(() => {
 
 describe("handleStripeWebhook — idempotency", () => {
   it("skips processing when event already exists", async () => {
-    mockFindWebhookEvent.mockResolvedValue({ id: "evt_1" } as Awaited<ReturnType<typeof findWebhookEvent>>)
+    mockFindWebhookEvent.mockResolvedValue({ id: "evt_1", processedAt: new Date() } as Awaited<ReturnType<typeof findWebhookEvent>>)
 
     await handleStripeWebhook(makeSubscriptionEvent(SUBSCRIPTION_CREATED) as BillingWebhookEvent)
 
@@ -205,9 +205,11 @@ describe("retryFailedWebhookEvents", () => {
   it("retries each failed event and marks processed on success", async () => {
     const failedEvent = {
       id: "webhook-log-1",
+      processedAt: null,
       payload: makeSubscriptionEvent(SUBSCRIPTION_CREATED),
     }
     mockFindFailedWebhookEvents.mockResolvedValue([failedEvent] as unknown as Awaited<ReturnType<typeof findFailedWebhookEvents>>)
+    mockFindWebhookEvent.mockResolvedValue(failedEvent as unknown as Awaited<ReturnType<typeof findWebhookEvent>>)
     mockMarkWebhookEventProcessed.mockResolvedValue(undefined)
 
     const result = await retryFailedWebhookEvents()
@@ -219,6 +221,7 @@ describe("retryFailedWebhookEvents", () => {
   it("marks failed and counts error when retry throws", async () => {
     const failedEvent = {
       id: "webhook-log-2",
+      processedAt: null,
       payload: {
         id: "evt-retry-fail",
         type: SUBSCRIPTION_UPDATED,
@@ -236,6 +239,7 @@ describe("retryFailedWebhookEvents", () => {
       },
     }
     mockFindFailedWebhookEvents.mockResolvedValue([failedEvent] as unknown as Awaited<ReturnType<typeof findFailedWebhookEvents>>)
+    mockFindWebhookEvent.mockResolvedValue(failedEvent as unknown as Awaited<ReturnType<typeof findWebhookEvent>>)
     mockMarkWebhookEventFailed.mockResolvedValue(undefined)
     mockFindOrgByCustomerId.mockRejectedValue(new Error("DB error"))
 

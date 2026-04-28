@@ -29,7 +29,7 @@ export async function validateSurveyToken(token: string): Promise<SurveyTokenVal
   const timezone = resolveTimezone(tokenRecord)
   const now = toZonedTime(new Date(), timezone)
   const currentTime = format(now, "HH:mm")
-  if (currentTime < tokenRecord.workStartTime || currentTime > tokenRecord.workEndTime) {
+  if (!isInsideWorkWindow(currentTime, tokenRecord.workStartTime, tokenRecord.workEndTime)) {
     return { valid: false, error: "Pesquisa disponível apenas no horário de trabalho." }
   }
 
