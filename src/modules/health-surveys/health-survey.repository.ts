@@ -381,7 +381,7 @@ export function createDispatch(
   })
 }
 
-export function deleteExpiredTokens(): Promise<{ count: number }> {
+export function deleteAllTenantsExpiredHealthSurveyTokens(): Promise<{ count: number }> {
   return prisma.healthSurveyResponseToken.deleteMany({
     where: { expiresAt: { lt: new Date() }, usedAt: null },
   })
@@ -474,7 +474,7 @@ export interface ActiveConfigForDispatch {
 
 const ACTIVE_BILLING_STATUSES_FOR_DISPATCH = new Set(["active", "trialing"])
 
-export async function findActiveConfigsForAutoDispatch(): Promise<ActiveConfigForDispatch[]> {
+export async function findAllTenantsActiveHealthSurveyConfigsForAutoDispatch(): Promise<ActiveConfigForDispatch[]> {
   const configs = await prisma.healthSurveyConfiguration.findMany({
     where: { isActive: true },
     include: {

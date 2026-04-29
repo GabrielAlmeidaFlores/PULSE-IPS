@@ -6,7 +6,7 @@ import { detectLowScoreAlerts, detectScoreDropAlerts, detectNegativeTrendAlerts,
 import { unpauseAllTenantsDueEmployees } from "@/modules/employees/employee.service"
 import { sendPgrReviewReminders } from "@/modules/pgr/pgr.service"
 import { retryFailedWebhookEvents } from "@/modules/billing/webhook.handler"
-import { createMessageLog, deleteExpiredTokens } from "@/modules/health-surveys/health-survey.repository"
+import { createMessageLog, deleteAllTenantsExpiredHealthSurveyTokens } from "@/modules/health-surveys/health-survey.repository"
 import { jobLogService } from "@/modules/job-logs/job-log.service"
 import { runActionPlanSuggestionGenerator } from "@/modules/action-plans/action-plan-suggestion.service"
 import { runOrganizationDeletionExecutor } from "@/modules/organizations/account-deletion.service"
@@ -55,7 +55,7 @@ async function processJob(jobName: JobName): Promise<void> {
       break
     }
     case "health-survey-response-token-cleanup": {
-      const result = await deleteExpiredTokens()
+      const result = await deleteAllTenantsExpiredHealthSurveyTokens()
       workerLogger.success(`health-survey-response-token-cleanup: deleted ${result.count} expired tokens`)
       break
     }

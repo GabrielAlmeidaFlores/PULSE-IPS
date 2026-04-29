@@ -3,7 +3,7 @@ import { toZonedTime } from "date-fns-tz"
 import { AppError } from "@/libs/errors/app-error"
 import {
   findTokenByValue,
-  deleteExpiredTokens,
+  deleteAllTenantsExpiredHealthSurveyTokens,
   createHealthSurveyResponseWithItems,
 } from "@/modules/health-surveys/health-survey.repository"
 import { getCurrentConsent, getActiveConsentTermVersion } from "@/modules/consent/consent.repository"
@@ -95,5 +95,5 @@ export async function submitSurveyResponse(input: SubmitHealthSurveyInput): Prom
 }
 
 export function cleanupExpiredTokens(): Promise<{ count: number }> {
-  return deleteExpiredTokens()
+  return deleteAllTenantsExpiredHealthSurveyTokens()
 }

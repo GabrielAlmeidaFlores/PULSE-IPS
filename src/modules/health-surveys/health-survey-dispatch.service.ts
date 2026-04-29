@@ -5,7 +5,7 @@ import { env } from "@/env"
 import { logger } from "@/libs/logger"
 import {
   findAllTenantsPendingDispatches,
-  findActiveConfigsForAutoDispatch,
+  findAllTenantsActiveHealthSurveyConfigsForAutoDispatch,
   createHealthSurveyTokensAndMarkSent,
   createDispatch,
   findAllTenantsDispatches48hAgo,
@@ -182,7 +182,7 @@ export async function runHealthSurveyDispatcher(): Promise<{ dispatched: number;
 }
 
 export async function runHealthSurveyAutoDispatchScheduler(): Promise<{ triggered: number; skipped: number }> {
-  const configs = await findActiveConfigsForAutoDispatch()
+  const configs = await findAllTenantsActiveHealthSurveyConfigsForAutoDispatch()
   let triggered = 0
   let skipped = 0
 

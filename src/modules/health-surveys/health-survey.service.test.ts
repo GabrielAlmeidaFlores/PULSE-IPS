@@ -7,7 +7,7 @@ vi.mock("@/modules/health-surveys/health-survey.repository", () => ({
   findTokenByValue: vi.fn(),
   markTokenUsed: vi.fn(),
   createHealthSurveyResponseWithItems: vi.fn(),
-  deleteExpiredTokens: vi.fn(),
+  deleteAllTenantsExpiredHealthSurveyTokens: vi.fn(),
   findHealthSurveyConfigsByTenant: vi.fn(),
   findHealthSurveyConfigById: vi.fn(),
   upsertHealthSurveyConfig: vi.fn(),

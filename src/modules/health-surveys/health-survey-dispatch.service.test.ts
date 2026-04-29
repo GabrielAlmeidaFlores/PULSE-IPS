@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { runHealthSurveyDispatcher, runHealthSurveyAutoDispatchScheduler, checkHealthSurveyDispatchAdherence } from "@/modules/health-surveys/health-survey-dispatch.service"
 import {
   findAllTenantsPendingDispatches,
-  findActiveConfigsForAutoDispatch,
+  findAllTenantsActiveHealthSurveyConfigsForAutoDispatch,
   createHealthSurveyTokensAndMarkSent,
   createDispatch,
   findAllTenantsDispatches48hAgo,
@@ -31,7 +31,7 @@ vi.mock("@/env", () => ({
 }))
 
 const mockFindPendingDispatches = vi.mocked(findAllTenantsPendingDispatches)
-const mockFindActiveConfigs = vi.mocked(findActiveConfigsForAutoDispatch)
+const mockFindActiveConfigs = vi.mocked(findAllTenantsActiveHealthSurveyConfigsForAutoDispatch)
 const mockCreateSurveyTokensAndMarkSent = vi.mocked(createHealthSurveyTokensAndMarkSent)
 const mockCreateDispatch = vi.mocked(createDispatch)
 const mockFindDispatches48hAgo = vi.mocked(findAllTenantsDispatches48hAgo)
