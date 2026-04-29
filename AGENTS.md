@@ -3668,6 +3668,61 @@ mockFindEmployee.mockResolvedValue(
 mockFindEmployee.mockResolvedValue({ id: "emp-1" } as any)
 ```
 
+### Proibição de `as unknown as` em testes
+
+**`as unknown as X` é proibido em qualquer arquivo de teste.** Essa construção é um double cast que burla completamente o sistema de tipos — equivalente a `as any`. O TypeScript não valida nada entre o valor original e o tipo final.
+
+**Os dois erros que causam `as unknown as`:**
+
+**1. Fixture incompleta** — objeto sem os campos obrigatórios do tipo de destino:
+```typescript
+// ❌ PROIBIDO — faltam campos obrigatórios, por isso precisa do double cast
+mockCreate.mockResolvedValue({ id: "dept-1" } as unknown as DepartmentWithWorkDays)
+
+// ✅ CORRETO — fixture completa, single as funciona
+mockCreate.mockResolvedValue({
+  id: "dept-1", tenantId: "tenant-1", name: "Engenharia",
+  isActive: true, workStartTime: "09:00", workEndTime: "18:00",
+  createdAt: new Date(), updatedAt: new Date(), workDays: [],
+} as Awaited<ReturnType<typeof createDepartment>>)
+```
+
+**2. Mock parcial de interface** — objeto com apenas alguns métodos da interface completa:
+```typescript
+// ❌ PROIBIDO — mock parcial força double cast
+mockGetBillingService.mockReturnValue({ createCheckoutSession: vi.fn() } as unknown as IBillingService)
+
+// ✅ CORRETO — objeto completo com todos os métodos, single as funciona
+const mockCreateCheckoutSession = vi.fn().mockResolvedValue({ url: "" })
+const MOCK_BILLING_SERVICE = {
+  createProduct: vi.fn().mockResolvedValue({ id: "" }),
+  createPrice: vi.fn().mockResolvedValue({ id: "" }),
+  createCheckoutSession: mockCreateCheckoutSession,
+  createBillingPortalSession: vi.fn().mockResolvedValue({ url: "" }),
+  createCustomer: vi.fn().mockResolvedValue({ id: "" }),
+  cancelSubscription: vi.fn().mockResolvedValue(undefined),
+  constructWebhookEvent: vi.fn().mockReturnValue({ id: "", type: "", data: { object: {} } }),
+} as IBillingService
+
+// Em beforeEach:
+mockGetBillingService.mockReturnValue(MOCK_BILLING_SERVICE)
+
+// Por teste, override apenas o necessário:
+mockCreateCheckoutSession.mockResolvedValueOnce({ url: "https://custom.com" })
+```
+
+**Padrão para factory functions de fixture:**
+```typescript
+// ❌ PROIBIDO — retorno Record<string, unknown> força double cast em toda chamada
+function makePendingDispatch(): Record<string, unknown> { return { ... } }
+mockFindDispatches.mockResolvedValue([makePendingDispatch()] as unknown as Awaited<...>)
+
+// ✅ CORRETO — tipagem explícita na factory elimina o cast
+type PendingDispatch = Awaited<ReturnType<typeof findAllTenantsPendingDispatches>>[number]
+function makePendingDispatch(): PendingDispatch { return { ... } as PendingDispatch }
+mockFindDispatches.mockResolvedValue([makePendingDispatch()])  // sem cast
+```
+
 ### Nomenclatura dos testes
 
 - `describe` → nome do service/função + contexto (`"createNewEmployee — limite do plano"`)

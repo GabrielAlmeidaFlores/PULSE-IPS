@@ -4,6 +4,7 @@ import { findOrganizationRequired, updateOrganizationBillingStatus } from "@/mod
 import { findActiveSubscription, upsertSubscription, findPlanPriceForProvisioning, findTenantSubscriptionFeatures, createSubscriptionFeatureSnapshot } from "@/modules/billing/billing.repository"
 import { findPlanFeatures } from "@/modules/plans/plan.repository"
 import { getBillingService } from "@/libs/integrations"
+import type { IBillingService } from "@/libs/integrations/billing/billing.interface"
 
 vi.mock("@/modules/billing/billing.repository")
 vi.mock("@/modules/organizations/organization.repository")
@@ -28,6 +29,24 @@ const mockCreateSubscriptionFeatureSnapshot = vi.mocked(createSubscriptionFeatur
 const mockFindPlanFeatures = vi.mocked(findPlanFeatures)
 const mockGetBillingService = vi.mocked(getBillingService)
 
+const mockBillingCreateProduct = vi.fn().mockResolvedValue({ id: "prod_new" })
+const mockBillingCreatePrice = vi.fn().mockResolvedValue({ id: "price_new" })
+const mockBillingCreateCheckoutSession = vi.fn().mockResolvedValue({ url: "https://checkout.stripe.com/session" })
+const mockBillingCreateBillingPortalSession = vi.fn().mockResolvedValue({ url: "https://billing.stripe.com/portal" })
+const mockBillingCreateCustomer = vi.fn().mockResolvedValue({ id: "cus_new" })
+const mockBillingCancelSubscription = vi.fn().mockResolvedValue(undefined)
+const mockBillingConstructWebhookEvent = vi.fn().mockReturnValue({ id: "", type: "", data: { object: {} } })
+
+const MOCK_BILLING_SERVICE = {
+  createProduct: mockBillingCreateProduct,
+  createPrice: mockBillingCreatePrice,
+  createCheckoutSession: mockBillingCreateCheckoutSession,
+  createBillingPortalSession: mockBillingCreateBillingPortalSession,
+  createCustomer: mockBillingCreateCustomer,
+  cancelSubscription: mockBillingCancelSubscription,
+  constructWebhookEvent: mockBillingConstructWebhookEvent,
+} as IBillingService
+
 const ORG = { id: "org-1", slug: "acme", externalCustomerId: "cus_test123", planId: null }
 const PLAN_PRICE = {
   id: "price-1",
@@ -45,6 +64,9 @@ beforeEach(() => {
   mockFindTenantSubscriptionFeatures.mockResolvedValue([])
   mockCreateSubscriptionFeatureSnapshot.mockResolvedValue(undefined)
   mockFindPlanFeatures.mockResolvedValue([])
+  mockBillingCreateCheckoutSession.mockResolvedValue({ url: "https://checkout.stripe.com/session" })
+  mockBillingCreateBillingPortalSession.mockResolvedValue({ url: "https://billing.stripe.com/portal" })
+  mockGetBillingService.mockReturnValue(MOCK_BILLING_SERVICE)
 })
 
 describe("createCheckoutSession", () => {
@@ -58,13 +80,11 @@ describe("createCheckoutSession", () => {
 
   it("returns checkout URL from billing service", async () => {
     mockFindOrgRequired.mockResolvedValue(ORG as Awaited<ReturnType<typeof findOrganizationRequired>>)
-    const mockCreateCheckout = vi.fn().mockResolvedValue({ url: "https://checkout.stripe.com/session" })
-    mockGetBillingService.mockReturnValue({ createCheckoutSession: mockCreateCheckout } as unknown as ReturnType<typeof getBillingService>)
 
     const url = await createCheckoutSession("org-1", "price_ext")
 
     expect(url).toBe("https://checkout.stripe.com/session")
-    expect(mockCreateCheckout).toHaveBeenCalledWith(
+    expect(mockBillingCreateCheckoutSession).toHaveBeenCalledWith(
       expect.objectContaining({ externalPriceId: "price_ext", externalCustomerId: ORG.externalCustomerId }),
     )
   })
@@ -72,8 +92,7 @@ describe("createCheckoutSession", () => {
   it("provisions subscription automatically for fake adapter (url === successUrl)", async () => {
     mockFindOrgRequired.mockResolvedValue(ORG as Awaited<ReturnType<typeof findOrganizationRequired>>)
     const successUrl = "http://localhost:3000/billing?success=true"
-    const mockCreateCheckout = vi.fn().mockResolvedValue({ url: successUrl })
-    mockGetBillingService.mockReturnValue({ createCheckoutSession: mockCreateCheckout } as unknown as ReturnType<typeof getBillingService>)
+    mockBillingCreateCheckoutSession.mockResolvedValueOnce({ url: successUrl })
     mockFindPlanPriceForProvisioning.mockResolvedValue(PLAN_PRICE as Awaited<ReturnType<typeof findPlanPriceForProvisioning>>)
 
     await createCheckoutSession("org-1", "price_ext")
@@ -85,8 +104,7 @@ describe("createCheckoutSession", () => {
   it("does not provision when fake adapter returns no plan price", async () => {
     mockFindOrgRequired.mockResolvedValue(ORG as Awaited<ReturnType<typeof findOrganizationRequired>>)
     const successUrl = "http://localhost:3000/billing?success=true"
-    const mockCreateCheckout = vi.fn().mockResolvedValue({ url: successUrl })
-    mockGetBillingService.mockReturnValue({ createCheckoutSession: mockCreateCheckout } as unknown as ReturnType<typeof getBillingService>)
+    mockBillingCreateCheckoutSession.mockResolvedValueOnce({ url: successUrl })
     mockFindPlanPriceForProvisioning.mockResolvedValue(null)
 
     await createCheckoutSession("org-1", "price_ext")
@@ -96,15 +114,14 @@ describe("createCheckoutSession", () => {
 
   it("uses custom successUrl and cancelUrl when provided", async () => {
     mockFindOrgRequired.mockResolvedValue(ORG as Awaited<ReturnType<typeof findOrganizationRequired>>)
-    const mockCreateCheckout = vi.fn().mockResolvedValue({ url: "https://custom-success.com" })
-    mockGetBillingService.mockReturnValue({ createCheckoutSession: mockCreateCheckout } as unknown as ReturnType<typeof getBillingService>)
+    mockBillingCreateCheckoutSession.mockResolvedValueOnce({ url: "https://custom-success.com" })
 
     await createCheckoutSession("org-1", "price_ext", {
       successUrl: "https://custom-success.com",
       cancelUrl: "https://custom-cancel.com",
     })
 
-    expect(mockCreateCheckout).toHaveBeenCalledWith(
+    expect(mockBillingCreateCheckoutSession).toHaveBeenCalledWith(
       expect.objectContaining({ successUrl: "https://custom-success.com", cancelUrl: "https://custom-cancel.com" }),
     )
   })
@@ -121,13 +138,11 @@ describe("getBillingPortalUrl", () => {
 
   it("returns portal URL from billing service", async () => {
     mockFindOrgRequired.mockResolvedValue(ORG as Awaited<ReturnType<typeof findOrganizationRequired>>)
-    const mockCreatePortal = vi.fn().mockResolvedValue({ url: "https://billing.stripe.com/portal" })
-    mockGetBillingService.mockReturnValue({ createBillingPortalSession: mockCreatePortal } as unknown as ReturnType<typeof getBillingService>)
 
     const url = await getBillingPortalUrl("org-1")
 
     expect(url).toBe("https://billing.stripe.com/portal")
-    expect(mockCreatePortal).toHaveBeenCalledWith(
+    expect(mockBillingCreateBillingPortalSession).toHaveBeenCalledWith(
       expect.objectContaining({ externalCustomerId: ORG.externalCustomerId }),
     )
   })

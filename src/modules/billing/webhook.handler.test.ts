@@ -211,11 +211,16 @@ describe("retryFailedWebhookEvents", () => {
   it("retries each failed event and marks processed on success", async () => {
     const failedEvent = {
       id: "webhook-log-1",
+      tenantId: null,
+      externalEventId: "evt_1",
+      type: SUBSCRIPTION_CREATED,
       processedAt: null,
+      error: null,
       payload: makeSubscriptionEvent(SUBSCRIPTION_CREATED),
+      createdAt: new Date(),
     }
-    mockFindFailedWebhookEvents.mockResolvedValue([failedEvent] as unknown as Awaited<ReturnType<typeof findFailedWebhookEvents>>)
-    mockFindWebhookEvent.mockResolvedValue(failedEvent as unknown as Awaited<ReturnType<typeof findWebhookEvent>>)
+    mockFindFailedWebhookEvents.mockResolvedValue([failedEvent] as Awaited<ReturnType<typeof findFailedWebhookEvents>>)
+    mockFindWebhookEvent.mockResolvedValue(failedEvent as Awaited<ReturnType<typeof findWebhookEvent>>)
     mockMarkWebhookEventProcessed.mockResolvedValue(undefined)
 
     const result = await retryFailedWebhookEvents()
@@ -227,7 +232,11 @@ describe("retryFailedWebhookEvents", () => {
   it("marks failed and counts error when retry throws", async () => {
     const failedEvent = {
       id: "webhook-log-2",
+      tenantId: null,
+      externalEventId: "evt_2",
+      type: SUBSCRIPTION_UPDATED,
       processedAt: null,
+      error: null,
       payload: {
         id: "evt-retry-fail",
         type: SUBSCRIPTION_UPDATED,
@@ -243,9 +252,10 @@ describe("retryFailedWebhookEvents", () => {
           },
         },
       },
+      createdAt: new Date(),
     }
-    mockFindFailedWebhookEvents.mockResolvedValue([failedEvent] as unknown as Awaited<ReturnType<typeof findFailedWebhookEvents>>)
-    mockFindWebhookEvent.mockResolvedValue(failedEvent as unknown as Awaited<ReturnType<typeof findWebhookEvent>>)
+    mockFindFailedWebhookEvents.mockResolvedValue([failedEvent] as Awaited<ReturnType<typeof findFailedWebhookEvents>>)
+    mockFindWebhookEvent.mockResolvedValue(failedEvent as Awaited<ReturnType<typeof findWebhookEvent>>)
     mockMarkWebhookEventFailed.mockResolvedValue(undefined)
     mockFindOrgByCustomerId.mockRejectedValue(new Error("DB error"))
 

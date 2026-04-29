@@ -21,6 +21,7 @@ const RESPONSE_ITEMS = [
 
 const DISPATCH_DATA = {
   id: "d-1",
+  tenantId: "tenant-1",
   departmentId: "dept-1",
   status: "sent",
   scheduledAt: new Date("2024-01-15"),
@@ -78,7 +79,7 @@ describe("getDispatchDashboard", () => {
 
   it("returns null avgScore when question has no responses", async () => {
     const dispatchWithNoResponses = { ...DISPATCH_DATA, responseItems: [] }
-    mockFindDispatchWithDashboard.mockResolvedValue(dispatchWithNoResponses as unknown as Awaited<ReturnType<typeof findDispatchWithDashboard>>)
+    mockFindDispatchWithDashboard.mockResolvedValue(dispatchWithNoResponses as Awaited<ReturnType<typeof findDispatchWithDashboard>>)
 
     const result = await getDispatchDashboard("tenant-1", "d-1")
     expect(result?.questions[0]?.avgScore).toBeNull()

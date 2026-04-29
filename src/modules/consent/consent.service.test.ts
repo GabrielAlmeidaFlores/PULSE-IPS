@@ -322,12 +322,25 @@ describe("optOutFromSurveyToken — opt-out via survey link", () => {
     expiresAt: new Date(Date.now() + 86400000),
   }
 
+  const SURVEY_RESPONSE_TOKEN = {
+    id: "srt-1",
+    tenantId: TENANT_ID,
+    dispatchId: "dispatch-1",
+    employeeId: EMPLOYEE_ID,
+    token: surveyToken,
+    usedAt: new Date(),
+    expiresAt: new Date(),
+    workStartTime: "09:00",
+    workEndTime: "18:00",
+    createdAt: new Date(),
+  } as Awaited<ReturnType<typeof markTokenUsed>>
+
   beforeEach(() => {
     vi.clearAllMocks()
     mockFindTokenByValue.mockResolvedValue(tokenRecord as Awaited<ReturnType<typeof findTokenByValue>>)
     mockGetActiveConsentTermVersion.mockResolvedValue(activeTermVersion)
     mockCreateConsentRecord.mockResolvedValue(baseConsentInvite as Awaited<ReturnType<typeof createConsentRecord>>)
-    mockMarkTokenUsed.mockResolvedValue(undefined as unknown as Awaited<ReturnType<typeof markTokenUsed>>)
+    mockMarkTokenUsed.mockResolvedValue(SURVEY_RESPONSE_TOKEN)
   })
 
   it("creates opted_out consent record with correct fields", async () => {

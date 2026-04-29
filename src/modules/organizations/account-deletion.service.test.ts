@@ -17,6 +17,7 @@ import {
 import { findOrganizationById } from "@/modules/organizations/organization.repository"
 import { findSubscriptionByTenantId } from "@/modules/billing/billing.repository"
 import { getEmailService, getBillingService } from "@/libs/integrations"
+import type { IBillingService } from "@/libs/integrations/billing/billing.interface"
 
 vi.mock("@/modules/organizations/account-deletion.repository")
 vi.mock("@/modules/organizations/organization.repository")
@@ -69,10 +70,20 @@ const ACTIVE_SUBSCRIPTION = {
 const mockSendEmail = vi.fn().mockResolvedValue({ id: "email-1" })
 const mockCancelSubscription = vi.fn().mockResolvedValue(undefined)
 
+const MOCK_BILLING_SERVICE = {
+  createProduct: vi.fn(),
+  createPrice: vi.fn(),
+  createCheckoutSession: vi.fn(),
+  createBillingPortalSession: vi.fn(),
+  createCustomer: vi.fn(),
+  cancelSubscription: mockCancelSubscription,
+  constructWebhookEvent: vi.fn(),
+} as IBillingService
+
 beforeEach(() => {
   vi.clearAllMocks()
   mockGetEmailService.mockReturnValue({ send: mockSendEmail } as ReturnType<typeof getEmailService>)
-  mockGetBillingService.mockReturnValue({ cancelSubscription: mockCancelSubscription } as unknown as ReturnType<typeof getBillingService>)
+  mockGetBillingService.mockReturnValue(MOCK_BILLING_SERVICE)
   mockCreateToken.mockResolvedValue(undefined)
   mockConsumeToken.mockResolvedValue(undefined)
   mockScheduleDeletion.mockResolvedValue(undefined)

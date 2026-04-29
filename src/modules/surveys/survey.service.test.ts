@@ -240,7 +240,15 @@ describe("validateSurveyToken", () => {
       tokenExpiresAt: null,
       cpfHash: null,
       createdAt: new Date(),
-    } as unknown as ConsentWithTermVersion)
+      consentTermVersion: {
+        id: termId,
+        version: "1.0",
+        content: "Termos",
+        contentHash: "hash-123",
+        isActive: true,
+        createdAt: new Date(),
+      },
+    } as ConsentWithTermVersion)
 
     const result = await validateSurveyToken(SURVEY_TOKEN)
     expect(result.valid).toBe(true)
@@ -270,7 +278,15 @@ describe("validateSurveyToken", () => {
       tokenExpiresAt: null,
       cpfHash: null,
       createdAt: new Date(),
-    } as unknown as ConsentWithTermVersion)
+      consentTermVersion: {
+        id: "old-term-version",
+        version: "1.0",
+        content: "Termos antigos",
+        contentHash: "oldhash",
+        isActive: false,
+        createdAt: new Date(),
+      },
+    } as ConsentWithTermVersion)
 
     const result = await validateSurveyToken(SURVEY_TOKEN)
     expect(result.valid).toBe(true)

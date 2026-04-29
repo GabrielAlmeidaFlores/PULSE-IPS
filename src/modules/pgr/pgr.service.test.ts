@@ -73,7 +73,7 @@ function makeDispatch(month: number, responseCount: number): PgrDispatch {
       questions: [QUESTION],
     },
     responses,
-  } as unknown as PgrDispatch
+  } as PgrDispatch
 }
 
 const REVIEW_LIST_ITEM = {
@@ -98,7 +98,7 @@ beforeEach(() => {
   mockFindDispatches.mockResolvedValue([makeDispatch(4, 6)] as Awaited<ReturnType<typeof findDispatchesForPgr>>)
   mockFindByTenantAndPeriod.mockResolvedValue(null)
   mockCreatePgrReviewAtomic.mockResolvedValue({} as Awaited<ReturnType<typeof createPgrReviewAtomic>>)
-  mockFindUpcomingReviews.mockResolvedValue([] as unknown as Awaited<ReturnType<typeof findAllTenantsUpcomingPgrReviews>>)
+  mockFindUpcomingReviews.mockResolvedValue([] as Awaited<ReturnType<typeof findAllTenantsUpcomingPgrReviews>>)
   mockFindExistingPgrAlert.mockResolvedValue(null)
   mockCreatePgrAlert.mockResolvedValue(undefined)
   mockFindItemScoresForPeriod.mockResolvedValue([])
@@ -153,7 +153,7 @@ describe("generatePgrReport", () => {
   })
 
   it("lança AppError quando já existe relatório para o período", async () => {
-    mockFindByTenantAndPeriod.mockResolvedValue({ id: "pgr-existe" } as unknown as Awaited<ReturnType<typeof findPgrReviewByTenantAndPeriod>>)
+    mockFindByTenantAndPeriod.mockResolvedValue({ id: "pgr-existe" } as Awaited<ReturnType<typeof findPgrReviewByTenantAndPeriod>>)
 
     await expect(generatePgrReport(TENANT_ID, PERIOD)).rejects.toMatchObject({
       code: "DUPLICATE_PGR_PERIOD",
@@ -184,7 +184,7 @@ describe("generatePgrReport", () => {
 
 describe("sendPgrReviewReminders", () => {
   it("retorna zero quando não há revisões próximas", async () => {
-    mockFindUpcomingReviews.mockResolvedValue([] as unknown as Awaited<ReturnType<typeof findAllTenantsUpcomingPgrReviews>>)
+    mockFindUpcomingReviews.mockResolvedValue([] as Awaited<ReturnType<typeof findAllTenantsUpcomingPgrReviews>>)
 
     const result = await sendPgrReviewReminders()
 
@@ -195,7 +195,7 @@ describe("sendPgrReviewReminders", () => {
   it("cria alerta para revisão próxima sem alerta existente e com feature pgr", async () => {
     mockFindUpcomingReviews.mockResolvedValue([
       { tenantId: TENANT_ID, nextReviewAt: new Date("2026-05-28") },
-    ] as unknown as Awaited<ReturnType<typeof findAllTenantsUpcomingPgrReviews>>)
+    ] as Awaited<ReturnType<typeof findAllTenantsUpcomingPgrReviews>>)
     mockHasTenantPlanFeature.mockResolvedValue(true)
     mockFindExistingPgrAlert.mockResolvedValue(null)
 
@@ -210,7 +210,7 @@ describe("sendPgrReviewReminders", () => {
   it("não cria alerta quando tenant não tem feature pgr", async () => {
     mockFindUpcomingReviews.mockResolvedValue([
       { tenantId: TENANT_ID, nextReviewAt: new Date() },
-    ] as unknown as Awaited<ReturnType<typeof findAllTenantsUpcomingPgrReviews>>)
+    ] as Awaited<ReturnType<typeof findAllTenantsUpcomingPgrReviews>>)
     mockHasTenantPlanFeature.mockResolvedValue(false)
 
     const result = await sendPgrReviewReminders()
@@ -222,8 +222,8 @@ describe("sendPgrReviewReminders", () => {
   it("não cria alerta duplicado quando já existe alerta pgr_review_due", async () => {
     mockFindUpcomingReviews.mockResolvedValue([
       { tenantId: TENANT_ID, nextReviewAt: new Date() },
-    ] as unknown as Awaited<ReturnType<typeof findAllTenantsUpcomingPgrReviews>>)
-    mockFindExistingPgrAlert.mockResolvedValue({ id: "alert-exists" } as unknown as Awaited<ReturnType<typeof findExistingPgrAlert>>)
+    ] as Awaited<ReturnType<typeof findAllTenantsUpcomingPgrReviews>>)
+    mockFindExistingPgrAlert.mockResolvedValue({ id: "alert-exists" } as Awaited<ReturnType<typeof findExistingPgrAlert>>)
 
     const result = await sendPgrReviewReminders()
 

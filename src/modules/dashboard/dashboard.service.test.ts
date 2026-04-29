@@ -48,7 +48,7 @@ function makeDispatch(daysAgo: number, responseCount: number): DispatchWithData 
       department: { id: DEPT_ID, name: DEPT_NAME },
       questions: [{ id: "q-1", text: "Estresse", order: 1, scoreDirection: "lower_is_better" }],
     },
-  } as unknown as DispatchWithData
+  } as DispatchWithData
 }
 
 beforeEach(() => {

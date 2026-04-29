@@ -12,6 +12,7 @@ import {
   findOrganizationFullDetail,
 } from "@/modules/organizations/organization.repository"
 import { getBillingService } from "@/libs/integrations"
+import type { IBillingService } from "@/libs/integrations/billing/billing.interface"
 
 vi.mock("@/modules/organizations/organization.repository")
 vi.mock("@/libs/integrations")
@@ -30,10 +31,24 @@ const mockFindOrgFullDetail = vi.mocked(findOrganizationFullDetail)
 
 const ORG = { id: "org-1", slug: "acme", name: "Acme Corp", externalCustomerId: "cus_123" }
 
+const mockBillingCreateCustomer = vi.fn().mockResolvedValue({ id: "cus_new123" })
+
+const MOCK_BILLING_SERVICE = {
+  createProduct: vi.fn(),
+  createPrice: vi.fn(),
+  createCheckoutSession: vi.fn(),
+  createBillingPortalSession: vi.fn(),
+  createCustomer: mockBillingCreateCustomer,
+  cancelSubscription: vi.fn(),
+  constructWebhookEvent: vi.fn(),
+} as IBillingService
+
 beforeEach(() => {
   vi.clearAllMocks()
   mockCreateOrganization.mockResolvedValue(ORG as Awaited<ReturnType<typeof createOrganization>>)
   mockUpdateOrgCustomerId.mockResolvedValue(undefined)
+  mockBillingCreateCustomer.mockResolvedValue({ id: "cus_new123" })
+  mockGetBillingService.mockReturnValue(MOCK_BILLING_SERVICE)
 })
 
 describe("createOrg", () => {
@@ -48,12 +63,10 @@ describe("createOrg", () => {
 
   it("creates org and registers billing customer when slug is available", async () => {
     mockFindOrgBySlug.mockResolvedValue(null)
-    const mockCreateCustomer = vi.fn().mockResolvedValue({ id: "cus_new123" })
-    mockGetBillingService.mockReturnValue({ createCustomer: mockCreateCustomer } as unknown as ReturnType<typeof getBillingService>)
 
     const result = await createOrg({ slug: "acme", name: "Acme Corp" })
 
-    expect(mockCreateCustomer).toHaveBeenCalledWith("acme@pulse.app", "Acme Corp")
+    expect(mockBillingCreateCustomer).toHaveBeenCalledWith("acme@pulse.app", "Acme Corp")
     expect(mockCreateOrganization).toHaveBeenCalledOnce()
     expect(mockUpdateOrgCustomerId).toHaveBeenCalledWith(ORG.id, "cus_new123")
     expect(result).toEqual(ORG)

@@ -147,7 +147,13 @@ jobs:
 
       - name: Recreate app, worker and schedule-register
         run: |
-          docker compose up -d --no-build --force-recreate --no-deps app worker schedule-register
+          for container in pulse_app pulse_worker pulse_schedule_register; do
+            if docker ps -a --filter "name=^${container}$" --format "{{.Names}}" | grep -q "^${container}$"; then
+              echo "▶ Removendo ${container}..."
+              docker rm -f "${container}"
+            fi
+          done
+          docker compose up -d --no-build --no-deps app worker schedule-register
 
   healthcheck:
     name: App health check

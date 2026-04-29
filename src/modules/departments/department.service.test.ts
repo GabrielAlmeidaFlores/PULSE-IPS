@@ -27,7 +27,17 @@ const DEPT_RESULT = { items: [], total: 0 } as Awaited<ReturnType<typeof findDep
 beforeEach(() => {
   vi.clearAllMocks()
   mockFindForListing.mockResolvedValue(DEPT_RESULT)
-  mockCreate.mockResolvedValue({ id: DEPT_ID } as unknown as Awaited<ReturnType<typeof createDepartment>>)
+  mockCreate.mockResolvedValue({
+    id: DEPT_ID,
+    tenantId: TENANT_ID,
+    name: "Engenharia",
+    isActive: true,
+    workStartTime: "09:00",
+    workEndTime: "18:00",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    workDays: [],
+  } as Awaited<ReturnType<typeof createDepartment>>)
   mockUpdate.mockResolvedValue({ count: 1 } as Awaited<ReturnType<typeof updateDepartment>>)
   mockDeactivate.mockResolvedValue({ count: 1 } as Awaited<ReturnType<typeof deactivateDepartment>>)
 })

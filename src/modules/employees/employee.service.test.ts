@@ -164,7 +164,7 @@ describe("unpauseAllTenantsDueEmployees", () => {
 describe("getEmployees", () => {
   it("returns paginated employees for the given tenant", async () => {
     const employees = [CREATED_EMPLOYEE]
-    mockFindEmployeesByTenant.mockResolvedValue(employees as unknown as Awaited<ReturnType<typeof findEmployeesByTenant>>)
+    mockFindEmployeesByTenant.mockResolvedValue(employees as Awaited<ReturnType<typeof findEmployeesByTenant>>)
 
     const result = await getEmployees(TENANT_ID, 1, 20)
     expect(result).toEqual(employees)
@@ -185,7 +185,7 @@ describe("getEmployee", () => {
 describe("updateExistingEmployee", () => {
   it("updates employee fields and returns updated record", async () => {
     const updated = { ...CREATED_EMPLOYEE, name: "Ana Updated" }
-    mockUpdateEmployee.mockResolvedValue(updated as unknown as Awaited<ReturnType<typeof updateEmployee>>)
+    mockUpdateEmployee.mockResolvedValue(updated as Awaited<ReturnType<typeof updateEmployee>>)
 
     const result = await updateExistingEmployee(TENANT_ID, "emp-1", { name: "Ana Updated" })
     expect(result).toEqual(updated)
