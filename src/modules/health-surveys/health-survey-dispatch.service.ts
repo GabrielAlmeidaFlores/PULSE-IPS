@@ -65,18 +65,18 @@ async function sendDispatchTokensAndMessages(
     .map((empToken) => {
       const employee = eligibleEmployees.find((e) => e.id === empToken.employeeId)
       if (!employee) return null
-      const surveyUrl = `${env.NEXT_PUBLIC_APP_URL}/survey/${empToken.token}`
+      const healthSurveyUrl = `${env.NEXT_PUBLIC_APP_URL}/health-survey/${empToken.token}`
       return {
         name: "send-message" as const,
         data: {
           to: employee.phone,
-          body: buildHealthSurveyMessage(env.HEALTH_SURVEY_MESSAGE_TEMPLATE, employee.name, surveyUrl),
+          body: buildHealthSurveyMessage(env.HEALTH_SURVEY_MESSAGE_TEMPLATE, employee.name, healthSurveyUrl),
           tenantId,
           employeeId: employee.id,
           provider: env.MESSAGING_PROVIDER,
           type: "health_survey_dispatch" as const,
           templateName: env.WHATSAPP_SURVEY_TEMPLATE_NAME,
-          templateVariables: [employee.name, surveyUrl],
+          templateVariables: [employee.name, healthSurveyUrl],
         },
       }
     })
