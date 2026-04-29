@@ -133,8 +133,8 @@ export default function DataDeletionPage(): React.ReactElement {
           
           <Section
             icon={<ShieldCheck className="h-4 w-4" />}
-            iconBg="bg-amber-100 dark:bg-amber-900/30"
-            iconColor="text-amber-600 dark:text-amber-400"
+            iconBg="bg-status-warning-subtle"
+            iconColor="text-status-warning"
             title="Quais dados são armazenados?"
           >
             <ul className="text-sm text-muted-foreground space-y-2 leading-relaxed">
@@ -261,8 +261,8 @@ export default function DataDeletionPage(): React.ReactElement {
                 Os registros de consentimento (TCLE) com hash de CPF são mantidos pelo prazo legal de 5 anos, conforme exigido pela legislação trabalhista, e em seguida excluídos automaticamente.
               </Step>
             </ol>
-            <div className="mt-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/40 rounded-md p-3">
-              <p className="text-xs text-amber-800 dark:text-amber-400 leading-relaxed">
+            <div className="mt-4 bg-status-warning-subtle border border-status-warning-border rounded-md p-3">
+              <p className="text-xs text-status-warning leading-relaxed">
                 <strong>Atenção:</strong> A exclusão após o período de carência é <strong>irreversível</strong>. Os dados não poderão ser recuperados após a exclusão permanente. Certifique-se de exportar todos os relatórios necessários antes de solicitar a exclusão.
               </p>
             </div>
@@ -271,8 +271,8 @@ export default function DataDeletionPage(): React.ReactElement {
           
           <Section
             icon={<UserX className="h-4 w-4" />}
-            iconBg="bg-red-100 dark:bg-red-900/30"
-            iconColor="text-red-600 dark:text-red-400"
+            iconBg="bg-status-danger-subtle"
+            iconColor="text-status-danger"
             title="Como solicitar a exclusão dos meus dados?"
           >
             <div className="space-y-3">
@@ -314,8 +314,8 @@ export default function DataDeletionPage(): React.ReactElement {
           
           <Section
             icon={<ShieldCheck className="h-4 w-4" />}
-            iconBg="bg-green-100 dark:bg-green-900/30"
-            iconColor="text-green-600 dark:text-green-400"
+            iconBg="bg-status-success-subtle"
+            iconColor="text-status-success"
             title="O que não é excluído mesmo após solicitação?"
           >
             <p className="text-sm text-muted-foreground leading-relaxed mb-3">

@@ -111,9 +111,9 @@ export function DeleteAccountSection(): React.ReactElement {
         </div>
       )}
 
-      <div className="border border-red-200 dark:border-red-900/50 bg-card max-w-lg">
-        <div className="border-b border-red-200 dark:border-red-900/50 px-4 py-2.5 bg-red-50 dark:bg-red-950/30">
-          <span className="text-[11px] font-bold uppercase tracking-widest text-red-700 dark:text-red-400">
+      <div className="border border-status-danger-border bg-card max-w-lg">
+        <div className="border-b border-status-danger-border px-4 py-2.5 bg-status-danger-subtle">
+          <span className="text-[11px] font-bold uppercase tracking-widest text-status-danger">
             Zona de Perigo
           </span>
         </div>
@@ -130,7 +130,7 @@ export function DeleteAccountSection(): React.ReactElement {
               <button
                 type="button"
                 onClick={handleOpenWarning}
-                className="shrink-0 text-xs font-semibold text-red-600 dark:text-red-400 border border-red-300 dark:border-red-800 px-3 py-1.5 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+                className="shrink-0 text-xs font-semibold text-status-danger border border-status-danger-border px-3 py-1.5 hover:bg-status-danger-subtle transition-colors"
               >
                 Excluir conta
               </button>
@@ -140,22 +140,22 @@ export function DeleteAccountSection(): React.ReactElement {
           {step === "warning" && (
             <div className="space-y-4">
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-md bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
-                  <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                <div className="w-8 h-8 rounded-md bg-status-danger-subtle flex items-center justify-center shrink-0">
+                  <AlertTriangle className="h-4 w-4 text-status-danger" />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-foreground mb-2">Esta ação não pode ser desfeita facilmente</p>
                   <ul className="space-y-1.5 text-xs text-muted-foreground">
                     <li className="flex items-start gap-1.5">
-                      <span className="text-red-500 font-bold mt-0.5">·</span>
+                      <span className="text-status-danger font-bold mt-0.5">·</span>
                       <span>A assinatura será <strong className="text-foreground">cancelada imediatamente</strong> — sem cobranças futuras</span>
                     </li>
                     <li className="flex items-start gap-1.5">
-                      <span className="text-red-500 font-bold mt-0.5">·</span>
+                      <span className="text-status-danger font-bold mt-0.5">·</span>
                       <span>Todos os dados serão <strong className="text-foreground">permanentemente deletados em 30 dias</strong>: colaboradores, pesquisas, respostas, relatos e documentos</span>
                     </li>
                     <li className="flex items-start gap-1.5">
-                      <span className="text-red-500 font-bold mt-0.5">·</span>
+                      <span className="text-status-danger font-bold mt-0.5">·</span>
                       <span>Você tem <strong className="text-foreground">30 dias para cancelar</strong> a solicitação entrando em contato com o suporte</span>
                     </li>
                   </ul>
@@ -173,7 +173,7 @@ export function DeleteAccountSection(): React.ReactElement {
                   type="button"
                   onClick={handleSendCode}
                   disabled={isPending}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 px-3 py-1.5 transition-colors disabled:opacity-60"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-white bg-status-danger hover:bg-status-danger/90 px-3 py-1.5 transition-colors disabled:opacity-60"
                 >
                   {isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
                   Continuar — enviar código de confirmação
@@ -204,7 +204,7 @@ export function DeleteAccountSection(): React.ReactElement {
                   type="button"
                   onClick={handleConfirm}
                   disabled={isPending || code.length !== 6}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 px-3 py-1.5 transition-colors disabled:opacity-60"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-white bg-status-danger hover:bg-status-danger/90 px-3 py-1.5 transition-colors disabled:opacity-60"
                 >
                   {isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
                   Confirmar exclusão
