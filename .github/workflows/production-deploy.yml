@@ -96,6 +96,19 @@ jobs:
             sleep 3
           done
 
+      - name: Ensure infra containers are on Compose network
+        run: |
+          NETWORK="pulse-ips_default"
+          docker network create "${NETWORK}" 2>/dev/null || echo "✔ rede ${NETWORK} já existe"
+          for container in pulse_db pulse_redis; do
+            if docker network inspect "${NETWORK}" --format '{{range .Containers}}{{.Name}} {{end}}' | grep -qw "${container}"; then
+              echo "✔ ${container} já está na rede ${NETWORK}"
+            else
+              echo "▶ conectando ${container} à rede ${NETWORK}..."
+              docker network connect "${NETWORK}" "${container}"
+            fi
+          done
+
   build:
     name: Build application image
     runs-on: production
