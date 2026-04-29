@@ -26,7 +26,7 @@ export function PgrMarkReviewedButton({ reviewId }: PgrMarkReviewedButtonProps):
     <button
       onClick={handleClick}
       disabled={loading}
-      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white transition-colors"
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-status-success hover:bg-status-success/90 disabled:opacity-50 text-white transition-colors"
     >
       {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
       Marcar como revisado
