@@ -4192,13 +4192,17 @@ const db    = env.DATABASE_URL
 const key   = env.NEXT_PUBLIC_EMAIL_SUPPORT
 ```
 
-### Sem exceções
+### Exceção — `prisma.config.ts`
 
-Todos os arquivos do projeto — incluindo arquivos de configuração de framework na raiz (`next.config.ts`, `prisma.config.ts`) — devem importar `env` via `@/env`. O alias `@/` é resolvido pelo `tsconfig.json` e funciona tanto no contexto do Next.js quanto no Prisma CLI (que usa `tsx`/`esbuild` com suporte a paths do tsconfig).
+`prisma.config.ts` é o único arquivo que usa `process.env` diretamente. **Razão técnica:** o Prisma CLI carrega esse arquivo via `require()` nativo do Node.js, sem resolver aliases de tsconfig. O alias `@/` não é suportado nesse contexto — a importação `@/env` falha com `Cannot find module '@/env'` em tempo de execução do CLI.
 
-- `next.config.ts` → `import { env } from "@/env"`
-- `prisma.config.ts` → `import "dotenv/config"` (carrega `.env` antes da validação) + `import { env } from "@/env"`
-- Arquivos CLI (`src/cli/**`) → `import "dotenv/config"` como primeiro import, seguido de `import { env } from "../../env"` (caminho relativo necessário pois `@/` não está disponível no contexto `ts-node` sem Next.js)
+`next.config.ts` não tem essa limitação porque o Next.js usa seu próprio bundler (com suporte a tsconfig paths) ao carregar o arquivo de configuração.
+
+**Regra:** qualquer nova variável adicionada em `prisma.config.ts` deve estar declarada em `src/env.ts` — a leitura direta via `process.env` é por limitação técnica do Prisma CLI, não por conveniência.
+
+### Sem outras exceções
+
+Todos os demais arquivos — incluindo `next.config.ts` e qualquer arquivo de configuração de framework — devem usar `import { env } from "@/env"`.
 
 ### Como adicionar nova variável
 
@@ -4216,6 +4220,7 @@ grep -rn "process\.env\." \
   --include="*.ts" --include="*.tsx" \
   --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=coverage \
   | grep -v "src/env.ts" \
+  | grep -v "prisma.config.ts" \
   | grep -v "\.test\." | grep -v "\.spec\."
 # Resultado esperado: nenhuma linha
 ```
