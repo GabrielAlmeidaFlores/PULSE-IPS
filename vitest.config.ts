@@ -37,6 +37,7 @@ export default defineConfig({
         "src/modules/anonymous-reports/anonymous-report.service.ts",
         "src/modules/plans/plan.service.ts",
         "src/modules/organizations/organization.service.ts",
+        "src/modules/organizations/account-deletion.service.ts",
         "src/modules/action-plans/action-plan.service.ts",
         "src/modules/action-plans/suggestions/alert.ts",
         "src/modules/action-plans/suggestions/report.ts",
