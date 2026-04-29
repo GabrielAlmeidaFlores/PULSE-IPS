@@ -51,6 +51,19 @@ export const env = createEnv({
     REDIS_PORT: z.string().default("6379"),
     REDIS_PASSWORD: z.string().optional(),
 
+    DISABLE_SECURITY_HEADERS: z
+      .string()
+      .optional()
+      .transform((v) => v === "true"),
+
+    NODE_ENV: z
+      .enum(["development", "test", "production"])
+      .default("development"),
+
+    LOG_LEVEL: z
+      .enum(["trace", "debug", "info", "warn", "error", "fatal", "silent"])
+      .default("info"),
+
     STORAGE_PROVIDER: z.enum(["s3", "console"]).default("console"),
     AWS_ACCESS_KEY_ID: z.string().min(1).optional(),
     AWS_SECRET_ACCESS_KEY: z.string().min(1).optional(),
@@ -60,6 +73,7 @@ export const env = createEnv({
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.string().url(),
+    NEXT_PUBLIC_APP_VERSION: z.string().optional(),
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().startsWith("pk_").optional(),
     NEXT_PUBLIC_CONSULTANT_WHATSAPP: z.string().default("5511999999999"),
     NEXT_PUBLIC_EMAIL_SUPPORT: z
@@ -114,6 +128,10 @@ export const env = createEnv({
     REDIS_PORT: process.env.REDIS_PORT,
     REDIS_PASSWORD: process.env.REDIS_PASSWORD,
 
+    DISABLE_SECURITY_HEADERS: process.env.DISABLE_SECURITY_HEADERS,
+    NODE_ENV: process.env.NODE_ENV,
+    LOG_LEVEL: process.env.LOG_LEVEL,
+
     STORAGE_PROVIDER: process.env.STORAGE_PROVIDER,
     AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
     AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
@@ -122,6 +140,7 @@ export const env = createEnv({
     AWS_ENDPOINT_URL: process.env.AWS_ENDPOINT_URL,
 
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    NEXT_PUBLIC_APP_VERSION: process.env.NEXT_PUBLIC_APP_VERSION,
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
     NEXT_PUBLIC_CONSULTANT_WHATSAPP:

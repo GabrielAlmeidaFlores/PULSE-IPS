@@ -1,4 +1,5 @@
 import type { Instrumentation } from "next"
+import { env } from "@/env"
 
 export const onRequestError: Instrumentation.onRequestError = async (
   error,
@@ -10,14 +11,12 @@ export const onRequestError: Instrumentation.onRequestError = async (
   const ipRaw = Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor
   const ip = ipRaw?.split(",")[0]?.trim() ?? request.headers["x-real-ip"] ?? undefined
 
-  const appUrl = process.env["NEXT_PUBLIC_APP_URL"] ?? "http://localhost:3000"
-
   try {
-    await fetch(`${appUrl}/api/internal/request-log`, {
+    await fetch(`${env.NEXT_PUBLIC_APP_URL}/api/internal/request-log`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-internal-secret": process.env["CRON_SECRET"] ?? "",
+        "x-internal-secret": env.CRON_SECRET,
       },
       body: JSON.stringify({
         method: request.method,

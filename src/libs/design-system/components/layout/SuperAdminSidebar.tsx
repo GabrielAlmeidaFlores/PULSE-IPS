@@ -7,6 +7,7 @@ import { Menu, X, LayoutDashboard, Building2, CreditCard, FileText, Users, Scrol
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { Logo } from "@/libs/design-system/components/logo"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { env } from "@/env"
 
 interface NavItem {
   href: string
@@ -78,7 +79,7 @@ export function SuperAdminSidebar(): React.ReactElement {
         </div>
         <NavLinks items={navItems} />
         <div className="px-4 py-3 border-t border-sidebar-border flex items-center justify-between">
-          <p className="text-[10px] text-muted-foreground/50 font-bold tracking-widest uppercase">v{process.env.NEXT_PUBLIC_APP_VERSION}</p>
+          <p className="text-[10px] text-muted-foreground/50 font-bold tracking-widest uppercase">v{env.NEXT_PUBLIC_APP_VERSION}</p>
           <ThemeToggle variant="icon" />
         </div>
       </aside>

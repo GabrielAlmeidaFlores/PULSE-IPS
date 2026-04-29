@@ -21,7 +21,7 @@ export async function createSession(payload: SessionPayload): Promise<void> {
   const cookieStore = await cookies()
   cookieStore.set(SESSION_COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: env.NODE_ENV === "production",
     sameSite: "strict",
     maxAge: SESSION_DURATION_SECONDS,
     path: "/",
@@ -51,7 +51,7 @@ export async function createSuperAdminSession(payload: SuperAdminSessionPayload)
   const cookieStore = await cookies()
   cookieStore.set(SUPER_ADMIN_SESSION_COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: env.NODE_ENV === "production",
     sameSite: "strict",
     maxAge: SESSION_DURATION_SECONDS,
     path: "/",

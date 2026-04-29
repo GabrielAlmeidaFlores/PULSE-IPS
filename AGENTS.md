@@ -46,6 +46,7 @@
 31. [Paginação — Padrão Obrigatório](#31-paginação--padrão-obrigatório)
 32. [Centralização de Cores — CSS Variables](#32-centralização-de-cores--css-variables)
 33. [Endereços de E-mail — Variáveis de Ambiente](#33-endereços-de-e-mail--variáveis-de-ambiente)
+34. [Variáveis de Ambiente — Acesso Centralizado](#34-variáveis-de-ambiente--acesso-centralizado)
 
 ---
 
@@ -4164,5 +4165,59 @@ href="mailto:privacidade@pulseips.com.br"
 3. Adicione ao `.env.local` com o valor real de produção
 4. Documente na tabela acima
 5. Use **sempre** via `env.NEXT_PUBLIC_EMAIL_*` — nunca como string literal
+
+*Pulse — AGENTS.md | Documento interno | Abril de 2026*
+
+---
+
+## 34. Variáveis de Ambiente — Acesso Centralizado
+
+### Regra obrigatória
+
+**`process.env` é proibido em todo o código da aplicação.** O único lugar onde `process.env.*` pode aparecer é em `src/env.ts` — dentro do objeto `runtimeEnv` do `createEnv`.
+
+Todo o restante do código lê variáveis de ambiente **exclusivamente** através do objeto `env` importado de `@/env`:
+
+```typescript
+// ❌ PROIBIDO em qualquer arquivo fora de src/env.ts
+const isDev = process.env.NODE_ENV === "development"
+const db    = process.env.DATABASE_URL!
+const key   = process.env["NEXT_PUBLIC_EMAIL_SUPPORT"] ?? "fallback"
+
+// ✅ CORRETO — via objeto centralizado
+import { env } from "@/env"
+
+const isDev = env.NODE_ENV === "development"
+const db    = env.DATABASE_URL
+const key   = env.NEXT_PUBLIC_EMAIL_SUPPORT
+```
+
+### Sem exceções
+
+Todos os arquivos do projeto — incluindo arquivos de configuração de framework na raiz (`next.config.ts`, `prisma.config.ts`) — devem importar `env` via `@/env`. O alias `@/` é resolvido pelo `tsconfig.json` e funciona tanto no contexto do Next.js quanto no Prisma CLI (que usa `tsx`/`esbuild` com suporte a paths do tsconfig).
+
+- `next.config.ts` → `import { env } from "@/env"`
+- `prisma.config.ts` → `import "dotenv/config"` (carrega `.env` antes da validação) + `import { env } from "@/env"`
+- Arquivos CLI (`src/cli/**`) → `import "dotenv/config"` como primeiro import, seguido de `import { env } from "../../env"` (caminho relativo necessário pois `@/` não está disponível no contexto `ts-node` sem Next.js)
+
+### Como adicionar nova variável
+
+1. Declare o schema Zod na seção correta (`server` ou `client`) em `src/env.ts`
+2. Adicione a entrada correspondente em `runtimeEnv`: `NOME: process.env.NOME`
+3. Use via `env.NOME` em qualquer arquivo
+4. Documente na seção 21 (Variáveis de Ambiente)
+
+### Checklist do full-scan
+
+Antes de qualquer PR, verificar que não existem `process.env` fora de `src/env.ts`:
+
+```bash
+grep -rn "process\.env\." \
+  --include="*.ts" --include="*.tsx" \
+  --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=coverage \
+  | grep -v "src/env.ts" \
+  | grep -v "\.test\." | grep -v "\.spec\."
+# Resultado esperado: nenhuma linha
+```
 
 *Pulse — AGENTS.md | Documento interno | Abril de 2026*

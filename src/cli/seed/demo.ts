@@ -1,4 +1,5 @@
 import "dotenv/config"
+import { env } from "../../env"
 import { createLogger } from "../../libs/utils/logger"
 
 const logger = createLogger("seed")
@@ -28,7 +29,7 @@ function healthIndexLabel(hi: number): string {
   return "Crítico"
 }
 
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
+const adapter = new PrismaPg({ connectionString: env.DATABASE_URL })
 const prisma = new PrismaClient({ adapter })
 
 const ORG_SLUG_OLD = "kyber-solucoes"
