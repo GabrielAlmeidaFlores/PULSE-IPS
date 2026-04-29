@@ -117,7 +117,7 @@ jobs:
 
       - name: Run Prisma migrate deploy
         run: |
-          docker compose run --rm migrate
+          docker compose run --rm --no-deps migrate
 
   deploy:
     name: Deploy app and worker
