@@ -1,6 +1,6 @@
 "use client"
 
-import { ScoreDistributionBar } from "@/app/(tenant)/surveys/[dispatchId]/components/dispatch-charts"
+import { ScoreDistributionBar } from "@/app/(tenant)/health-surveys/[dispatchId]/components/dispatch-charts"
 import { toHealthIndex, healthIndexAccent } from "@/libs/utils/health-index"
 
 interface QuestionDistDisplay {

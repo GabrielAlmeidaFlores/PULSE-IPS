@@ -2,7 +2,7 @@ import { addDays } from "date-fns"
 import { MINIMUM_RESPONDENTS_FOR_DISPLAY } from "@/libs/utils/anonymity"
 import type { PgrReview, PgrQuestionResult } from "@prisma/client"
 import type { CreatePgrDeptResultInput, CreatePgrQuestionResultInput, PgrScoreDistribution } from "@/modules/pgr/pgr.types"
-import type { ScoreDirection } from "@/modules/surveys/survey.types"
+import type { ScoreDirection } from "@/modules/health-surveys/health-survey.types"
 import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
 import { AppError } from "@/libs/errors/app-error"
 import {
@@ -64,7 +64,7 @@ export function getPgrReviewById(tenantId: string, id: string): Promise<PgrRevie
 }
 
 interface DispatchLike {
-  surveyConfiguration: {
+  healthSurveyConfiguration: {
     departmentId: string
     questions?: { id: string; text: string; order: number; scoreDirection?: string | null }[] | null
   }
@@ -104,7 +104,7 @@ function buildDeptQuestionResults(
 ): CreatePgrQuestionResultInput[] {
   const qMap: Map<string, QuestionMapEntry> = new Map()
   for (const dispatch of deptDispatches) {
-    registerQuestionsInMap(qMap, dispatch.surveyConfiguration.questions ?? [])
+    registerQuestionsInMap(qMap, dispatch.healthSurveyConfiguration.questions ?? [])
     collectResponseScores(qMap, dispatch.responses)
   }
   const results: CreatePgrQuestionResultInput[] = []
@@ -147,11 +147,11 @@ export async function generatePgrReport(tenantId: string, period: string): Promi
 
   const deptResults: CreatePgrDeptResultInput[] = org.departments.map((dept) => {
     const deptDispatches = periodDispatches.filter(
-      (d) => d.surveyConfiguration.departmentId === dept.id,
+      (d) => d.healthSurveyConfiguration.departmentId === dept.id,
     )
     const allResponses = deptDispatches.flatMap((d) => d.responses)
     const questionDirections = new Map(
-      deptDispatches.flatMap((d) => d.surveyConfiguration.questions.map((q) => [q.id, q.scoreDirection ?? "higher_is_better"])),
+      deptDispatches.flatMap((d) => d.healthSurveyConfiguration.questions.map((q) => [q.id, q.scoreDirection ?? "higher_is_better"])),
     )
     const allItems = allResponses.flatMap((r) => r.items)
     const avgScore =
@@ -178,7 +178,7 @@ export async function generatePgrReport(tenantId: string, period: string): Promi
     buildDeptQuestionResults(
       "",
       dept.id,
-      periodDispatches.filter((d) => d.surveyConfiguration.departmentId === dept.id),
+      periodDispatches.filter((d) => d.healthSurveyConfiguration.departmentId === dept.id),
     ),
   )
 

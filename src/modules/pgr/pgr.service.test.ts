@@ -68,7 +68,7 @@ function makeDispatch(month: number, responseCount: number): PgrDispatch {
     id: `d-${month}`,
     dispatchedAt: new Date(`2026-0${month}-15T10:00:00Z`),
     totalRecipients: 10,
-    surveyConfiguration: {
+    healthSurveyConfiguration: {
       departmentId: DEPT_ID,
       questions: [QUESTION],
     },

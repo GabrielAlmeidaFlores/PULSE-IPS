@@ -1,6 +1,6 @@
 "use client"
 
-import type { ScoreDirection } from "@/modules/surveys/survey.types"
+import type { ScoreDirection } from "@/modules/health-surveys/health-survey.types"
 
 export interface ScoreSegmentTooltipProps {
   score: number

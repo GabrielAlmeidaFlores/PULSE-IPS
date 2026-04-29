@@ -12,13 +12,13 @@ export const QUEUE_NAME = "pulse-jobs" as const
 export const MESSAGE_QUEUE_NAME = "pulse-messages" as const
 
 export type JobName =
-  | "survey-dispatcher"
-  | "survey-adherence-checker"
-  | "survey-score-alert-detector"
+  | "health-survey-dispatcher"
+  | "health-survey-adherence-checker"
+  | "health-survey-score-alert-detector"
   | "employee-unpause"
   | "pgr-review-reminder"
   | "stripe-webhook-retry"
-  | "survey-response-token-cleanup"
+  | "health-survey-response-token-cleanup"
   | "action-plan-suggestion-generator"
   | "organization-deletion-executor"
 
@@ -28,7 +28,7 @@ export interface SendMessageJobData {
   tenantId: string
   employeeId: string
   provider: string
-  type: "consent_invite" | "survey_dispatch" | "survey_resend"
+  type: "consent_invite" | "health_survey_dispatch" | "health_survey_resend"
   templateName?: string
   templateVariables?: string[]
 }

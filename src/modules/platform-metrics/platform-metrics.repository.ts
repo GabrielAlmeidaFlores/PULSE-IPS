@@ -22,7 +22,7 @@ export async function getPlatformMetrics(): Promise<PlatformMetrics> {
     prisma.organization.count({ where: { isActive: true } }),
     prisma.organization.count({ where: { createdAt: { gte: monthStart } } }),
     prisma.employee.count({ where: { status: "active" } }),
-    prisma.surveyResponse.count(),
+    prisma.healthSurveyResponse.count(),
     prisma.organizationSubscription.count({ where: { status: "active" } }),
     prisma.alert.count(),
     prisma.actionPlan.count({ where: { status: "open" } }),

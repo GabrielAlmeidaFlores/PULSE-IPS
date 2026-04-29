@@ -10,7 +10,7 @@ const mockListLogs = vi.mocked(jobLogRepository.listLogs)
 
 const JOB_LOG_INPUT: InsertJobLogInput = {
   queueName: "jobs",
-  jobName: "survey-dispatcher",
+  jobName: "health-survey-dispatcher",
   jobId: "job-1",
   status: "completed",
   durationMs: 150,

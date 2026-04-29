@@ -29,7 +29,7 @@ import { PgrScoreDistributionWidget, type QuestionDistDisplay } from "@/app/(ten
 import { PgrMarkReviewedButton } from "@/app/(tenant)/pgr/[id]/pgr-mark-reviewed-button"
 import { PgrDownloadButton } from "@/app/(tenant)/pgr/[id]/pgr-download-button"
 import { ChartCard } from "@/components/chart-card"
-import type { ScoreDirection } from "@/modules/surveys/survey.types"
+import type { ScoreDirection } from "@/modules/health-surveys/health-survey.types"
 import { toHealthIndex, healthIndexAccent, healthIndexBarColor, healthIndexChartColor, adherenceRateBarClass, adherenceRateTextColor } from "@/libs/utils/health-index"
 
 interface PageProps {

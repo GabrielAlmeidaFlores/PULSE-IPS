@@ -135,8 +135,8 @@ Feita exclusivamente pelo Super Admin. Campos:
 | plans | CRUD | — | — | |
 | departments | — | CRUD | CR + U | |
 | employees | — | CRUD | CR + U | |
-| survey_configurations | — | CRUD | CRUD | |
-| survey_dispatches | — | CR | CR | |
+| health_survey_configurations | — | CRUD | CRUD | |
+| health_survey_dispatches | — | CR | CR | |
 | anonymous_reports | — | CRU + D | CRU | |
 | action_plans | — | CRUD | CRU | |
 | documents | — | CRUD | CR | |
@@ -243,7 +243,7 @@ src/
 ├── app/                                    # Next.js App Router
 │   ├── (public)/                           # Rotas públicas (sem autenticação)
 │   │   ├── consent/[token]/page.tsx        # Fluxo de aceite do TCLE
-│   │   ├── survey/[token]/page.tsx         # Formulário de pesquisa (sem login)
+│   │   ├── health-survey/[token]/page.tsx         # Formulário de pesquisa (sem login)
 │   │   └── report/[orgSlug]/page.tsx       # Canal de relato anônimo
 │   ├── platform-terms/page.tsx             # Termos de Uso — página pública standalone (linked no footer)
 │   ├── privacy-policy/page.tsx             # Política de Privacidade — página pública standalone
@@ -312,7 +312,7 @@ src/
 │   │   │   ├── import/preview/page.tsx     # Preview válidos/erros antes de confirmar
 │   │   │   └── [id]/page.tsx
 │   │   ├── departments/
-│   │   ├── surveys/
+│   │   ├── health-surveys/
 │   │   ├── reports/
 │   │   ├── action-plans/
 │   │   ├── documents/
@@ -354,8 +354,8 @@ src/
 │   │   ├── consent.service.ts
 │   │   ├── consent.schema.ts
 │   │   └── consent.types.ts
-│   ├── surveys/
-│   │   └── survey-dispatch.service.ts      # Agendamento e disparo
+│   ├── health-surveys/
+│   │   └── health-survey-dispatch.service.ts      # Agendamento e disparo
 │   ├── anonymous-reports/
 │   ├── action-plans/
 │   │   ├── action-plan.repository.ts
@@ -805,7 +805,7 @@ Dias de trabalho do departamento em `department_work_days` (join table — ver a
 | updated_at | timestamptz | NOT NULL |
 | UNIQUE | (tenant_id, email) | |
 
-> `work_start_time` e `work_end_time` do colaborador sobrepõem os valores do departamento quando preenchidos (cadeia: `employee → department → surveyConfig`). Dias de trabalho opcionais em `employee_work_days` (join table — ver abaixo); quando vazio, herda de `department_work_days`. Todos avaliados no `organizations.timezone` no momento do dispatch.
+> `work_start_time` e `work_end_time` do colaborador sobrepõem os valores do departamento quando preenchidos (cadeia: `employee → department → healthSurveyConfig`). Dias de trabalho opcionais em `employee_work_days` (join table — ver abaixo); quando vazio, herda de `department_work_days`. Todos avaliados no `organizations.timezone` no momento do dispatch.
 
 #### `employee_consents`
 
@@ -818,7 +818,7 @@ Dias de trabalho do departamento em `department_work_days` (join table — ver a
 | employee_id | uuid | NOT NULL, FK → employees.id |
 | consent_term_version_id | uuid | NOT NULL, FK → consent_term_versions.id |
 | event | varchar(20) | `'invited'` \| `'accepted'` \| `'refused'` \| `'revoked'` \| `'opt_out'` |
-| source | varchar(20) | `'whatsapp_link'` \| `'sms_link'` \| `'survey_form'` \| `'system'` |
+| source | varchar(20) | `'whatsapp_link'` \| `'sms_link'` \| `'health_survey_form'` \| `'system'` |
 | cpf_hash | varchar(255) | SHA-256 do CPF — apenas no evento `accepted` |
 | token | varchar(255) | UNIQUE |
 | token_expires_at | timestamptz | |
@@ -826,7 +826,7 @@ Dias de trabalho do departamento em `department_work_days` (join table — ver a
 
 > CPF nunca armazenado em texto puro. `ConsentRepository` não expõe `update()` nem `delete()`.
 
-#### `survey_configurations`
+#### `health_survey_configurations`
 
 | Coluna | Tipo | Constraints |
 |---|---|---|
@@ -839,9 +839,9 @@ Dias de trabalho do departamento em `department_work_days` (join table — ver a
 | is_active | boolean | NOT NULL |
 | UNIQUE | (tenant_id, department_id) | |
 
-Dias de trabalho da pesquisa em `survey_config_work_days` (join table — ver abaixo). Armazenados como `day_of_week INT` (0=Dom … 6=Sáb).
+Dias de trabalho da pesquisa em `health_survey_config_work_days` (join table — ver abaixo). Armazenados como `day_of_week INT` (0=Dom … 6=Sáb).
 
-> `work_start_time`, `work_end_time` e `work_days` (via join table) definem a janela de disparo da pesquisa. **Cadeia de herança no disparo:** `employee.workStartTime/workEndTime → department.workStartTime/workEndTime → surveyConfig.workStartTime/workEndTime`. Para dias de trabalho por funcionário: `employee_work_days` (se não vazio) → `department_work_days`. Todos avaliados no `organizations.timezone`.
+> `work_start_time`, `work_end_time` e `work_days` (via join table) definem a janela de disparo da pesquisa. **Cadeia de herança no disparo:** `employee.workStartTime/workEndTime → department.workStartTime/workEndTime → healthSurveyConfig.workStartTime/workEndTime`. Para dias de trabalho por funcionário: `employee_work_days` (se não vazio) → `department_work_days`. Todos avaliados no `organizations.timezone`.
 
 > Não existe mais `send_days` (jsonb) nem `send_time` (time) separados — o disparo ocorre automaticamente pelo scheduler ao detectar que estamos dentro do expediente configurado.
 
@@ -865,17 +865,17 @@ Dias de trabalho específicos de um colaborador. Quando presente, sobrepõe `dep
 | day_of_week | integer | NOT NULL — 0=Dom … 6=Sáb |
 | PK | (employee_id, day_of_week) | |
 
-#### `survey_config_work_days`
+#### `health_survey_config_work_days`
 
 Dias de trabalho configurados para uma pesquisa. Define em quais dias o scheduler dispara essa configuração.
 
 | Coluna | Tipo | Constraints |
 |---|---|---|
-| survey_configuration_id | uuid | NOT NULL, FK → survey_configurations.id ON DELETE CASCADE |
+| health_survey_configuration_id | uuid | NOT NULL, FK → health_survey_configurations.id ON DELETE CASCADE |
 | day_of_week | integer | NOT NULL — 0=Dom … 6=Sáb |
-| PK | (survey_configuration_id, day_of_week) | |
+| PK | (health_survey_configuration_id, day_of_week) | |
 
-#### `survey_questions`
+#### `health_survey_questions`
 
 | Coluna | Tipo | Constraints |
 |---|---|---|
@@ -888,7 +888,7 @@ Dias de trabalho configurados para uma pesquisa. Define em quais dias o schedule
 | is_active | boolean | NOT NULL, default true |
 | created_at | timestamptz | NOT NULL |
 
-#### `survey_dispatches`
+#### `health_survey_dispatches`
 
 | Coluna | Tipo | Constraints |
 |---|---|---|
@@ -904,7 +904,7 @@ Dias de trabalho configurados para uma pesquisa. Define em quais dias o schedule
 
 **Índice:** `(tenant_id, department_id, scheduled_at DESC)`
 
-#### `survey_response_tokens`
+#### `health_survey_response_tokens`
 
 Token de uso único por colaborador/dispatch com snapshot do horário de trabalho. **Duas camadas de proteção contra fraude:**
 1. **Expiração em 48h** — link inativo após 2 dias do disparo
@@ -916,7 +916,7 @@ Após o uso, `used_at` é preenchido, mas **nenhum vínculo** é criado entre to
 |---|---|---|
 | id | uuid | PK |
 | tenant_id | uuid | NOT NULL |
-| dispatch_id | uuid | NOT NULL, FK → survey_dispatches.id |
+| dispatch_id | uuid | NOT NULL, FK → health_survey_dispatches.id |
 | employee_id | uuid | NOT NULL, FK → employees.id |
 | token | varchar(255) | NOT NULL, UNIQUE |
 | used_at | timestamptz | |
@@ -925,7 +925,7 @@ Após o uso, `used_at` é preenchido, mas **nenhum vínculo** é criado entre to
 | work_end_time | varchar(5) | NOT NULL — snapshot `"HH:MM"` no momento do disparo |
 | created_at | timestamptz | NOT NULL |
 
-#### `survey_responses`
+#### `health_survey_responses`
 
 **Sem `employee_id`** — desvinculamento garante anonimato completo. O desvinculamento ocorre no momento do uso do token.
 
@@ -938,14 +938,14 @@ Após o uso, `used_at` é preenchido, mas **nenhum vínculo** é criado entre to
 | responded_at | date | NOT NULL — apenas data, sem hora (segunda camada de proteção ao anonimato) |
 | created_at | timestamptz | NOT NULL |
 
-#### `survey_response_items`
+#### `health_survey_response_items`
 
 | Coluna | Tipo | Constraints |
 |---|---|---|
 | id | uuid | PK |
 | tenant_id | uuid | NOT NULL |
-| response_id | uuid | NOT NULL, FK → survey_responses.id ON DELETE CASCADE |
-| question_id | uuid | NOT NULL, FK → survey_questions.id |
+| response_id | uuid | NOT NULL, FK → health_survey_responses.id ON DELETE CASCADE |
+| question_id | uuid | NOT NULL, FK → health_survey_questions.id |
 | score | smallint | NOT NULL, CHECK (score BETWEEN 1 AND 5) |
 
 #### `anonymous_reports`
@@ -1088,7 +1088,7 @@ Preservação de versões anteriores de documentos editados pelo Admin. Toda edi
 | resolved_at | timestamptz | |
 | resolved_by | uuid | FK → organization_users.id |
 | linked_document_id | uuid | FK → documents.id — segunda forma de fechar o alerta |
-| dispatch_id | uuid | FK → survey_dispatches.id |
+| dispatch_id | uuid | FK → health_survey_dispatches.id |
 | report_id | uuid | FK → anonymous_reports.id |
 | created_at | timestamptz | NOT NULL |
 
@@ -1129,8 +1129,8 @@ Registro de todas as mensagens enviadas. Fonte dos dados de métricas do Super A
 | id | uuid | PK |
 | tenant_id | uuid | FK → organizations.id — NULL para mensagens da plataforma |
 | recipient_phone | varchar(20) | NOT NULL |
-| type | varchar(30) | `'consent_invite'` \| `'survey_dispatch'` \| `'survey_resend'` |
-| dispatch_id | uuid | FK → survey_dispatches.id |
+| type | varchar(30) | `'consent_invite'` \| `'health_survey_dispatch'` \| `'health_survey_resend'` |
+| dispatch_id | uuid | FK → health_survey_dispatches.id |
 | status | varchar(20) | `'sent'` \| `'failed'` |
 | external_id | varchar(255) | — ID retornado pelo provedor |
 | sent_at | timestamptz | NOT NULL |
@@ -1145,7 +1145,7 @@ Registro persistido de todas as execuções de jobs (completed/failed). **Append
 |---|---|---|
 | id | uuid | PK |
 | queue | varchar(50) | NOT NULL — `'jobs'` \| `'messages'` |
-| job_name | varchar(100) | NOT NULL — ex: `'survey-dispatcher'`, `'send-message'` |
+| job_name | varchar(100) | NOT NULL — ex: `'health-survey-dispatcher'`, `'send-message'` |
 | job_id | varchar(255) | NOT NULL — ID do job no BullMQ |
 | status | varchar(20) | NOT NULL — `'completed'` \| `'failed'` |
 | duration_ms | integer | Duração da execução em ms |
@@ -1204,7 +1204,7 @@ Resultado por pergunta gerado na revisão PGR. Permite análise de tendência po
 | tenant_id | uuid | NOT NULL, FK → organizations.id |
 | pgr_review_id | uuid | NOT NULL, FK → pgr_reviews.id ON DELETE CASCADE |
 | department_id | uuid | NOT NULL, FK → departments.id |
-| question_id | uuid | NOT NULL, FK → survey_questions.id |
+| question_id | uuid | NOT NULL, FK → health_survey_questions.id |
 | avg_score | float | NOT NULL |
 | response_count | integer | NOT NULL |
 | created_at | timestamptz | NOT NULL |
@@ -1221,7 +1221,7 @@ Resultado por pergunta gerado na revisão PGR. Permite análise de tendência po
 | **Termos da plataforma** | `platform_terms_versions`, `platform_terms_acceptances` |
 | **Tenant — estrutura** | `organizations`, `organization_subscriptions`, `organization_users`, `departments` |
 | **Tenant — colaboradores** | `employees`, `employee_consents` |
-| **Tenant — pesquisas** | `survey_configurations`, `survey_questions`, `survey_dispatches`, `survey_response_tokens`, `survey_responses`, `survey_response_items` |
+| **Tenant — pesquisas** | `health_survey_configurations`, `health_survey_questions`, `health_survey_dispatches`, `health_survey_response_tokens`, `health_survey_responses`, `health_survey_response_items` |
 | **Tenant — ocorrências** | `anonymous_reports`, `action_plans`, `action_tasks`, `action_plan_suggestions`, `action_plan_suggestion_tasks` |
 | **Tenant — documentos e PGR** | `documents`, `document_versions`, `pgr_reviews`, `pgr_dept_results`, `pgr_question_results` |
 | **Tenant — operacional** | `alerts`, `audit_logs` |
@@ -1436,15 +1436,15 @@ createActionPlanSuggestion(tenantId, data)
 dismissActionPlanSuggestion(tenantId, id)
 convertActionPlanSuggestionToActionPlan(tenantId, id)
 generateActionPlanSuggestions()
-surveyResponseTokenCleanup()
+healthSurveyResponseTokenCleanup()
 pgrReviewDueReminder()
-surveyAdherenceChecker()
+healthSurveyAdherenceChecker()
 interface ActionPlanSuggestionWithTasks { ... }
 interface CreateActionPlanSuggestionInput { ... }
 <ActionPlanSuggestionCard />
 <ActionPlanSuggestionList />
 "action-plan-suggestion-generator"
-"survey-response-token-cleanup"
+"health-survey-response-token-cleanup"
 ```
 
 **A regra se aplica a todo artefato sem exceção:** funções, variáveis, parâmetros, interfaces, types, constantes, componentes React, hooks, jobs BullMQ, nomes de schedules, rotas, nomes de arquivo, eventos de audit log, tipos de alerta, tipos de mensagem, campos de `@relation` no Prisma.
@@ -1497,7 +1497,7 @@ Isso inclui:
   // ❌ Errado — usa timezone do servidor (pode ser UTC ou qualquer outro)
   const day = new Date().getDay()
   ```
-- `workDays` é armazenado em tabelas de join relacionais (`department_work_days`, `employee_work_days`, `survey_config_work_days`) — nunca como string separada por vírgula. Em TypeScript, `workDays: number[]` (0=Dom … 6=Sáb) — avaliado no timezone da organização
+- `workDays` é armazenado em tabelas de join relacionais (`department_work_days`, `employee_work_days`, `health_survey_config_work_days`) — nunca como string separada por vírgula. Em TypeScript, `workDays: number[]` (0=Dom … 6=Sáb) — avaliado no timezone da organização
 - `workStartTime`/`workEndTime` como `"HH:MM"` — avaliados no timezone da organização no momento do dispatch
 
 **Settings:** O RH configura o fuso horário em `/settings` → campo `Fuso horário`. O valor salvo é um IANA timezone string (ex: `"America/Sao_Paulo"`).
@@ -1711,7 +1711,7 @@ logger.debug("payload recebido", data)
 
 // Opção 2 — logger nomeado (recomendado para módulos e workers)
 import { createLogger } from "@/libs/utils/logger"
-const logger = createLogger("survey-dispatcher")
+const logger = createLogger("health-survey-dispatcher")
 
 logger.info("verificando dispatches pendentes")
 ```
@@ -1746,7 +1746,7 @@ createLogger("module")
 createLogger("service")
 
 // ✅ CORRETO — específico
-createLogger("survey-dispatcher")
+createLogger("health-survey-dispatcher")
 createLogger("fake-billing")
 createLogger("job-worker")
 ```
@@ -1886,7 +1886,7 @@ O service usa a interface; nunca instancia o adapter diretamente:
 ```typescript
 // Correto — o service não sabe qual provedor está sendo usado
 const messaging = getMessagingService()
-await messaging.send({ to: employee.phone, body: surveyLink })
+await messaging.send({ to: employee.phone, body: healthSurveyLink })
 ```
 
 ### Factory para integrações
@@ -1981,7 +1981,7 @@ Client Component (formulário)
 ### Fluxo público — Formulário de pesquisa
 
 ```
-Link SMS → GET /survey/[token]
+Link SMS → GET /health-survey/[token]
   ├─ [GUARD 1] Token não existe → TokenInvalidPage
   ├─ [GUARD 2] used_at IS NOT NULL → AlreadyAnsweredPage
   ├─ [GUARD 3] expires_at < now() → LinkExpiredPage
@@ -1996,15 +1996,15 @@ Link SMS → GET /survey/[token]
         ├─ "Não quero mais participar" → Server Action: optOut(token)
         └─ Submit → Server Action:
               ├─ Re-executa todos os guards (idempotência)
-              ├─ Cria survey_response (sem employee_id)
-              ├─ Cria survey_response_items
+              ├─ Cria health_survey_response (sem employee_id)
+              ├─ Cria health_survey_response_items
               └─ Marca token: used_at = now() (atômico com INSERT acima)
 ```
 
 ### Fluxo de alerta automático
 
 ```
-survey_dispatch enviado
+health_survey_dispatch enviado
   └─→ Job (adherence-checker, após 48h)
         ├─ Calcula taxa de adesão: total_responses / total_recipients
         ├─ Se < 80%: cria alert (type: 'low_adherence')
@@ -2053,7 +2053,7 @@ O arquivo `src/proxy.ts` com export `proxy` substitui o antigo `middleware.ts` n
 - Bloquear acesso de `org_user` ao `/super-admin/*`
 - Bloquear acesso de `super_admin` ao `/(tenant)/*`
 
-**Caminhos públicos** (sem autenticação): `/login`, `/forgot-password`, `/reset-password/*`, `/invite/*`, `/consent/*`, `/survey/*`, `/report/*`, `/accept-terms`, `/api/webhooks/*`, `/platform-terms`, `/privacy-policy`, `/consent-terms`
+**Caminhos públicos** (sem autenticação): `/login`, `/forgot-password`, `/reset-password/*`, `/invite/*`, `/consent/*`, `/health-survey/*`, `/report/*`, `/accept-terms`, `/api/webhooks/*`, `/platform-terms`, `/privacy-policy`, `/consent-terms`
 
 ### Fluxo de login (tenant)
 
@@ -2529,7 +2529,7 @@ return (
 - Botão "Gerenciar assinatura" → `/billing`
 - **Não renderiza em `/billing`** (via `usePathname`) — permite ao usuário contratar um plano
 
-**Impacto nas pesquisas automáticas:** `findActiveConfigsForAutoDispatch` filtra organizações com `billingStatus` não-ativo, pausando a criação de novos dispatches. Dispatches já agendados continuam sendo processados pelo `runSurveyDispatcher` para que pesquisas emitidas possam ser respondidas.
+**Impacto nas pesquisas automáticas:** `findActiveConfigsForAutoDispatch` filtra organizações com `billingStatus` não-ativo, pausando a criação de novos dispatches. Dispatches já agendados continuam sendo processados pelo `runHealthSurveyDispatcher` para que pesquisas emitidas possam ser respondidas.
 
 ---
 
@@ -2544,7 +2544,7 @@ return (
 1. **Append-only:** `ConsentRepository` não expõe `update()` nem `delete()`
 2. **Cada evento gera linha nova** — incluindo opt-out no formulário
 3. **CPF armazenado apenas como hash SHA-256** e somente no evento `accepted`
-4. **Sem `employee_id` em `survey_responses`** — desvinculamento garante anonimato
+4. **Sem `employee_id` em `health_survey_responses`** — desvinculamento garante anonimato
 5. **Mínimo de 5 respondentes** para exibir métricas (enforçado no service, nunca na UI)
 6. **`responded_at`** armazena apenas data (sem hora) — segunda camada de proteção ao anonimato
 
@@ -2556,7 +2556,7 @@ return (
 | `accepted` | `sms_link` | Aceitou — CPF hasheado salvo |
 | `refused` | `sms_link` | Recusou explicitamente |
 | `revoked` | `sms_link` | Revogou aceite anterior |
-| `opt_out` | `survey_form` | Pediu não-participação dentro do formulário |
+| `opt_out` | `health_survey_form` | Pediu não-participação dentro do formulário |
 
 ### Estado atual do colaborador
 
@@ -2601,14 +2601,14 @@ Colaborador abre formulário
                   tenant_id, employee_id,
                   consent_term_version_id,
                   event: 'opt_out',
-                  source: 'survey_form',
+                  source: 'health_survey_form',
                   created_at: now()
                 }
-             5. UPDATE survey_response_tokens SET used_at = now()
+             5. UPDATE health_survey_response_tokens SET used_at = now()
              6. Retorna <OptOutConfirmedPage />
 ```
 
-> Após o opt-out, o job `SurveyDispatcherJob` não inclui mais este colaborador em novos disparos — verifica estado atual via `getCurrentConsent`: se último evento = `opt_out` ou `refused` → pula.
+> Após o opt-out, o job `HealthSurveyDispatcherJob` não inclui mais este colaborador em novos disparos — verifica estado atual via `getCurrentConsent`: se último evento = `opt_out` ou `refused` → pula.
 
 ### Evidência em litígio
 
@@ -2731,13 +2731,13 @@ Processos recorrentes gerenciados pelo **BullMQ** com Redis como broker.
 
 | Job | Frequência | Responsabilidade |
 |---|---|---|
-| `survey-dispatcher` | A cada 15min | Verifica dispatches `scheduled` com `scheduled_at <= now()`, gera tokens, envia via messaging |
-| `survey-adherence-checker` | A cada hora | 48h após cada dispatch, calcula taxa de adesão e cria alertas `low_adherence` |
-| `survey-score-alert-detector` | Diário (03:00) | Calcula quedas de score; cria alertas `score_drop` e `negative_trend` |
+| `health-survey-dispatcher` | A cada 15min | Verifica dispatches `scheduled` com `scheduled_at <= now()`, gera tokens, envia via messaging |
+| `health-survey-adherence-checker` | A cada hora | 48h após cada dispatch, calcula taxa de adesão e cria alertas `low_adherence` |
+| `health-survey-score-alert-detector` | Diário (03:00) | Calcula quedas de score; cria alertas `score_drop` e `negative_trend` |
 | `employee-unpause` | Diário (01:00) | Reverte `status = 'active'` para colaboradores com `pause_end_at <= today` |
 | `pgr-review-reminder` | Diário (08:00) | 30 dias antes de `next_review_at`; cria alerta `pgr_review_due` |
 | `stripe-webhook-retry` | A cada hora | Reprocessa `billing_webhook_events` com `error IS NOT NULL` e `processed = false` |
-| `survey-response-token-cleanup` | Diário (02:00) | Remove `survey_response_tokens` expirados e não utilizados |
+| `health-survey-response-token-cleanup` | Diário (02:00) | Remove `health_survey_response_tokens` expirados e não utilizados |
 | `action-plan-suggestion-generator` | Diário (06:00) | Gera sugestões de planos de ação com base em métricas de cada tenant |
 | `organization-deletion-executor` | Diário (03:30) | Exclui permanentemente organizações com `deletionScheduledAt <= now()` |
 
@@ -2763,8 +2763,8 @@ O motivo: um sistema com múltiplos domínios acumula dezenas de jobs ao longo d
 // ✅ CORRETO — nome completo identifica domínio, ação e alvo
 "action-plan-suggestion-generator"   // gera sugestões de planos de ação
 "pgr-review-reminder"                // lembra revisão do PGR
-"survey-response-token-cleanup"      // limpa tokens de resposta de pesquisa expirados
-"survey-adherence-checker"           // verifica adesão a dispatches de pesquisa
+"health-survey-response-token-cleanup"      // limpa tokens de resposta de pesquisa expirados
+"health-survey-adherence-checker"           // verifica adesão a dispatches de pesquisa
 ```
 
 **Regras adicionais:**
@@ -2777,7 +2777,7 @@ O motivo: um sistema com múltiplos domínios acumula dezenas de jobs ao longo d
 ### Acionamento manual
 
 ```bash
-curl -X POST https://app.example.com/api/jobs/survey-dispatcher \
+curl -X POST https://app.example.com/api/jobs/health-survey-dispatcher \
   -H "x-cron-secret: $CRON_SECRET"
 ```
 
@@ -2857,21 +2857,21 @@ Se uma migration precisar ser criada fora do fluxo normal (ex: SQL customizado),
 ALTER TABLE "employees" RENAME COLUMN "old_name" TO "new_name";
 ```
 
-### Regras para mutação de `survey_questions`
+### Regras para mutação de `health_survey_questions`
 
-`survey_questions` é uma tabela operacional com impacto direto na integridade histórica dos dados. As seguintes restrições são obrigatórias:
+`health_survey_questions` é uma tabela operacional com impacto direto na integridade histórica dos dados. As seguintes restrições são obrigatórias:
 
 | Operação | Impacto | Regra |
 |---|---|---|
-| Alterar `score_direction` | Distorce o histórico — respostas antigas são recalculadas com a nova direção na próxima geração de PGR | **Proibido** em perguntas com respostas existentes em `survey_response_items` |
+| Alterar `score_direction` | Distorce o histórico — respostas antigas são recalculadas com a nova direção na próxima geração de PGR | **Proibido** em perguntas com respostas existentes em `health_survey_response_items` |
 | Alterar `question_text` | O PGR exibe o texto atual para respostas antigas (vínculo é por `question_id`, não por texto) — pode confundir historicamente | Evitar após coleta de respostas; preferir criar nova pergunta |
 | Desativar (`is_active = false`) | A pergunta some de pesquisas futuras; respostas antigas permanecem acessíveis no histórico do PGR | Permitido |
-| Remover (`DELETE`) | Destrói o vínculo de `survey_response_items.question_id` — histórico de PGR quebra | **Proibido** se houver respostas vinculadas |
+| Remover (`DELETE`) | Destrói o vínculo de `health_survey_response_items.question_id` — histórico de PGR quebra | **Proibido** se houver respostas vinculadas |
 
 **Antes de alterar `score_direction` ou deletar uma pergunta**, verificar se existem respostas:
 
 ```sql
-SELECT COUNT(*) FROM survey_response_items WHERE question_id = '<id>';
+SELECT COUNT(*) FROM health_survey_response_items WHERE question_id = '<id>';
 ```
 
 Se o resultado for > 0, **não altere `score_direction`** e **não delete** — desative a pergunta e crie uma nova no lugar.
@@ -2909,10 +2909,10 @@ Employee cadastrado
 ### 20.3 Envio de pesquisa
 
 ```
-Job survey-dispatcher (a cada 15min)
+Job health-survey-dispatcher (a cada 15min)
   → Busca dispatches status='scheduled' e scheduled_at <= now()
     → Filtra employees: status='active', consent='accepted'
-    → Gera survey_response_token por employee (expires_at = +48h, snapshot do horário)
+    → Gera health_survey_response_token por employee (expires_at = +48h, snapshot do horário)
     → messagingService.sendBulk
     → Registra em message_logs
     → Atualiza dispatch: status='sent', sent_at, total_recipients
@@ -2921,12 +2921,12 @@ Job survey-dispatcher (a cada 15min)
 ### 20.4 Resposta ao formulário (anonimato garantido)
 
 ```
-GET /survey/[token]
+GET /health-survey/[token]
   → 4 guards validados (existência, uso, expiração, janela de trabalho)
   → Submit:
       ├─ Re-executa todos os guards
-      ├─ Cria survey_response SEM employee_id
-      ├─ Cria survey_response_items
+      ├─ Cria health_survey_response SEM employee_id
+      ├─ Cria health_survey_response_items
       └─ token.used_at = now() (atômico)
 ```
 
@@ -2948,7 +2948,7 @@ Admin faz login
 const MINIMUM_RESPONDENTS_FOR_DISPLAY = 5
 
 async getDepartmentMetrics(tenantId, departmentId, periodId) {
-  const response = await surveyRepository.countResponses(...)
+  const response = await healthSurveyRepository.countResponses(...)
   if (response.count < MINIMUM_RESPONDENTS_FOR_DISPLAY) {
     return { available: false, reason: "insufficient_respondents" }
   }
@@ -2971,11 +2971,11 @@ Super Admin publica nova versão do TCLE (is_current = true)
 
 ```
 RH aciona "Reenviar" em setor com adesão crítica (<60%)
-  └─→ Server Action: surveyService.resendToNonRespondents(tenantId, dispatchId)
-        ├─ Busca survey_response_tokens onde used_at IS NULL e expires_at > now()
+  └─→ Server Action: healthSurveyService.resendToNonRespondents(tenantId, dispatchId)
+        ├─ Busca health_survey_response_tokens onde used_at IS NULL e expires_at > now()
         ├─ Para cada token não usado: gera novo token (expires_at = +48h), invalida o anterior
         ├─ Chama messagingService.sendBulk
-        ├─ Registra em message_logs com type='survey_resend'
+        ├─ Registra em message_logs com type='health_survey_resend'
         └─ Cria novo dispatch com status='sent' vinculado ao original
 ```
 
@@ -3472,13 +3472,13 @@ Jobs (BullMQ) precisam processar dados de **todos os tenants** de uma vez. Isso 
 
 ```typescript
 // ❌ PROIBIDO — nome ambíguo, parece estar faltando tenantId
-async function findPendingDispatches(): Promise<SurveyDispatch[]> {
-  return prisma.surveyDispatch.findMany({ where: { status: "scheduled" } })
+async function findPendingDispatches(): Promise<HealthSurveyDispatch[]> {
+  return prisma.healthSurveyDispatch.findMany({ where: { status: "scheduled" } })
 }
 
 // ✅ CORRETO — nome deixa explícito que é cross-tenant intencional
-async function findAllTenantsPendingDispatches(): Promise<SurveyDispatch[]> {
-  return prisma.surveyDispatch.findMany({ where: { status: "scheduled" } })
+async function findAllTenantsPendingDispatches(): Promise<HealthSurveyDispatch[]> {
+  return prisma.healthSurveyDispatch.findMany({ where: { status: "scheduled" } })
 }
 ```
 
@@ -3486,7 +3486,7 @@ async function findAllTenantsPendingDispatches(): Promise<SurveyDispatch[]> {
 
 | Cenário | Naming obrigatório |
 |---|---|
-| Job que processa todos os tenants (survey-dispatcher, adherence-checker, etc.) | `findAllTenants*` |
+| Job que processa todos os tenants (health-survey-dispatcher, adherence-checker, etc.) | `findAllTenants*` |
 | Métricas de plataforma para Super Admin | `findAllTenants*` ou `getPlatform*` |
 | Manutenção / cleanup (token-cleanup, employee-unpause) | `findAllTenants*` |
 
@@ -3954,7 +3954,7 @@ A mesma regra vale para props de componentes de filtro:
 
 ### Páginas com agrupamento — exceção documentada
 
-A listagem de pesquisas (`/surveys`) exibe dispatches agrupados por data. Como o Prisma não suporta `DISTINCT ON` ou `DATE_TRUNC` sem `$queryRaw` (que é proibido), o padrão de paginação é híbrido:
+A listagem de pesquisas (`/health-surveys`) exibe dispatches agrupados por data. Como o Prisma não suporta `DISTINCT ON` ou `DATE_TRUNC` sem `$queryRaw` (que é proibido), o padrão de paginação é híbrido:
 
 1. **Query leve**: busca apenas `scheduledAt` (sem includes) — filtra e deduplicata datas no app layer
 2. **Query pesada**: busca dados completos **apenas para as datas da página atual** (via `OR` com date ranges)

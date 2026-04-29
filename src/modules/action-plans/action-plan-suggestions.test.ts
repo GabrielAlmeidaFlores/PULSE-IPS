@@ -181,7 +181,7 @@ describe("buildDispatchSuggestion", () => {
     totalRecipients: 10,
     totalResponses: 5,
     dispatchedAt: new Date("2026-04-20"),
-    surveyConfiguration: { department: { name: "Vendas" } },
+    healthSurveyConfiguration: { department: { name: "Vendas" } },
   }
 
   it("returns null when no dispatches", () => {

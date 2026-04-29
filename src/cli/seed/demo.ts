@@ -268,12 +268,12 @@ async function main(): Promise<void> {
   logger.info("🗑️  Limpando dados antigos...")
   await prisma.organization.update({ where: { id: tenantId }, data: { slug: ORG_SLUG_NEW, name: ORG_NAME_NEW } })
 
-  await prisma.surveyResponseItem.deleteMany({ where: { surveyResponse: { tenantId } } })
-  await prisma.surveyResponse.deleteMany({ where: { tenantId } })
-  await prisma.surveyResponseToken.deleteMany({ where: { tenantId } })
-  await prisma.surveyDispatch.deleteMany({ where: { tenantId } })
-  await prisma.surveyQuestion.deleteMany({ where: { tenantId } })
-  await prisma.surveyConfiguration.deleteMany({ where: { tenantId } })
+  await prisma.healthSurveyResponseItem.deleteMany({ where: { healthSurveyResponse: { tenantId } } })
+  await prisma.healthSurveyResponse.deleteMany({ where: { tenantId } })
+  await prisma.healthSurveyResponseToken.deleteMany({ where: { tenantId } })
+  await prisma.healthSurveyDispatch.deleteMany({ where: { tenantId } })
+  await prisma.healthSurveyQuestion.deleteMany({ where: { tenantId } })
+  await prisma.healthSurveyConfiguration.deleteMany({ where: { tenantId } })
   await prisma.employeeConsent.deleteMany({ where: { tenantId } })
   await prisma.employee.deleteMany({ where: { tenantId } })
   await prisma.pgrReview.deleteMany({ where: { tenantId } })
@@ -435,7 +435,7 @@ async function main(): Promise<void> {
     }
     employeeMap[profile.name] = empIds
 
-    const config = await prisma.surveyConfiguration.create({
+    const config = await prisma.healthSurveyConfiguration.create({
       data: {
         id: randomUUID(),
         tenantId,
@@ -448,7 +448,7 @@ async function main(): Promise<void> {
     })
     configMap[profile.name] = config.id
 
-    await prisma.surveyConfigWorkDay.createMany({
+    await prisma.healthSurveyConfigWorkDay.createMany({
       data: profile.workDays.map((d) => ({ configId: config.id, dayOfWeek: d })),
     })
 
@@ -457,11 +457,11 @@ async function main(): Promise<void> {
     for (let qi = 0; qi < questions.length; qi++) {
       const q = questions[qi]
       if (!q) continue
-      const question = await prisma.surveyQuestion.create({
+      const question = await prisma.healthSurveyQuestion.create({
         data: {
           id: randomUUID(),
           tenantId,
-          surveyConfigurationId: config.id,
+          healthSurveyConfigurationId: config.id,
           text: q.text,
           order: qi + 1,
           scoreDirection: q.direction,
@@ -493,7 +493,7 @@ async function main(): Promise<void> {
   const allDispatches: {
     id: string
     tenantId: string
-    surveyConfigurationId: string
+    healthSurveyConfigurationId: string
     scheduledAt: Date
     dispatchedAt: Date
     adherenceCheckedAt: Date
@@ -522,7 +522,7 @@ async function main(): Promise<void> {
   }[] = []
   const allItems: {
     id: string
-    surveyResponseId: string
+    healthSurveyResponseId: string
     questionId: string
     score: number
   }[] = []
@@ -549,7 +549,7 @@ async function main(): Promise<void> {
       allDispatches.push({
         id: dispatchId,
         tenantId,
-        surveyConfigurationId: configId,
+        healthSurveyConfigurationId: configId,
         scheduledAt: dispatchDate,
         dispatchedAt: dispatchDate,
         adherenceCheckedAt: addDays(dispatchDate, 2),
@@ -592,7 +592,7 @@ async function main(): Promise<void> {
         for (const qId of qIds) {
           allItems.push({
             id: randomUUID(),
-            surveyResponseId: responseId,
+            healthSurveyResponseId: responseId,
             questionId: qId,
             score: clamp(Math.round(empScore + (Math.random() - 0.5) * 0.8)),
           })
@@ -702,16 +702,16 @@ async function main(): Promise<void> {
   logger.info(`📥 Inserindo ${allDispatches.length} dispatches, ${allTokens.length} tokens, ${allResponses.length} respostas, ${allItems.length} itens em batch...`)
 
   const BATCH = 500
-  await prisma.surveyDispatch.createMany({ data: allDispatches })
+  await prisma.healthSurveyDispatch.createMany({ data: allDispatches })
 
   for (let i = 0; i < allTokens.length; i += BATCH) {
-    await prisma.surveyResponseToken.createMany({ data: allTokens.slice(i, i + BATCH) })
+    await prisma.healthSurveyResponseToken.createMany({ data: allTokens.slice(i, i + BATCH) })
   }
   for (let i = 0; i < allResponses.length; i += BATCH) {
-    await prisma.surveyResponse.createMany({ data: allResponses.slice(i, i + BATCH) })
+    await prisma.healthSurveyResponse.createMany({ data: allResponses.slice(i, i + BATCH) })
   }
   for (let i = 0; i < allItems.length; i += BATCH) {
-    await prisma.surveyResponseItem.createMany({ data: allItems.slice(i, i + BATCH) })
+    await prisma.healthSurveyResponseItem.createMany({ data: allItems.slice(i, i + BATCH) })
   }
 
   logger.info(`✅ Pesquisas geradas. Inserindo ${alertsToCreate.length} alertas...`)

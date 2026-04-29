@@ -1,5 +1,5 @@
 import { prisma } from "@/libs/db"
-import type { PgrReview, PgrDeptResult, PgrQuestionResult, Organization, Department, Employee, SurveyDispatch, SurveyResponse, SurveyResponseItem, SurveyConfiguration, SurveyQuestion, Alert } from "@prisma/client"
+import type { PgrReview, PgrDeptResult, PgrQuestionResult, Organization, Department, Employee, HealthSurveyDispatch, HealthSurveyResponse, HealthSurveyResponseItem, HealthSurveyConfiguration, HealthSurveyQuestion, Alert } from "@prisma/client"
 import type { CreatePgrReviewInput, CreatePgrDeptResultInput, CreatePgrQuestionResultInput, CreatePgrAlertInput } from "@/modules/pgr/pgr.types"
 
 export type PgrReviewListItem = PgrReview & {
@@ -64,12 +64,12 @@ export function findOrgWithDepartmentsForPgr(tenantId: string): Promise<Organiza
   })
 }
 
-export function findDispatchesForPgr(tenantId: string): Promise<(SurveyDispatch & { responses: (SurveyResponse & { items: SurveyResponseItem[] })[]; surveyConfiguration: SurveyConfiguration & { department: Department; departmentId: string; questions: SurveyQuestion[] } })[]> {
-  return prisma.surveyDispatch.findMany({
+export function findDispatchesForPgr(tenantId: string): Promise<(HealthSurveyDispatch & { responses: (HealthSurveyResponse & { items: HealthSurveyResponseItem[] })[]; healthSurveyConfiguration: HealthSurveyConfiguration & { department: Department; departmentId: string; questions: HealthSurveyQuestion[] } })[]> {
+  return prisma.healthSurveyDispatch.findMany({
     where: { tenantId, status: "sent" },
     include: {
       responses: { include: { items: true } },
-      surveyConfiguration: {
+      healthSurveyConfiguration: {
         include: {
           department: true,
           questions: { orderBy: { order: "asc" } },
@@ -161,9 +161,9 @@ export async function findItemScoresForPeriod(
   startDate: Date,
   endDate: Date,
 ): Promise<RawItemScore[]> {
-  const items = await prisma.surveyResponseItem.findMany({
+  const items = await prisma.healthSurveyResponseItem.findMany({
     where: {
-      surveyResponse: {
+      healthSurveyResponse: {
         tenantId,
         dispatch: { dispatchedAt: { gte: startDate, lt: endDate } },
       },
@@ -171,10 +171,10 @@ export async function findItemScoresForPeriod(
     select: {
       questionId: true,
       score: true,
-      surveyResponse: {
+      healthSurveyResponse: {
         select: {
           dispatch: {
-            select: { surveyConfiguration: { select: { departmentId: true } } },
+            select: { healthSurveyConfiguration: { select: { departmentId: true } } },
           },
         },
       },
@@ -183,6 +183,6 @@ export async function findItemScoresForPeriod(
   return items.map((item) => ({
     questionId: item.questionId,
     score: item.score,
-    departmentId: item.surveyResponse.dispatch.surveyConfiguration.departmentId,
+    departmentId: item.healthSurveyResponse.dispatch.healthSurveyConfiguration.departmentId,
   }))
 }

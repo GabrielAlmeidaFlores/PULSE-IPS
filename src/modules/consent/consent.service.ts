@@ -15,7 +15,7 @@ import {
   findLatestConsentEventsByEmployeeIds,
   findEmployeeIdsForConsentState,
 } from "@/modules/consent/consent.repository"
-import { findTokenByValue, markTokenUsed } from "@/modules/surveys/survey.repository"
+import { findTokenByValue, markTokenUsed } from "@/modules/health-surveys/health-survey.repository"
 
 const NO_ACTIVE_TERMS_MSG = "Versão de termos ativa não encontrada."
 const LINK_ALREADY_USED_MSG = "Este link já foi utilizado."
@@ -111,12 +111,12 @@ export async function optOut(tenantId: string, employeeId: string): Promise<void
     employeeId,
     consentTermVersionId: activeVersion.id,
     event: "opted_out",
-    source: "survey_form",
+    source: "health_survey_form",
   })
 }
 
-export async function acceptConsentFromSurveyToken(surveyToken: string): Promise<void> {
-  const tokenRecord = await findTokenByValue(surveyToken)
+export async function acceptConsentFromHealthSurveyToken(healthSurveyToken: string): Promise<void> {
+  const tokenRecord = await findTokenByValue(healthSurveyToken)
   if (!tokenRecord) throw new AppError("INVALID_TOKEN", "Link inválido ou expirado.")
   if (tokenRecord.usedAt) throw new AppError("TOKEN_USED", LINK_ALREADY_USED_MSG)
 
@@ -130,15 +130,15 @@ export async function acceptConsentFromSurveyToken(surveyToken: string): Promise
       employeeId: tokenRecord.employeeId,
       consentTermVersionId: activeVersion.id,
       event: "accepted",
-      source: "survey_form",
+      source: "health_survey_form",
     })
   }
 
   await markTokenUsed(tokenRecord.id)
 }
 
-export async function refuseConsentFromSurveyToken(surveyToken: string): Promise<void> {
-  const tokenRecord = await findTokenByValue(surveyToken)
+export async function refuseConsentFromHealthSurveyToken(healthSurveyToken: string): Promise<void> {
+  const tokenRecord = await findTokenByValue(healthSurveyToken)
   if (!tokenRecord) throw new AppError("INVALID_TOKEN", "Link inválido ou expirado.")
   if (tokenRecord.usedAt) throw new AppError("TOKEN_USED", LINK_ALREADY_USED_MSG)
 
@@ -150,13 +150,13 @@ export async function refuseConsentFromSurveyToken(surveyToken: string): Promise
     employeeId: tokenRecord.employeeId,
     consentTermVersionId: activeVersion.id,
     event: "refused",
-    source: "survey_form",
+    source: "health_survey_form",
   })
 
   await markTokenUsed(tokenRecord.id)
 }
 
-export async function optOutFromSurveyToken(token: string): Promise<void> {
+export async function optOutFromHealthSurveyToken(token: string): Promise<void> {
   const tokenRecord = await findTokenByValue(token)
   if (!tokenRecord) throw new AppError("INVALID_TOKEN", "Token inválido.")
   if (tokenRecord.usedAt) throw new AppError("TOKEN_USED", LINK_ALREADY_USED_MSG)

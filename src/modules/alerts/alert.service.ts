@@ -3,7 +3,7 @@ import {
   createAlert,
   markAlertRead,
   resolveAlert,
-  findAllTenantsRecentSurveyResponsesForAlerts,
+  findAllTenantsRecentHealthSurveyResponsesForAlerts,
   findAllTenantsResponsesInWindow,
   findAllTenantsActiveDepartments,
   findAllTenantsDeptRecentDispatchAvgs,
@@ -73,13 +73,13 @@ export function calcAvgFromResponses(responses: { items: { score: number; questi
 interface ResponseWithDept {
   tenantId: string
   items: { score: number; question: { scoreDirection: string } }[]
-  dispatch: { surveyConfiguration: { department: { id: string; name: string } } }
+  dispatch: { healthSurveyConfiguration: { department: { id: string; name: string } } }
 }
 
 function groupByDept(responses: ResponseWithDept[]): Map<string, { tenantId: string; departmentId: string; departmentName: string; responses: ResponseWithDept[] }> {
   const map = new Map<string, { tenantId: string; departmentId: string; departmentName: string; responses: ResponseWithDept[] }>()
   for (const r of responses) {
-    const dept = r.dispatch.surveyConfiguration.department
+    const dept = r.dispatch.healthSurveyConfiguration.department
     const key = `${r.tenantId}:${dept.id}`
     const existing = map.get(key)
     if (existing) {
@@ -137,7 +137,7 @@ export async function detectLowScoreAlerts(): Promise<void> {
   const LOOKBACK_HOURS = 48
 
   const since = new Date(Date.now() - LOOKBACK_HOURS * 60 * 60 * 1000)
-  const responses = await findAllTenantsRecentSurveyResponsesForAlerts(since)
+  const responses = await findAllTenantsRecentHealthSurveyResponsesForAlerts(since)
   const byDept = groupByDept(responses)
 
   for (const [, data] of Array.from(byDept.entries())) {

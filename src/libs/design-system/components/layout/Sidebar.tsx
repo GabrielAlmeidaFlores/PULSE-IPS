@@ -21,7 +21,7 @@ function getNavItems(role: "admin" | "rh", features: PlanFeature[]): NavItem[] {
     { href: "/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
     { href: "/employees", label: "Funcionários", icon: <Users className="h-4 w-4" /> },
     { href: "/departments", label: "Departamentos", icon: <Building2 className="h-4 w-4" /> },
-    { href: "/surveys", label: "Pesquisas", icon: <ClipboardList className="h-4 w-4" /> },
+    { href: "/health-surveys", label: "Pesquisas", icon: <ClipboardList className="h-4 w-4" /> },
     { href: "/alerts", label: "Alertas", icon: <Bell className="h-4 w-4" /> },
     { href: "/action-plans", label: "Planos de Ação", icon: <ShieldCheck className="h-4 w-4" />, feature: "action_plans" },
     { href: "/documents", label: "Documentos", icon: <FileText className="h-4 w-4" />, feature: "documents" },

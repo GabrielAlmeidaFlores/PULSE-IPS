@@ -22,7 +22,7 @@ export interface LowAdherenceDispatch {
   totalRecipients: number
   totalResponses: number
   dispatchedAt: Date | null
-  surveyConfiguration: { department: { name: string } | null } | null
+  healthSurveyConfiguration: { department: { name: string } | null } | null
 }
 
 export interface ReportItem {

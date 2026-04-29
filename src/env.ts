@@ -35,7 +35,7 @@ export const env = createEnv({
         "Oi, {nome}! 👋 Você foi convidado(a) para participar das pesquisas de bem-estar da sua empresa 🌱 É rápido, anônimo e sua opinião faz toda a diferença. Acesse o link para revisar os termos e confirmar sua participação: {link}",
       ),
 
-    SURVEY_MESSAGE_TEMPLATE: z
+    HEALTH_SURVEY_MESSAGE_TEMPLATE: z
       .string()
       .default(
         "Oi, {nome}! 👋 Tudo bem por aí? Sua opinião faz a diferença para a gente 🌱 Quando tiver um momento, aqui está o seu formulário de bem-estar: {link}",
@@ -102,7 +102,7 @@ export const env = createEnv({
 
     CONSENT_MESSAGE_TEMPLATE: process.env.CONSENT_MESSAGE_TEMPLATE,
 
-    SURVEY_MESSAGE_TEMPLATE: process.env.SURVEY_MESSAGE_TEMPLATE,
+    HEALTH_SURVEY_MESSAGE_TEMPLATE: process.env.HEALTH_SURVEY_MESSAGE_TEMPLATE,
 
     EMAIL_PROVIDER: process.env.EMAIL_PROVIDER,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
