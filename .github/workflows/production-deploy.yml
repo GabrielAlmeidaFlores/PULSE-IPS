@@ -55,9 +55,12 @@ jobs:
       - name: Ensure db is healthy
         run: |
           if docker ps --filter "name=^pulse_db$" --filter "status=running" --format "{{.Names}}" | grep -q "^pulse_db$"; then
-            echo "✔ db already running"
+            echo "✔ pulse_db already running"
+          elif docker ps -a --filter "name=^pulse_db$" --format "{{.Names}}" | grep -q "^pulse_db$"; then
+            echo "▶ pulse_db stopped, starting..."
+            docker start pulse_db
           else
-            echo "▶ Starting db..."
+            echo "▶ pulse_db not found, creating..."
             docker compose up -d --no-build db
           fi
           for i in $(seq 1 30); do
@@ -74,9 +77,12 @@ jobs:
       - name: Ensure redis is healthy
         run: |
           if docker ps --filter "name=^pulse_redis$" --filter "status=running" --format "{{.Names}}" | grep -q "^pulse_redis$"; then
-            echo "✔ redis already running"
+            echo "✔ pulse_redis already running"
+          elif docker ps -a --filter "name=^pulse_redis$" --format "{{.Names}}" | grep -q "^pulse_redis$"; then
+            echo "▶ pulse_redis stopped, starting..."
+            docker start pulse_redis
           else
-            echo "▶ Starting redis..."
+            echo "▶ pulse_redis not found, creating..."
             docker compose up -d --no-build redis
           fi
           for i in $(seq 1 30); do
@@ -169,15 +175,3 @@ jobs:
           echo "✖ Timeout — app não ficou healthy a tempo" >&2
           docker logs pulse_app --tail 100 >&2
           exit 1
-
-  cleanup:
-    name: Cleanup old images
-    runs-on: production
-    timeout-minutes: 5
-    needs: [healthcheck]
-    if: success()
-    steps:
-      - name: Prune dangling images
-        run: |
-          docker image prune -f
-          echo "✔ Imagens antigas removidas"
