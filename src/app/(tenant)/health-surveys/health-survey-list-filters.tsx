@@ -38,7 +38,7 @@ const SURVEY_FILTER_FIELDS: FilterField[] = [
   },
 ]
 
-export function SurveyListFilters({ filters }: Props): React.ReactElement {
+export function HealthSurveyListFilters({ filters }: Props): React.ReactElement {
   return (
     <FilterBar
       fields={SURVEY_FILTER_FIELDS}

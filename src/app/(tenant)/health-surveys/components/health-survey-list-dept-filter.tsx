@@ -6,7 +6,7 @@ interface DeptFilterProps {
   departments: { id: string; name: string }[]
 }
 
-export function DeptFilter({ departments }: DeptFilterProps): React.ReactElement {
+export function HealthSurveyListDeptFilter({ departments }: DeptFilterProps): React.ReactElement {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()

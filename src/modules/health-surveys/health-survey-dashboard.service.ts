@@ -1,17 +1,17 @@
 import {
-  findDispatchesByTenant,
-  findDispatchWithDashboard,
-  findMultipleDispatchesWithDashboard,
-  createDispatch,
-  findDispatchesByTenantFiltered,
-  findDispatchDaysPaginated,
-  findDispatchesForDates,
+  findHealthSurveyDispatchesByTenant,
+  findHealthSurveyDispatchWithDashboard,
+  findHealthSurveyMultipleDispatchesWithDashboard,
+  createHealthSurveyDispatch,
+  findHealthSurveyDispatchesByTenantFiltered,
+  findHealthSurveyDispatchDaysPaginated,
+  findHealthSurveyDispatchesForDates,
   type HealthSurveyDispatchListingFilters,
 } from "@/modules/health-surveys/health-survey.repository"
-import type { DispatchDashboardStats, ScoreDirection } from "@/modules/health-surveys/health-survey.types"
+import type { HealthSurveyDispatchDashboardStats, ScoreDirection } from "@/modules/health-surveys/health-survey.types"
 import { MINIMUM_RESPONDENTS_FOR_DISPLAY } from "@/libs/utils/anonymity"
 
-export type { DispatchWithConfig } from "@/modules/health-surveys/health-survey.repository"
+export type { HealthSurveyDispatchWithConfig } from "@/modules/health-surveys/health-survey.repository"
 
 function normalizeScore(raw: number, direction: string): number {
   return direction === "lower_is_better" ? 6 - raw : raw
@@ -60,7 +60,7 @@ function buildDispatchStats(data: {
   totalResponses: number
   questions: { id: string; text: string; order: number; scoreDirection: string }[]
   responseItems: { questionId: string; score: number }[]
-}): DispatchDashboardStats {
+}): HealthSurveyDispatchDashboardStats {
   const hasEnoughRespondents = data.totalResponses >= MINIMUM_RESPONDENTS_FOR_DISPLAY
   const questions = hasEnoughRespondents ? buildQuestionStats(data.questions, data.responseItems) : buildQuestionStats(data.questions, [])
   const avgScore = hasEnoughRespondents ? calcOverallAvgScore(questions, data.responseItems) : null
@@ -84,58 +84,58 @@ function buildDispatchStats(data: {
   }
 }
 
-export function getHealthSurveyDispatches(tenantId: string): ReturnType<typeof findDispatchesByTenant> {
-  return findDispatchesByTenant(tenantId)
+export function getHealthSurveyDispatches(tenantId: string): ReturnType<typeof findHealthSurveyDispatchesByTenant> {
+  return findHealthSurveyDispatchesByTenant(tenantId)
 }
 
-export interface SurveyDispatchListingQuery {
+export interface HealthSurveyDispatchListingQuery {
   status?: string
   dateFrom?: Date
   dateTo?: Date
 }
 
-export interface SurveyDispatchDayPageQuery extends SurveyDispatchListingQuery {
+export interface HealthSurveyDispatchDayPageQuery extends HealthSurveyDispatchListingQuery {
   page: number
   pageSize: number
 }
 
-export interface SurveyDispatchDayPageResult {
-  items: import("@/modules/health-surveys/health-survey.repository").DispatchWithConfig[]
+export interface HealthSurveyDispatchDayPageResult {
+  items: import("@/modules/health-surveys/health-survey.repository").HealthSurveyDispatchWithConfig[]
   total: number
 }
 
 export function getHealthSurveyDispatchesFiltered(
   tenantId: string,
-  query: SurveyDispatchListingQuery,
-): ReturnType<typeof findDispatchesByTenantFiltered> {
+  query: HealthSurveyDispatchListingQuery,
+): ReturnType<typeof findHealthSurveyDispatchesByTenantFiltered> {
   const filters: HealthSurveyDispatchListingFilters = {}
   if (query.status !== undefined) filters.status = query.status
   if (query.dateFrom !== undefined) filters.dateFrom = query.dateFrom
   if (query.dateTo !== undefined) filters.dateTo = query.dateTo
-  return findDispatchesByTenantFiltered(tenantId, filters)
+  return findHealthSurveyDispatchesByTenantFiltered(tenantId, filters)
 }
 
 export async function getHealthSurveyDispatchesPaginatedByDay(
   tenantId: string,
-  query: SurveyDispatchDayPageQuery,
-): Promise<SurveyDispatchDayPageResult> {
+  query: HealthSurveyDispatchDayPageQuery,
+): Promise<HealthSurveyDispatchDayPageResult> {
   const skip = (query.page - 1) * query.pageSize
   const filters: HealthSurveyDispatchListingFilters = {}
   if (query.status !== undefined) filters.status = query.status
   if (query.dateFrom !== undefined) filters.dateFrom = query.dateFrom
   if (query.dateTo !== undefined) filters.dateTo = query.dateTo
-  const { dates, total } = await findDispatchDaysPaginated(tenantId, filters, skip, query.pageSize)
+  const { dates, total } = await findHealthSurveyDispatchDaysPaginated(tenantId, filters, skip, query.pageSize)
   if (dates.length === 0) return { items: [], total }
-  const items = await findDispatchesForDates(tenantId, dates, filters)
+  const items = await findHealthSurveyDispatchesForDates(tenantId, dates, filters)
   return { items, total }
 }
 
-export function scheduleHealthSurveyDispatch(tenantId: string, configId: string, scheduledAt: Date): ReturnType<typeof createDispatch> {
-  return createDispatch(tenantId, configId, scheduledAt)
+export function scheduleHealthSurveyDispatch(tenantId: string, configId: string, scheduledAt: Date): ReturnType<typeof createHealthSurveyDispatch> {
+  return createHealthSurveyDispatch(tenantId, configId, scheduledAt)
 }
 
-export async function getHealthSurveyDispatchDashboard(tenantId: string, dispatchId: string): Promise<DispatchDashboardStats | null> {
-  const data = await findDispatchWithDashboard(tenantId, dispatchId)
+export async function getHealthSurveyDispatchDashboard(tenantId: string, dispatchId: string): Promise<HealthSurveyDispatchDashboardStats | null> {
+  const data = await findHealthSurveyDispatchWithDashboard(tenantId, dispatchId)
   if (!data) return null
   return buildDispatchStats(data)
 }
@@ -143,7 +143,7 @@ export async function getHealthSurveyDispatchDashboard(tenantId: string, dispatc
 export async function getHealthSurveyMultipleDispatchDashboards(
   tenantId: string,
   dispatchIds: string[],
-): Promise<DispatchDashboardStats[]> {
-  const dataList = await findMultipleDispatchesWithDashboard(tenantId, dispatchIds)
+): Promise<HealthSurveyDispatchDashboardStats[]> {
+  const dataList = await findHealthSurveyMultipleDispatchesWithDashboard(tenantId, dispatchIds)
   return dataList.map((data) => buildDispatchStats(data))
 }

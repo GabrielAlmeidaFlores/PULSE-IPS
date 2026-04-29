@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ConsentGate } from "@/app/(public)/health-survey/[token]/consent-gate"
+import { HealthSurveyConsentGate } from "@/app/(public)/health-survey/[token]/health-survey-consent-gate"
 import { HealthSurveyForm } from "@/app/(public)/health-survey/[token]/health-survey-form"
 
 interface Question {
@@ -42,7 +42,7 @@ export function HealthSurveyPageClient({
       )
     }
     return (
-      <ConsentGate
+      <HealthSurveyConsentGate
         token={token}
         employeeName={employeeName}
         content={consentTermContent}

@@ -5,7 +5,7 @@ interface Props {
   params: Promise<{ token: string }>
 }
 
-export default async function SurveyPage({ params }: Props): Promise<React.ReactElement> {
+export default async function HealthSurveyPage({ params }: Props): Promise<React.ReactElement> {
   const { token } = await params
   const validation = await validateHealthSurveyToken(token)
 

@@ -40,7 +40,7 @@ export async function optOutHealthSurveyAction(token: string): Promise<ActionRes
   }
 }
 
-export async function acceptConsentAction(token: string): Promise<ActionResult> {
+export async function acceptHealthSurveyConsentAction(token: string): Promise<ActionResult> {
   try {
     await acceptConsentFromHealthSurveyToken(token)
     return {}
@@ -49,7 +49,7 @@ export async function acceptConsentAction(token: string): Promise<ActionResult> 
   }
 }
 
-export async function refuseConsentAction(token: string): Promise<ActionResult> {
+export async function refuseHealthSurveyConsentAction(token: string): Promise<ActionResult> {
   try {
     await refuseConsentFromHealthSurveyToken(token)
     return {}

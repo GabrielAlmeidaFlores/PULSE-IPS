@@ -1,13 +1,13 @@
 import type { HealthSurveyConfiguration, HealthSurveyQuestion, Department, HealthSurveyDispatch, HealthSurveyResponse, HealthSurveyResponseToken, Organization, Employee, Prisma } from "@prisma/client"
 import { prisma } from "@/libs/db"
 import { AppError } from "@/libs/errors/app-error"
-import type { CreateHealthSurveyConfigInput, CreateHealthSurveyResponseInput, CreateHealthSurveyTokenInput, CreateAdherenceAlertInput, CreateMessageLogInput } from "@/modules/health-surveys/health-survey.types"
+import type { CreateHealthSurveyConfigInput, CreateHealthSurveyResponseInput, CreateHealthSurveyTokenInput, CreateHealthSurveyAdherenceAlertInput, CreateHealthSurveyMessageLogInput } from "@/modules/health-surveys/health-survey.types"
 
 type HealthSurveyConfigWithWorkDays = Prisma.HealthSurveyConfigurationGetPayload<{ include: { workDays: true } }>
 export type HealthSurveyConfigWithDetails = HealthSurveyConfigWithWorkDays & { department: Department; questions: HealthSurveyQuestion[] }
-export type DispatchWithConfig = HealthSurveyDispatch & { healthSurveyConfiguration: HealthSurveyConfiguration & { department: Department } }
-export type DispatchWithDetails = HealthSurveyDispatch & { healthSurveyConfiguration: HealthSurveyConfiguration & { questions: HealthSurveyQuestion[] }; responses: HealthSurveyResponse[] }
-export type TokenWithDispatch = HealthSurveyResponseToken & { employee: Employee; dispatch: HealthSurveyDispatch & { healthSurveyConfiguration: HealthSurveyConfiguration & { questions: HealthSurveyQuestion[]; organization: Organization } } }
+export type HealthSurveyDispatchWithConfig = HealthSurveyDispatch & { healthSurveyConfiguration: HealthSurveyConfiguration & { department: Department } }
+export type HealthSurveyDispatchWithDetails = HealthSurveyDispatch & { healthSurveyConfiguration: HealthSurveyConfiguration & { questions: HealthSurveyQuestion[] }; responses: HealthSurveyResponse[] }
+export type HealthSurveyTokenWithDispatch = HealthSurveyResponseToken & { employee: Employee; dispatch: HealthSurveyDispatch & { healthSurveyConfiguration: HealthSurveyConfiguration & { questions: HealthSurveyQuestion[]; organization: Organization } } }
 
 export function findHealthSurveyConfigsByTenant(tenantId: string): Promise<HealthSurveyConfigWithDetails[]> {
   return prisma.healthSurveyConfiguration.findMany({
@@ -88,7 +88,7 @@ export async function upsertHealthSurveyConfig(tenantId: string, input: CreateHe
   })
 }
 
-export function findDispatchesByTenant(tenantId: string): Promise<DispatchWithConfig[]> {
+export function findHealthSurveyDispatchesByTenant(tenantId: string): Promise<HealthSurveyDispatchWithConfig[]> {
   return prisma.healthSurveyDispatch.findMany({
     where: { tenantId },
     include: { healthSurveyConfiguration: { include: { department: true } } },
@@ -122,17 +122,17 @@ function toDateKey(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
-export interface DispatchDayPageResult {
+export interface HealthSurveyDispatchDayPageResult {
   dates: string[]
   total: number
 }
 
-export async function findDispatchDaysPaginated(
+export async function findHealthSurveyDispatchDaysPaginated(
   tenantId: string,
   filters: HealthSurveyDispatchListingFilters,
   skip: number,
   take: number,
-): Promise<DispatchDayPageResult> {
+): Promise<HealthSurveyDispatchDayPageResult> {
   const where = buildDispatchWhereInput(tenantId, filters)
   const allScheduledAts = await prisma.healthSurveyDispatch.findMany({
     where,
@@ -151,11 +151,11 @@ export async function findDispatchDaysPaginated(
   return { dates: distinctDates.slice(skip, skip + take), total: distinctDates.length }
 }
 
-export function findDispatchesForDates(
+export function findHealthSurveyDispatchesForDates(
   tenantId: string,
   dates: string[],
   filters: HealthSurveyDispatchListingFilters,
-): Promise<DispatchWithConfig[]> {
+): Promise<HealthSurveyDispatchWithConfig[]> {
   if (dates.length === 0) return Promise.resolve([])
   const where: Prisma.HealthSurveyDispatchWhereInput = {
     tenantId,
@@ -174,10 +174,10 @@ export function findDispatchesForDates(
   })
 }
 
-export function findDispatchesByTenantFiltered(
+export function findHealthSurveyDispatchesByTenantFiltered(
   tenantId: string,
   filters: HealthSurveyDispatchListingFilters,
-): Promise<DispatchWithConfig[]> {
+): Promise<HealthSurveyDispatchWithConfig[]> {
   return prisma.healthSurveyDispatch.findMany({
     where: buildDispatchWhereInput(tenantId, filters),
     include: { healthSurveyConfiguration: { include: { department: true } } },
@@ -185,12 +185,12 @@ export function findDispatchesByTenantFiltered(
   })
 }
 
-export interface DispatchResponseItem {
+export interface HealthSurveyDispatchResponseItem {
   questionId: string
   score: number
 }
 
-export interface DispatchDashboardData {
+export interface HealthSurveyDispatchDashboardData {
   id: string
   tenantId: string
   departmentId: string
@@ -202,7 +202,7 @@ export interface DispatchDashboardData {
   departmentName: string
   frequency: string
   questions: { id: string; text: string; order: number; scoreDirection: string }[]
-  responseItems: DispatchResponseItem[]
+  responseItems: HealthSurveyDispatchResponseItem[]
 }
 
 interface QuestionSnapshot { id: string; text: string; order: number; scoreDirection: string }
@@ -223,7 +223,7 @@ function extractQuestionsFromResponses(
   return Array.from(seen.values()).sort((a, b) => a.order - b.order)
 }
 
-export async function findDispatchWithDashboard(tenantId: string, dispatchId: string): Promise<DispatchDashboardData | null> {
+export async function findHealthSurveyDispatchWithDashboard(tenantId: string, dispatchId: string): Promise<HealthSurveyDispatchDashboardData | null> {
   const dispatch = await prisma.healthSurveyDispatch.findFirst({
     where: { id: dispatchId, tenantId },
     include: {
@@ -246,7 +246,7 @@ export async function findDispatchWithDashboard(tenantId: string, dispatchId: st
   const configQuestions = dispatch.healthSurveyConfiguration.questions.map((q) => ({ id: q.id, text: q.text, order: q.order, scoreDirection: q.scoreDirection }))
   const questions = extractQuestionsFromResponses(dispatch.responses, configQuestions)
 
-  const responseItems: DispatchResponseItem[] = dispatch.responses.flatMap((r) =>
+  const responseItems: HealthSurveyDispatchResponseItem[] = dispatch.responses.flatMap((r) =>
     r.items.map((item) => ({ questionId: item.questionId, score: item.score })),
   )
 
@@ -266,10 +266,10 @@ export async function findDispatchWithDashboard(tenantId: string, dispatchId: st
   }
 }
 
-export async function findMultipleDispatchesWithDashboard(
+export async function findHealthSurveyMultipleDispatchesWithDashboard(
   tenantId: string,
   dispatchIds: string[],
-): Promise<DispatchDashboardData[]> {
+): Promise<HealthSurveyDispatchDashboardData[]> {
   if (dispatchIds.length === 0) return []
   const dispatches = await prisma.healthSurveyDispatch.findMany({
     where: { id: { in: dispatchIds }, tenantId },
@@ -305,14 +305,14 @@ export async function findMultipleDispatchesWithDashboard(
   })
 }
 
-export function findDispatchById(tenantId: string, dispatchId: string): Promise<DispatchWithDetails | null> {
+export function findHealthSurveyDispatchById(tenantId: string, dispatchId: string): Promise<HealthSurveyDispatchWithDetails | null> {
   return prisma.healthSurveyDispatch.findFirst({
     where: { id: dispatchId, tenantId },
     include: { healthSurveyConfiguration: { include: { questions: true } }, responses: true },
   })
 }
 
-export function findAllTenantsPendingDispatches(): Promise<
+export function findAllTenantsPendingHealthSurveyDispatches(): Promise<
   (HealthSurveyDispatch & {
     healthSurveyConfiguration: HealthSurveyConfiguration & {
       workDays: { dayOfWeek: number }[]
@@ -349,7 +349,7 @@ export function findAllTenantsPendingDispatches(): Promise<
   })
 }
 
-export function findTokenByValue(token: string): Promise<TokenWithDispatch | null> {
+export function findHealthSurveyTokenByValue(token: string): Promise<HealthSurveyTokenWithDispatch | null> {
   return prisma.healthSurveyResponseToken.findUnique({
     where: { token },
     include: {
@@ -359,14 +359,14 @@ export function findTokenByValue(token: string): Promise<TokenWithDispatch | nul
   })
 }
 
-export function markTokenUsed(tenantId: string, tokenId: string): Promise<HealthSurveyResponseToken> {
+export function markHealthSurveyTokenUsed(tenantId: string, tokenId: string): Promise<HealthSurveyResponseToken> {
   return prisma.healthSurveyResponseToken.update({
     where: { id: tokenId, tenantId },
     data: { usedAt: new Date() },
   })
 }
 
-export function createDispatch(
+export function createHealthSurveyDispatch(
   tenantId: string,
   configId: string,
   scheduledAt: Date,
@@ -422,7 +422,7 @@ export async function createHealthSurveyTokens(tokens: CreateHealthSurveyTokenIn
   await prisma.healthSurveyResponseToken.createMany({ data: tokens })
 }
 
-export async function markDispatchSent(tenantId: string, dispatchId: string, totalRecipients: number): Promise<void> {
+export async function markHealthSurveyDispatchSent(tenantId: string, dispatchId: string, totalRecipients: number): Promise<void> {
   await prisma.healthSurveyDispatch.updateMany({
     where: { id: dispatchId, tenantId },
     data: { status: "sent", dispatchedAt: new Date(), totalRecipients },
@@ -443,7 +443,7 @@ export async function createHealthSurveyTokensAndMarkSent(
   ])
 }
 
-export interface DispatchEmployee {
+export interface HealthSurveyDispatchEmployee {
   id: string
   name: string
   phone: string
@@ -452,14 +452,14 @@ export interface DispatchEmployee {
   workDays: number[]
 }
 
-export interface DispatchDepartment {
+export interface HealthSurveyDispatchDepartment {
   workStartTime: string
   workEndTime: string
   workDays: number[]
-  employees: DispatchEmployee[]
+  employees: HealthSurveyDispatchEmployee[]
 }
 
-export interface ActiveConfigForDispatch {
+export interface ActiveHealthSurveyConfigForDispatch {
   id: string
   tenantId: string
   frequency: string
@@ -467,14 +467,14 @@ export interface ActiveConfigForDispatch {
   workEndTime: string
   workDays: number[]
   organization: { timezone: string }
-  department: DispatchDepartment
+  department: HealthSurveyDispatchDepartment
   questions: HealthSurveyQuestion[]
   lastDispatchedAt: Date | null
 }
 
 const ACTIVE_BILLING_STATUSES_FOR_DISPATCH = new Set(["active", "trialing"])
 
-export async function findAllTenantsActiveHealthSurveyConfigsForAutoDispatch(): Promise<ActiveConfigForDispatch[]> {
+export async function findAllTenantsActiveHealthSurveyConfigsForAutoDispatch(): Promise<ActiveHealthSurveyConfigForDispatch[]> {
   const configs = await prisma.healthSurveyConfiguration.findMany({
     where: { isActive: true },
     include: {
@@ -523,14 +523,14 @@ export async function findAllTenantsActiveHealthSurveyConfigsForAutoDispatch(): 
     }))
 }
 
-export interface PendingAdherenceDispatch {
+export interface PendingHealthSurveyAdherenceDispatch {
   id: string
   tenantId: string
   totalRecipients: number
   healthSurveyConfiguration: { departmentId: string }
 }
 
-export function findAllTenantsDispatches48hAgo(): Promise<PendingAdherenceDispatch[]> {
+export function findAllTenantsHealthSurveyDispatches48hAgo(): Promise<PendingHealthSurveyAdherenceDispatch[]> {
   const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000)
   return prisma.healthSurveyDispatch.findMany({
     where: { status: "sent", dispatchedAt: { lte: cutoff }, adherenceCheckedAt: null },
@@ -538,11 +538,11 @@ export function findAllTenantsDispatches48hAgo(): Promise<PendingAdherenceDispat
   })
 }
 
-export function countResponsesForDispatch(tenantId: string, dispatchId: string): Promise<number> {
+export function countHealthSurveyResponsesForDispatch(tenantId: string, dispatchId: string): Promise<number> {
   return prisma.healthSurveyResponse.count({ where: { dispatchId, tenantId } })
 }
 
-export async function createAdherenceAlert(data: CreateAdherenceAlertInput): Promise<void> {
+export async function createHealthSurveyAdherenceAlert(data: CreateHealthSurveyAdherenceAlertInput): Promise<void> {
   const isLowAdherence = data.adherenceRate >= 0.5 && data.adherenceRate < 0.8
   const isNoResponse = data.adherenceRate < 0.5
 
@@ -572,13 +572,13 @@ export async function createAdherenceAlert(data: CreateAdherenceAlertInput): Pro
   }
 }
 
-export async function markDispatchAdherenceChecked(tenantId: string, dispatchId: string, totalResponses: number): Promise<void> {
+export async function markHealthSurveyDispatchAdherenceChecked(tenantId: string, dispatchId: string, totalResponses: number): Promise<void> {
   await prisma.healthSurveyDispatch.updateMany({
     where: { id: dispatchId, tenantId },
     data: { adherenceCheckedAt: new Date(), totalResponses },
   })
 }
 
-export async function createMessageLog(data: CreateMessageLogInput): Promise<void> {
+export async function createHealthSurveyMessageLog(data: CreateHealthSurveyMessageLogInput): Promise<void> {
   await prisma.messageLog.create({ data })
 }

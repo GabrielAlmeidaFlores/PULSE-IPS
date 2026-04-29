@@ -13,7 +13,7 @@ interface Props {
   departments: DeptOption[]
 }
 
-export function DeptFilter({ departments }: Props): React.ReactElement {
+export function HealthSurveyDispatchDeptFilter({ departments }: Props): React.ReactElement {
   const [selectedIds, setSelectedIds] = useQueryState(
     "depts",
     parseAsArrayOf(parseAsString).withDefault([]).withOptions({ shallow: false }),

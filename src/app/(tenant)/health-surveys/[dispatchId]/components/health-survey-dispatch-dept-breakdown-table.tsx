@@ -16,7 +16,7 @@ interface Props {
   items: DeptBreakdownItem[]
 }
 
-export function DeptBreakdownTable({ items }: Props): React.ReactElement {
+export function HealthSurveyDispatchDeptBreakdownTable({ items }: Props): React.ReactElement {
   const [selectedIds, setSelectedIds] = useQueryState(
     "depts",
     parseAsArrayOf(parseAsString).withDefault([]).withOptions({ shallow: false }),

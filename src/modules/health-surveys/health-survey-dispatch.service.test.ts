@@ -1,21 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { runHealthSurveyDispatcher, runHealthSurveyAutoDispatchScheduler, checkHealthSurveyDispatchAdherence } from "@/modules/health-surveys/health-survey-dispatch.service"
 import {
-  findAllTenantsPendingDispatches,
+  findAllTenantsPendingHealthSurveyDispatches,
   findAllTenantsActiveHealthSurveyConfigsForAutoDispatch,
   createHealthSurveyTokensAndMarkSent,
-  createDispatch,
-  findAllTenantsDispatches48hAgo,
-  countResponsesForDispatch,
-  createAdherenceAlert,
-  markDispatchAdherenceChecked,
-  type ActiveConfigForDispatch,
+  createHealthSurveyDispatch,
+  findAllTenantsHealthSurveyDispatches48hAgo,
+  countHealthSurveyResponsesForDispatch,
+  createHealthSurveyAdherenceAlert,
+  markHealthSurveyDispatchAdherenceChecked,
+  type ActiveHealthSurveyConfigForDispatch,
 } from "@/modules/health-surveys/health-survey.repository"
 import { hasOpenAlertOfType } from "@/modules/alerts/alert.repository"
 import { findEmployeeIdsWithAcceptedConsent } from "@/modules/consent/consent.repository"
 import { getMessageQueue } from "@/libs/queue"
 
-type PendingDispatch = Awaited<ReturnType<typeof findAllTenantsPendingDispatches>>[number]
+type PendingDispatch = Awaited<ReturnType<typeof findAllTenantsPendingHealthSurveyDispatches>>[number]
 
 vi.mock("@/modules/health-surveys/health-survey.repository")
 vi.mock("@/modules/alerts/alert.repository")
@@ -30,14 +30,14 @@ vi.mock("@/env", () => ({
   },
 }))
 
-const mockFindPendingDispatches = vi.mocked(findAllTenantsPendingDispatches)
+const mockFindPendingDispatches = vi.mocked(findAllTenantsPendingHealthSurveyDispatches)
 const mockFindActiveConfigs = vi.mocked(findAllTenantsActiveHealthSurveyConfigsForAutoDispatch)
 const mockCreateSurveyTokensAndMarkSent = vi.mocked(createHealthSurveyTokensAndMarkSent)
-const mockCreateDispatch = vi.mocked(createDispatch)
-const mockFindDispatches48hAgo = vi.mocked(findAllTenantsDispatches48hAgo)
-const mockCountResponses = vi.mocked(countResponsesForDispatch)
-const mockCreateAdherenceAlert = vi.mocked(createAdherenceAlert)
-const mockMarkDispatchAdherenceChecked = vi.mocked(markDispatchAdherenceChecked)
+const mockCreateDispatch = vi.mocked(createHealthSurveyDispatch)
+const mockFindDispatches48hAgo = vi.mocked(findAllTenantsHealthSurveyDispatches48hAgo)
+const mockCountResponses = vi.mocked(countHealthSurveyResponsesForDispatch)
+const mockCreateAdherenceAlert = vi.mocked(createHealthSurveyAdherenceAlert)
+const mockMarkDispatchAdherenceChecked = vi.mocked(markHealthSurveyDispatchAdherenceChecked)
 const mockHasOpenAlertOfType = vi.mocked(hasOpenAlertOfType)
 const mockFindEmployeeIdsWithAcceptedConsent = vi.mocked(findEmployeeIdsWithAcceptedConsent)
 const mockGetMessageQueue = vi.mocked(getMessageQueue)
@@ -89,7 +89,7 @@ function makePendingDispatch(workDays = [1, 2, 3, 4, 5]): PendingDispatch {
   } as unknown as PendingDispatch
 }
 
-function makeAutoDispatchConfig(overrides?: Partial<ActiveConfigForDispatch>): ActiveConfigForDispatch {
+function makeAutoDispatchConfig(overrides?: Partial<ActiveHealthSurveyConfigForDispatch>): ActiveHealthSurveyConfigForDispatch {
   return {
     id: "config-1",
     tenantId: TENANT_ID,
@@ -102,13 +102,13 @@ function makeAutoDispatchConfig(overrides?: Partial<ActiveConfigForDispatch>): A
     department: { ...AUTO_DISPATCH_DEPT },
     questions: [],
     ...overrides,
-  } as ActiveConfigForDispatch
+  } as ActiveHealthSurveyConfigForDispatch
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
   mockGetMessageQueue.mockReturnValue(MOCK_QUEUE as ReturnType<typeof getMessageQueue>)
-  mockCreateDispatch.mockResolvedValue({ id: "new-dispatch-1" } as Awaited<ReturnType<typeof createDispatch>>)
+  mockCreateDispatch.mockResolvedValue({ id: "new-dispatch-1" } as Awaited<ReturnType<typeof createHealthSurveyDispatch>>)
   mockCreateSurveyTokensAndMarkSent.mockResolvedValue(undefined)
   mockCreateAdherenceAlert.mockResolvedValue(undefined)
   mockMarkDispatchAdherenceChecked.mockResolvedValue(undefined)
@@ -277,7 +277,7 @@ describe("checkHealthSurveyDispatchAdherence", () => {
       totalRecipients: 10,
       healthSurveyConfiguration: { departmentId: "dept-1" },
     }
-    mockFindDispatches48hAgo.mockResolvedValue([dispatch] as Awaited<ReturnType<typeof findAllTenantsDispatches48hAgo>>)
+    mockFindDispatches48hAgo.mockResolvedValue([dispatch] as Awaited<ReturnType<typeof findAllTenantsHealthSurveyDispatches48hAgo>>)
     mockCountResponses.mockResolvedValue(5)
 
     const result = await checkHealthSurveyDispatchAdherence()
@@ -296,7 +296,7 @@ describe("checkHealthSurveyDispatchAdherence", () => {
       totalRecipients: 10,
       healthSurveyConfiguration: { departmentId: "dept-1" },
     }
-    mockFindDispatches48hAgo.mockResolvedValue([dispatch] as Awaited<ReturnType<typeof findAllTenantsDispatches48hAgo>>)
+    mockFindDispatches48hAgo.mockResolvedValue([dispatch] as Awaited<ReturnType<typeof findAllTenantsHealthSurveyDispatches48hAgo>>)
     mockCountResponses.mockResolvedValue(9)
 
     const result = await checkHealthSurveyDispatchAdherence()
@@ -312,7 +312,7 @@ describe("checkHealthSurveyDispatchAdherence", () => {
       totalRecipients: 0,
       healthSurveyConfiguration: { departmentId: "dept-1" },
     }
-    mockFindDispatches48hAgo.mockResolvedValue([dispatch] as Awaited<ReturnType<typeof findAllTenantsDispatches48hAgo>>)
+    mockFindDispatches48hAgo.mockResolvedValue([dispatch] as Awaited<ReturnType<typeof findAllTenantsHealthSurveyDispatches48hAgo>>)
     mockCountResponses.mockResolvedValue(0)
 
     const result = await checkHealthSurveyDispatchAdherence()

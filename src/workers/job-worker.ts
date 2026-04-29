@@ -6,7 +6,7 @@ import { detectLowScoreAlerts, detectScoreDropAlerts, detectNegativeTrendAlerts,
 import { unpauseAllTenantsDueEmployees } from "@/modules/employees/employee.service"
 import { sendPgrReviewReminders } from "@/modules/pgr/pgr.service"
 import { retryFailedWebhookEvents } from "@/modules/billing/webhook.handler"
-import { createMessageLog, deleteAllTenantsExpiredHealthSurveyTokens } from "@/modules/health-surveys/health-survey.repository"
+import { createHealthSurveyMessageLog, deleteAllTenantsExpiredHealthSurveyTokens } from "@/modules/health-surveys/health-survey.repository"
 import { jobLogService } from "@/modules/job-logs/job-log.service"
 import { runActionPlanSuggestionGenerator } from "@/modules/action-plans/action-plan-suggestion.service"
 import { runOrganizationDeletionExecutor } from "@/modules/organizations/account-deletion.service"
@@ -80,7 +80,7 @@ async function processMessageJob(data: SendMessageJobData): Promise<void> {
     ...(data.templateName !== undefined ? { templateName: data.templateName } : {}),
     ...(data.templateVariables !== undefined ? { templateVariables: data.templateVariables } : {}),
   })
-  await createMessageLog({
+  await createHealthSurveyMessageLog({
     tenantId: data.tenantId,
     employeeId: data.employeeId,
     type: data.type,

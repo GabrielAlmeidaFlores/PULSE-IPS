@@ -7,7 +7,7 @@ import {
   findEmployeeForConsent,
   createConsentTermVersion,
 } from "@/modules/consent/consent.repository"
-import { findTokenByValue, markTokenUsed } from "@/modules/health-surveys/health-survey.repository"
+import { findHealthSurveyTokenByValue, markHealthSurveyTokenUsed } from "@/modules/health-surveys/health-survey.repository"
 import {
   sendConsentInvite,
   recordAcceptance,
@@ -35,8 +35,8 @@ vi.mock("@/modules/consent/consent.repository", () => ({
 }))
 
 vi.mock("@/modules/health-surveys/health-survey.repository", () => ({
-  findTokenByValue: vi.fn(),
-  markTokenUsed: vi.fn(),
+  findHealthSurveyTokenByValue: vi.fn(),
+  markHealthSurveyTokenUsed: vi.fn(),
 }))
 
 vi.mock("@/libs/queue", () => ({
@@ -58,8 +58,8 @@ const mockFindExistingConsentEvent = vi.mocked(findExistingConsentEvent)
 const mockGetActiveConsentTermVersion = vi.mocked(getActiveConsentTermVersion)
 const mockFindEmployeeForConsent = vi.mocked(findEmployeeForConsent)
 const mockCreateConsentTermVersion = vi.mocked(createConsentTermVersion)
-const mockFindTokenByValue = vi.mocked(findTokenByValue)
-const mockMarkTokenUsed = vi.mocked(markTokenUsed)
+const mockFindTokenByValue = vi.mocked(findHealthSurveyTokenByValue)
+const mockMarkTokenUsed = vi.mocked(markHealthSurveyTokenUsed)
 
 const TENANT_ID = "tenant-1"
 const EMPLOYEE_ID = "employee-1"
@@ -333,11 +333,11 @@ describe("optOutFromHealthSurveyToken — opt-out via health survey link", () =>
     workStartTime: "09:00",
     workEndTime: "18:00",
     createdAt: new Date(),
-  } as Awaited<ReturnType<typeof markTokenUsed>>
+  } as Awaited<ReturnType<typeof markHealthSurveyTokenUsed>>
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockFindTokenByValue.mockResolvedValue(tokenRecord as Awaited<ReturnType<typeof findTokenByValue>>)
+    mockFindTokenByValue.mockResolvedValue(tokenRecord as Awaited<ReturnType<typeof findHealthSurveyTokenByValue>>)
     mockGetActiveConsentTermVersion.mockResolvedValue(activeTermVersion)
     mockCreateConsentRecord.mockResolvedValue(baseConsentInvite as Awaited<ReturnType<typeof createConsentRecord>>)
     mockMarkTokenUsed.mockResolvedValue(HEALTH_SURVEY_RESPONSE_TOKEN)
@@ -375,12 +375,12 @@ describe("optOutFromHealthSurveyToken — opt-out via health survey link", () =>
   })
 
   it("throws TOKEN_USED when health survey token already used", async () => {
-    mockFindTokenByValue.mockResolvedValue({ ...tokenRecord, usedAt: new Date() } as Awaited<ReturnType<typeof findTokenByValue>>)
+    mockFindTokenByValue.mockResolvedValue({ ...tokenRecord, usedAt: new Date() } as Awaited<ReturnType<typeof findHealthSurveyTokenByValue>>)
     await expect(optOutFromHealthSurveyToken(healthSurveyToken)).rejects.toMatchObject({ code: "TOKEN_USED" })
   })
 
   it("does not create consent record when token is already used", async () => {
-    mockFindTokenByValue.mockResolvedValue({ ...tokenRecord, usedAt: new Date() } as Awaited<ReturnType<typeof findTokenByValue>>)
+    mockFindTokenByValue.mockResolvedValue({ ...tokenRecord, usedAt: new Date() } as Awaited<ReturnType<typeof findHealthSurveyTokenByValue>>)
     await expect(optOutFromHealthSurveyToken(healthSurveyToken)).rejects.toThrow()
     expect(mockCreateConsentRecord).not.toHaveBeenCalled()
   })
@@ -509,7 +509,7 @@ describe("acceptConsentFromHealthSurveyToken", () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockFindTokenByValue.mockResolvedValue(tokenRecord as Awaited<ReturnType<typeof findTokenByValue>>)
+    mockFindTokenByValue.mockResolvedValue(tokenRecord as Awaited<ReturnType<typeof findHealthSurveyTokenByValue>>)
     mockGetActiveConsentTermVersion.mockResolvedValue(activeVersion as Awaited<ReturnType<typeof getActiveConsentTermVersion>>)
     mockFindExistingConsentEvent.mockResolvedValue(null)
   })
@@ -539,7 +539,7 @@ describe("acceptConsentFromHealthSurveyToken", () => {
   })
 
   it("throws TOKEN_USED when token already used", async () => {
-    mockFindTokenByValue.mockResolvedValue({ ...tokenRecord, usedAt: new Date() } as Awaited<ReturnType<typeof findTokenByValue>>)
+    mockFindTokenByValue.mockResolvedValue({ ...tokenRecord, usedAt: new Date() } as Awaited<ReturnType<typeof findHealthSurveyTokenByValue>>)
 
     await expect(acceptConsentFromHealthSurveyToken(HEALTH_SURVEY_TOKEN)).rejects.toMatchObject({ code: "TOKEN_USED" })
   })
@@ -559,7 +559,7 @@ describe("refuseConsentFromHealthSurveyToken", () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockFindTokenByValue.mockResolvedValue(tokenRecord as Awaited<ReturnType<typeof findTokenByValue>>)
+    mockFindTokenByValue.mockResolvedValue(tokenRecord as Awaited<ReturnType<typeof findHealthSurveyTokenByValue>>)
     mockGetActiveConsentTermVersion.mockResolvedValue(activeVersion as Awaited<ReturnType<typeof getActiveConsentTermVersion>>)
   })
 
@@ -586,7 +586,7 @@ describe("refuseConsentFromHealthSurveyToken", () => {
   })
 
   it("throws TOKEN_USED when token already used", async () => {
-    mockFindTokenByValue.mockResolvedValue({ ...tokenRecord, usedAt: new Date() } as Awaited<ReturnType<typeof findTokenByValue>>)
+    mockFindTokenByValue.mockResolvedValue({ ...tokenRecord, usedAt: new Date() } as Awaited<ReturnType<typeof findHealthSurveyTokenByValue>>)
 
     await expect(refuseConsentFromHealthSurveyToken(HEALTH_SURVEY_TOKEN)).rejects.toMatchObject({ code: "TOKEN_USED" })
   })

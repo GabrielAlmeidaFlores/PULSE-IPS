@@ -5,7 +5,7 @@ import { useState } from "react"
 import { toast } from "sonner"
 import { EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { acceptConsentAction, refuseConsentAction } from "@/app/(public)/health-survey/[token]/actions"
+import { acceptHealthSurveyConsentAction, refuseHealthSurveyConsentAction } from "@/app/(public)/health-survey/[token]/actions"
 
 interface Props {
   token: string
@@ -14,7 +14,7 @@ interface Props {
   onAccepted: () => void
 }
 
-export function ConsentGate({ token, employeeName, content, onAccepted }: Props): React.ReactElement {
+export function HealthSurveyConsentGate({ token, employeeName, content, onAccepted }: Props): React.ReactElement {
   const [loading, setLoading] = useState<"accept" | "refuse" | null>(null)
   const [refused, setRefused] = useState(false)
 
@@ -22,7 +22,7 @@ export function ConsentGate({ token, employeeName, content, onAccepted }: Props)
 
   async function handleAccept(): Promise<void> {
     setLoading("accept")
-    const result = await acceptConsentAction(token)
+    const result = await acceptHealthSurveyConsentAction(token)
     if (result.error) {
       toast.error(result.error)
       setLoading(null)
@@ -33,7 +33,7 @@ export function ConsentGate({ token, employeeName, content, onAccepted }: Props)
 
   async function handleRefuse(): Promise<void> {
     setLoading("refuse")
-    const result = await refuseConsentAction(token)
+    const result = await refuseHealthSurveyConsentAction(token)
     if (result.error) {
       toast.error(result.error)
       setLoading(null)

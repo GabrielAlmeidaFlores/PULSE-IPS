@@ -1,6 +1,6 @@
 export type ScoreDirection = "higher_is_better" | "lower_is_better"
 
-export interface DispatchDashboardStats {
+export interface HealthSurveyDispatchDashboardStats {
   id: string
   departmentId: string
   status: string
@@ -102,7 +102,7 @@ export interface CreateHealthSurveyTokenInput {
   workEndTime: string
 }
 
-export interface CreateAdherenceAlertInput {
+export interface CreateHealthSurveyAdherenceAlertInput {
   tenantId: string
   departmentId: string
   adherenceRate: number
@@ -110,7 +110,7 @@ export interface CreateAdherenceAlertInput {
   totalRecipients: number
 }
 
-export interface CreateMessageLogInput {
+export interface CreateHealthSurveyMessageLogInput {
   tenantId: string
   employeeId: string
   type: "consent_invite" | "health_survey_dispatch" | "health_survey_resend"

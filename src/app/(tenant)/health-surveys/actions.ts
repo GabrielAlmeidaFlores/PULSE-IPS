@@ -10,7 +10,7 @@ import type { ActionResult } from "@/libs/utils/action-result"
 
 const scheduledAtSchema = z.string().datetime()
 
-export async function scheduleAllDispatchesAction(scheduledAt: string): Promise<ActionResult> {
+export async function scheduleAllHealthSurveyDispatchesAction(scheduledAt: string): Promise<ActionResult> {
   const session = await getSession()
   if (!session) return { error: "Sessão expirada." }
   const parsed = scheduledAtSchema.safeParse(scheduledAt)

@@ -45,7 +45,7 @@ const DIRECTION_LABELS: Record<ScoreDirection, string> = {
   lower_is_better: "1 = bom · 5 = ruim",
 }
 
-export function ConfigureSurveyForm({ departments }: Props): React.ReactElement {
+export function ConfigureHealthSurveyForm({ departments }: Props): React.ReactElement {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 

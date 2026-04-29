@@ -1,12 +1,12 @@
 import { describe, it, expect, vi } from "vitest"
 import { getHealthSurveyDispatches, scheduleHealthSurveyDispatch, getHealthSurveyDispatchDashboard, getHealthSurveyMultipleDispatchDashboards } from "@/modules/health-surveys/health-survey-dashboard.service"
-import { findDispatchesByTenant, createDispatch, findDispatchWithDashboard, findMultipleDispatchesWithDashboard } from "@/modules/health-surveys/health-survey.repository"
+import { findHealthSurveyDispatchesByTenant, createHealthSurveyDispatch, findHealthSurveyDispatchWithDashboard, findHealthSurveyMultipleDispatchesWithDashboard } from "@/modules/health-surveys/health-survey.repository"
 
 vi.mock("@/modules/health-surveys/health-survey.repository")
 vi.mock("@/env", () => ({ env: { NEXT_PUBLIC_APP_URL: "http://localhost:3000" } }))
 
-const mockFindDispatchWithDashboard = vi.mocked(findDispatchWithDashboard)
-const mockFindMultipleDispatches = vi.mocked(findMultipleDispatchesWithDashboard)
+const mockFindDispatchWithDashboard = vi.mocked(findHealthSurveyDispatchWithDashboard)
+const mockFindMultipleDispatches = vi.mocked(findHealthSurveyMultipleDispatchesWithDashboard)
 
 const QUESTIONS = [
   { id: "q-1", text: "Como você está?", order: 1, scoreDirection: "higher_is_better" },
@@ -42,7 +42,7 @@ describe("getHealthSurveyDispatchDashboard", () => {
   })
 
   it("builds stats with avgScore per question", async () => {
-    mockFindDispatchWithDashboard.mockResolvedValue(DISPATCH_DATA as Awaited<ReturnType<typeof findDispatchWithDashboard>>)
+    mockFindDispatchWithDashboard.mockResolvedValue(DISPATCH_DATA as Awaited<ReturnType<typeof findHealthSurveyDispatchWithDashboard>>)
 
     const result = await getHealthSurveyDispatchDashboard("tenant-1", "d-1")
 
@@ -58,7 +58,7 @@ describe("getHealthSurveyDispatchDashboard", () => {
   })
 
   it("calculates avgScore for higher_is_better question correctly", async () => {
-    mockFindDispatchWithDashboard.mockResolvedValue(DISPATCH_DATA as Awaited<ReturnType<typeof findDispatchWithDashboard>>)
+    mockFindDispatchWithDashboard.mockResolvedValue(DISPATCH_DATA as Awaited<ReturnType<typeof findHealthSurveyDispatchWithDashboard>>)
 
     const result = await getHealthSurveyDispatchDashboard("tenant-1", "d-1")
 
@@ -68,7 +68,7 @@ describe("getHealthSurveyDispatchDashboard", () => {
   })
 
   it("normalizes lower_is_better scores (6 - score)", async () => {
-    mockFindDispatchWithDashboard.mockResolvedValue(DISPATCH_DATA as Awaited<ReturnType<typeof findDispatchWithDashboard>>)
+    mockFindDispatchWithDashboard.mockResolvedValue(DISPATCH_DATA as Awaited<ReturnType<typeof findHealthSurveyDispatchWithDashboard>>)
 
     const result = await getHealthSurveyDispatchDashboard("tenant-1", "d-1")
 
@@ -79,28 +79,28 @@ describe("getHealthSurveyDispatchDashboard", () => {
 
   it("returns null avgScore when question has no responses", async () => {
     const dispatchWithNoResponses = { ...DISPATCH_DATA, responseItems: [] }
-    mockFindDispatchWithDashboard.mockResolvedValue(dispatchWithNoResponses as Awaited<ReturnType<typeof findDispatchWithDashboard>>)
+    mockFindDispatchWithDashboard.mockResolvedValue(dispatchWithNoResponses as Awaited<ReturnType<typeof findHealthSurveyDispatchWithDashboard>>)
 
     const result = await getHealthSurveyDispatchDashboard("tenant-1", "d-1")
     expect(result?.questions[0]?.avgScore).toBeNull()
   })
 
   it("computes adherenceRate as 0 when no recipients", async () => {
-    mockFindDispatchWithDashboard.mockResolvedValue({ ...DISPATCH_DATA, totalRecipients: 0 } as Awaited<ReturnType<typeof findDispatchWithDashboard>>)
+    mockFindDispatchWithDashboard.mockResolvedValue({ ...DISPATCH_DATA, totalRecipients: 0 } as Awaited<ReturnType<typeof findHealthSurveyDispatchWithDashboard>>)
 
     const result = await getHealthSurveyDispatchDashboard("tenant-1", "d-1")
     expect(result?.adherenceRate).toBe(0)
   })
 
   it("clamps notResponded to 0 minimum when responses exceed recipients", async () => {
-    mockFindDispatchWithDashboard.mockResolvedValue({ ...DISPATCH_DATA, totalRecipients: 5, totalResponses: 7 } as Awaited<ReturnType<typeof findDispatchWithDashboard>>)
+    mockFindDispatchWithDashboard.mockResolvedValue({ ...DISPATCH_DATA, totalRecipients: 5, totalResponses: 7 } as Awaited<ReturnType<typeof findHealthSurveyDispatchWithDashboard>>)
 
     const result = await getHealthSurveyDispatchDashboard("tenant-1", "d-1")
     expect(result?.notResponded).toBe(0)
   })
 
   it("includes score distribution for each question", async () => {
-    mockFindDispatchWithDashboard.mockResolvedValue(DISPATCH_DATA as Awaited<ReturnType<typeof findDispatchWithDashboard>>)
+    mockFindDispatchWithDashboard.mockResolvedValue(DISPATCH_DATA as Awaited<ReturnType<typeof findHealthSurveyDispatchWithDashboard>>)
 
     const result = await getHealthSurveyDispatchDashboard("tenant-1", "d-1")
     const q1 = result?.questions.find((q) => q.id === "q-1")
@@ -120,7 +120,7 @@ describe("getHealthSurveyMultipleDispatchDashboards", () => {
   })
 
   it("builds stats for each dispatch", async () => {
-    mockFindMultipleDispatches.mockResolvedValue([DISPATCH_DATA, { ...DISPATCH_DATA, id: "d-2" }] as Awaited<ReturnType<typeof findMultipleDispatchesWithDashboard>>)
+    mockFindMultipleDispatches.mockResolvedValue([DISPATCH_DATA, { ...DISPATCH_DATA, id: "d-2" }] as Awaited<ReturnType<typeof findHealthSurveyMultipleDispatchesWithDashboard>>)
 
     const result = await getHealthSurveyMultipleDispatchDashboards("tenant-1", ["d-1", "d-2"])
     expect(result).toHaveLength(2)
@@ -131,8 +131,8 @@ describe("getHealthSurveyMultipleDispatchDashboards", () => {
 
 describe("getHealthSurveyDispatches", () => {
   it("returns dispatches for the given tenant", async () => {
-    const mockFind = vi.mocked(findDispatchesByTenant)
-    mockFind.mockResolvedValue([{ id: "d-1" }] as Awaited<ReturnType<typeof findDispatchesByTenant>>)
+    const mockFind = vi.mocked(findHealthSurveyDispatchesByTenant)
+    mockFind.mockResolvedValue([{ id: "d-1" }] as Awaited<ReturnType<typeof findHealthSurveyDispatchesByTenant>>)
 
     const result = await getHealthSurveyDispatches("tenant-1")
     expect(result).toEqual([{ id: "d-1" }])
@@ -142,8 +142,8 @@ describe("getHealthSurveyDispatches", () => {
 
 describe("scheduleHealthSurveyDispatch", () => {
   it("schedules a new dispatch and returns it", async () => {
-    const mockCreate = vi.mocked(createDispatch)
-    mockCreate.mockResolvedValue({ id: "new-d" } as Awaited<ReturnType<typeof createDispatch>>)
+    const mockCreate = vi.mocked(createHealthSurveyDispatch)
+    mockCreate.mockResolvedValue({ id: "new-d" } as Awaited<ReturnType<typeof createHealthSurveyDispatch>>)
     const at = new Date()
 
     const result = await scheduleHealthSurveyDispatch("tenant-1", "config-1", at)

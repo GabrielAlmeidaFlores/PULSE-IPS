@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { getSession } from "@/modules/auth/session"
-import { getHealthSurveyDispatchesPaginatedByDay, type DispatchWithConfig } from "@/modules/health-surveys/health-survey-dashboard.service"
+import { getHealthSurveyDispatchesPaginatedByDay, type HealthSurveyDispatchWithConfig } from "@/modules/health-surveys/health-survey-dashboard.service"
 import { getHealthSurveyConfigs } from "@/modules/health-surveys/health-survey-config.service"
 import { buildPaginationParams } from "@/libs/utils/pagination"
 import { format } from "date-fns"
-import { ScheduleDispatchButton } from "@/app/(tenant)/health-surveys/schedule-health-survey-dispatch-button"
-import { SurveyListFilters } from "@/app/(tenant)/health-surveys/health-survey-list-filters"
+import { ScheduleHealthSurveyDispatchButton } from "@/app/(tenant)/health-surveys/schedule-health-survey-dispatch-button"
+import { HealthSurveyListFilters } from "@/app/(tenant)/health-surveys/health-survey-list-filters"
 import { adherenceRateBarClass } from "@/libs/utils/health-index"
 import { DataTable, TablePagination } from "@/libs/design-system"
 import { PageHelp } from "@/components/page-help"
@@ -47,7 +47,7 @@ interface DayGroup {
   deptCount: number
 }
 
-function groupDispatchesByDay(dispatches: DispatchWithConfig[]): DayGroup[] {
+function groupDispatchesByDay(dispatches: HealthSurveyDispatchWithConfig[]): DayGroup[] {
   const buckets = new Map<string, DayGroup>()
 
   for (const d of dispatches) {
@@ -79,7 +79,7 @@ function groupDispatchesByDay(dispatches: DispatchWithConfig[]): DayGroup[] {
   )
 }
 
-export default async function SurveysPage({ searchParams }: Props): Promise<React.ReactElement> {
+export default async function HealthSurveysListPage({ searchParams }: Props): Promise<React.ReactElement> {
   const session = await getSession()
   if (!session) redirect("/login")
 
@@ -149,7 +149,7 @@ export default async function SurveysPage({ searchParams }: Props): Promise<Reac
           >
             Configurar
           </Link>
-          <ScheduleDispatchButton hasConfigs={configs.length > 0} />
+          <ScheduleHealthSurveyDispatchButton hasConfigs={configs.length > 0} />
         </div>
       </div>
 
@@ -171,7 +171,7 @@ export default async function SurveysPage({ searchParams }: Props): Promise<Reac
         )}
 
         {hasAnyDispatches && (
-          <SurveyListFilters filters={{
+          <HealthSurveyListFilters filters={{
             ...(statusFilter !== undefined ? { status: statusFilter } : {}),
             ...(dateFromStr !== undefined ? { dateFrom: dateFromStr } : {}),
             ...(dateToStr !== undefined ? { dateTo: dateToStr } : {}),

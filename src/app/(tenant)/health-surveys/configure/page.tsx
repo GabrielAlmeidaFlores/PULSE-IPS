@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation"
 import { getSession } from "@/modules/auth/session"
 import { getDepartments } from "@/modules/departments/department.service"
-import { ConfigureSurveyForm } from "@/app/(tenant)/health-surveys/configure/configure-health-survey-form"
+import { ConfigureHealthSurveyForm } from "@/app/(tenant)/health-surveys/configure/configure-health-survey-form"
 
-export default async function ConfigureSurveyPage(): Promise<React.ReactElement> {
+export default async function ConfigureHealthSurveyPage(): Promise<React.ReactElement> {
   const session = await getSession()
   if (!session) redirect("/login")
 
@@ -16,7 +16,7 @@ export default async function ConfigureSurveyPage(): Promise<React.ReactElement>
         <p className="text-xs text-muted-foreground mt-0.5">Defina as perguntas e o horário de envio por departamento</p>
       </div>
       <div className="flex-1 overflow-y-auto p-6">
-        <ConfigureSurveyForm departments={departments.map((d) => ({ id: d.id, name: d.name }))} />
+        <ConfigureHealthSurveyForm departments={departments.map((d) => ({ id: d.id, name: d.name }))} />
       </div>
     </div>
   )

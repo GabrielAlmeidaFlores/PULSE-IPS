@@ -2,7 +2,7 @@ import { format } from "date-fns"
 import { toZonedTime } from "date-fns-tz"
 import { AppError } from "@/libs/errors/app-error"
 import {
-  findTokenByValue,
+  findHealthSurveyTokenByValue,
   deleteAllTenantsExpiredHealthSurveyTokens,
   createHealthSurveyResponseWithItems,
 } from "@/modules/health-surveys/health-survey.repository"
@@ -21,7 +21,7 @@ function resolveTimezone(tokenRecord: { dispatch: { healthSurveyConfiguration: {
 }
 
 export async function validateHealthSurveyToken(token: string): Promise<HealthSurveyTokenValidation> {
-  const tokenRecord = await findTokenByValue(token)
+  const tokenRecord = await findHealthSurveyTokenByValue(token)
   if (!tokenRecord) return { valid: false, error: "Link inválido ou expirado." }
   if (tokenRecord.usedAt) return { valid: false, error: "Esta pesquisa já foi respondida." }
   if (tokenRecord.expiresAt < new Date()) return { valid: false, error: "Este link expirou." }
@@ -70,7 +70,7 @@ export async function validateHealthSurveyToken(token: string): Promise<HealthSu
 }
 
 export async function submitHealthSurveyResponse(input: SubmitHealthSurveyInput): Promise<void> {
-  const tokenRecord = await findTokenByValue(input.token)
+  const tokenRecord = await findHealthSurveyTokenByValue(input.token)
   if (!tokenRecord) throw new AppError("TOKEN_INVALID", "Token inválido.")
   if (tokenRecord.usedAt) throw new AppError("SURVEY_ALREADY_ANSWERED", "Esta pesquisa já foi respondida.")
   if (tokenRecord.expiresAt < new Date()) throw new AppError("TOKEN_EXPIRED", "Este link expirou.")

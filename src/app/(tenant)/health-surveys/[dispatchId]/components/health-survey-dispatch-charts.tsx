@@ -18,7 +18,7 @@ import {
   ComposedChart,
   ReferenceLine,
 } from "recharts"
-import type { DispatchDashboardStats, ScoreDirection } from "@/modules/health-surveys/health-survey.types"
+import type { HealthSurveyDispatchDashboardStats, ScoreDirection } from "@/modules/health-surveys/health-survey.types"
 import { toHealthIndex, healthIndexChartColor } from "@/libs/utils/health-index"
 import { ScoreSegmentTooltip, type ScoreSegmentTooltipProps } from "@/components/score-segment-tooltip"
 
@@ -61,10 +61,10 @@ function QuestionTooltip({ active, payload }: QuestionTooltipProps): React.React
 }
 
 interface Props {
-  stats: DispatchDashboardStats
+  stats: HealthSurveyDispatchDashboardStats
 }
 
-export function QuestionScoreChart({ stats }: Props): React.ReactElement {
+export function HealthSurveyQuestionScoreChart({ stats }: Props): React.ReactElement {
   const data = stats.questions
     .filter((q) => q.avgScore !== null)
     .map((q) => {
@@ -101,7 +101,7 @@ export function QuestionScoreChart({ stats }: Props): React.ReactElement {
 }
 
 interface DistributionProps {
-  question: DispatchDashboardStats["questions"][number]
+  question: HealthSurveyDispatchDashboardStats["questions"][number]
 }
 
 interface SegmentTooltipState extends Omit<ScoreSegmentTooltipProps, "top" | "left"> {
@@ -109,7 +109,7 @@ interface SegmentTooltipState extends Omit<ScoreSegmentTooltipProps, "top" | "le
   left: number
 }
 
-export function ScoreDistributionBar({ question }: DistributionProps): React.ReactElement {
+export function HealthSurveyScoreDistributionBar({ question }: DistributionProps): React.ReactElement {
   const [tooltip, setTooltip] = useState<SegmentTooltipState | null>(null)
 
   const total = question.distribution.reduce((s, d) => s + d.count, 0)
@@ -165,7 +165,7 @@ function gaugeColor(rate: number): string {
   return "var(--status-danger)"
 }
 
-export function AdherenceGauge({ rate }: AdherenceGaugeProps): React.ReactElement {
+export function HealthSurveyAdherenceGauge({ rate }: AdherenceGaugeProps): React.ReactElement {
   const pct = Math.round(rate * 100)
   const color = gaugeColor(rate)
   const data = [{ name: "rate", value: pct, fill: color }]
@@ -225,7 +225,7 @@ function TrendTooltip({ active, payload }: TrendTooltipProps): React.ReactElemen
   )
 }
 
-export function DeptTrendChart({ data, currentId }: DeptTrendChartProps): React.ReactElement {
+export function HealthSurveyDeptTrendChart({ data, currentId }: DeptTrendChartProps): React.ReactElement {
   if (data.length < 2) {
     return (
       <p className="text-xs text-muted-foreground text-center py-6">
@@ -320,7 +320,7 @@ function ComparisonTooltip({ active, payload }: ComparisonTooltipProps): React.R
   )
 }
 
-export function DispatchHealthComparisonChart({ data }: ComparisonChartProps): React.ReactElement {
+export function HealthSurveyDispatchComparisonChart({ data }: ComparisonChartProps): React.ReactElement {
   const currentPoint = data.find((d) => d.isCurrent)
 
   return (

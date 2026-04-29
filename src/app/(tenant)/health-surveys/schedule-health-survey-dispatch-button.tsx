@@ -4,13 +4,13 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { CalendarClock } from "lucide-react"
 import { toast } from "sonner"
-import { scheduleAllDispatchesAction } from "@/app/(tenant)/health-surveys/actions"
+import { scheduleAllHealthSurveyDispatchesAction } from "@/app/(tenant)/health-surveys/actions"
 
 interface Props {
   hasConfigs: boolean
 }
 
-export function ScheduleDispatchButton({ hasConfigs }: Props): React.ReactElement {
+export function ScheduleHealthSurveyDispatchButton({ hasConfigs }: Props): React.ReactElement {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [open, setOpen] = useState(false)
@@ -23,7 +23,7 @@ export function ScheduleDispatchButton({ hasConfigs }: Props): React.ReactElemen
 
   function handleSubmit(): void {
     startTransition(async () => {
-      const result = await scheduleAllDispatchesAction(new Date(scheduledAt).toISOString())
+      const result = await scheduleAllHealthSurveyDispatchesAction(new Date(scheduledAt).toISOString())
       if (result?.error) {
         toast.error(result.error)
       } else {

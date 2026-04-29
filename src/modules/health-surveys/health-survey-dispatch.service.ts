@@ -4,15 +4,15 @@ import { getMessageQueue } from "@/libs/queue"
 import { env } from "@/env"
 import { logger } from "@/libs/logger"
 import {
-  findAllTenantsPendingDispatches,
+  findAllTenantsPendingHealthSurveyDispatches,
   findAllTenantsActiveHealthSurveyConfigsForAutoDispatch,
   createHealthSurveyTokensAndMarkSent,
-  createDispatch,
-  findAllTenantsDispatches48hAgo,
-  countResponsesForDispatch,
-  createAdherenceAlert,
-  markDispatchAdherenceChecked,
-  type DispatchEmployee,
+  createHealthSurveyDispatch,
+  findAllTenantsHealthSurveyDispatches48hAgo,
+  countHealthSurveyResponsesForDispatch,
+  createHealthSurveyAdherenceAlert,
+  markHealthSurveyDispatchAdherenceChecked,
+  type HealthSurveyDispatchEmployee,
 } from "@/modules/health-surveys/health-survey.repository"
 import { hasOpenAlertOfType } from "@/modules/alerts/alert.repository"
 import { findEmployeeIdsWithAcceptedConsent } from "@/modules/consent/consent.repository"
@@ -43,7 +43,7 @@ function isWorkDay(workDays: number[], timezone: string): boolean {
 async function sendDispatchTokensAndMessages(
   dispatchId: string,
   tenantId: string,
-  eligibleEmployees: DispatchEmployee[],
+  eligibleEmployees: HealthSurveyDispatchEmployee[],
   department: { workStartTime: string; workEndTime: string },
   configWorkStartTime: string,
   configWorkEndTime: string,
@@ -88,7 +88,7 @@ async function sendDispatchTokensAndMessages(
 async function fireDispatch(
   configId: string,
   tenantId: string,
-  employees: DispatchEmployee[],
+  employees: HealthSurveyDispatchEmployee[],
   department: { workStartTime: string; workEndTime: string; workDays: number[] },
   configWorkStartTime: string,
   configWorkEndTime: string,
@@ -108,7 +108,7 @@ async function fireDispatch(
 
   if (eligibleEmployees.length === 0) return false
 
-  const dispatch = await createDispatch(tenantId, configId, new Date())
+  const dispatch = await createHealthSurveyDispatch(tenantId, configId, new Date())
 
   await sendDispatchTokensAndMessages(
     dispatch.id,
@@ -123,7 +123,7 @@ async function fireDispatch(
 }
 
 export async function runHealthSurveyDispatcher(): Promise<{ dispatched: number; errors: number }> {
-  const pendingDispatches = await findAllTenantsPendingDispatches()
+  const pendingDispatches = await findAllTenantsPendingHealthSurveyDispatches()
   let dispatched = 0
   let errors = 0
 
@@ -149,7 +149,7 @@ export async function runHealthSurveyDispatcher(): Promise<{ dispatched: number;
       if (workDayFiltered.length === 0) continue
 
       const acceptedIds = await findEmployeeIdsWithAcceptedConsent(dispatch.tenantId, workDayFiltered.map((e) => e.id))
-      const eligibleEmployees: DispatchEmployee[] = workDayFiltered
+      const eligibleEmployees: HealthSurveyDispatchEmployee[] = workDayFiltered
         .filter((emp) => acceptedIds.includes(emp.id))
         .map((emp) => ({
           id: emp.id,
@@ -174,7 +174,7 @@ export async function runHealthSurveyDispatcher(): Promise<{ dispatched: number;
       dispatched++
     } catch (err) {
       errors++
-      logger.error({ err, dispatchId: dispatch.id }, "survey-dispatcher: error processing dispatch")
+      logger.error({ err, dispatchId: dispatch.id }, "health-survey-dispatcher: error processing dispatch")
     }
   }
 
@@ -225,11 +225,11 @@ export async function runHealthSurveyAutoDispatchScheduler(): Promise<{ triggere
 
 export async function checkHealthSurveyDispatchAdherence(): Promise<{ processed: number; alertsCreated: number }> {
   const ALERT_ADHERENCE_THRESHOLD = 0.8
-  const dispatches = await findAllTenantsDispatches48hAgo()
+  const dispatches = await findAllTenantsHealthSurveyDispatches48hAgo()
   let alertsCreated = 0
 
   for (const dispatch of dispatches) {
-    const responseCount = await countResponsesForDispatch(dispatch.tenantId, dispatch.id)
+    const responseCount = await countHealthSurveyResponsesForDispatch(dispatch.tenantId, dispatch.id)
     const adherenceRate = dispatch.totalRecipients > 0 ? responseCount / dispatch.totalRecipients : 0
 
     if (adherenceRate < ALERT_ADHERENCE_THRESHOLD) {
@@ -237,7 +237,7 @@ export async function checkHealthSurveyDispatchAdherence(): Promise<{ processed:
       const alertType = adherenceRate < 0.5 ? "no_response" : "low_adherence"
       const alreadyOpen = await hasOpenAlertOfType(dispatch.tenantId, alertType, departmentId)
       if (!alreadyOpen) {
-        await createAdherenceAlert({
+        await createHealthSurveyAdherenceAlert({
           tenantId: dispatch.tenantId,
           departmentId,
           adherenceRate,
@@ -248,7 +248,7 @@ export async function checkHealthSurveyDispatchAdherence(): Promise<{ processed:
       }
     }
 
-    await markDispatchAdherenceChecked(dispatch.tenantId, dispatch.id, responseCount)
+    await markHealthSurveyDispatchAdherenceChecked(dispatch.tenantId, dispatch.id, responseCount)
   }
 
   return { processed: dispatches.length, alertsCreated }
