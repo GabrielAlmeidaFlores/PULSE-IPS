@@ -214,13 +214,13 @@ Processa os jobs agendados pelo cron. Cada job é identificado por nome:
 
 | Job | Descrição |
 |---|---|
-| `survey-dispatcher` | Dispara pesquisas para funcionários ativos (automático e manual) |
-| `survey-adherence-checker` | Verifica aderência de dispatches com mais de 48h |
-| `survey-score-alert-detector` | Detecta scores baixos e gera alertas de bem-estar |
+| `health-survey-dispatcher` | Dispara pesquisas para funcionários ativos (automático e manual) |
+| `health-survey-adherence-checker` | Verifica aderência de dispatches com mais de 48h |
+| `health-survey-score-alert-detector` | Detecta scores baixos e gera alertas de bem-estar |
 | `employee-unpause` | Despausa funcionários após o período de pausa expirar |
 | `pgr-review-reminder` | Cria alerta de revisão do PGR quando vence em até 30 dias |
 | `stripe-webhook-retry` | Reprocessa webhooks do Stripe que falharam |
-| `survey-response-token-cleanup` | Remove tokens de resposta expirados e não utilizados |
+| `health-survey-response-token-cleanup` | Remove tokens de resposta expirados e não utilizados |
 | `action-plan-suggestion-generator` | Gera sugestões de plano de ação com base em alertas ativos e dados da plataforma |
 | `organization-deletion-executor` | Exclui permanentemente organizações com exclusão agendada cuja data já expirou |
 
@@ -242,13 +242,13 @@ yarn worker:schedules
 
 | Job | Cron | Frequência |
 |---|---|---|
-| `survey-dispatcher` | `*/15 * * * *` | A cada 15 minutos |
-| `survey-adherence-checker` | `0 * * * *` | A cada hora |
-| `survey-score-alert-detector` | `0 3 * * *` | Diariamente às 03:00 |
+| `health-survey-dispatcher` | `*/15 * * * *` | A cada 15 minutos |
+| `health-survey-adherence-checker` | `0 * * * *` | A cada hora |
+| `health-survey-score-alert-detector` | `0 3 * * *` | Diariamente às 03:00 |
 | `employee-unpause` | `0 1 * * *` | Diariamente às 01:00 |
 | `pgr-review-reminder` | `0 8 * * *` | Diariamente às 08:00 |
 | `stripe-webhook-retry` | `0 * * * *` | A cada hora |
-| `survey-response-token-cleanup` | `0 2 * * *` | Diariamente às 02:00 |
+| `health-survey-response-token-cleanup` | `0 2 * * *` | Diariamente às 02:00 |
 | `action-plan-suggestion-generator` | `0 6 * * *` | Diariamente às 06:00 |
 | `organization-deletion-executor` | `30 3 * * *` | Diariamente às 03:30 |
 
@@ -262,20 +262,20 @@ Todos os endpoints exigem o header `x-cron-secret: <CRON_SECRET>`.
 
 | Endpoint | Método | Descrição |
 |---|---|---|
-| `/api/jobs/survey-dispatcher` | POST | Dispara pesquisas agendadas |
-| `/api/jobs/survey-adherence-checker` | POST | Verifica aderência de respostas |
-| `/api/jobs/survey-score-alert-detector` | POST | Gera alertas de scores baixos |
+| `/api/jobs/health-survey-dispatcher` | POST | Dispara pesquisas agendadas |
+| `/api/jobs/health-survey-adherence-checker` | POST | Verifica aderência de respostas |
+| `/api/jobs/health-survey-score-alert-detector` | POST | Gera alertas de scores baixos |
 | `/api/jobs/employee-unpause` | POST | Despausa funcionários com data vencida |
 | `/api/jobs/pgr-review-reminder` | POST | Cria alerta de revisão do PGR |
 | `/api/jobs/stripe-webhook-retry` | POST | Reprocessa webhooks Stripe com falha |
-| `/api/jobs/survey-response-token-cleanup` | POST | Remove tokens expirados do banco |
+| `/api/jobs/health-survey-response-token-cleanup` | POST | Remove tokens expirados do banco |
 | `/api/jobs/action-plan-suggestion-generator` | POST | Gera sugestões de plano de ação |
 | `/api/jobs/organization-deletion-executor` | POST | Executa exclusão permanente de orgs agendadas |
 
 **Exemplo de chamada manual:**
 
 ```bash
-curl -X POST http://localhost:3000/api/jobs/survey-dispatcher \
+curl -X POST http://localhost:3000/api/jobs/health-survey-dispatcher \
   -H "x-cron-secret: seu-cron-secret"
 ```
 
@@ -312,7 +312,7 @@ TWILIO_FROM_NUMBER="+5511999999999"
 
 # Template da mensagem enviada ao funcionário com o link da pesquisa
 # {nome} é substituído pelo primeiro nome do colaborador; {link} pelo link único da pesquisa
-SURVEY_MESSAGE_TEMPLATE="Oi, {nome}! 👋 Tudo bem por aí? Sua opinião faz a diferença para a gente 🌱 Quando tiver um momento, aqui está o seu formulário de bem-estar: {link}"
+HEALTH_SURVEY_MESSAGE_TEMPLATE="Oi, {nome}! 👋 Tudo bem por aí? Sua opinião faz a diferença para a gente 🌱 Quando tiver um momento, aqui está o seu formulário de bem-estar: {link}"
 
 # ─── Provedor de e-mail ────────────────────────────────────────────
 # Opções: console | resend
@@ -382,7 +382,7 @@ src/
 ├── app/                        # Rotas Next.js (App Router)
 │   ├── (auth)/                 # Login, logout, senha, accept-terms
 │   ├── (onboarding)/           # Aceitar convite (/invite/[token])
-│   ├── (public)/               # Survey, consent, report anônimo (sem auth)
+│   ├── (public)/               # HealthHealthSurvey, consent, report anônimo (sem auth)
 │   ├── (tenant)/               # Área logada da organização (admin + rh)
 │   ├── (super-admin)/          # Área logada do super admin
 │   └── api/
@@ -393,7 +393,7 @@ src/
 │   ├── auth/                   # Autenticação, sessão, convites
 │   ├── billing/                # Assinaturas, planos, webhooks Stripe
 │   ├── employees/              # Funcionários, importação Excel
-│   ├── surveys/                # Configuração, disparo, respostas
+│   ├── health-surveys/                # Configuração, disparo, respostas
 │   ├── alerts/                 # Detecção e gestão de alertas
 │   ├── action-plans/           # Planos de ação e tarefas
 │   ├── documents/              # Documentos e versões
@@ -465,7 +465,7 @@ A plataforma possui três níveis de acesso completamente isolados:
 
 O arquivo `src/proxy.ts` intercepta todas as requisições:
 
-1. Caminhos públicos (login, survey, consent, report, checkout, etc.) passam sem verificação.
+1. Caminhos públicos (login, health-survey, consent, report, checkout, etc.) passam sem verificação.
 2. Caminhos `/super-admin/*` verificam o cookie `pulse_super_admin_session`.
 3. Todos os demais caminhos verificam o cookie `pulse_session`.
 4. Se o JWT estiver ausente ou inválido, redireciona para `/login` ou `/super-admin/login`.
@@ -595,13 +595,13 @@ const color = healthIndexAccent(hi)          // → classe CSS de cor
 
 ### 4. Configuração de pesquisa
 
-1. Usuário acessa `/surveys/configure` e seleciona um departamento.
+1. Usuário acessa `/health-health-surveys/configure` e seleciona um departamento.
 2. Define:
    - **Frequência**: `daily`, `twice_weekly`, `weekly`, `biweekly`, `monthly`
    - **Horário de expediente**: `workStartTime` e `workEndTime` (formato `HH:mm`)
-   - **Dias de trabalho**: seleção de dias da semana (0=Dom … 6=Sáb), armazenados na tabela relacional `survey_config_work_days` — nunca como string separada por vírgula
+   - **Dias de trabalho**: seleção de dias da semana (0=Dom … 6=Sáb), armazenados na tabela relacional `health_health_survey_config_work_days` — nunca como string separada por vírgula
    - **Perguntas**: lista de questões com score de 1 a 5, cada uma com `scoreDirection` (`higher_is_better` ou `lower_is_better`). Perguntas de estresse e carga de trabalho usam `lower_is_better` (1 = ótimo). O sistema normaliza automaticamente antes de calcular métricas e gerar alertas.
-3. A action salva a `SurveyConfiguration` com `@@unique([tenantId, departmentId])` — só existe uma configuração ativa por departamento.
+3. A action salva a `HealthSurveyConfiguration` com `@@unique([tenantId, departmentId])` — só existe uma configuração ativa por departamento.
 
 ---
 
@@ -612,25 +612,25 @@ Este é o fluxo central da plataforma. Ocorre de duas formas:
 **Auto-disparo (automático via cron):**
 
 ```
-A cada 15 min → job survey-dispatcher
+A cada 15 min → job health-survey-dispatcher
   ├── runAutoDispatchScheduler()
   │     ├── Busca configs ativas com employees
   │     ├── Verifica se hoje é dia de trabalho (timezone da org)
   │     ├── Verifica intervalo desde o último disparo
   │     └── Para cada config elegível:
-  │           ├── Cria SurveyDispatch (status: sent)
-  │           ├── Cria SurveyResponseToken por funcionário (expira em 48h)
+  │           ├── Cria HealthSurveyDispatch (status: sent)
+  │           ├── Cria HealthSurveyResponseToken por funcionário (expira em 48h)
   │           └── Enfileira mensagem na fila pulse:messages
   │
-  └── runSurveyDispatcher()
+  └── runHealthSurveyDispatcher()
         ├── Busca dispatches agendados manualmente (status: scheduled)
         └── Mesmo fluxo acima para cada dispatch pendente
 ```
 
 **Disparo manual:**
-1. Usuário clica em "Disparar agora" na tela `/surveys`.
-2. A action cria um `SurveyDispatch` com `status = "scheduled"` e `scheduledAt = now()`.
-3. O job `survey-dispatcher` (próxima execução em até 15 min) o processa.
+1. Usuário clica em "Disparar agora" na tela `/health-surveys`.
+2. A action cria um `HealthSurveyDispatch` com `status = "scheduled"` e `scheduledAt = now()`.
+3. O job `health-survey-dispatcher` (próxima execução em até 15 min) o processa.
 
 **Envio das mensagens (BullMQ):**
 
@@ -646,32 +646,32 @@ Fila pulse:messages
 
 **Conteúdo da mensagem:**
 
-O texto da mensagem é configurado via `SURVEY_MESSAGE_TEMPLATE` no `.env`. Os placeholders `{nome}` e `{link}` são substituídos automaticamente antes do envio:
+O texto da mensagem é configurado via `HEALTH_SURVEY_MESSAGE_TEMPLATE` no `.env`. Os placeholders `{nome}` e `{link}` são substituídos automaticamente antes do envio:
 
 ```
 Oi, {nome}! 👋 Tudo bem por aí? Sua opinião faz a diferença para a gente 🌱 Quando tiver um momento, aqui está o seu formulário de bem-estar: {link}
 ```
 
-O link aponta para `/survey/[token]`, que também serve como ponto de entrada para o consentimento (ver seção 6).
+O link aponta para `/health-survey/[token]`, que também serve como ponto de entrada para o consentimento (ver seção 6).
 
 ---
 
 ### 6. Resposta à pesquisa (funcionário)
 
-1. Funcionário recebe o link `/survey/[token]` por SMS/WhatsApp.
+1. Funcionário recebe o link `/health-survey/[token]` por SMS/WhatsApp.
 2. A página valida o token: verifica existência, `usedAt = null`, `expiresAt > now()`.
 3. Verifica se o funcionário está dentro do horário de expediente configurado (usando `workStartTime`/`workEndTime` salvos no token no momento do disparo).
 4. **Consent gate:** se o funcionário ainda não aceitou os termos de consentimento (TCLE), exibe o texto dos termos inline para aceite antes de mostrar o formulário. Ao aceitar, cria um `EmployeeConsent` com `event = "accepted"`. Ao recusar, cria `event = "refused"` e encerra o fluxo.
 5. Exibe as perguntas da pesquisa (scores de 1 a 5).
 6. O funcionário pode clicar em **"Não quero mais participar"** (opt-out) a qualquer momento antes de submeter. Isso:
-   - Cria um `EmployeeConsent` com `event = "opt_out"` e `source = "survey_form"`.
+   - Cria um `EmployeeConsent` com `event = "opt_out"` e `source = "health_health_survey_form"`.
    - Marca o token como usado.
-   - O job `survey-dispatcher` passa a excluir este funcionário de novos disparos até que seja re-convidado.
+   - O job `health-survey-dispatcher` passa a excluir este funcionário de novos disparos até que seja re-convidado.
 7. Ao submeter, a action:
-   - Cria `SurveyResponse` **sem `employee_id`** — o desvinculamento garante anonimato completo.
-   - Cria `SurveyResponseItem` por questão com o score informado.
+   - Cria `HealthSurveyResponse` **sem `employee_id`** — o desvinculamento garante anonimato completo.
+   - Cria `HealthSurveyResponseItem` por questão com o score informado.
    - Marca o token como usado (`usedAt = now()`).
-   - Atualiza `SurveyDispatch.totalResponses++`.
+   - Atualiza `HealthSurveyDispatch.totalResponses++`.
 8. O funcionário vê uma tela de agradecimento.
 
 > O horário verificado no momento da resposta usa o `workStartTime`/`workEndTime` **snapshot** salvo no token, não a configuração atual. Isso garante consistência mesmo que a config seja alterada após o disparo.
@@ -682,7 +682,7 @@ O link aponta para `/survey/[token]`, que também serve como ponto de entrada pa
 
 O job `adherence-checker` (a cada hora) verifica dispatches com mais de 48 horas:
 
-1. Busca `SurveyDispatch` com `adherenceCheckedAt = null` e `dispatchedAt < now() - 48h`.
+1. Busca `HealthSurveyDispatch` com `adherenceCheckedAt = null` e `dispatchedAt < now() - 48h`.
 2. Para cada dispatch, conta as respostas recebidas.
 3. Calcula: `adherenceRate = totalResponses / totalRecipients`.
 4. Se `adherenceRate < 0.8` (menos de 80% de respostas), cria um `Alert` do tipo `low_adherence` para o departamento.
@@ -722,42 +722,42 @@ Referência de tudo que o usuário vê na tela para cada alerta (`/alerts`) e su
 | Tipo / Título | Campo | Conteúdo |
 |---|---|---|
 | **`low_score`** *(Alerta — gerado automaticamente)* | Condição | Score médio normalizado < 3,0 (HI < 50%) nas últimas 48h |
-| | Job | `survey-score-alert-detector` · 03:00 diário |
+| | Job | `health-survey-score-alert-detector` · 03:00 diário |
 | | Severidade | `critical` se HI < 25% · `warning` se 25–50% |
 | | Mensagem | `O índice de saúde do setor {X} está abaixo do esperado: {HI}% ({label}).` |
 | | Tooltip — label | Bem-estar abaixo do esperado |
 | | Tooltip — descrição | O índice de saúde do setor está abaixo do limiar de atenção (índice < 37%). |
 | | Tooltip — ação | Investigue a causa raiz, converse com a equipe e elabore um plano de ação para melhorar o clima ocupacional. |
 | **`score_drop`** *(Alerta — gerado automaticamente)* | Condição | Queda > 1 ponto no score médio comparando janela atual (0–48h) com janela anterior (48–96h) |
-| | Job | `survey-score-alert-detector` · 03:00 diário |
+| | Job | `health-survey-score-alert-detector` · 03:00 diário |
 | | Severidade | `critical` se queda > 2 pontos · `warning` se queda > 1 ponto |
 | | Mensagem | `Queda de {N} pontos no índice de saúde do setor {X}: de {HI_ant}% para {HI_atual}% nas últimas 48h.` |
 | | Tooltip — label | Queda no bem-estar |
 | | Tooltip — descrição | O índice de saúde do setor caiu mais de 1 ponto em relação ao período anterior. |
 | | Tooltip — ação | Revise as respostas das pesquisas, identifique qual fator piorou e crie um plano de ação para endereçar a causa. |
 | **`negative_trend`** *(Alerta — gerado automaticamente)* | Condição | Últimos 3 dispatches com respostas todos abaixo da média histórica do setor |
-| | Job | `survey-score-alert-detector` · 03:00 diário |
+| | Job | `health-survey-score-alert-detector` · 03:00 diário |
 | | Severidade | `warning` |
 | | Mensagem | `O setor {X} apresenta tendência negativa por 3 períodos consecutivos abaixo da média histórica. Índice atual: {HI}%.` |
 | | Tooltip — label | Tendência de piora persistente |
 | | Tooltip — descrição | O índice de saúde do setor ficou abaixo da média histórica por 3 períodos consecutivos — sinal de problema persistente. |
 | | Tooltip — ação | Situação requer atenção urgente. Revise o contexto da equipe, aplique pesquisas qualitativas e implemente planos de ação estruturados. |
 | **`low_adherence`** *(Alerta — gerado automaticamente)* | Condição | Adesão entre 50% e 80% em dispatch enviado há ≥ 48h |
-| | Job | `survey-adherence-checker` · a cada hora |
+| | Job | `health-survey-adherence-checker` · a cada hora |
 | | Severidade | `warning` |
 | | Mensagem | `Taxa de adesão: {pct}% ({respostas}/{total})` |
 | | Tooltip — label | Adesão baixa |
 | | Tooltip — descrição | Menos de 80% dos colaboradores responderam à pesquisa dentro de 48 horas após o disparo. |
 | | Tooltip — ação | Reforce junto aos gestores a importância de responder e verifique se todos os colaboradores do setor têm dados de contato cadastrados. |
 | **`no_response`** *(Alerta — gerado automaticamente)* | Condição | Adesão < 50% em dispatch enviado há ≥ 48h |
-| | Job | `survey-adherence-checker` · a cada hora |
+| | Job | `health-survey-adherence-checker` · a cada hora |
 | | Severidade | `critical` se adesão < 25% · `warning` se 25–50% |
 | | Mensagem | `Taxa de adesão: {pct}% ({respostas}/{total})` |
 | | Tooltip — label | Sem resposta |
 | | Tooltip — descrição | Nenhuma resposta foi recebida neste ciclo de pesquisa. |
 | | Tooltip — ação | Verifique se o disparo foi concluído sem erros nos logs de jobs e se os colaboradores do setor têm dados de contato cadastrados. |
 | **`consent_expired`** *(Alerta — gerado automaticamente)* | Condição | Colaborador ativo com último evento `invited` e `tokenExpiresAt < now()`, agrupado por setor |
-| | Job | `survey-score-alert-detector` · 03:00 diário |
+| | Job | `health-survey-score-alert-detector` · 03:00 diário |
 | | Severidade | `warning` |
 | | Mensagem | `{N} colaborador(es) do setor {X} com convite de consentimento expirado. Reenvie o convite para retomar a participação.` |
 | | Tooltip — label | Consentimento expirado |
@@ -987,21 +987,21 @@ O super admin acessa `/super-admin` com credenciais separadas e tem controle tot
 
 **Horário de expediente:**
 - Configurado em 3 níveis com herança:
-  1. `SurveyConfiguration` — janela de disparo da pesquisa (`workStartTime`, `workEndTime`, `survey_config_work_days`)
+  1. `HealthSurveyConfiguration` — janela de disparo da pesquisa (`workStartTime`, `workEndTime`, `health_health_survey_config_work_days`)
   2. `Department` — expediente padrão do setor (`workStartTime`, `workEndTime`, `department_work_days`) — fallback do colaborador
   3. `Employee` — override individual (`workStartTime`, `workEndTime`, `employee_work_days`) — tem **precedência** sobre o departamento
-- **Cadeia de herança para horários**: `employee → department → surveyConfig`
+- **Cadeia de herança para horários**: `employee → department → healthSurveyConfig`
 - **Cadeia de herança para dias de trabalho**: `employee_work_days` (se preenchido) → `department_work_days`
 - O horário do colaborador tem precedência sobre o departamento; o departamento tem precedência sobre a config da pesquisa.
 
 **No disparo de pesquisas:**
-1. O worker verifica se o dia atual (no timezone da organização) está nos dias configurados em `survey_config_work_days`.
+1. O worker verifica se o dia atual (no timezone da organização) está nos dias configurados em `health_health_survey_config_work_days`.
 2. Verifica se a hora atual (no timezone da organização) está dentro do expediente (`workStartTime` ≤ agora ≤ `workEndTime`).
 3. Se fora do expediente, o disparo é adiado para a próxima execução do job (a cada 15 min).
 
 **Na resposta do formulário:**
 - O token de resposta armazena o snapshot de `workStartTime`/`workEndTime` no momento do disparo.
-- O formulário `/survey/[token]` verifica se a hora atual (timezone da organização) está dentro do expediente salvo no token.
+- O formulário `/health-survey/[token]` verifica se a hora atual (timezone da organização) está dentro do expediente salvo no token.
 - Fora do expediente, o formulário exibe uma mensagem informando o horário disponível.
 
 **Justificativa legal:**
@@ -1078,14 +1078,14 @@ flowchart TD
     INVITE_RH --> RH_DASH["🏠 Dashboard da empresa\n(mesma visão do Admin,\nsem acesso ao faturamento)"]
     RH --> RH_DASH
 
-    RH_DASH --> SURVEY_CFG["Configura pesquisa\npor departamento:\nperguntas, frequência\ne horário de envio"]
+    RH_DASH --> HEALTH_SURVEY_CFG["Configura pesquisa\npor departamento:\nperguntas, frequência\ne horário de envio"]
     RH_DASH --> ALERT_VIEW["Visualiza alertas\nde saúde gerados\npelo sistema"]
     RH_DASH --> AP_CREATE["Cria Planos de Ação\ncom tarefas e responsáveis"]
     RH_DASH --> DOCS["Gerencia documentos\nda empresa (PPRA, PCMSO…)"]
     RH_DASH --> PGR["Gerencia o PGR\n(revisões periódicas"]
     RH_DASH --> REPORTS["Acompanha\ndenúncias anônimas"]
 
-    DASH --> SURVEY_CFG
+    DASH --> HEALTH_SURVEY_CFG
     DASH --> ALERT_VIEW
     DASH --> AP_CREATE
     DASH --> DOCS
@@ -1109,15 +1109,15 @@ flowchart TD
 %% FLUXO DE PESQUISA (envio → resposta → alerta)
 %% ════════════════════════════════════════════════
 
-    SURVEY_CFG --> AUTO_SEND["⏰ Sistema envia automaticamente\nno dia e horário do expediente"]
+    HEALTH_SURVEY_CFG --> AUTO_SEND["⏰ Sistema envia automaticamente\nno dia e horário do expediente"]
     AUTO_SEND --> FUNC_MSG["Funcionário recebe\nSMS ou WhatsApp\ncom link da pesquisa"]
     FUNC --> FUNC_MSG
 
     FUNC_MSG --> ANSWERED{"Funcionário\nresponde?"}
-    ANSWERED -->|"Sim"| SURVEY_DONE["Responde as perguntas\ncom nota de 1 a 5"]
+    ANSWERED -->|"Sim"| HEALTH_SURVEY_DONE["Responde as perguntas\ncom nota de 1 a 5"]
     ANSWERED -->|"Não responde\nem 48h"| LOW_ADH["⚠️ Alerta de\nbaixa participação"]
 
-    SURVEY_DONE --> SCORE{"Notas\nbaixas?"}
+    HEALTH_SURVEY_DONE --> SCORE{"Notas\nbaixas?"}
     SCORE -->|"Sim"| HEALTH_ALERT["⚠️ Alerta de\nsaúde gerado"]
     SCORE -->|"Não"| NEXT_CYCLE["Aguarda o próximo\nenvio automático"]
     NEXT_CYCLE --> AUTO_SEND

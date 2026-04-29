@@ -16,7 +16,7 @@ export interface PlanDisplayFeature {
 }
 
 export const ALL_DISPLAY_FEATURES: PlanDisplayFeature[] = [
-  { key: "surveys", label: "Pesquisas de Clima e Saúde", alwaysEnabled: true },
+  { key: "health-surveys", label: "Pesquisas de Clima e Saúde", alwaysEnabled: true },
   { key: "action_plans", label: "Planos de Ação", alwaysEnabled: false },
   { key: "documents", label: "Documentos", alwaysEnabled: false },
   { key: "anonymous_reports", label: "Relatos Anônimos", alwaysEnabled: false },

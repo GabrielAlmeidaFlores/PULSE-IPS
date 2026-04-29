@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { handleStripeWebhook, retryFailedWebhookEvents } from "@/modules/billing/webhook.handler"
 import type { BillingWebhookEvent } from "@/libs/integrations/billing/billing.interface"
+import type { JsonValue } from "@/libs/utils/json"
 import {
   findWebhookEvent,
   recordWebhookEvent,
@@ -209,18 +210,33 @@ describe("retryFailedWebhookEvents", () => {
   })
 
   it("retries each failed event and marks processed on success", async () => {
-    const failedEvent = {
+    const failedEventPayload: JsonValue = {
+      id: `evt_${SUBSCRIPTION_CREATED}_1`,
+      type: SUBSCRIPTION_CREATED,
+      data: {
+        object: {
+          id: "sub_123",
+          status: "active",
+          customer: "cus_test123",
+          cancel_at_period_end: false,
+          current_period_start: 1700000000,
+          current_period_end: 1702592000,
+          items: { data: [{ price: { id: "price_ext" } }] },
+        },
+      },
+    }
+    const failedEvent: Awaited<ReturnType<typeof findFailedWebhookEvents>>[number] = {
       id: "webhook-log-1",
       tenantId: null,
       externalEventId: "evt_1",
       type: SUBSCRIPTION_CREATED,
       processedAt: null,
       error: null,
-      payload: makeSubscriptionEvent(SUBSCRIPTION_CREATED),
+      payload: failedEventPayload,
       createdAt: new Date(),
     }
-    mockFindFailedWebhookEvents.mockResolvedValue([failedEvent] as Awaited<ReturnType<typeof findFailedWebhookEvents>>)
-    mockFindWebhookEvent.mockResolvedValue(failedEvent as Awaited<ReturnType<typeof findWebhookEvent>>)
+    mockFindFailedWebhookEvents.mockResolvedValue([failedEvent])
+    mockFindWebhookEvent.mockResolvedValue(failedEvent)
     mockMarkWebhookEventProcessed.mockResolvedValue(undefined)
 
     const result = await retryFailedWebhookEvents()
@@ -230,7 +246,7 @@ describe("retryFailedWebhookEvents", () => {
   })
 
   it("marks failed and counts error when retry throws", async () => {
-    const failedEvent = {
+    const failedEvent: Awaited<ReturnType<typeof findFailedWebhookEvents>>[number] = {
       id: "webhook-log-2",
       tenantId: null,
       externalEventId: "evt_2",
@@ -254,8 +270,8 @@ describe("retryFailedWebhookEvents", () => {
       },
       createdAt: new Date(),
     }
-    mockFindFailedWebhookEvents.mockResolvedValue([failedEvent] as Awaited<ReturnType<typeof findFailedWebhookEvents>>)
-    mockFindWebhookEvent.mockResolvedValue(failedEvent as Awaited<ReturnType<typeof findWebhookEvent>>)
+    mockFindFailedWebhookEvents.mockResolvedValue([failedEvent])
+    mockFindWebhookEvent.mockResolvedValue(failedEvent)
     mockMarkWebhookEventFailed.mockResolvedValue(undefined)
     mockFindOrgByCustomerId.mockRejectedValue(new Error("DB error"))
 

@@ -118,7 +118,7 @@ export interface SuggestionContextData {
     totalRecipients: number
     totalResponses: number
     dispatchedAt: Date | null
-    surveyConfiguration: { department: { name: string } }
+    healthSurveyConfiguration: { department: { name: string } }
   }[]
   deptNamesById: Map<string, string>
 }
@@ -165,14 +165,14 @@ export async function findSuggestionContextData(tenantId: string): Promise<Sugge
       select: { period: true, createdAt: true },
       orderBy: { createdAt: "desc" },
     }),
-    prisma.surveyDispatch.findMany({
+    prisma.healthSurveyDispatch.findMany({
       where: { tenantId, status: "sent", dispatchedAt: { gte: thirtyDaysAgo }, totalRecipients: { gt: 0 } },
       select: {
         id: true,
         totalRecipients: true,
         totalResponses: true,
         dispatchedAt: true,
-        surveyConfiguration: { select: { department: { select: { name: true } } } },
+        healthSurveyConfiguration: { select: { department: { select: { name: true } } } },
       },
       orderBy: { dispatchedAt: "desc" },
       take: 10,

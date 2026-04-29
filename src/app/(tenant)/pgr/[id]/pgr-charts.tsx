@@ -12,7 +12,7 @@ import {
   ReferenceLine,
 } from "recharts"
 
-import type { ScoreDirection } from "@/modules/surveys/survey.types"
+import type { ScoreDirection } from "@/modules/health-surveys/health-survey.types"
 import { healthIndexChartColor } from "@/libs/utils/health-index"
 
 export interface DeptOverviewData {

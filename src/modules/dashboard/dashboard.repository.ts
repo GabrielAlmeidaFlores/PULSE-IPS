@@ -1,18 +1,18 @@
 import { prisma } from "@/libs/db"
 import type {
-  SurveyDispatch,
-  SurveyConfiguration,
+  HealthSurveyDispatch,
+  HealthSurveyConfiguration,
   Department,
-  SurveyResponse,
-  SurveyResponseItem,
-  SurveyQuestion,
+  HealthSurveyResponse,
+  HealthSurveyResponseItem,
+  HealthSurveyQuestion,
 } from "@prisma/client"
 
-export type ItemWithQuestion = SurveyResponseItem & { question: Pick<SurveyQuestion, "order" | "text" | "scoreDirection"> }
+export type ItemWithQuestion = HealthSurveyResponseItem & { question: Pick<HealthSurveyQuestion, "order" | "text" | "scoreDirection"> }
 
-export type DispatchWithData = SurveyDispatch & {
-  surveyConfiguration: SurveyConfiguration & { department: Department }
-  responses: (SurveyResponse & { items: ItemWithQuestion[] })[]
+export type DispatchWithData = HealthSurveyDispatch & {
+  healthSurveyConfiguration: HealthSurveyConfiguration & { department: Department }
+  responses: (HealthSurveyResponse & { items: ItemWithQuestion[] })[]
 }
 
 export interface UniqueQuestion {
@@ -21,13 +21,13 @@ export interface UniqueQuestion {
 }
 
 export function findDispatchesWithData(tenantId: string, since: Date): Promise<DispatchWithData[]> {
-  return prisma.surveyDispatch.findMany({
+  return prisma.healthSurveyDispatch.findMany({
     where: {
       tenantId,
       dispatchedAt: { gte: since },
     },
     include: {
-      surveyConfiguration: { include: { department: true } },
+      healthSurveyConfiguration: { include: { department: true } },
       responses: {
         include: {
           items: { include: { question: { select: { order: true, text: true, scoreDirection: true } } } },
@@ -39,7 +39,7 @@ export function findDispatchesWithData(tenantId: string, since: Date): Promise<D
 }
 
 export function findUniqueQuestions(tenantId: string): Promise<UniqueQuestion[]> {
-  return prisma.surveyQuestion.findMany({
+  return prisma.healthSurveyQuestion.findMany({
     where: { tenantId },
     select: { order: true, text: true },
     distinct: ["order", "text"],
@@ -52,7 +52,7 @@ export function countActiveEmployees(tenantId: string): Promise<number> {
 }
 
 export function countTotalResponses(tenantId: string): Promise<number> {
-  return prisma.surveyResponse.count({ where: { tenantId } })
+  return prisma.healthSurveyResponse.count({ where: { tenantId } })
 }
 
 export function countActiveAlerts(tenantId: string): Promise<number> {
@@ -67,14 +67,14 @@ export interface DeptActiveAlert {
 }
 
 export function findDeptDispatchesWithData(tenantId: string, deptId: string, since: Date): Promise<DispatchWithData[]> {
-  return prisma.surveyDispatch.findMany({
+  return prisma.healthSurveyDispatch.findMany({
     where: {
       tenantId,
-      surveyConfiguration: { departmentId: deptId },
+      healthSurveyConfiguration: { departmentId: deptId },
       dispatchedAt: { gte: since },
     },
     include: {
-      surveyConfiguration: { include: { department: true } },
+      healthSurveyConfiguration: { include: { department: true } },
       responses: {
         include: {
           items: { include: { question: { select: { order: true, text: true, scoreDirection: true } } } },

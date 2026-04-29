@@ -107,11 +107,11 @@ export function resolveAlert(tenantId: string, alertId: string, resolvedBy: stri
   })
 }
 
-export interface SurveyResponseWithItems {
+export interface HealthSurveyResponseWithItems {
   tenantId: string
   items: { score: number; question: { scoreDirection: string } }[]
   dispatch: {
-    surveyConfiguration: {
+    healthSurveyConfiguration: {
       department: {
         id: string
         name: string
@@ -120,28 +120,28 @@ export interface SurveyResponseWithItems {
   }
 }
 
-export function findAllTenantsRecentSurveyResponsesForAlerts(since: Date): Promise<SurveyResponseWithItems[]> {
-  return prisma.surveyResponse.findMany({
+export function findAllTenantsRecentHealthSurveyResponsesForAlerts(since: Date): Promise<HealthSurveyResponseWithItems[]> {
+  return prisma.healthSurveyResponse.findMany({
     where: { createdAt: { gte: since } },
     include: {
       items: { include: { question: { select: { scoreDirection: true } } } },
       dispatch: {
         include: {
-          surveyConfiguration: { include: { department: { select: { id: true, name: true } } } },
+          healthSurveyConfiguration: { include: { department: { select: { id: true, name: true } } } },
         },
       },
     },
   })
 }
 
-export function findAllTenantsResponsesInWindow(from: Date, to: Date): Promise<SurveyResponseWithItems[]> {
-  return prisma.surveyResponse.findMany({
+export function findAllTenantsResponsesInWindow(from: Date, to: Date): Promise<HealthSurveyResponseWithItems[]> {
+  return prisma.healthSurveyResponse.findMany({
     where: { createdAt: { gte: from, lt: to } },
     include: {
       items: { include: { question: { select: { scoreDirection: true } } } },
       dispatch: {
         include: {
-          surveyConfiguration: { include: { department: { select: { id: true, name: true } } } },
+          healthSurveyConfiguration: { include: { department: { select: { id: true, name: true } } } },
         },
       },
     },
@@ -158,7 +158,7 @@ export interface DeptDispatchAvg {
 }
 
 export async function findAllTenantsDeptRecentDispatchAvgs(departmentId: string, limitPerDept: number): Promise<DeptDispatchAvg[]> {
-  const configs = await prisma.surveyConfiguration.findMany({
+  const configs = await prisma.healthSurveyConfiguration.findMany({
     where: { departmentId },
     include: {
       department: { select: { id: true, name: true, tenantId: true } },

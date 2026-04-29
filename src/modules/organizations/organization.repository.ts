@@ -129,8 +129,8 @@ export async function findOrganizationFullDetail(id: string): Promise<OrgFullDet
       _count: {
         select: {
           departments: true,
-          surveyDispatches: true,
-          surveyResponses: true,
+          healthSurveyDispatches: true,
+          healthSurveyResponses: true,
           documents: true,
         },
       },
@@ -185,8 +185,8 @@ export async function findOrganizationFullDetail(id: string): Promise<OrgFullDet
     recentAuditLogs: org.auditLogs,
     employeeCounts: { active: activeCount, inactive: inactiveCount, paused: pausedCount },
     departmentCount: org._count.departments,
-    dispatchCount: org._count.surveyDispatches,
-    responseCount: org._count.surveyResponses,
+    dispatchCount: org._count.healthSurveyDispatches,
+    responseCount: org._count.healthSurveyResponses,
     openAlertCount,
     totalAlertCount,
     reportCount: totalReportCount,

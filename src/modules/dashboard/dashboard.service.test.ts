@@ -44,11 +44,11 @@ function makeDispatch(daysAgo: number, responseCount: number): DispatchWithData 
     dispatchedAt,
     totalRecipients: 10,
     responses,
-    surveyConfiguration: {
+    healthSurveyConfiguration: {
       department: { id: DEPT_ID, name: DEPT_NAME },
       questions: [{ id: "q-1", text: "Estresse", order: 1, scoreDirection: "lower_is_better" }],
     },
-  } as DispatchWithData
+  } as unknown as DispatchWithData
 }
 
 beforeEach(() => {

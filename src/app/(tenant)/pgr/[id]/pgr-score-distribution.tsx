@@ -1,6 +1,6 @@
 "use client"
 
-import { ScoreDistributionBar } from "@/app/(tenant)/surveys/[dispatchId]/components/dispatch-charts"
+import { HealthSurveyScoreDistributionBar } from "@/app/(tenant)/health-surveys/[dispatchId]/components/health-survey-dispatch-charts"
 import { toHealthIndex, healthIndexAccent } from "@/libs/utils/health-index"
 
 interface QuestionDistDisplay {
@@ -83,7 +83,7 @@ export function PgrScoreDistributionWidget({ distributions }: Props): React.Reac
                 </div>
               </div>
               <div className="flex flex-col gap-1">
-                <ScoreDistributionBar question={compat} />
+                <HealthSurveyScoreDistributionBar question={compat} />
                 <div className="flex gap-1 flex-wrap">
                   {d.distribution.filter((s) => s.count > 0).map((s) => (
                     <span key={s.score} className="text-[9px] text-muted-foreground">

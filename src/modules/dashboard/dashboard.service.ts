@@ -145,8 +145,8 @@ function processDispatches(
   for (const dispatch of dispatches) {
     if (!dispatch.dispatchedAt) continue
 
-    const dept = dispatch.surveyConfiguration.department.name
-    const deptId = dispatch.surveyConfiguration.department.id
+    const dept = dispatch.healthSurveyConfiguration.department.name
+    const deptId = dispatch.healthSurveyConfiguration.department.id
     const key = monthLabel(dispatch.dispatchedAt)
     const monthDate = startOfMonth(dispatch.dispatchedAt)
     const isRecent = dispatch.dispatchedAt >= thirtyDaysAgo

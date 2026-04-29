@@ -1,12 +1,12 @@
 import { createJobWorker, createMessageWorker, QUEUE_NAME, MESSAGE_QUEUE_NAME, type JobName, type SendMessageJobData } from "@/libs/queue"
 import { getMessagingService } from "@/libs/integrations"
 import { prisma } from "@/libs/db"
-import { runSurveyDispatcher, checkDispatchAdherence, runAutoDispatchScheduler } from "@/modules/surveys/survey-dispatch.service"
+import { runHealthSurveyDispatcher, checkHealthSurveyDispatchAdherence, runHealthSurveyAutoDispatchScheduler } from "@/modules/health-surveys/health-survey-dispatch.service"
 import { detectLowScoreAlerts, detectScoreDropAlerts, detectNegativeTrendAlerts, detectConsentExpiredAlerts } from "@/modules/alerts/alert.service"
 import { unpauseAllTenantsDueEmployees } from "@/modules/employees/employee.service"
 import { sendPgrReviewReminders } from "@/modules/pgr/pgr.service"
 import { retryFailedWebhookEvents } from "@/modules/billing/webhook.handler"
-import { createMessageLog, deleteExpiredTokens } from "@/modules/surveys/survey.repository"
+import { createHealthSurveyMessageLog, deleteAllTenantsExpiredHealthSurveyTokens } from "@/modules/health-surveys/health-survey.repository"
 import { jobLogService } from "@/modules/job-logs/job-log.service"
 import { runActionPlanSuggestionGenerator } from "@/modules/action-plans/action-plan-suggestion.service"
 import { runOrganizationDeletionExecutor } from "@/modules/organizations/account-deletion.service"
@@ -21,22 +21,22 @@ async function processJob(jobName: JobName): Promise<void> {
   workerLogger.info(`starting job: ${jobName}`)
 
   switch (jobName) {
-    case "survey-dispatcher": {
-      const [dispatchResult, autoResult] = await Promise.all([runSurveyDispatcher(), runAutoDispatchScheduler()])
-      workerLogger.success("survey-dispatcher", { dispatch: dispatchResult, auto: autoResult })
+    case "health-survey-dispatcher": {
+      const [dispatchResult, autoResult] = await Promise.all([runHealthSurveyDispatcher(), runHealthSurveyAutoDispatchScheduler()])
+      workerLogger.success("health-survey-dispatcher", { dispatch: dispatchResult, auto: autoResult })
       break
     }
-    case "survey-adherence-checker": {
-      const result = await checkDispatchAdherence()
-      workerLogger.success("survey-adherence-checker", result)
+    case "health-survey-adherence-checker": {
+      const result = await checkHealthSurveyDispatchAdherence()
+      workerLogger.success("health-survey-adherence-checker", result)
       break
     }
-    case "survey-score-alert-detector": {
+    case "health-survey-score-alert-detector": {
       await detectLowScoreAlerts()
       await detectScoreDropAlerts()
       await detectNegativeTrendAlerts()
       await detectConsentExpiredAlerts()
-      workerLogger.success("survey-score-alert-detector: done")
+      workerLogger.success("health-survey-score-alert-detector: done")
       break
     }
     case "employee-unpause": {
@@ -54,9 +54,9 @@ async function processJob(jobName: JobName): Promise<void> {
       workerLogger.success("stripe-webhook-retry", result)
       break
     }
-    case "survey-response-token-cleanup": {
-      const result = await deleteExpiredTokens()
-      workerLogger.success(`survey-response-token-cleanup: deleted ${result.count} expired tokens`)
+    case "health-survey-response-token-cleanup": {
+      const result = await deleteAllTenantsExpiredHealthSurveyTokens()
+      workerLogger.success(`health-survey-response-token-cleanup: deleted ${result.count} expired tokens`)
       break
     }
     case "action-plan-suggestion-generator": {
@@ -80,7 +80,7 @@ async function processMessageJob(data: SendMessageJobData): Promise<void> {
     ...(data.templateName !== undefined ? { templateName: data.templateName } : {}),
     ...(data.templateVariables !== undefined ? { templateVariables: data.templateVariables } : {}),
   })
-  await createMessageLog({
+  await createHealthSurveyMessageLog({
     tenantId: data.tenantId,
     employeeId: data.employeeId,
     type: data.type,

@@ -2,7 +2,7 @@ import { headers } from "next/headers"
 import { NextResponse } from "next/server"
 import { env } from "@/env"
 import { verifyCronSecret } from "@/libs/utils/cron-auth"
-import { checkDispatchAdherence } from "@/modules/surveys/survey-dispatch.service"
+import { checkHealthSurveyDispatchAdherence } from "@/modules/health-surveys/health-survey-dispatch.service"
 
 export async function POST(): Promise<NextResponse> {
   const headersList = await headers()
@@ -13,7 +13,7 @@ export async function POST(): Promise<NextResponse> {
   }
 
   try {
-    const result = await checkDispatchAdherence()
+    const result = await checkHealthSurveyDispatchAdherence()
     return NextResponse.json(result)
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 })

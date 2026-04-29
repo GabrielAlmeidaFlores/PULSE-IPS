@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { normalizeItemScore, calcAvgFromResponses, detectLowScoreAlerts, detectScoreDropAlerts, detectNegativeTrendAlerts, detectConsentExpiredAlerts, getAlerts, markRead, resolve } from "@/modules/alerts/alert.service"
 import {
-  findAllTenantsRecentSurveyResponsesForAlerts,
+  findAllTenantsRecentHealthSurveyResponsesForAlerts,
   findAllTenantsResponsesInWindow,
   findAllTenantsActiveDepartments,
   findAllTenantsDeptRecentDispatchAvgs,
@@ -16,7 +16,7 @@ import {
 vi.mock("@/modules/alerts/alert.repository")
 vi.mock("@/env", () => ({ env: { NEXT_PUBLIC_APP_URL: "http://localhost:3000" } }))
 
-const mockFindRecentResponses = vi.mocked(findAllTenantsRecentSurveyResponsesForAlerts)
+const mockFindRecentResponses = vi.mocked(findAllTenantsRecentHealthSurveyResponsesForAlerts)
 const mockFindResponsesInWindow = vi.mocked(findAllTenantsResponsesInWindow)
 const mockFindActiveDepts = vi.mocked(findAllTenantsActiveDepartments)
 const mockFindDeptDispatchAvgs = vi.mocked(findAllTenantsDeptRecentDispatchAvgs)
@@ -29,14 +29,14 @@ const mockResolveAlert = vi.mocked(resolveAlert)
 
 interface ResponseShape {
   tenantId: string
-  dispatch: { surveyConfiguration: { department: { id: string; name: string } } }
+  dispatch: { healthSurveyConfiguration: { department: { id: string; name: string } } }
   items: { score: number; question: { scoreDirection: string } }[]
 }
 
 function makeResponse(scores: number[], scoreDirection = "higher_is_better"): ResponseShape {
   return {
     tenantId: "tenant-1",
-    dispatch: { surveyConfiguration: { department: { id: "dept-1", name: "Vendas" } } },
+    dispatch: { healthSurveyConfiguration: { department: { id: "dept-1", name: "Vendas" } } },
     items: scores.map((score) => ({ score, question: { scoreDirection } })),
   }
 }
@@ -161,7 +161,7 @@ describe("detectLowScoreAlerts", () => {
 
   it("creates no alert when avg score is above threshold", async () => {
     const responses = Array.from({ length: 5 }, () => makeResponse([4, 5]))
-    mockFindRecentResponses.mockResolvedValue(responses as Awaited<ReturnType<typeof findAllTenantsRecentSurveyResponsesForAlerts>>)
+    mockFindRecentResponses.mockResolvedValue(responses as Awaited<ReturnType<typeof findAllTenantsRecentHealthSurveyResponsesForAlerts>>)
 
     await detectLowScoreAlerts()
     expect(mockCreateAlert).not.toHaveBeenCalled()
@@ -169,7 +169,7 @@ describe("detectLowScoreAlerts", () => {
 
   it("creates no alert when fewer than 5 respondents (anonymity guard)", async () => {
     const responses = Array.from({ length: 4 }, () => makeResponse([1]))
-    mockFindRecentResponses.mockResolvedValue(responses as Awaited<ReturnType<typeof findAllTenantsRecentSurveyResponsesForAlerts>>)
+    mockFindRecentResponses.mockResolvedValue(responses as Awaited<ReturnType<typeof findAllTenantsRecentHealthSurveyResponsesForAlerts>>)
 
     await detectLowScoreAlerts()
     expect(mockCreateAlert).not.toHaveBeenCalled()
@@ -177,7 +177,7 @@ describe("detectLowScoreAlerts", () => {
 
   it("creates warning alert when avg score is below threshold", async () => {
     const responses = Array.from({ length: 5 }, () => makeResponse([2, 3]))
-    mockFindRecentResponses.mockResolvedValue(responses as Awaited<ReturnType<typeof findAllTenantsRecentSurveyResponsesForAlerts>>)
+    mockFindRecentResponses.mockResolvedValue(responses as Awaited<ReturnType<typeof findAllTenantsRecentHealthSurveyResponsesForAlerts>>)
 
     await detectLowScoreAlerts()
     expect(mockCreateAlert).toHaveBeenCalledWith(
@@ -187,7 +187,7 @@ describe("detectLowScoreAlerts", () => {
 
   it("creates critical alert when avg score is below 2", async () => {
     const responses = Array.from({ length: 5 }, () => makeResponse([1, 1]))
-    mockFindRecentResponses.mockResolvedValue(responses as Awaited<ReturnType<typeof findAllTenantsRecentSurveyResponsesForAlerts>>)
+    mockFindRecentResponses.mockResolvedValue(responses as Awaited<ReturnType<typeof findAllTenantsRecentHealthSurveyResponsesForAlerts>>)
 
     await detectLowScoreAlerts()
     expect(mockCreateAlert).toHaveBeenCalledWith(expect.objectContaining({ severity: "critical" }))
@@ -195,7 +195,7 @@ describe("detectLowScoreAlerts", () => {
 
   it("skips creating alert when open alert already exists", async () => {
     const responses = Array.from({ length: 5 }, () => makeResponse([1, 1]))
-    mockFindRecentResponses.mockResolvedValue(responses as Awaited<ReturnType<typeof findAllTenantsRecentSurveyResponsesForAlerts>>)
+    mockFindRecentResponses.mockResolvedValue(responses as Awaited<ReturnType<typeof findAllTenantsRecentHealthSurveyResponsesForAlerts>>)
     mockHasOpenAlert.mockResolvedValue(true)
 
     await detectLowScoreAlerts()
@@ -500,11 +500,11 @@ describe("detectLowScoreAlerts — groupByDept branch (multiple responses same d
     Array.from({ length: 5 }, (_, i) => ({
       tenantId: "t-1",
       items: [{ score: i % 2 === 0 ? 2 : 1, question: { scoreDirection: "higher_is_better" } }],
-      dispatch: { surveyConfiguration: { department: { id: deptId, name: "TI" } } },
+      dispatch: { healthSurveyConfiguration: { department: { id: deptId, name: "TI" } } },
     }))
 
   it("aggregates multiple responses for same department into one alert check", async () => {
-    mockFindRecentResponses.mockResolvedValue(makeGroupedResponses("dept-1") as Awaited<ReturnType<typeof findAllTenantsRecentSurveyResponsesForAlerts>>)
+    mockFindRecentResponses.mockResolvedValue(makeGroupedResponses("dept-1") as Awaited<ReturnType<typeof findAllTenantsRecentHealthSurveyResponsesForAlerts>>)
     mockHasOpenAlert.mockResolvedValue(false)
     mockCreateAlert.mockResolvedValue(undefined)
 

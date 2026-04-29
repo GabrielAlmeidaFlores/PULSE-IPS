@@ -96,10 +96,10 @@ model Organization {
   invitations           OrganizationInvitation[]
   subscription          OrganizationSubscription?
   webhookEvents         BillingWebhookEvent[]
-  surveyDispatches      SurveyDispatch[]
-  surveyQuestions       SurveyQuestion[]
-  surveyResponses       SurveyResponse[]
-  surveyConfigs         SurveyConfiguration[]
+  healthSurveyDispatches      HealthSurveyDispatch[]
+  healthSurveyQuestions       HealthSurveyQuestion[]
+  healthSurveyResponses       HealthSurveyResponse[]
+  healthSurveyConfigs         HealthSurveyConfiguration[]
   documents             Document[]
   actionPlans           ActionPlan[]
   actionPlanTasks       ActionPlanTask[]
@@ -229,7 +229,7 @@ model Department {
 
   organization         Organization          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   employees            Employee[]
-  surveyConfigurations SurveyConfiguration[]
+  healthSurveyConfigurations HealthSurveyConfiguration[]
   alerts               Alert[]
   workDays             DepartmentWorkDay[]
   pgrDeptResults       PgrDeptResult[]
@@ -257,7 +257,7 @@ model Employee {
   organization Organization          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   department   Department            @relation(fields: [departmentId], references: [id])
   consents     EmployeeConsent[]
-  tokens       SurveyResponseToken[]
+  healthSurveyResponseTokens HealthSurveyResponseToken[]
   workDays     EmployeeWorkDay[]
 
   @@index([tenantId])
@@ -283,13 +283,13 @@ model EmployeeWorkDay {
   @@map("employee_work_days")
 }
 
-model SurveyConfigWorkDay {
+model HealthSurveyConfigWorkDay {
   configId  String              @map("config_id")
   dayOfWeek Int                 @map("day_of_week")
-  config    SurveyConfiguration @relation(fields: [configId], references: [id], onDelete: Cascade)
+  config    HealthSurveyConfiguration @relation(fields: [configId], references: [id], onDelete: Cascade)
 
   @@id([configId, dayOfWeek])
-  @@map("survey_config_work_days")
+  @@map("health_survey_config_work_days")
 }
 
 model EmployeeConsent {
@@ -312,49 +312,49 @@ model EmployeeConsent {
   @@map("employee_consents")
 }
 
-model SurveyConfiguration {
+model HealthSurveyConfiguration {
   id            String                @id @default(uuid())
   tenantId      String                @map("tenant_id")
   departmentId  String                @map("department_id")
   frequency     String
   workStartTime String                @map("work_start_time")
   workEndTime   String                @map("work_end_time")
-  workDays      SurveyConfigWorkDay[]
+  workDays      HealthSurveyConfigWorkDay[]
   isActive      Boolean               @default(true) @map("is_active")
   createdAt     DateTime              @default(now()) @map("created_at")
   updatedAt     DateTime              @updatedAt @map("updated_at")
 
   organization Organization     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   department   Department       @relation(fields: [departmentId], references: [id])
-  questions    SurveyQuestion[]
-  dispatches   SurveyDispatch[]
+  questions    HealthSurveyQuestion[]
+  dispatches   HealthSurveyDispatch[]
 
   @@unique([tenantId, departmentId])
   @@index([tenantId])
-  @@map("survey_configurations")
+  @@map("health_survey_configurations")
 }
 
-model SurveyQuestion {
+model HealthSurveyQuestion {
   id                    String  @id @default(uuid())
   tenantId              String  @map("tenant_id")
-  surveyConfigurationId String  @map("survey_configuration_id")
+  healthSurveyConfigurationId String  @map("health_survey_configuration_id")
   text                  String
   order                 Int
   scoreDirection        String  @default("higher_is_better") @map("score_direction")
   isActive              Boolean @default(true) @map("is_active")
 
   organization        Organization         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  surveyConfiguration SurveyConfiguration  @relation(fields: [surveyConfigurationId], references: [id], onDelete: Cascade)
-  responseItems       SurveyResponseItem[]
+  healthSurveyConfiguration HealthSurveyConfiguration  @relation(fields: [healthSurveyConfigurationId], references: [id], onDelete: Cascade)
+  responseItems       HealthSurveyResponseItem[]
 
   @@index([tenantId])
-  @@map("survey_questions")
+  @@map("health_survey_questions")
 }
 
-model SurveyDispatch {
+model HealthSurveyDispatch {
   id                    String    @id @default(uuid())
   tenantId              String    @map("tenant_id")
-  surveyConfigurationId String    @map("survey_configuration_id")
+  healthSurveyConfigurationId String    @map("health_survey_configuration_id")
   scheduledAt           DateTime  @map("scheduled_at")
   dispatchedAt          DateTime? @map("dispatched_at")
   adherenceCheckedAt    DateTime? @map("adherence_checked_at")
@@ -364,16 +364,16 @@ model SurveyDispatch {
   createdAt             DateTime  @default(now()) @map("created_at")
 
   organization        Organization          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  surveyConfiguration SurveyConfiguration   @relation(fields: [surveyConfigurationId], references: [id])
-  tokens              SurveyResponseToken[]
-  responses           SurveyResponse[]
+  healthSurveyConfiguration HealthSurveyConfiguration   @relation(fields: [healthSurveyConfigurationId], references: [id])
+  tokens              HealthSurveyResponseToken[]
+  responses           HealthSurveyResponse[]
 
   @@index([tenantId])
   @@index([tenantId, status, scheduledAt])
-  @@map("survey_dispatches")
+  @@map("health_survey_dispatches")
 }
 
-model SurveyResponseToken {
+model HealthSurveyResponseToken {
   id            String    @id @default(uuid())
   tenantId      String    @map("tenant_id")
   dispatchId    String    @map("dispatch_id")
@@ -385,37 +385,37 @@ model SurveyResponseToken {
   usedAt        DateTime? @map("used_at")
   createdAt     DateTime  @default(now()) @map("created_at")
 
-  dispatch SurveyDispatch  @relation(fields: [dispatchId], references: [id], onDelete: Cascade)
+  dispatch HealthSurveyDispatch  @relation(fields: [dispatchId], references: [id], onDelete: Cascade)
   employee Employee        @relation(fields: [employeeId], references: [id])
 
   @@index([tenantId])
-  @@map("survey_response_tokens")
+  @@map("health_survey_response_tokens")
 }
 
-model SurveyResponse {
+model HealthSurveyResponse {
   id         String   @id @default(uuid())
   tenantId   String   @map("tenant_id")
   dispatchId String   @map("dispatch_id")
   createdAt  DateTime @default(now()) @map("created_at")
 
   organization Organization         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  dispatch     SurveyDispatch       @relation(fields: [dispatchId], references: [id])
-  items        SurveyResponseItem[]
+  dispatch     HealthSurveyDispatch       @relation(fields: [dispatchId], references: [id])
+  items        HealthSurveyResponseItem[]
 
   @@index([tenantId])
-  @@map("survey_responses")
+  @@map("health_survey_responses")
 }
 
-model SurveyResponseItem {
+model HealthSurveyResponseItem {
   id               String @id @default(uuid())
-  surveyResponseId String @map("survey_response_id")
+  healthSurveyResponseId String @map("health_survey_response_id")
   questionId       String @map("question_id")
   score            Int
 
-  surveyResponse SurveyResponse @relation(fields: [surveyResponseId], references: [id], onDelete: Cascade)
-  question       SurveyQuestion @relation(fields: [questionId], references: [id])
+  healthSurveyResponse HealthSurveyResponse @relation(fields: [healthSurveyResponseId], references: [id], onDelete: Cascade)
+  question       HealthSurveyQuestion @relation(fields: [questionId], references: [id])
 
-  @@map("survey_response_items")
+  @@map("health_survey_response_items")
 }
 
 model AnonymousReport {
