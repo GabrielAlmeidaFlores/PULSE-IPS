@@ -117,8 +117,8 @@ export default function DataDeletionPage(): React.ReactElement {
           
           <Section
             icon={<MessageSquare className="h-4 w-4" />}
-            iconBg="bg-blue-100 dark:bg-blue-900/30"
-            iconColor="text-blue-600 dark:text-blue-400"
+            iconBg="bg-status-info-subtle"
+            iconColor="text-status-info"
             title="Por que o Pulse IPS acessa meus dados?"
           >
             <p className="text-sm text-muted-foreground leading-relaxed">
