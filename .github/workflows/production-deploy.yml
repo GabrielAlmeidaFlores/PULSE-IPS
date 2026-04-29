@@ -5,6 +5,9 @@ on:
     branches:
       - main
 
+env:
+  COMPOSE_PROJECT_NAME: pulse-ips
+
 jobs:
   quality:
     name: Quality check
