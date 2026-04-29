@@ -110,7 +110,7 @@ jobs:
 
       - name: Build app and worker images
         run: |
-          docker compose build --no-cache app worker
+          docker compose build app worker
 
   migrate:
     name: Database migrations
