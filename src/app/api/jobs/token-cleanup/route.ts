@@ -2,7 +2,7 @@ import { headers } from "next/headers"
 import { NextResponse } from "next/server"
 import { env } from "@/env"
 import { verifyCronSecret } from "@/libs/utils/cron-auth"
-import { cleanupExpiredTokens } from "@/modules/health-surveys/health-survey-response.service"
+import { cleanupExpiredHealthSurveyTokens } from "@/modules/health-surveys/health-survey-response.service"
 
 export async function POST(_request: Request): Promise<NextResponse> {
   const headersList = await headers()
@@ -13,7 +13,7 @@ export async function POST(_request: Request): Promise<NextResponse> {
   }
 
   try {
-    const result = await cleanupExpiredTokens()
+    const result = await cleanupExpiredHealthSurveyTokens()
     return NextResponse.json({ deleted: result.count })
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 })

@@ -2,7 +2,7 @@
 
 import { z } from "zod"
 import type { ActionResult } from "@/libs/utils/action-result"
-import { submitSurveyResponse } from "@/modules/health-surveys/health-survey-response.service"
+import { submitHealthSurveyResponse } from "@/modules/health-surveys/health-survey-response.service"
 import { optOutFromHealthSurveyToken, acceptConsentFromHealthSurveyToken, refuseConsentFromHealthSurveyToken } from "@/modules/consent/consent.service"
 
 const UNEXPECTED_ERROR_MESSAGE = "Ocorreu um erro inesperado."
@@ -24,7 +24,7 @@ export async function submitHealthSurveyAction(
   const parsed = submitHealthSurveySchema.safeParse({ token, answers })
   if (!parsed.success) return { error: "Dados inválidos." }
   try {
-    await submitSurveyResponse(parsed.data)
+    await submitHealthSurveyResponse(parsed.data)
     return {}
   } catch (error) {
     return { error: error instanceof Error ? error.message : UNEXPECTED_ERROR_MESSAGE }

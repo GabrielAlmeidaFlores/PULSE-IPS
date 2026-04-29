@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { findTokenByValue, createHealthSurveyResponseWithItems } from "@/modules/health-surveys/health-survey.repository"
 import type { ConsentWithTermVersion } from "@/modules/consent/consent.repository"
-import { submitSurveyResponse, validateSurveyToken } from "@/modules/health-surveys/health-survey-response.service"
+import { submitHealthSurveyResponse, validateHealthSurveyToken } from "@/modules/health-surveys/health-survey-response.service"
 
 vi.mock("@/modules/health-surveys/health-survey.repository", () => ({
   findTokenByValue: vi.fn(),
@@ -64,7 +64,7 @@ const validTokenRecord = {
 
 const sampleAnswers = [{ questionId: "q-1", score: 4 }]
 
-describe("submitSurveyResponse — anonymity guarantee", () => {
+describe("submitHealthSurveyResponse — anonymity guarantee", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockFindTokenByValue.mockResolvedValue(validTokenRecord as Awaited<ReturnType<typeof findTokenByValue>>)
@@ -72,7 +72,7 @@ describe("submitSurveyResponse — anonymity guarantee", () => {
   })
 
   it("creates response WITHOUT employee_id in the payload", async () => {
-    await submitSurveyResponse({ token: SURVEY_TOKEN, answers: sampleAnswers })
+    await submitHealthSurveyResponse({ token: SURVEY_TOKEN, answers: sampleAnswers })
 
     expect(mockCreateSurveyResponseWithItems).toHaveBeenCalledOnce()
     const payload = mockCreateSurveyResponseWithItems.mock.calls[0]?.[0]
@@ -83,7 +83,7 @@ describe("submitSurveyResponse — anonymity guarantee", () => {
   })
 
   it("creates response with correct tenantId and dispatchId", async () => {
-    await submitSurveyResponse({ token: SURVEY_TOKEN, answers: sampleAnswers })
+    await submitHealthSurveyResponse({ token: SURVEY_TOKEN, answers: sampleAnswers })
 
     const payload = mockCreateSurveyResponseWithItems.mock.calls[0]?.[0]
     expect(payload?.tenantId).toBe(TENANT_ID)
@@ -91,7 +91,7 @@ describe("submitSurveyResponse — anonymity guarantee", () => {
   })
 
   it("passes tokenId for token invalidation (not for linking response to employee)", async () => {
-    await submitSurveyResponse({ token: SURVEY_TOKEN, answers: sampleAnswers })
+    await submitHealthSurveyResponse({ token: SURVEY_TOKEN, answers: sampleAnswers })
 
     const payload = mockCreateSurveyResponseWithItems.mock.calls[0]?.[0]
     expect(payload?.tokenId).toBe(TOKEN_ID)
@@ -102,7 +102,7 @@ describe("submitSurveyResponse — anonymity guarantee", () => {
       { questionId: "q-1", score: 3 },
       { questionId: "q-2", score: 5 },
     ]
-    await submitSurveyResponse({ token: SURVEY_TOKEN, answers })
+    await submitHealthSurveyResponse({ token: SURVEY_TOKEN, answers })
 
     const payload = mockCreateSurveyResponseWithItems.mock.calls[0]?.[0]
     expect(payload?.answers).toEqual(answers)
@@ -111,7 +111,7 @@ describe("submitSurveyResponse — anonymity guarantee", () => {
   it("throws TOKEN_INVALID when token does not exist", async () => {
     mockFindTokenByValue.mockResolvedValue(null)
 
-    await expect(submitSurveyResponse({ token: SURVEY_TOKEN, answers: sampleAnswers }))
+    await expect(submitHealthSurveyResponse({ token: SURVEY_TOKEN, answers: sampleAnswers }))
       .rejects.toMatchObject({ code: "TOKEN_INVALID" })
     expect(mockCreateSurveyResponseWithItems).not.toHaveBeenCalled()
   })
@@ -119,7 +119,7 @@ describe("submitSurveyResponse — anonymity guarantee", () => {
   it("throws SURVEY_ALREADY_ANSWERED when token already used", async () => {
     mockFindTokenByValue.mockResolvedValue({ ...validTokenRecord, usedAt: new Date() } as Awaited<ReturnType<typeof findTokenByValue>>)
 
-    await expect(submitSurveyResponse({ token: SURVEY_TOKEN, answers: sampleAnswers }))
+    await expect(submitHealthSurveyResponse({ token: SURVEY_TOKEN, answers: sampleAnswers }))
       .rejects.toMatchObject({ code: "SURVEY_ALREADY_ANSWERED" })
     expect(mockCreateSurveyResponseWithItems).not.toHaveBeenCalled()
   })
@@ -130,7 +130,7 @@ describe("submitSurveyResponse — anonymity guarantee", () => {
       expiresAt: new Date(Date.now() - 1000),
     } as Awaited<ReturnType<typeof findTokenByValue>>)
 
-    await expect(submitSurveyResponse({ token: SURVEY_TOKEN, answers: sampleAnswers }))
+    await expect(submitHealthSurveyResponse({ token: SURVEY_TOKEN, answers: sampleAnswers }))
       .rejects.toMatchObject({ code: "TOKEN_EXPIRED" })
     expect(mockCreateSurveyResponseWithItems).not.toHaveBeenCalled()
   })
@@ -142,32 +142,32 @@ describe("submitSurveyResponse — anonymity guarantee", () => {
       workEndTime: "09:01",
     } as Awaited<ReturnType<typeof findTokenByValue>>)
 
-    await expect(submitSurveyResponse({ token: SURVEY_TOKEN, answers: sampleAnswers }))
+    await expect(submitHealthSurveyResponse({ token: SURVEY_TOKEN, answers: sampleAnswers }))
       .rejects.toMatchObject({ code: "OUTSIDE_WORK_WINDOW" })
     expect(mockCreateSurveyResponseWithItems).not.toHaveBeenCalled()
   })
 
   it("does NOT throw for a night shift token spanning midnight (00:00–23:59 window)", async () => {
-    await expect(submitSurveyResponse({ token: SURVEY_TOKEN, answers: sampleAnswers }))
+    await expect(submitHealthSurveyResponse({ token: SURVEY_TOKEN, answers: sampleAnswers }))
       .resolves.toBeUndefined()
   })
 })
 
-describe("validateSurveyToken", () => {
+describe("validateHealthSurveyToken", () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it("returns invalid when token does not exist", async () => {
     mockFindTokenByValue.mockResolvedValue(null)
-    const result = await validateSurveyToken("nonexistent")
+    const result = await validateHealthSurveyToken("nonexistent")
     expect(result.valid).toBe(false)
     if (!result.valid) expect(result.error).toBeDefined()
   })
 
   it("returns invalid when token already used", async () => {
     mockFindTokenByValue.mockResolvedValue({ ...validTokenRecord, usedAt: new Date() } as Awaited<ReturnType<typeof findTokenByValue>>)
-    const result = await validateSurveyToken(SURVEY_TOKEN)
+    const result = await validateHealthSurveyToken(SURVEY_TOKEN)
     expect(result.valid).toBe(false)
     if (!result.valid) expect(result.error).toContain("respondida")
   })
@@ -177,7 +177,7 @@ describe("validateSurveyToken", () => {
       ...validTokenRecord,
       expiresAt: new Date(Date.now() - 1000),
     } as Awaited<ReturnType<typeof findTokenByValue>>)
-    const result = await validateSurveyToken(SURVEY_TOKEN)
+    const result = await validateHealthSurveyToken(SURVEY_TOKEN)
     expect(result.valid).toBe(false)
     if (!result.valid) expect(result.error).toContain("expirou")
   })
@@ -192,7 +192,7 @@ describe("validateSurveyToken", () => {
     vi.mocked(getCurrentConsent).mockResolvedValue(null)
     vi.mocked(getActiveConsentTermVersion).mockResolvedValue(null)
 
-    const result = await validateSurveyToken(SURVEY_TOKEN)
+    const result = await validateHealthSurveyToken(SURVEY_TOKEN)
     expect(result.valid).toBe(false)
     if (!result.valid) expect(result.error).toContain("ativa")
   })
@@ -211,7 +211,7 @@ describe("validateSurveyToken", () => {
       createdAt: new Date(),
     })
 
-    const result = await validateSurveyToken(SURVEY_TOKEN)
+    const result = await validateHealthSurveyToken(SURVEY_TOKEN)
     expect(result.valid).toBe(true)
     if (result.valid) expect(result.consentStatus).toBe("needs_consent")
   })
@@ -250,7 +250,7 @@ describe("validateSurveyToken", () => {
       },
     } as ConsentWithTermVersion)
 
-    const result = await validateSurveyToken(SURVEY_TOKEN)
+    const result = await validateHealthSurveyToken(SURVEY_TOKEN)
     expect(result.valid).toBe(true)
     if (result.valid) expect(result.consentStatus).toBe("accepted")
   })
@@ -288,7 +288,7 @@ describe("validateSurveyToken", () => {
       },
     } as ConsentWithTermVersion)
 
-    const result = await validateSurveyToken(SURVEY_TOKEN)
+    const result = await validateHealthSurveyToken(SURVEY_TOKEN)
     expect(result.valid).toBe(true)
     if (result.valid) expect(result.consentStatus).toBe("needs_consent")
   })
@@ -300,7 +300,7 @@ describe("validateSurveyToken", () => {
     vi.mocked(getCurrentConsent).mockResolvedValue(null)
     vi.mocked(getActiveConsentTermVersion).mockResolvedValue(null)
 
-    const result = await validateSurveyToken(SURVEY_TOKEN)
+    const result = await validateHealthSurveyToken(SURVEY_TOKEN)
 
     if (result.valid) {
       const tokenData = result.token

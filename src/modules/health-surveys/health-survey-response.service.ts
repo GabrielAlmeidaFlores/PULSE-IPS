@@ -20,7 +20,7 @@ function resolveTimezone(tokenRecord: { dispatch: { healthSurveyConfiguration: {
   return tokenRecord.dispatch.healthSurveyConfiguration.organization.timezone ?? "America/Sao_Paulo"
 }
 
-export async function validateSurveyToken(token: string): Promise<HealthSurveyTokenValidation> {
+export async function validateHealthSurveyToken(token: string): Promise<HealthSurveyTokenValidation> {
   const tokenRecord = await findTokenByValue(token)
   if (!tokenRecord) return { valid: false, error: "Link inválido ou expirado." }
   if (tokenRecord.usedAt) return { valid: false, error: "Esta pesquisa já foi respondida." }
@@ -69,7 +69,7 @@ export async function validateSurveyToken(token: string): Promise<HealthSurveyTo
   }
 }
 
-export async function submitSurveyResponse(input: SubmitHealthSurveyInput): Promise<void> {
+export async function submitHealthSurveyResponse(input: SubmitHealthSurveyInput): Promise<void> {
   const tokenRecord = await findTokenByValue(input.token)
   if (!tokenRecord) throw new AppError("TOKEN_INVALID", "Token inválido.")
   if (tokenRecord.usedAt) throw new AppError("SURVEY_ALREADY_ANSWERED", "Esta pesquisa já foi respondida.")
@@ -94,6 +94,6 @@ export async function submitSurveyResponse(input: SubmitHealthSurveyInput): Prom
   })
 }
 
-export function cleanupExpiredTokens(): Promise<{ count: number }> {
+export function cleanupExpiredHealthSurveyTokens(): Promise<{ count: number }> {
   return deleteAllTenantsExpiredHealthSurveyTokens()
 }

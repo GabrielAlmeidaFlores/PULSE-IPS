@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { getSession } from "@/modules/auth/session"
-import { getDispatchesPaginatedByDay, type DispatchWithConfig } from "@/modules/health-surveys/health-survey-dashboard.service"
+import { getHealthSurveyDispatchesPaginatedByDay, type DispatchWithConfig } from "@/modules/health-surveys/health-survey-dashboard.service"
 import { getHealthSurveyConfigs } from "@/modules/health-surveys/health-survey-config.service"
 import { buildPaginationParams } from "@/libs/utils/pagination"
 import { format } from "date-fns"
@@ -100,7 +100,7 @@ export default async function SurveysPage({ searchParams }: Props): Promise<Reac
   if (dateTo !== undefined) dispatchQuery.dateTo = dateTo
 
   const [{ items: pageDispatches, total }, configs] = await Promise.all([
-    getDispatchesPaginatedByDay(session.tenantId, dispatchQuery),
+    getHealthSurveyDispatchesPaginatedByDay(session.tenantId, dispatchQuery),
     getHealthSurveyConfigs(session.tenantId),
   ])
 

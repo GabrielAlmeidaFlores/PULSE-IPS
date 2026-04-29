@@ -2,9 +2,9 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { getSession } from "@/modules/auth/session";
 import {
-  getDispatchDashboard,
-  getDispatches,
-  getMultipleDispatchDashboards,
+  getHealthSurveyDispatchDashboard,
+  getHealthSurveyDispatches,
+  getHealthSurveyMultipleDispatchDashboards,
   type DispatchWithConfig,
 } from "@/modules/health-surveys/health-survey-dashboard.service";
 import { format } from "date-fns";
@@ -411,7 +411,7 @@ async function buildDispatchComparisonData(
   const allPreviousIds = previousDayKeys.flatMap((k) => dayToIds.get(k) ?? []);
   const allPreviousStats =
     allPreviousIds.length > 0
-      ? await getMultipleDispatchDashboards(tenantId, allPreviousIds)
+      ? await getHealthSurveyMultipleDispatchDashboards(tenantId, allPreviousIds)
       : [];
   const statsById = new Map(allPreviousStats.map((s) => [s.id, s]));
 
@@ -473,8 +473,8 @@ export default async function DispatchDetailPage({
   const resolvedSearch = await searchParams;
 
   const [anchorStats, allDispatches] = await Promise.all([
-    getDispatchDashboard(session.tenantId, dispatchId),
-    getDispatches(session.tenantId),
+    getHealthSurveyDispatchDashboard(session.tenantId, dispatchId),
+    getHealthSurveyDispatches(session.tenantId),
   ]);
   if (!anchorStats) notFound();
 
@@ -503,7 +503,7 @@ export default async function DispatchDetailPage({
           .map(([, d]) => d)
       : Array.from(sameDayPerDept.values());
 
-  const aggrStats = await getMultipleDispatchDashboards(
+  const aggrStats = await getHealthSurveyMultipleDispatchDashboards(
     session.tenantId,
     aggrDispatches.map((d) => d.id),
   );
@@ -535,7 +535,7 @@ export default async function DispatchDetailPage({
   const allDeptStatsForRanking: DispatchDashboardStats[] =
     selectedIds.length === 0
       ? aggrStats
-      : await getMultipleDispatchDashboards(
+      : await getHealthSurveyMultipleDispatchDashboards(
           session.tenantId,
           Array.from(sameDayPerDept.values()).map((d) => d.id),
         );

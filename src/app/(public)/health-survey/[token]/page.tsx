@@ -1,4 +1,4 @@
-import { validateSurveyToken } from "@/modules/health-surveys/health-survey-response.service"
+import { validateHealthSurveyToken } from "@/modules/health-surveys/health-survey-response.service"
 import { HealthSurveyPageClient } from "@/app/(public)/health-survey/[token]/health-survey-page-client"
 
 interface Props {
@@ -7,7 +7,7 @@ interface Props {
 
 export default async function SurveyPage({ params }: Props): Promise<React.ReactElement> {
   const { token } = await params
-  const validation = await validateSurveyToken(token)
+  const validation = await validateHealthSurveyToken(token)
 
   if (!validation.valid) {
     return (

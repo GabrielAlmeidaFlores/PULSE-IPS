@@ -84,7 +84,7 @@ function buildDispatchStats(data: {
   }
 }
 
-export function getDispatches(tenantId: string): ReturnType<typeof findDispatchesByTenant> {
+export function getHealthSurveyDispatches(tenantId: string): ReturnType<typeof findDispatchesByTenant> {
   return findDispatchesByTenant(tenantId)
 }
 
@@ -104,7 +104,7 @@ export interface SurveyDispatchDayPageResult {
   total: number
 }
 
-export function getDispatchesFiltered(
+export function getHealthSurveyDispatchesFiltered(
   tenantId: string,
   query: SurveyDispatchListingQuery,
 ): ReturnType<typeof findDispatchesByTenantFiltered> {
@@ -115,7 +115,7 @@ export function getDispatchesFiltered(
   return findDispatchesByTenantFiltered(tenantId, filters)
 }
 
-export async function getDispatchesPaginatedByDay(
+export async function getHealthSurveyDispatchesPaginatedByDay(
   tenantId: string,
   query: SurveyDispatchDayPageQuery,
 ): Promise<SurveyDispatchDayPageResult> {
@@ -130,17 +130,17 @@ export async function getDispatchesPaginatedByDay(
   return { items, total }
 }
 
-export function scheduleDispatch(tenantId: string, configId: string, scheduledAt: Date): ReturnType<typeof createDispatch> {
+export function scheduleHealthSurveyDispatch(tenantId: string, configId: string, scheduledAt: Date): ReturnType<typeof createDispatch> {
   return createDispatch(tenantId, configId, scheduledAt)
 }
 
-export async function getDispatchDashboard(tenantId: string, dispatchId: string): Promise<DispatchDashboardStats | null> {
+export async function getHealthSurveyDispatchDashboard(tenantId: string, dispatchId: string): Promise<DispatchDashboardStats | null> {
   const data = await findDispatchWithDashboard(tenantId, dispatchId)
   if (!data) return null
   return buildDispatchStats(data)
 }
 
-export async function getMultipleDispatchDashboards(
+export async function getHealthSurveyMultipleDispatchDashboards(
   tenantId: string,
   dispatchIds: string[],
 ): Promise<DispatchDashboardStats[]> {
