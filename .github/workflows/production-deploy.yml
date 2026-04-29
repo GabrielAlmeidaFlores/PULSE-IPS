@@ -120,7 +120,12 @@ jobs:
 
       - name: Run Prisma migrate deploy
         run: |
-          docker compose run --rm --no-deps migrate
+          docker run --rm \
+            --network host \
+            --env-file .env \
+            -e DATABASE_URL=postgresql://pulse:pulse@localhost:5432/pulse \
+            pulse-app:latest \
+            node node_modules/prisma/build/index.js migrate deploy
 
   deploy:
     name: Deploy app and worker
