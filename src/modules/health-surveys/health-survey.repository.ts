@@ -35,7 +35,7 @@ export async function upsertHealthSurveyConfig(tenantId: string, input: CreateHe
 
   if (existing) {
     const usedItems = await prisma.healthSurveyResponseItem.findMany({
-      where: { question: { healthSurveyConfigurationId: existing.id } },
+      where: { question: { tenantId, healthSurveyConfigurationId: existing.id } },
       select: { questionId: true },
       distinct: ["questionId"],
     })
@@ -43,13 +43,13 @@ export async function upsertHealthSurveyConfig(tenantId: string, input: CreateHe
 
     if (usedQuestionIds.size > 0) {
       await prisma.healthSurveyQuestion.updateMany({
-        where: { healthSurveyConfigurationId: existing.id, id: { in: [...usedQuestionIds] } },
+        where: { tenantId, healthSurveyConfigurationId: existing.id, id: { in: [...usedQuestionIds] } },
         data: { isActive: false },
       })
     }
 
     await prisma.healthSurveyQuestion.deleteMany({
-      where: { healthSurveyConfigurationId: existing.id, id: { notIn: [...usedQuestionIds] } },
+      where: { tenantId, healthSurveyConfigurationId: existing.id, id: { notIn: [...usedQuestionIds] } },
     })
 
     return prisma.healthSurveyConfiguration.update({
@@ -359,9 +359,9 @@ export function findTokenByValue(token: string): Promise<TokenWithDispatch | nul
   })
 }
 
-export function markTokenUsed(tokenId: string): Promise<HealthSurveyResponseToken> {
+export function markTokenUsed(tenantId: string, tokenId: string): Promise<HealthSurveyResponseToken> {
   return prisma.healthSurveyResponseToken.update({
-    where: { id: tokenId },
+    where: { id: tokenId, tenantId },
     data: { usedAt: new Date() },
   })
 }

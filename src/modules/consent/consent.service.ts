@@ -134,7 +134,7 @@ export async function acceptConsentFromHealthSurveyToken(healthSurveyToken: stri
     })
   }
 
-  await markTokenUsed(tokenRecord.id)
+  await markTokenUsed(tokenRecord.tenantId, tokenRecord.id)
 }
 
 export async function refuseConsentFromHealthSurveyToken(healthSurveyToken: string): Promise<void> {
@@ -153,7 +153,7 @@ export async function refuseConsentFromHealthSurveyToken(healthSurveyToken: stri
     source: "health_survey_form",
   })
 
-  await markTokenUsed(tokenRecord.id)
+  await markTokenUsed(tokenRecord.tenantId, tokenRecord.id)
 }
 
 export async function optOutFromHealthSurveyToken(token: string): Promise<void> {
@@ -162,7 +162,7 @@ export async function optOutFromHealthSurveyToken(token: string): Promise<void> 
   if (tokenRecord.usedAt) throw new AppError("TOKEN_USED", LINK_ALREADY_USED_MSG)
 
   await optOut(tokenRecord.tenantId, tokenRecord.employeeId)
-  await markTokenUsed(tokenRecord.id)
+  await markTokenUsed(tokenRecord.tenantId, tokenRecord.id)
 }
 
 export function listAllConsentTermVersions(): Promise<ConsentTermVersion[]> {

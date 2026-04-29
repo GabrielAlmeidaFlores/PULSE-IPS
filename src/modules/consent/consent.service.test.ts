@@ -354,7 +354,7 @@ describe("optOutFromHealthSurveyToken — opt-out via health survey link", () =>
   it("marks the health survey token as used after opt-out", async () => {
     await optOutFromHealthSurveyToken(healthSurveyToken)
 
-    expect(mockMarkTokenUsed).toHaveBeenCalledWith(tokenRecord.id)
+    expect(mockMarkTokenUsed).toHaveBeenCalledWith(tokenRecord.tenantId, tokenRecord.id)
   })
 
   it("throws INVALID_TOKEN when health survey token not found", async () => {
@@ -576,7 +576,7 @@ describe("refuseConsentFromHealthSurveyToken", () => {
   it("marks the health survey token as used after refusal", async () => {
     await refuseConsentFromHealthSurveyToken(HEALTH_SURVEY_TOKEN)
 
-    expect(mockMarkTokenUsed).toHaveBeenCalledWith(tokenRecord.id)
+    expect(mockMarkTokenUsed).toHaveBeenCalledWith(tokenRecord.tenantId, tokenRecord.id)
   })
 
   it("throws INVALID_TOKEN when token not found", async () => {

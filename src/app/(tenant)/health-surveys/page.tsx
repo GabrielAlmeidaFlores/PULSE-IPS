@@ -2,7 +2,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { getSession } from "@/modules/auth/session"
 import { getDispatchesPaginatedByDay, type DispatchWithConfig } from "@/modules/health-surveys/health-survey-dashboard.service"
-import { getSurveyConfigs } from "@/modules/health-surveys/health-survey-config.service"
+import { getHealthSurveyConfigs } from "@/modules/health-surveys/health-survey-config.service"
 import { buildPaginationParams } from "@/libs/utils/pagination"
 import { format } from "date-fns"
 import { ScheduleDispatchButton } from "@/app/(tenant)/health-surveys/schedule-health-survey-dispatch-button"
@@ -101,7 +101,7 @@ export default async function SurveysPage({ searchParams }: Props): Promise<Reac
 
   const [{ items: pageDispatches, total }, configs] = await Promise.all([
     getDispatchesPaginatedByDay(session.tenantId, dispatchQuery),
-    getSurveyConfigs(session.tenantId),
+    getHealthSurveyConfigs(session.tenantId),
   ])
 
   const dayGroups = groupDispatchesByDay(pageDispatches)

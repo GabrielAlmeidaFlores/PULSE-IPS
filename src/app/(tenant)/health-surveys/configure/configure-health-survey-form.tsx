@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Plus, Trash2, HelpCircle } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
-import { configureSurveyAction } from "@/app/(tenant)/health-surveys/configure/actions"
+import { configureHealthSurveyAction } from "@/app/(tenant)/health-surveys/configure/actions"
 import { PageHelp } from "@/components/page-help"
 import type { ScoreDirection } from "@/modules/health-surveys/health-survey.types"
 
@@ -102,7 +102,7 @@ export function ConfigureSurveyForm({ departments }: Props): React.ReactElement 
     if (questions.length === 0) { toast.error("Adicione ao menos uma pergunta"); return }
 
     startTransition(async () => {
-      const result = await configureSurveyAction({
+      const result = await configureHealthSurveyAction({
         departmentId,
         frequency,
         workStartTime,

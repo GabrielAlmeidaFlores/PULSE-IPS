@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache"
 import { AppError } from "@/libs/errors/app-error"
 import type { ActionResult } from "@/libs/utils/action-result"
 import { getSession } from "@/modules/auth/session"
-import { configureSurvey } from "@/modules/health-surveys/health-survey-config.service"
+import { configureHealthSurvey } from "@/modules/health-surveys/health-survey-config.service"
 
 const TIME_REGEX = /^\d{2}:\d{2}$/
 
@@ -19,7 +19,7 @@ const questionSchema = z.object({
   isActive: z.boolean().optional(),
 })
 
-const configureSurveySchema = z.object({
+const configureHealthSurveySchema = z.object({
   departmentId: z.string().uuid(),
   frequency: z.enum(["daily", "twice_weekly", "weekly", "biweekly", "monthly"]),
   workStartTime: z.string().regex(TIME_REGEX),
@@ -28,13 +28,13 @@ const configureSurveySchema = z.object({
   questions: z.array(questionSchema).min(1).max(20),
 })
 
-export async function configureSurveyAction(input: unknown): Promise<ActionResult> {
+export async function configureHealthSurveyAction(input: unknown): Promise<ActionResult> {
   const session = await getSession()
   if (!session) return { error: "Sessão expirada." }
-  const parsed = configureSurveySchema.safeParse(input)
+  const parsed = configureHealthSurveySchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
   try {
-    await configureSurvey(session.tenantId, parsed.data)
+    await configureHealthSurvey(session.tenantId, parsed.data)
     revalidatePath("/health-surveys")
     redirect("/health-surveys")
   } catch (err) {
