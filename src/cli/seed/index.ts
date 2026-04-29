@@ -1,8 +1,8 @@
 import "dotenv/config"
 
-const EMAIL_SUPPORT = process.env["NEXT_PUBLIC_EMAIL_SUPPORT"] ?? "suporte@usepulse.com.br"
-const EMAIL_PRIVACY = process.env["NEXT_PUBLIC_EMAIL_PRIVACY"] ?? "privacidade@usepulse.com.br"
-const EMAIL_LEGAL = process.env["NEXT_PUBLIC_EMAIL_LEGAL"] ?? "legal@usepulse.com.br"
+const EMAIL_SUPPORT = process.env["NEXT_PUBLIC_EMAIL_SUPPORT"] ?? "suporte@pulseips.com.br"
+const EMAIL_PRIVACY = process.env["NEXT_PUBLIC_EMAIL_PRIVACY"] ?? "privacidade@pulseips.com.br"
+const EMAIL_LEGAL = process.env["NEXT_PUBLIC_EMAIL_LEGAL"] ?? "legal@pulseips.com.br"
 import { createLogger } from "../../libs/utils/logger"
 import { createHash } from "crypto";
 import bcrypt from "bcryptjs";

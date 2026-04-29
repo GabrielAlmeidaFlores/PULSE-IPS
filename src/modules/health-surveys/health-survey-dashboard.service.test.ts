@@ -42,7 +42,7 @@ describe("getHealthSurveyDispatchDashboard", () => {
   })
 
   it("builds stats with avgScore per question", async () => {
-    mockFindDispatchWithDashboard.mockResolvedValue(DISPATCH_DATA as Awaited<ReturnType<typeof findHealthSurveyDispatchWithDashboard>>)
+    mockFindDispatchWithDashboard.mockResolvedValue(DISPATCH_DATA)
 
     const result = await getHealthSurveyDispatchDashboard("tenant-1", "d-1")
 
@@ -58,7 +58,7 @@ describe("getHealthSurveyDispatchDashboard", () => {
   })
 
   it("calculates avgScore for higher_is_better question correctly", async () => {
-    mockFindDispatchWithDashboard.mockResolvedValue(DISPATCH_DATA as Awaited<ReturnType<typeof findHealthSurveyDispatchWithDashboard>>)
+    mockFindDispatchWithDashboard.mockResolvedValue(DISPATCH_DATA)
 
     const result = await getHealthSurveyDispatchDashboard("tenant-1", "d-1")
 
@@ -68,7 +68,7 @@ describe("getHealthSurveyDispatchDashboard", () => {
   })
 
   it("normalizes lower_is_better scores (6 - score)", async () => {
-    mockFindDispatchWithDashboard.mockResolvedValue(DISPATCH_DATA as Awaited<ReturnType<typeof findHealthSurveyDispatchWithDashboard>>)
+    mockFindDispatchWithDashboard.mockResolvedValue(DISPATCH_DATA)
 
     const result = await getHealthSurveyDispatchDashboard("tenant-1", "d-1")
 
@@ -79,28 +79,28 @@ describe("getHealthSurveyDispatchDashboard", () => {
 
   it("returns null avgScore when question has no responses", async () => {
     const dispatchWithNoResponses = { ...DISPATCH_DATA, responseItems: [] }
-    mockFindDispatchWithDashboard.mockResolvedValue(dispatchWithNoResponses as Awaited<ReturnType<typeof findHealthSurveyDispatchWithDashboard>>)
+    mockFindDispatchWithDashboard.mockResolvedValue(dispatchWithNoResponses)
 
     const result = await getHealthSurveyDispatchDashboard("tenant-1", "d-1")
     expect(result?.questions[0]?.avgScore).toBeNull()
   })
 
   it("computes adherenceRate as 0 when no recipients", async () => {
-    mockFindDispatchWithDashboard.mockResolvedValue({ ...DISPATCH_DATA, totalRecipients: 0 } as Awaited<ReturnType<typeof findHealthSurveyDispatchWithDashboard>>)
+    mockFindDispatchWithDashboard.mockResolvedValue({ ...DISPATCH_DATA, totalRecipients: 0 })
 
     const result = await getHealthSurveyDispatchDashboard("tenant-1", "d-1")
     expect(result?.adherenceRate).toBe(0)
   })
 
   it("clamps notResponded to 0 minimum when responses exceed recipients", async () => {
-    mockFindDispatchWithDashboard.mockResolvedValue({ ...DISPATCH_DATA, totalRecipients: 5, totalResponses: 7 } as Awaited<ReturnType<typeof findHealthSurveyDispatchWithDashboard>>)
+    mockFindDispatchWithDashboard.mockResolvedValue({ ...DISPATCH_DATA, totalRecipients: 5, totalResponses: 7 })
 
     const result = await getHealthSurveyDispatchDashboard("tenant-1", "d-1")
     expect(result?.notResponded).toBe(0)
   })
 
   it("includes score distribution for each question", async () => {
-    mockFindDispatchWithDashboard.mockResolvedValue(DISPATCH_DATA as Awaited<ReturnType<typeof findHealthSurveyDispatchWithDashboard>>)
+    mockFindDispatchWithDashboard.mockResolvedValue(DISPATCH_DATA)
 
     const result = await getHealthSurveyDispatchDashboard("tenant-1", "d-1")
     const q1 = result?.questions.find((q) => q.id === "q-1")
@@ -120,7 +120,7 @@ describe("getHealthSurveyMultipleDispatchDashboards", () => {
   })
 
   it("builds stats for each dispatch", async () => {
-    mockFindMultipleDispatches.mockResolvedValue([DISPATCH_DATA, { ...DISPATCH_DATA, id: "d-2" }] as Awaited<ReturnType<typeof findHealthSurveyMultipleDispatchesWithDashboard>>)
+    mockFindMultipleDispatches.mockResolvedValue([DISPATCH_DATA, { ...DISPATCH_DATA, id: "d-2" }])
 
     const result = await getHealthSurveyMultipleDispatchDashboards("tenant-1", ["d-1", "d-2"])
     expect(result).toHaveLength(2)

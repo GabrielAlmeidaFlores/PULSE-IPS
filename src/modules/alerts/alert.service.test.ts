@@ -161,7 +161,7 @@ describe("detectLowScoreAlerts", () => {
 
   it("creates no alert when avg score is above threshold", async () => {
     const responses = Array.from({ length: 5 }, () => makeResponse([4, 5]))
-    mockFindRecentResponses.mockResolvedValue(responses as Awaited<ReturnType<typeof findAllTenantsRecentHealthSurveyResponsesForAlerts>>)
+    mockFindRecentResponses.mockResolvedValue(responses)
 
     await detectLowScoreAlerts()
     expect(mockCreateAlert).not.toHaveBeenCalled()
@@ -169,7 +169,7 @@ describe("detectLowScoreAlerts", () => {
 
   it("creates no alert when fewer than 5 respondents (anonymity guard)", async () => {
     const responses = Array.from({ length: 4 }, () => makeResponse([1]))
-    mockFindRecentResponses.mockResolvedValue(responses as Awaited<ReturnType<typeof findAllTenantsRecentHealthSurveyResponsesForAlerts>>)
+    mockFindRecentResponses.mockResolvedValue(responses)
 
     await detectLowScoreAlerts()
     expect(mockCreateAlert).not.toHaveBeenCalled()
@@ -177,7 +177,7 @@ describe("detectLowScoreAlerts", () => {
 
   it("creates warning alert when avg score is below threshold", async () => {
     const responses = Array.from({ length: 5 }, () => makeResponse([2, 3]))
-    mockFindRecentResponses.mockResolvedValue(responses as Awaited<ReturnType<typeof findAllTenantsRecentHealthSurveyResponsesForAlerts>>)
+    mockFindRecentResponses.mockResolvedValue(responses)
 
     await detectLowScoreAlerts()
     expect(mockCreateAlert).toHaveBeenCalledWith(
@@ -187,7 +187,7 @@ describe("detectLowScoreAlerts", () => {
 
   it("creates critical alert when avg score is below 2", async () => {
     const responses = Array.from({ length: 5 }, () => makeResponse([1, 1]))
-    mockFindRecentResponses.mockResolvedValue(responses as Awaited<ReturnType<typeof findAllTenantsRecentHealthSurveyResponsesForAlerts>>)
+    mockFindRecentResponses.mockResolvedValue(responses)
 
     await detectLowScoreAlerts()
     expect(mockCreateAlert).toHaveBeenCalledWith(expect.objectContaining({ severity: "critical" }))
@@ -195,7 +195,7 @@ describe("detectLowScoreAlerts", () => {
 
   it("skips creating alert when open alert already exists", async () => {
     const responses = Array.from({ length: 5 }, () => makeResponse([1, 1]))
-    mockFindRecentResponses.mockResolvedValue(responses as Awaited<ReturnType<typeof findAllTenantsRecentHealthSurveyResponsesForAlerts>>)
+    mockFindRecentResponses.mockResolvedValue(responses)
     mockHasOpenAlert.mockResolvedValue(true)
 
     await detectLowScoreAlerts()
@@ -213,7 +213,7 @@ describe("detectScoreDropAlerts", () => {
 
   it("creates no alert when dept has no previous data", async () => {
     mockFindResponsesInWindow
-      .mockResolvedValueOnce([makeResponse([3])] as Awaited<ReturnType<typeof findAllTenantsResponsesInWindow>>)
+      .mockResolvedValueOnce([makeResponse([3])])
       .mockResolvedValueOnce([])
 
     await detectScoreDropAlerts()
@@ -224,8 +224,8 @@ describe("detectScoreDropAlerts", () => {
     const current = makeResponse([3])
     const previous = makeResponse([3.5])
     mockFindResponsesInWindow
-      .mockResolvedValueOnce([current] as Awaited<ReturnType<typeof findAllTenantsResponsesInWindow>>)
-      .mockResolvedValueOnce([previous] as Awaited<ReturnType<typeof findAllTenantsResponsesInWindow>>)
+      .mockResolvedValueOnce([current])
+      .mockResolvedValueOnce([previous])
 
     await detectScoreDropAlerts()
     expect(mockCreateAlert).not.toHaveBeenCalled()
@@ -235,8 +235,8 @@ describe("detectScoreDropAlerts", () => {
     const current = Array.from({ length: 5 }, () => makeResponse([2]))
     const previous = Array.from({ length: 5 }, () => makeResponse([4]))
     mockFindResponsesInWindow
-      .mockResolvedValueOnce(current as Awaited<ReturnType<typeof findAllTenantsResponsesInWindow>>)
-      .mockResolvedValueOnce(previous as Awaited<ReturnType<typeof findAllTenantsResponsesInWindow>>)
+      .mockResolvedValueOnce(current)
+      .mockResolvedValueOnce(previous)
 
     await detectScoreDropAlerts()
     expect(mockCreateAlert).toHaveBeenCalledWith(
@@ -248,8 +248,8 @@ describe("detectScoreDropAlerts", () => {
     const current = Array.from({ length: 5 }, () => makeResponse([1]))
     const previous = Array.from({ length: 5 }, () => makeResponse([4]))
     mockFindResponsesInWindow
-      .mockResolvedValueOnce(current as Awaited<ReturnType<typeof findAllTenantsResponsesInWindow>>)
-      .mockResolvedValueOnce(previous as Awaited<ReturnType<typeof findAllTenantsResponsesInWindow>>)
+      .mockResolvedValueOnce(current)
+      .mockResolvedValueOnce(previous)
 
     await detectScoreDropAlerts()
     expect(mockCreateAlert).toHaveBeenCalledWith(expect.objectContaining({ severity: "critical" }))
@@ -259,8 +259,8 @@ describe("detectScoreDropAlerts", () => {
     const current = Array.from({ length: 5 }, () => makeResponse([2]))
     const previous = Array.from({ length: 5 }, () => makeResponse([5]))
     mockFindResponsesInWindow
-      .mockResolvedValueOnce(current as Awaited<ReturnType<typeof findAllTenantsResponsesInWindow>>)
-      .mockResolvedValueOnce(previous as Awaited<ReturnType<typeof findAllTenantsResponsesInWindow>>)
+      .mockResolvedValueOnce(current)
+      .mockResolvedValueOnce(previous)
     mockHasOpenAlert.mockResolvedValue(true)
 
     await detectScoreDropAlerts()
@@ -277,7 +277,7 @@ describe("detectNegativeTrendAlerts", () => {
   })
 
   it("skips dept with fewer than 3 periods", async () => {
-    mockFindActiveDepts.mockResolvedValue([{ id: "dept-1", tenantId: "tenant-1", name: "Vendas" }] as Awaited<ReturnType<typeof findAllTenantsActiveDepartments>>)
+    mockFindActiveDepts.mockResolvedValue([{ id: "dept-1", tenantId: "tenant-1", name: "Vendas" }])
     mockFindDeptDispatchAvgs.mockResolvedValue([{ avgScore: 2 }, { avgScore: 2 }] as Awaited<ReturnType<typeof findAllTenantsDeptRecentDispatchAvgs>>)
 
     await detectNegativeTrendAlerts()
@@ -285,7 +285,7 @@ describe("detectNegativeTrendAlerts", () => {
   })
 
   it("creates alert when last 3 periods are below historical avg", async () => {
-    mockFindActiveDepts.mockResolvedValue([{ id: "dept-1", tenantId: "tenant-1", name: "Vendas" }] as Awaited<ReturnType<typeof findAllTenantsActiveDepartments>>)
+    mockFindActiveDepts.mockResolvedValue([{ id: "dept-1", tenantId: "tenant-1", name: "Vendas" }])
     mockFindDeptDispatchAvgs.mockResolvedValue([
       { avgScore: 2 }, { avgScore: 2 }, { avgScore: 2 },
       { avgScore: 4 }, { avgScore: 4 }, { avgScore: 4 },
@@ -298,7 +298,7 @@ describe("detectNegativeTrendAlerts", () => {
   })
 
   it("does not create alert when last 3 periods are not below historical avg", async () => {
-    mockFindActiveDepts.mockResolvedValue([{ id: "dept-1", tenantId: "tenant-1", name: "Vendas" }] as Awaited<ReturnType<typeof findAllTenantsActiveDepartments>>)
+    mockFindActiveDepts.mockResolvedValue([{ id: "dept-1", tenantId: "tenant-1", name: "Vendas" }])
     mockFindDeptDispatchAvgs.mockResolvedValue([
       { avgScore: 4 }, { avgScore: 4 }, { avgScore: 4 },
       { avgScore: 2 }, { avgScore: 2 }, { avgScore: 2 },
@@ -321,7 +321,7 @@ describe("detectConsentExpiredAlerts", () => {
     mockFindExpiredConsent.mockResolvedValue([
       { tenantId: "tenant-1", departmentId: "dept-1", departmentName: "Vendas", employeeId: "emp-1" },
       { tenantId: "tenant-1", departmentId: "dept-1", departmentName: "Vendas", employeeId: "emp-2" },
-    ] as Awaited<ReturnType<typeof findAllTenantsEmployeesWithExpiredConsentTokens>>)
+    ])
 
     await detectConsentExpiredAlerts()
     expect(mockCreateAlert).toHaveBeenCalledOnce()
@@ -335,7 +335,7 @@ describe("detectConsentExpiredAlerts", () => {
       { tenantId: "t1", departmentId: "d1", departmentName: "RH", employeeId: "emp-1" },
       { tenantId: "t1", departmentId: "d1", departmentName: "RH", employeeId: "emp-2" },
       { tenantId: "t1", departmentId: "d2", departmentName: "TI", employeeId: "emp-3" },
-    ] as Awaited<ReturnType<typeof findAllTenantsEmployeesWithExpiredConsentTokens>>)
+    ])
 
     await detectConsentExpiredAlerts()
     expect(mockCreateAlert).toHaveBeenCalledTimes(2)
@@ -344,7 +344,7 @@ describe("detectConsentExpiredAlerts", () => {
   it("skips when open alert already exists", async () => {
     mockFindExpiredConsent.mockResolvedValue([
       { tenantId: "t1", departmentId: "d1", departmentName: "RH", employeeId: "emp-1" },
-    ] as Awaited<ReturnType<typeof findAllTenantsEmployeesWithExpiredConsentTokens>>)
+    ])
     mockHasOpenAlert.mockResolvedValue(true)
 
     await detectConsentExpiredAlerts()
@@ -467,14 +467,14 @@ describe("getAlerts", () => {
 
 describe("markRead", () => {
   it("marks the alert as read successfully", async () => {
-    mockMarkAlertRead.mockResolvedValue({ count: 1 } as Awaited<ReturnType<typeof markAlertRead>>)
+    mockMarkAlertRead.mockResolvedValue({ count: 1 })
 
     await markRead("t-1", "alert-1")
     expect(mockMarkAlertRead).toHaveBeenCalledWith("t-1", "alert-1")
   })
 
   it("throws AppError when alert is not found", async () => {
-    mockMarkAlertRead.mockResolvedValue({ count: 0 } as Awaited<ReturnType<typeof markAlertRead>>)
+    mockMarkAlertRead.mockResolvedValue({ count: 0 })
 
     await expect(markRead("t-1", "missing-id")).rejects.toMatchObject({ code: "ALERT_NOT_FOUND" })
   })
@@ -482,14 +482,14 @@ describe("markRead", () => {
 
 describe("resolve", () => {
   it("resolves the alert successfully", async () => {
-    mockResolveAlert.mockResolvedValue({ count: 1 } as Awaited<ReturnType<typeof resolveAlert>>)
+    mockResolveAlert.mockResolvedValue({ count: 1 })
 
     await resolve("t-1", "alert-1", "user-1")
     expect(mockResolveAlert).toHaveBeenCalledWith("t-1", "alert-1", "user-1")
   })
 
   it("throws AppError when alert is not found", async () => {
-    mockResolveAlert.mockResolvedValue({ count: 0 } as Awaited<ReturnType<typeof resolveAlert>>)
+    mockResolveAlert.mockResolvedValue({ count: 0 })
 
     await expect(resolve("t-1", "missing-id", "user-1")).rejects.toMatchObject({ code: "ALERT_NOT_FOUND" })
   })
@@ -504,7 +504,7 @@ describe("detectLowScoreAlerts — groupByDept branch (multiple responses same d
     }))
 
   it("aggregates multiple responses for same department into one alert check", async () => {
-    mockFindRecentResponses.mockResolvedValue(makeGroupedResponses("dept-1") as Awaited<ReturnType<typeof findAllTenantsRecentHealthSurveyResponsesForAlerts>>)
+    mockFindRecentResponses.mockResolvedValue(makeGroupedResponses("dept-1"))
     mockHasOpenAlert.mockResolvedValue(false)
     mockCreateAlert.mockResolvedValue(undefined)
 

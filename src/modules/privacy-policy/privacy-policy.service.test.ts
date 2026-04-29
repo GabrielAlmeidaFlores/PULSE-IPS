@@ -32,10 +32,10 @@ const VERSION = {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockFindActive.mockResolvedValue(VERSION as Awaited<ReturnType<typeof findActivePrivacyPolicyVersion>>)
-  mockFindAll.mockResolvedValue([VERSION] as Awaited<ReturnType<typeof findAllPrivacyPolicyVersions>>)
-  mockFindById.mockResolvedValue(VERSION as Awaited<ReturnType<typeof findPrivacyPolicyVersionById>>)
-  mockCreate.mockResolvedValue(VERSION as Awaited<ReturnType<typeof createPrivacyPolicyVersion>>)
+  mockFindActive.mockResolvedValue(VERSION)
+  mockFindAll.mockResolvedValue([VERSION])
+  mockFindById.mockResolvedValue(VERSION)
+  mockCreate.mockResolvedValue(VERSION)
 })
 
 describe("getActivePrivacyPolicyVersion", () => {

@@ -194,7 +194,7 @@ describe("superAdminLogin", () => {
   })
 
   it("throws when password is wrong", async () => {
-    mockFindSuperAdminByEmail.mockResolvedValue(ADMIN as Awaited<ReturnType<typeof findSuperAdminByEmail>>)
+    mockFindSuperAdminByEmail.mockResolvedValue(ADMIN)
     mockBcryptCompare.mockResolvedValue(false as boolean)
     await expect(superAdminLogin({ email: ADMIN.email, password: "wrong" })).rejects.toMatchObject({
       code: "INVALID_CREDENTIALS",
@@ -202,7 +202,7 @@ describe("superAdminLogin", () => {
   })
 
   it("creates super admin session on success", async () => {
-    mockFindSuperAdminByEmail.mockResolvedValue(ADMIN as Awaited<ReturnType<typeof findSuperAdminByEmail>>)
+    mockFindSuperAdminByEmail.mockResolvedValue(ADMIN)
     mockBcryptCompare.mockResolvedValue(true as boolean)
     await superAdminLogin({ email: ADMIN.email, password: "correct" })
     expect(mockCreateSuperAdminSession).toHaveBeenCalledWith({

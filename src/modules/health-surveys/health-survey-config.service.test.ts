@@ -27,7 +27,7 @@ describe("getHealthSurveyConfig", () => {
   })
 
   it("returns null when not found", async () => {
-    mockFindConfig.mockResolvedValue(null as Awaited<ReturnType<typeof findHealthSurveyConfigById>>)
+    mockFindConfig.mockResolvedValue(null)
     const result = await getHealthSurveyConfig("tenant-1", "missing")
     expect(result).toBeNull()
   })

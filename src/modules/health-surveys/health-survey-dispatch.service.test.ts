@@ -274,7 +274,7 @@ describe("checkHealthSurveyDispatchAdherence", () => {
       totalRecipients: 10,
       healthSurveyConfiguration: { departmentId: "dept-1" },
     }
-    mockFindDispatches48hAgo.mockResolvedValue([dispatch] as Awaited<ReturnType<typeof findAllTenantsHealthSurveyDispatches48hAgo>>)
+    mockFindDispatches48hAgo.mockResolvedValue([dispatch])
     mockCountResponses.mockResolvedValue(5)
 
     const result = await checkHealthSurveyDispatchAdherence()
@@ -293,7 +293,7 @@ describe("checkHealthSurveyDispatchAdherence", () => {
       totalRecipients: 10,
       healthSurveyConfiguration: { departmentId: "dept-1" },
     }
-    mockFindDispatches48hAgo.mockResolvedValue([dispatch] as Awaited<ReturnType<typeof findAllTenantsHealthSurveyDispatches48hAgo>>)
+    mockFindDispatches48hAgo.mockResolvedValue([dispatch])
     mockCountResponses.mockResolvedValue(9)
 
     const result = await checkHealthSurveyDispatchAdherence()
@@ -309,7 +309,7 @@ describe("checkHealthSurveyDispatchAdherence", () => {
       totalRecipients: 0,
       healthSurveyConfiguration: { departmentId: "dept-1" },
     }
-    mockFindDispatches48hAgo.mockResolvedValue([dispatch] as Awaited<ReturnType<typeof findAllTenantsHealthSurveyDispatches48hAgo>>)
+    mockFindDispatches48hAgo.mockResolvedValue([dispatch])
     mockCountResponses.mockResolvedValue(0)
 
     const result = await checkHealthSurveyDispatchAdherence()

@@ -52,7 +52,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockCreateEmployee.mockResolvedValue(CREATED_EMPLOYEE as Awaited<ReturnType<typeof createEmployee>>)
   mockCreateAuditLog.mockResolvedValue(undefined)
-  mockDeactivateEmployee.mockResolvedValue({ count: 0 } as Awaited<ReturnType<typeof deactivateEmployee>>)
+  mockDeactivateEmployee.mockResolvedValue({ count: 0 })
 })
 
 describe("createNewEmployee — employee limit checks", () => {

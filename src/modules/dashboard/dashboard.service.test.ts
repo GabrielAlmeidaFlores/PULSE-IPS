@@ -182,7 +182,7 @@ describe("getDeptHealthSummary", () => {
 
   it("retorna alertas ativos do setor", async () => {
     const alert = { type: "score_drop", severity: "high", message: "Score caiu", createdAt: new Date() }
-    mockFindDeptActiveAlerts.mockResolvedValue([alert] as Awaited<ReturnType<typeof findDeptActiveAlerts>>)
+    mockFindDeptActiveAlerts.mockResolvedValue([alert])
 
     const result = await getDeptHealthSummary(TENANT_ID, DEPT_ID)
 

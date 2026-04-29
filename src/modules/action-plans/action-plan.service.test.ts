@@ -106,7 +106,7 @@ describe("addTask", () => {
       completedAt: null,
       createdAt: new Date(),
     }
-    mockCreateActionPlanTask.mockResolvedValue(task as Awaited<ReturnType<typeof createActionPlanTask>>)
+    mockCreateActionPlanTask.mockResolvedValue(task)
 
     const input: CreateActionPlanTaskInput = { title: "Tarefa", dueDate: new Date("2024-06-01") }
     const result = await addTask(TENANT_ID, PLAN.id, input)

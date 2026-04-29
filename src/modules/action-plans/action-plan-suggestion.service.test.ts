@@ -39,7 +39,7 @@ const RAW_SUGGESTION = {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockFindAllTenants.mockResolvedValue(TENANTS as Awaited<ReturnType<typeof findAllTenantsActiveOrganizationIds>>)
+  mockFindAllTenants.mockResolvedValue(TENANTS)
   mockHasTenantPlanFeature.mockResolvedValue(true)
   mockComputeRawSuggestions.mockResolvedValue([RAW_SUGGESTION])
   mockFindExistingKeys.mockResolvedValue([])
@@ -58,7 +58,7 @@ describe("runActionPlanSuggestionGenerator", () => {
   })
 
   it("pula tenant sem feature action_plans", async () => {
-    mockFindAllTenants.mockResolvedValue([{ id: TENANT_ID }] as Awaited<ReturnType<typeof findAllTenantsActiveOrganizationIds>>)
+    mockFindAllTenants.mockResolvedValue([{ id: TENANT_ID }])
     mockHasTenantPlanFeature.mockResolvedValue(false)
 
     const result = await runActionPlanSuggestionGenerator()
@@ -68,7 +68,7 @@ describe("runActionPlanSuggestionGenerator", () => {
   })
 
   it("agrega resultados de todos os tenants com feature", async () => {
-    mockFindAllTenants.mockResolvedValue([{ id: "t1" }, { id: "t2" }] as Awaited<ReturnType<typeof findAllTenantsActiveOrganizationIds>>)
+    mockFindAllTenants.mockResolvedValue([{ id: "t1" }, { id: "t2" }])
     mockHasTenantPlanFeature.mockResolvedValue(true)
     mockComputeRawSuggestions.mockResolvedValue([RAW_SUGGESTION])
     mockFindExistingKeys.mockResolvedValue([])
@@ -97,7 +97,7 @@ describe("generateActionPlanSuggestionsForTenant", () => {
   it("pula sugestão cujo key já existe (deduplicação)", async () => {
     mockFindExistingKeys.mockResolvedValue([
       { suggestionKey: RAW_SUGGESTION.key },
-    ] as Awaited<ReturnType<typeof findExistingActionPlanSuggestionKeysForTenant>>)
+    ])
 
     const result = await generateActionPlanSuggestionsForTenant(TENANT_ID)
 
@@ -110,7 +110,7 @@ describe("generateActionPlanSuggestionsForTenant", () => {
     mockComputeRawSuggestions.mockResolvedValue([RAW_SUGGESTION, newSuggestion])
     mockFindExistingKeys.mockResolvedValue([
       { suggestionKey: RAW_SUGGESTION.key },
-    ] as Awaited<ReturnType<typeof findExistingActionPlanSuggestionKeysForTenant>>)
+    ])
 
     const result = await generateActionPlanSuggestionsForTenant(TENANT_ID)
 

@@ -22,7 +22,7 @@ const mockDeactivate = vi.mocked(deactivateDepartment)
 const TENANT_ID = "tenant-1"
 const DEPT_ID = "dept-1"
 
-const DEPT_RESULT = { items: [], total: 0 } as Awaited<ReturnType<typeof findDepartmentsForListingPage>>
+const DEPT_RESULT = { items: [], total: 0 }
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -37,9 +37,9 @@ beforeEach(() => {
     createdAt: new Date(),
     updatedAt: new Date(),
     workDays: [],
-  } as Awaited<ReturnType<typeof createDepartment>>)
-  mockUpdate.mockResolvedValue({ count: 1 } as Awaited<ReturnType<typeof updateDepartment>>)
-  mockDeactivate.mockResolvedValue({ count: 1 } as Awaited<ReturnType<typeof deactivateDepartment>>)
+  })
+  mockUpdate.mockResolvedValue({ count: 1 })
+  mockDeactivate.mockResolvedValue({ count: 1 })
 })
 
 describe("getDepartmentsForListingPage", () => {

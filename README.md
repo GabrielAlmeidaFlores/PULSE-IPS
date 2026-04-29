@@ -332,10 +332,10 @@ NEXT_PUBLIC_CONSULTANT_WHATSAPP="5511999999999"
 
 # ─── Endereços de e-mail públicos ──────────────────────────────────
 # Exibidos em páginas, modais e templates de e-mail
-NEXT_PUBLIC_EMAIL_SUPPORT="suporte@usepulse.com.br"
-NEXT_PUBLIC_EMAIL_PRIVACY="privacidade@usepulse.com.br"
-NEXT_PUBLIC_EMAIL_CONTACT="contato@usepulse.com.br"
-NEXT_PUBLIC_EMAIL_LEGAL="legal@usepulse.com.br"
+NEXT_PUBLIC_EMAIL_SUPPORT="suporte@pulseips.com.br"
+NEXT_PUBLIC_EMAIL_PRIVACY="privacidade@pulseips.com.br"
+NEXT_PUBLIC_EMAIL_CONTACT="contato@pulseips.com.br"
+NEXT_PUBLIC_EMAIL_LEGAL="legal@pulseips.com.br"
 ```
 
 > Com `MESSAGING_PROVIDER=console` e `EMAIL_PROVIDER=console`, todas as mensagens são impressas no terminal. Nenhuma integração externa é necessária para desenvolvimento local.
