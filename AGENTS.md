@@ -2835,6 +2835,20 @@ npx prisma studio
 npx prisma generate
 ```
 
+### Regra para criação de migrations — timestamp real obrigatório
+
+**Nunca crie pastas de migration manualmente.** O timestamp do nome da pasta (`YYYYMMDDHHMMSS_nome`) é gerado automaticamente pelo Prisma e representa o instante real de criação. Criar pastas manualmente com timestamps arbitrários ou futuros quebra a auditabilidade da ordem de criação em branches paralelas e dificulta triagem de conflitos.
+
+```bash
+# ✅ CORRETO — Prisma gera o timestamp real no momento da execução
+npx prisma migrate dev --name nome-descritivo
+
+# ❌ PROIBIDO — nunca crie manualmente
+mkdir prisma/migrations/20260429000000_nome
+```
+
+Se uma migration precisar ser criada fora do fluxo normal (ex: SQL customizado), use `npx prisma migrate dev --name nome` e edite o arquivo SQL gerado — nunca crie a pasta diretamente.
+
 ### Regra para renomear colunas
 
 **Nunca renomear campos via Prisma Migrate automático** — o Prisma gera `DROP COLUMN + ADD COLUMN` que destrói dados. Para renomear coluna com dados existentes, escrever manualmente:
@@ -3540,6 +3554,25 @@ Execute `grep` para confirmar cada item:
 
 ## 30. Testes Unitários
 
+### Regra obrigatória — todo service novo exige teste
+
+**Sempre que um novo `*.service.ts` for criado ou um service existente receber novos comportamentos, o arquivo de teste correspondente deve ser criado ou atualizado na mesma sessão de trabalho.** Nenhuma tarefa que envolva service é considerada concluída sem testes unitários cobrindo ao menos os cenários abaixo:
+
+- Happy path — retorno correto e chamadas corretas aos repositórios
+- Todos os `AppError` que o service pode lançar
+- Guards de validação (token expirado, não encontrado, estado inválido)
+- Toda lógica de negócio condicional (limites, regras de estado, fluxos alternativos)
+
+**Adicionalmente:**
+
+1. Criar `src/modules/{dominio}/{nome}.service.test.ts` ao lado do service
+2. Adicionar o caminho em `vitest.config.ts` → `coverage.include`
+3. Rodar `yarn test:coverage` e garantir ≥ 90% nas linhas do arquivo antes de considerar a tarefa concluída
+
+Não é aceitável criar um service sem testes com a intenção de "adicionar depois" — testes fazem parte da entrega, não são etapa opcional.
+
+---
+
 ### Framework
 
 **Vitest** (`yarn test` / `yarn test:coverage`) com ambiente `node`. Sem DOM — os testes cobrem exclusivamente a camada de service e utilitários.
@@ -3675,6 +3708,8 @@ await expect(fn()).rejects.toMatchObject({ code: "EMPLOYEE_LIMIT_REACHED" })
 ```
 
 ### Adicionando cobertura para um novo service
+
+Os 3 passos abaixo são **obrigatórios** — não opcionais:
 
 1. Criar `src/modules/{dominio}/{nome}.service.test.ts`
 2. Adicionar o caminho em `vitest.config.ts` → `coverage.include`
