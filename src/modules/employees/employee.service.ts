@@ -17,7 +17,7 @@ export function getEmployee(tenantId: string, employeeId: string): ReturnType<ty
 
 export async function createNewEmployee(tenantId: string, input: CreateEmployeeInput, actorId?: string): ReturnType<typeof createEmployee> {
   const org = await findOrganizationById(tenantId)
-  if (!org) throw new AppError("ORG_NOT_FOUND", "Organization not found")
+  if (!org) throw new AppError("ORG_NOT_FOUND", "Organização não encontrada.")
 
   const currentCount = await countEmployees(tenantId)
 
