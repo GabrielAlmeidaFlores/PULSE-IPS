@@ -13,14 +13,14 @@ import {
 } from "@/modules/health-surveys/health-survey.repository"
 import { hasOpenAlertOfType } from "@/modules/alerts/alert.repository"
 import { findEmployeeIdsWithAcceptedConsent } from "@/modules/consent/consent.repository"
-import { getMessageQueue } from "@/libs/queue"
-
 type PendingDispatch = Awaited<ReturnType<typeof findAllTenantsPendingHealthSurveyDispatches>>[number]
+
+const mockAddBulk = vi.hoisted(() => vi.fn().mockResolvedValue([]))
 
 vi.mock("@/modules/health-surveys/health-survey.repository")
 vi.mock("@/modules/alerts/alert.repository")
 vi.mock("@/modules/consent/consent.repository")
-vi.mock("@/libs/queue")
+vi.mock("@/libs/queue", () => ({ getMessageQueue: vi.fn(() => ({ addBulk: mockAddBulk })) }))
 vi.mock("@/libs/logger", () => ({ logger: { error: vi.fn(), info: vi.fn() } }))
 vi.mock("@/env", () => ({
   env: {
@@ -40,9 +40,6 @@ const mockCreateAdherenceAlert = vi.mocked(createHealthSurveyAdherenceAlert)
 const mockMarkDispatchAdherenceChecked = vi.mocked(markHealthSurveyDispatchAdherenceChecked)
 const mockHasOpenAlertOfType = vi.mocked(hasOpenAlertOfType)
 const mockFindEmployeeIdsWithAcceptedConsent = vi.mocked(findEmployeeIdsWithAcceptedConsent)
-const mockGetMessageQueue = vi.mocked(getMessageQueue)
-
-const MOCK_QUEUE = { addBulk: vi.fn().mockResolvedValue([]) }
 
 const TENANT_ID = "tenant-1"
 const WORK_DAY_TIMESTAMP = "2024-01-15T12:00:00-03:00"
@@ -107,14 +104,14 @@ function makeAutoDispatchConfig(overrides?: Partial<ActiveHealthSurveyConfigForD
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockGetMessageQueue.mockReturnValue(MOCK_QUEUE as ReturnType<typeof getMessageQueue>)
+  mockAddBulk.mockResolvedValue([])
   mockCreateDispatch.mockResolvedValue({ id: "new-dispatch-1" } as Awaited<ReturnType<typeof createHealthSurveyDispatch>>)
   mockCreateSurveyTokensAndMarkSent.mockResolvedValue(undefined)
   mockCreateAdherenceAlert.mockResolvedValue(undefined)
   mockMarkDispatchAdherenceChecked.mockResolvedValue(undefined)
   mockHasOpenAlertOfType.mockResolvedValue(false)
   mockFindEmployeeIdsWithAcceptedConsent.mockResolvedValue([])
-  MOCK_QUEUE.addBulk.mockResolvedValue([])
+  mockAddBulk.mockResolvedValue([])
 })
 
 describe("runHealthSurveyDispatcher", () => {
@@ -149,7 +146,7 @@ describe("runHealthSurveyDispatcher", () => {
     expect(result).toEqual({ dispatched: 1, errors: 0 })
     expect(mockCreateDispatch).not.toHaveBeenCalled()
     expect(mockCreateSurveyTokensAndMarkSent).toHaveBeenCalledOnce()
-    expect(MOCK_QUEUE.addBulk).toHaveBeenCalledOnce()
+    expect(mockAddBulk).toHaveBeenCalledOnce()
 
     vi.useRealTimers()
   })

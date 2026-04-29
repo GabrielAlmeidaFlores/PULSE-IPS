@@ -16,6 +16,7 @@ import {
   findEmployeesByTenant,
   findEmployeeById,
   updateEmployee,
+  type EmployeeWithDepartment,
 } from "@/modules/employees/employee.repository"
 import { findOrganizationById } from "@/modules/organizations/organization.repository"
 import { findPlanById } from "@/modules/plans/plan.repository"
@@ -163,11 +164,16 @@ describe("unpauseAllTenantsDueEmployees", () => {
 
 describe("getEmployees", () => {
   it("returns paginated employees for the given tenant", async () => {
-    const employees = [CREATED_EMPLOYEE]
-    mockFindEmployeesByTenant.mockResolvedValue(employees as Awaited<ReturnType<typeof findEmployeesByTenant>>)
+    const paginatedResult = {
+      employees: [CREATED_EMPLOYEE] as EmployeeWithDepartment[],
+      total: 1,
+      page: 1,
+      pageSize: 20,
+    }
+    mockFindEmployeesByTenant.mockResolvedValue(paginatedResult)
 
     const result = await getEmployees(TENANT_ID, 1, 20)
-    expect(result).toEqual(employees)
+    expect(result).toEqual(paginatedResult)
     expect(mockFindEmployeesByTenant).toHaveBeenCalledWith(TENANT_ID, 1, 20)
   })
 })
@@ -184,11 +190,10 @@ describe("getEmployee", () => {
 
 describe("updateExistingEmployee", () => {
   it("updates employee fields and returns updated record", async () => {
-    const updated = { ...CREATED_EMPLOYEE, name: "Ana Updated" }
-    mockUpdateEmployee.mockResolvedValue(updated as Awaited<ReturnType<typeof updateEmployee>>)
+    mockUpdateEmployee.mockResolvedValue({ count: 1 })
 
     const result = await updateExistingEmployee(TENANT_ID, "emp-1", { name: "Ana Updated" })
-    expect(result).toEqual(updated)
+    expect(result).toEqual({ count: 1 })
     expect(mockUpdateEmployee).toHaveBeenCalledWith(TENANT_ID, "emp-1", { name: "Ana Updated" })
   })
 })
