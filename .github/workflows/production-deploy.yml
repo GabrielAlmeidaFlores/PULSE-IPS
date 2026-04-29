@@ -147,7 +147,7 @@ jobs:
 
       - name: Recreate app, worker and schedule-register
         run: |
-          docker compose up -d --no-build --force-recreate app worker schedule-register
+          docker compose up -d --no-build --force-recreate --no-deps app worker schedule-register
 
   healthcheck:
     name: App health check
