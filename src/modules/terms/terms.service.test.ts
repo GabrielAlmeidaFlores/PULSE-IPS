@@ -39,7 +39,7 @@ describe("getPendingTermsForUser", () => {
   })
 
   it("returns null when user already accepted active terms", async () => {
-    mockFindActiveTermsVersion.mockResolvedValue(TERMS as Awaited<ReturnType<typeof findActiveTermsVersion>>)
+    mockFindActiveTermsVersion.mockResolvedValue(TERMS)
     mockFindUserAcceptance.mockResolvedValue(ACCEPTANCE as Awaited<ReturnType<typeof findUserAcceptance>>)
 
     const result = await getPendingTermsForUser("user-1")
@@ -47,7 +47,7 @@ describe("getPendingTermsForUser", () => {
   })
 
   it("returns active terms when user has not accepted", async () => {
-    mockFindActiveTermsVersion.mockResolvedValue(TERMS as Awaited<ReturnType<typeof findActiveTermsVersion>>)
+    mockFindActiveTermsVersion.mockResolvedValue(TERMS)
     mockFindUserAcceptance.mockResolvedValue(null)
 
     const result = await getPendingTermsForUser("user-1")
@@ -65,7 +65,7 @@ describe("acceptTerms", () => {
   })
 
   it("throws when terms version is inactive", async () => {
-    mockFindTermsVersionById.mockResolvedValue({ ...TERMS, isActive: false } as Awaited<ReturnType<typeof findTermsVersionById>>)
+    mockFindTermsVersionById.mockResolvedValue({ ...TERMS, isActive: false })
 
     await expect(acceptTerms({ termsVersionId: "terms-1", userId: "user-1", ipAddress: "127.0.0.1", userAgent: "test" })).rejects.toMatchObject({
       code: "TERMS_INACTIVE",
@@ -73,7 +73,7 @@ describe("acceptTerms", () => {
   })
 
   it("returns existing acceptance when user already accepted", async () => {
-    mockFindTermsVersionById.mockResolvedValue(TERMS as Awaited<ReturnType<typeof findTermsVersionById>>)
+    mockFindTermsVersionById.mockResolvedValue(TERMS)
     mockFindUserAcceptance.mockResolvedValue(ACCEPTANCE as Awaited<ReturnType<typeof findUserAcceptance>>)
 
     const result = await acceptTerms({ termsVersionId: "terms-1", userId: "user-1", ipAddress: "127.0.0.1", userAgent: "test" })
@@ -82,7 +82,7 @@ describe("acceptTerms", () => {
   })
 
   it("creates new acceptance when not yet accepted", async () => {
-    mockFindTermsVersionById.mockResolvedValue(TERMS as Awaited<ReturnType<typeof findTermsVersionById>>)
+    mockFindTermsVersionById.mockResolvedValue(TERMS)
     mockFindUserAcceptance.mockResolvedValue(null)
 
     const result = await acceptTerms({ termsVersionId: "terms-1", userId: "user-1", ipAddress: "127.0.0.1", userAgent: "test" })
@@ -93,7 +93,7 @@ describe("acceptTerms", () => {
 
 describe("getActiveTermsVersion", () => {
   it("returns the currently active terms version", async () => {
-    mockFindActiveTermsVersion.mockResolvedValue(TERMS as Awaited<ReturnType<typeof findActiveTermsVersion>>)
+    mockFindActiveTermsVersion.mockResolvedValue(TERMS)
     const result = await getActiveTermsVersion()
     expect(result).toEqual(TERMS)
   })
@@ -101,7 +101,7 @@ describe("getActiveTermsVersion", () => {
 
 describe("getTermsVersionById", () => {
   it("returns a terms version by id", async () => {
-    mockFindTermsVersionById.mockResolvedValue(TERMS as Awaited<ReturnType<typeof findTermsVersionById>>)
+    mockFindTermsVersionById.mockResolvedValue(TERMS)
 
     const result = await getTermsVersionById("terms-1")
     expect(result).toEqual(TERMS)
@@ -112,7 +112,7 @@ describe("getTermsVersionById", () => {
 describe("createNewTermsVersion", () => {
   it("creates a new terms version and returns it", async () => {
     const newTerms = { ...TERMS, id: "terms-2", version: "2.0" }
-    mockCreateTermsVersion.mockResolvedValue(newTerms as Awaited<ReturnType<typeof createTermsVersion>>)
+    mockCreateTermsVersion.mockResolvedValue(newTerms)
 
     const result = await createNewTermsVersion({ version: "2.0", title: "Termos v2.0", content: "<p>v2</p>", effectiveAt: new Date() } as CreateTermsVersionInput)
     expect(result).toEqual(newTerms)
@@ -122,7 +122,7 @@ describe("createNewTermsVersion", () => {
 
 describe("acceptTerms — already accepted", () => {
   it("returns existing acceptance without creating a new one", async () => {
-    mockFindTermsVersionById.mockResolvedValue(TERMS as Awaited<ReturnType<typeof findTermsVersionById>>)
+    mockFindTermsVersionById.mockResolvedValue(TERMS)
     mockFindUserAcceptance.mockResolvedValue(ACCEPTANCE as Awaited<ReturnType<typeof findUserAcceptance>>)
 
     const result = await acceptTerms({ termsVersionId: "terms-1", userId: "user-1", ipAddress: "127.0.0.1", userAgent: "test" })
@@ -133,7 +133,7 @@ describe("acceptTerms — already accepted", () => {
 
 describe("getAllTermsVersions", () => {
   it("returns all terms versions", async () => {
-    mockFindAllTermsVersions.mockResolvedValue([TERMS] as Awaited<ReturnType<typeof findAllTermsVersions>>)
+    mockFindAllTermsVersions.mockResolvedValue([TERMS])
 
     const result = await getAllTermsVersions()
     expect(result).toEqual([TERMS])

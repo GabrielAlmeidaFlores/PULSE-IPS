@@ -65,19 +65,19 @@ export const env = createEnv({
     NEXT_PUBLIC_EMAIL_SUPPORT: z
       .string()
       .email()
-      .default("suporte@usepulse.com.br"),
+      .default("suporte@pulseips.com.br"),
     NEXT_PUBLIC_EMAIL_PRIVACY: z
       .string()
       .email()
-      .default("privacidade@usepulse.com.br"),
+      .default("privacidade@pulseips.com.br"),
     NEXT_PUBLIC_EMAIL_CONTACT: z
       .string()
       .email()
-      .default("contato@usepulse.com.br"),
+      .default("contato@pulseips.com.br"),
     NEXT_PUBLIC_EMAIL_LEGAL: z
       .string()
       .email()
-      .default("legal@usepulse.com.br"),
+      .default("legal@pulseips.com.br"),
   },
   runtimeEnv: {
     DATABASE_URL: process.env.DATABASE_URL,

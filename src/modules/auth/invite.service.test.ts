@@ -66,7 +66,7 @@ beforeEach(() => {
   mockFindOrgByIdOrThrow.mockResolvedValue(ORG as Awaited<ReturnType<typeof findOrgByIdOrThrow>>)
   mockFindOrgInviteByToken.mockResolvedValue(INVITE as Awaited<ReturnType<typeof findOrgInviteByToken>>)
   mockAcceptInviteTransaction.mockResolvedValue(undefined)
-  mockFindOrgInvitationById.mockResolvedValue(INVITE as Awaited<ReturnType<typeof findOrgInvitationById>>)
+  mockFindOrgInvitationById.mockResolvedValue(INVITE)
   mockUpdateOrgInvitationToken.mockResolvedValue(undefined)
   mockCancelOrgInvitationById.mockResolvedValue(undefined)
   mockCreateAuditLog.mockResolvedValue(undefined)

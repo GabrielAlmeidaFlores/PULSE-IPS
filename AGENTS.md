@@ -3102,10 +3102,10 @@ CRON_SECRET=...                           # proteção dos endpoints /api/jobs/*
 NEXT_PUBLIC_APP_URL=https://app.pulse.com
 
 # Endereços de e-mail públicos (exibidos em páginas, modais e templates)
-NEXT_PUBLIC_EMAIL_SUPPORT=suporte@usepulse.com.br
-NEXT_PUBLIC_EMAIL_PRIVACY=privacidade@usepulse.com.br
-NEXT_PUBLIC_EMAIL_CONTACT=contato@usepulse.com.br
-NEXT_PUBLIC_EMAIL_LEGAL=legal@usepulse.com.br
+NEXT_PUBLIC_EMAIL_SUPPORT=suporte@pulseips.com.br
+NEXT_PUBLIC_EMAIL_PRIVACY=privacidade@pulseips.com.br
+NEXT_PUBLIC_EMAIL_CONTACT=contato@pulseips.com.br
+NEXT_PUBLIC_EMAIL_LEGAL=legal@pulseips.com.br
 ```
 
 ### Desenvolvimento (valores padrão)
@@ -4123,10 +4123,10 @@ fill={healthIndexChartColor(score)}  // retorna "var(--status-success/warning/da
 
 | Variável | Padrão | Uso |
 |---|---|---|
-| `NEXT_PUBLIC_EMAIL_SUPPORT` | `suporte@usepulse.com.br` | E-mail de suporte técnico — exibido em páginas de ajuda, modais de erro, convites |
-| `NEXT_PUBLIC_EMAIL_PRIVACY` | `privacidade@usepulse.com.br` | E-mail do DPO / privacidade — exibido em páginas legais, TCLE, política de privacidade |
-| `NEXT_PUBLIC_EMAIL_CONTACT` | `contato@usepulse.com.br` | E-mail de contato comercial — exibido no footer das landing pages |
-| `NEXT_PUBLIC_EMAIL_LEGAL` | `legal@usepulse.com.br` | E-mail jurídico/contratual — exibido em termos de uso e documentos legais |
+| `NEXT_PUBLIC_EMAIL_SUPPORT` | `suporte@pulseips.com.br` | E-mail de suporte técnico — exibido em páginas de ajuda, modais de erro, convites |
+| `NEXT_PUBLIC_EMAIL_PRIVACY` | `privacidade@pulseips.com.br` | E-mail do DPO / privacidade — exibido em páginas legais, TCLE, política de privacidade |
+| `NEXT_PUBLIC_EMAIL_CONTACT` | `contato@pulseips.com.br` | E-mail de contato comercial — exibido no footer das landing pages |
+| `NEXT_PUBLIC_EMAIL_LEGAL` | `legal@pulseips.com.br` | E-mail jurídico/contratual — exibido em termos de uso e documentos legais |
 
 > Todas as três são `NEXT_PUBLIC_` para serem acessíveis tanto em Server Components (RSC) quanto em Client Components sem necessidade de prop drilling.
 
@@ -4148,13 +4148,13 @@ import { env } from "@/env"
 const supportEmail = env.NEXT_PUBLIC_EMAIL_SUPPORT
 
 // ✅ Seed (src/cli/seed/*.ts) — usa process.env diretamente com fallback
-const EMAIL_SUPPORT = process.env["NEXT_PUBLIC_EMAIL_SUPPORT"] ?? "suporte@usepulse.com.br"
+const EMAIL_SUPPORT = process.env["NEXT_PUBLIC_EMAIL_SUPPORT"] ?? "suporte@pulseips.com.br"
 ```
 
 ```typescript
 // ❌ PROIBIDO — e-mail hardcoded em qualquer lugar
 const SUPPORT_EMAIL = "suporte@pulseips.com.br"
-href="mailto:privacidade@usepulse.com.br"
+href="mailto:privacidade@pulseips.com.br"
 ```
 
 ### Adicionar novo e-mail de contato

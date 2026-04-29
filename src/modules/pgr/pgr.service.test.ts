@@ -91,14 +91,14 @@ const REVIEW_LIST_ITEM = {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockFindReviewsByTenant.mockResolvedValue([REVIEW_LIST_ITEM] as Awaited<ReturnType<typeof findPgrReviewsByTenant>>)
-  mockFindReviewsByTenantPaginated.mockResolvedValue({ items: [REVIEW_LIST_ITEM], total: 1 } as Awaited<ReturnType<typeof findPgrReviewsByTenantPaginated>>)
+  mockFindReviewsByTenant.mockResolvedValue([REVIEW_LIST_ITEM])
+  mockFindReviewsByTenantPaginated.mockResolvedValue({ items: [REVIEW_LIST_ITEM], total: 1 })
   mockFindReviewById.mockResolvedValue(null)
   mockFindOrgWithDepts.mockResolvedValue({ departments: [DEPT] } as Awaited<ReturnType<typeof findOrgWithDepartmentsForPgr>>)
-  mockFindDispatches.mockResolvedValue([makeDispatch(4, 6)] as Awaited<ReturnType<typeof findDispatchesForPgr>>)
+  mockFindDispatches.mockResolvedValue([makeDispatch(4, 6)])
   mockFindByTenantAndPeriod.mockResolvedValue(null)
   mockCreatePgrReviewAtomic.mockResolvedValue({} as Awaited<ReturnType<typeof createPgrReviewAtomic>>)
-  mockFindUpcomingReviews.mockResolvedValue([] as Awaited<ReturnType<typeof findAllTenantsUpcomingPgrReviews>>)
+  mockFindUpcomingReviews.mockResolvedValue([])
   mockFindExistingPgrAlert.mockResolvedValue(null)
   mockCreatePgrAlert.mockResolvedValue(undefined)
   mockFindItemScoresForPeriod.mockResolvedValue([])
@@ -117,7 +117,7 @@ describe("getPgrReviews", () => {
   it("retorna overallHealthIndex null quando não há resultados por setor", async () => {
     mockFindReviewsByTenant.mockResolvedValue([
       { ...REVIEW_LIST_ITEM, deptResults: [] },
-    ] as Awaited<ReturnType<typeof findPgrReviewsByTenant>>)
+    ])
 
     const result = await getPgrReviews(TENANT_ID)
 
@@ -174,7 +174,7 @@ describe("generatePgrReport", () => {
   it("ignora dispatches de outros meses ao gerar o relatório", async () => {
     mockFindDispatches.mockResolvedValue([
       makeDispatch(3, 6),
-    ] as Awaited<ReturnType<typeof findDispatchesForPgr>>)
+    ])
 
     await expect(generatePgrReport(TENANT_ID, "2026-04")).rejects.toMatchObject({
       code: "NO_DATA_FOR_PERIOD",
@@ -184,7 +184,7 @@ describe("generatePgrReport", () => {
 
 describe("sendPgrReviewReminders", () => {
   it("retorna zero quando não há revisões próximas", async () => {
-    mockFindUpcomingReviews.mockResolvedValue([] as Awaited<ReturnType<typeof findAllTenantsUpcomingPgrReviews>>)
+    mockFindUpcomingReviews.mockResolvedValue([])
 
     const result = await sendPgrReviewReminders()
 
@@ -265,7 +265,7 @@ describe("getPgrScoreDistributions", () => {
       { questionId: "q-1", departmentId: DEPT_ID, score: 3 },
       { questionId: "q-1", departmentId: DEPT_ID, score: 3 },
       { questionId: "q-1", departmentId: DEPT_ID, score: 5 },
-    ] as Awaited<ReturnType<typeof findItemScoresForPeriod>>)
+    ])
 
     const questionResult = {
       id: "qr-1",

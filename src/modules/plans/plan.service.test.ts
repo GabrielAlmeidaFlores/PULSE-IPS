@@ -71,10 +71,10 @@ const MOCK_BILLING_SERVICE = {
 beforeEach(() => {
   vi.clearAllMocks()
   mockCreatePlan.mockResolvedValue(PLAN as Awaited<ReturnType<typeof createPlan>>)
-  mockCreatePlanPrice.mockResolvedValue(PLAN_PRICE as Awaited<ReturnType<typeof createPlanPrice>>)
+  mockCreatePlanPrice.mockResolvedValue(PLAN_PRICE)
   mockUpdatePlan.mockResolvedValue(PLAN as Awaited<ReturnType<typeof updatePlan>>)
-  mockUpdatePlanPriceAmount.mockResolvedValue(PLAN_PRICE as Awaited<ReturnType<typeof updatePlanPriceAmount>>)
-  mockUpdatePlanPriceRecord.mockResolvedValue(PLAN_PRICE as Awaited<ReturnType<typeof updatePlanPriceRecord>>)
+  mockUpdatePlanPriceAmount.mockResolvedValue(PLAN_PRICE)
+  mockUpdatePlanPriceRecord.mockResolvedValue(PLAN_PRICE)
   mockDeletePlan.mockResolvedValue(undefined)
   mockBillingCreateProduct.mockResolvedValue({ id: "prod_new" })
   mockBillingCreatePrice.mockResolvedValue({ id: "new_price_ext" })

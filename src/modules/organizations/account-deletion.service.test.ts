@@ -29,7 +29,7 @@ vi.mock("@/libs/email-templates", () => ({
 vi.mock("@/env", () => ({
   env: {
     NEXT_PUBLIC_APP_URL: "http://localhost:3000",
-    NEXT_PUBLIC_EMAIL_SUPPORT: "suporte@usepulse.com.br",
+    NEXT_PUBLIC_EMAIL_SUPPORT: "suporte@pulseips.com.br",
   },
 }))
 
