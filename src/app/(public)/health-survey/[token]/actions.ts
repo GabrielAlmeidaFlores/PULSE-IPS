@@ -7,21 +7,21 @@ import { optOutFromHealthSurveyToken, acceptConsentFromHealthSurveyToken, refuse
 
 const UNEXPECTED_ERROR_MESSAGE = "Ocorreu um erro inesperado."
 
-const answerSchema = z.object({
+const healthSurveyAnswerSchema = z.object({
   questionId: z.string().uuid(),
   score: z.number().int().min(1).max(5),
 })
 
-const submitSurveySchema = z.object({
+const submitHealthSurveySchema = z.object({
   token: z.string().min(1).max(255),
-  answers: z.array(answerSchema).min(1).max(50),
+  answers: z.array(healthSurveyAnswerSchema).min(1).max(50),
 })
 
-export async function submitSurveyAction(
+export async function submitHealthSurveyAction(
   token: string,
   answers: { questionId: string; score: number }[],
 ): Promise<ActionResult> {
-  const parsed = submitSurveySchema.safeParse({ token, answers })
+  const parsed = submitHealthSurveySchema.safeParse({ token, answers })
   if (!parsed.success) return { error: "Dados inválidos." }
   try {
     await submitSurveyResponse(parsed.data)
@@ -31,7 +31,7 @@ export async function submitSurveyAction(
   }
 }
 
-export async function optOutSurveyAction(token: string): Promise<ActionResult> {
+export async function optOutHealthSurveyAction(token: string): Promise<ActionResult> {
   try {
     await optOutFromHealthSurveyToken(token)
     return {}

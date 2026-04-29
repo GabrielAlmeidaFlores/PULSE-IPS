@@ -4,7 +4,7 @@ import { useState } from "react"
 import { toast } from "sonner"
 import { EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { submitSurveyAction, optOutSurveyAction } from "@/app/(public)/health-survey/[token]/actions"
+import { submitHealthSurveyAction, optOutHealthSurveyAction } from "@/app/(public)/health-survey/[token]/actions"
 
 interface Question {
   id: string
@@ -33,7 +33,7 @@ export function HealthSurveyForm({ token, employeeName, questions }: Props): Rea
       return
     }
     setSubmitting(true)
-    const result = await submitSurveyAction(token, answers)
+    const result = await submitHealthSurveyAction(token, answers)
     if (result.error) {
       toast.error(result.error)
       setSubmitting(false)
@@ -44,7 +44,7 @@ export function HealthSurveyForm({ token, employeeName, questions }: Props): Rea
 
   async function handleOptOut(): Promise<void> {
     setOptingOut(true)
-    const result = await optOutSurveyAction(token)
+    const result = await optOutHealthSurveyAction(token)
     if (result.error) {
       toast.error(result.error)
       setOptingOut(false)
