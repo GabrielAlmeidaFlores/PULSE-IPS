@@ -1,15 +1,16 @@
 import "dotenv/config"
+import { env } from "../../env"
 
-const EMAIL_SUPPORT = process.env["NEXT_PUBLIC_EMAIL_SUPPORT"] ?? "suporte@pulseips.com.br"
-const EMAIL_PRIVACY = process.env["NEXT_PUBLIC_EMAIL_PRIVACY"] ?? "privacidade@pulseips.com.br"
-const EMAIL_LEGAL = process.env["NEXT_PUBLIC_EMAIL_LEGAL"] ?? "legal@pulseips.com.br"
+const EMAIL_SUPPORT = env.NEXT_PUBLIC_EMAIL_SUPPORT
+const EMAIL_PRIVACY = env.NEXT_PUBLIC_EMAIL_PRIVACY
+const EMAIL_LEGAL = env.NEXT_PUBLIC_EMAIL_LEGAL
 import { createLogger } from "../../libs/utils/logger"
 import { createHash } from "crypto";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
+const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 const logger = createLogger("seed")
 
