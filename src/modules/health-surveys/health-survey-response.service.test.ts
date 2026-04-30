@@ -20,7 +20,7 @@ import {
   getActiveConsentTermVersion,
   type ConsentWithTermVersion,
 } from "@/modules/consent/consent.repository"
-import type { ConsentTermVersion } from "@prisma/client"
+import type { ConsentTermVersion } from "@/modules/consent/consent.types"
 
 vi.mock("@/modules/health-surveys/health-survey.repository")
 vi.mock("@/modules/consent/consent.repository")

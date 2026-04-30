@@ -1,7 +1,7 @@
 import { prisma } from "@/libs/db"
 import { AppError } from "@/libs/errors/app-error"
-import type { Prisma, ActionPlan, ActionPlanTask } from "@prisma/client"
-import type { CreateActionPlanInput, CreateActionPlanTaskInput, UpdateActionPlanInput } from "@/modules/action-plans/action-plan.types"
+import type { Prisma } from "@prisma/client"
+import type { ActionPlan, ActionPlanTask, CreateActionPlanInput, CreateActionPlanTaskInput, UpdateActionPlanInput } from "@/modules/action-plans/action-plan.types"
 
 export type ActionPlanWithTasks = ActionPlan & { tasks: ActionPlanTask[] }
 
@@ -10,14 +10,14 @@ export function findActionPlansByTenant(tenantId: string): Promise<ActionPlanWit
     where: { tenantId },
     include: { tasks: true },
     orderBy: { createdAt: "desc" },
-  })
+  }) as unknown as Promise<ActionPlanWithTasks[]>
 }
 
 export function findActionPlanById(tenantId: string, planId: string): Promise<ActionPlanWithTasks | null> {
   return prisma.actionPlan.findFirst({
     where: { id: planId, tenantId },
     include: { tasks: { where: { tenantId }, orderBy: { createdAt: "asc" } } },
-  })
+  }) as unknown as Promise<ActionPlanWithTasks | null>
 }
 
 export function createActionPlan(tenantId: string, data: CreateActionPlanInput): Promise<ActionPlan> {
@@ -31,7 +31,7 @@ export function createActionPlan(tenantId: string, data: CreateActionPlanInput):
       ...(data.alertId !== undefined && { alertId: data.alertId }),
       ...(data.reportId !== undefined && { reportId: data.reportId }),
     },
-  })
+  }) as unknown as Promise<ActionPlan>
 }
 
 export function updateActionPlan(
@@ -63,14 +63,14 @@ export async function createActionPlanTask(tenantId: string, actionPlanId: strin
       ...(data.assigneeId !== undefined && { assigneeId: data.assigneeId }),
       ...(data.dueDate !== undefined && { dueDate: data.dueDate }),
     },
-  })
+  }) as unknown as Promise<ActionPlanTask>
 }
 
 export function completeActionPlanTask(tenantId: string, taskId: string): Promise<ActionPlanTask> {
   return prisma.actionPlanTask.update({
     where: { id: taskId, tenantId },
     data: { completedAt: new Date() },
-  })
+  }) as unknown as Promise<ActionPlanTask>
 }
 
 export function createActionPlanWithTasks(
@@ -96,7 +96,7 @@ export function createActionPlanWithTasks(
       })
     }
     return plan
-  })
+  }) as unknown as Promise<ActionPlan>
 }
 
 export interface SuggestionContextData {
@@ -222,5 +222,5 @@ export async function findActionPlansForListingPage(
     prisma.actionPlan.findMany({ where, include: { tasks: true }, orderBy: { createdAt: "desc" }, skip, take }),
     prisma.actionPlan.count({ where }),
   ])
-  return { items, total }
+  return { items: items as unknown as ActionPlanWithTasks[], total }
 }

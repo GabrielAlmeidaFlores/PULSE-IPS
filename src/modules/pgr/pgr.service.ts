@@ -1,7 +1,6 @@
 import { addDays } from "date-fns"
 import { MINIMUM_RESPONDENTS_FOR_DISPLAY } from "@/libs/utils/anonymity"
-import type { PgrReview, PgrQuestionResult } from "@prisma/client"
-import type { CreatePgrDeptResultInput, CreatePgrQuestionResultInput, PgrScoreDistribution } from "@/modules/pgr/pgr.types"
+import type { PgrReview, PgrQuestionResult, CreatePgrDeptResultInput, CreatePgrQuestionResultInput, PgrScoreDistribution } from "@/modules/pgr/pgr.types"
 import type { ScoreDirection } from "@/modules/health-surveys/health-survey.types"
 import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
 import { AppError } from "@/libs/errors/app-error"

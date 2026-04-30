@@ -81,7 +81,7 @@ export default async function PlansPage({
                     </div>
                   </td>
                   <td className="px-4 py-2.5 text-right font-mono">
-                    {plan.maxEmployees.toLocaleString("pt-BR")}
+                    {plan.maxEmployees !== null ? plan.maxEmployees.toLocaleString("pt-BR") : "Ilimitado"}
                   </td>
                   <td className="px-4 py-2.5 text-right">
                     <div className="flex flex-col items-end gap-0.5">

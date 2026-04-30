@@ -13,8 +13,7 @@ import {
   findOrganizationFullDetail,
   type OrganizationAdminListingFilters,
 } from "@/modules/organizations/organization.repository"
-import type { CreateOrganizationInput, UpdateOrganizationInput } from "@/modules/organizations/organization.types"
-import type { Organization } from "@prisma/client"
+import type { CreateOrganizationInput, UpdateOrganizationInput, Organization } from "@/modules/organizations/organization.types"
 import { AppError } from "@/libs/errors/app-error"
 
 export function getOrganization(tenantId: string): Promise<Organization | null> {

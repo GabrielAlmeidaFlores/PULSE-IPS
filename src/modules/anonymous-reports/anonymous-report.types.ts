@@ -1,4 +1,16 @@
-export type { AnonymousReport } from "@prisma/client"
+export interface AnonymousReport {
+  id: string
+  tenantId: string
+  orgSlug: string
+  content: string
+  category: string | null
+  status: "open" | "analyzing" | "resolved" | "archived"
+  isCrisis: boolean
+  resolvedAt: Date | null
+  deletedAt: Date | null
+  createdAt: Date
+  updatedAt: Date
+}
 
 export interface AnonymousReportType {
   id: string

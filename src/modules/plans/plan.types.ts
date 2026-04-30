@@ -29,7 +29,7 @@ export interface Plan {
   id: string
   name: string
   description: string | null
-  maxEmployees: number
+  maxEmployees: number | null
   externalProductId: string | null
   isActive: boolean
   deletedAt: Date | null
@@ -44,7 +44,7 @@ export interface PlanWithFeatures extends Plan {
 export interface PlanPrice {
   id: string
   planId: string
-  externalPriceId: string
+  externalPriceId: string | null
   priceInCents: number
   currency: string
   interval: string

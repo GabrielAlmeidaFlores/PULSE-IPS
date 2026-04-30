@@ -1,16 +1,16 @@
 import { prisma } from "@/libs/db"
-import type { Prisma, AnonymousReport } from "@prisma/client"
-import type { CreateAnonymousReportInput, UpdateAnonymousReportInput } from "@/modules/anonymous-reports/anonymous-report.types"
+import type { Prisma } from "@prisma/client"
+import type { AnonymousReport, CreateAnonymousReportInput, UpdateAnonymousReportInput } from "@/modules/anonymous-reports/anonymous-report.types"
 
 export function findReportsByTenant(tenantId: string): Promise<AnonymousReport[]> {
   return prisma.anonymousReport.findMany({
     where: { tenantId },
     orderBy: { createdAt: "desc" },
-  })
+  }) as unknown as Promise<AnonymousReport[]>
 }
 
 export function findReportById(tenantId: string, reportId: string): Promise<AnonymousReport | null> {
-  return prisma.anonymousReport.findFirst({ where: { id: reportId, tenantId } })
+  return prisma.anonymousReport.findFirst({ where: { id: reportId, tenantId } }) as unknown as Promise<AnonymousReport | null>
 }
 
 export function createReport(
@@ -24,7 +24,7 @@ export function createReport(
       content: data.content,
       ...(data.category !== undefined && { category: data.category }),
     },
-  })
+  }) as unknown as Promise<AnonymousReport>
 }
 
 export function updateReport(
@@ -57,5 +57,5 @@ export async function findReportsForListingPage(
     prisma.anonymousReport.findMany({ where, orderBy: { createdAt: "desc" }, skip, take }),
     prisma.anonymousReport.count({ where }),
   ])
-  return { items, total }
+  return { items: items as unknown as AnonymousReport[], total }
 }

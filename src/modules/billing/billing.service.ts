@@ -6,6 +6,7 @@ import { findActiveSubscription, upsertSubscription, findPlanPriceForProvisionin
 import { findOrganizationRequired, updateOrganizationBillingStatus } from "@/modules/organizations/organization.repository"
 import { findPlanFeatures } from "@/modules/plans/plan.repository"
 import type { PlanFeature } from "@/modules/plans/plan.types"
+import type { SubscriptionWithPlan } from "@/modules/billing/billing.types"
 
 export async function createCheckoutSession(
   tenantId: string,
@@ -76,7 +77,7 @@ export async function getBillingPortalUrl(tenantId: string): Promise<string> {
   return url
 }
 
-export function getSubscription(tenantId: string): Promise<(import("@prisma/client").OrganizationSubscription & { plan: import("@prisma/client").Plan }) | null> {
+export function getSubscription(tenantId: string): Promise<SubscriptionWithPlan | null> {
   return findActiveSubscription(tenantId)
 }
 

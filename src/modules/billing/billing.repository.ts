@@ -1,13 +1,13 @@
 import { prisma } from "@/libs/db"
-import type { Prisma, OrganizationSubscription, Plan, BillingWebhookEvent } from "@prisma/client"
-import type { SubscriptionUpsertInput, WebhookEventInput } from "@/modules/billing/billing.types"
+import type { Prisma, BillingWebhookEvent } from "@prisma/client"
+import type { SubscriptionUpsertInput, WebhookEventInput, OrganizationSubscription, SubscriptionWithPlan } from "@/modules/billing/billing.types"
 import type { PlanFeature } from "@/modules/plans/plan.types"
 
-export function findActiveSubscription(tenantId: string): Promise<(OrganizationSubscription & { plan: Plan }) | null> {
+export function findActiveSubscription(tenantId: string): Promise<SubscriptionWithPlan | null> {
   return prisma.organizationSubscription.findUnique({
     where: { tenantId },
     include: { plan: true },
-  })
+  }) as unknown as Promise<SubscriptionWithPlan | null>
 }
 
 export function upsertSubscription(data: SubscriptionUpsertInput): Promise<OrganizationSubscription> {
@@ -15,11 +15,11 @@ export function upsertSubscription(data: SubscriptionUpsertInput): Promise<Organ
     where: { tenantId: data.tenantId },
     create: data,
     update: data,
-  })
+  }) as unknown as Promise<OrganizationSubscription>
 }
 
 export function findSubscriptionByTenantId(tenantId: string): Promise<OrganizationSubscription | null> {
-  return prisma.organizationSubscription.findUnique({ where: { tenantId } })
+  return prisma.organizationSubscription.findUnique({ where: { tenantId } }) as unknown as Promise<OrganizationSubscription | null>
 }
 
 export async function createSubscriptionFeatureSnapshot(subscriptionId: string, features: PlanFeature[]): Promise<void> {

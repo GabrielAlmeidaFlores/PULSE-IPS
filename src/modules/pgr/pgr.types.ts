@@ -1,6 +1,31 @@
 import type { ScoreDirection } from "@/modules/health-surveys/health-survey.types"
 import type { AlertType, AlertSeverity } from "@/modules/alerts/alert.types"
 
+export interface PgrReview {
+  id: string
+  tenantId: string
+  period: string
+  fileUrl: string | null
+  status: string
+  reviewedAt: Date | null
+  nextReviewAt: Date | null
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface PgrQuestionResult {
+  id: string
+  pgrReviewId: string
+  departmentId: string
+  questionId: string
+  questionText: string
+  questionOrder: number
+  scoreDirection: string
+  avgScore: number
+  responseCount: number
+  createdAt: Date
+}
+
 export interface PgrScoreDistribution {
   questionId: string
   questionText: string

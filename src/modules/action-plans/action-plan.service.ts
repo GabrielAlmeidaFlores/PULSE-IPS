@@ -10,8 +10,7 @@ import {
   type ActionPlanWithTasks,
   type ActionPlanListingFilters,
 } from "@/modules/action-plans/action-plan.repository"
-import type { CreateActionPlanInput, UpdateActionPlanInput, CreateActionPlanTaskInput } from "@/modules/action-plans/action-plan.types"
-import type { ActionPlan, ActionPlanTask } from "@prisma/client"
+import type { CreateActionPlanInput, UpdateActionPlanInput, CreateActionPlanTaskInput, ActionPlan, ActionPlanTask } from "@/modules/action-plans/action-plan.types"
 
 export function getActionPlans(tenantId: string): Promise<ActionPlanWithTasks[]> {
   return findActionPlansByTenant(tenantId)

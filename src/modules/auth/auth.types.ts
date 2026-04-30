@@ -1,5 +1,3 @@
-export type { OrganizationUser } from "@prisma/client"
-
 export interface SafeOrgUser {
   id: string
   tenantId: string

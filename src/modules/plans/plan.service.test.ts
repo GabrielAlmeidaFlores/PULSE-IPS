@@ -51,7 +51,19 @@ const mockSetPlanFeatures = vi.mocked(setPlanFeatures)
 const mockFindPlanFeatures = vi.mocked(findPlanFeatures)
 const mockFindAllPlansPaginated = vi.mocked(findAllPlansPaginated)
 
-const PLAN = { id: "plan-1", name: "Starter", externalProductId: "prod_abc", maxEmployees: 50, description: "Starter plan" }
+const PLAN = {
+  id: "plan-1",
+  name: "Starter",
+  externalProductId: "prod_abc",
+  maxEmployees: 50,
+  description: "Starter plan",
+  isActive: true,
+  deletedAt: null,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  features: [] as import("@/modules/plans/plan.types").PlanFeature[],
+  prices: [] as import("@/modules/plans/plan.types").PlanPrice[],
+}
 const PLAN_PRICE = {
   id: "price-1",
   planId: "plan-1",
@@ -61,7 +73,17 @@ const PLAN_PRICE = {
   externalPriceId: "price_ext",
   isActive: true,
   createdAt: new Date(),
-  plan: { id: "plan-1", name: "Starter", externalProductId: "prod_abc", maxEmployees: 50 },
+  plan: {
+    id: "plan-1",
+    name: "Starter",
+    externalProductId: "prod_abc",
+    maxEmployees: 50,
+    description: "Starter plan",
+    isActive: true,
+    deletedAt: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
 }
 
 const mockBillingCreateProduct = vi.fn().mockResolvedValue({ id: "prod_new" })

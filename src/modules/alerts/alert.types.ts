@@ -19,3 +19,12 @@ export interface AlertRecord {
   resolvedAt: Date | null
   createdAt: Date
 }
+
+export interface DepartmentSummary {
+  id: string
+  tenantId: string
+  name: string
+  isActive: boolean
+}
+
+export type AlertWithDepartment = AlertRecord & { department: DepartmentSummary | null }
