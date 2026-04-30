@@ -20,6 +20,14 @@ const VALID_EMAIL = "ana@test.com"
 const DEPT_NAME = "TI"
 const DEPT_ID = "dept-ti"
 
+type DeptRow = Awaited<ReturnType<typeof findActiveDepartmentsByTenant>>[number]
+
+const ALL_PREVIEW_DEPTS: DeptRow[] = [
+  { id: DEPT_ID, name: "TI" } as DeptRow,
+  { id: "dept-rh", name: "RH" } as DeptRow,
+  { id: "dept-mkt", name: "Marketing" } as DeptRow,
+]
+
 async function makeBuffer(headers: string[], rows: (string | undefined)[][]): Promise<ArrayBuffer> {
   const wb = new ExcelJS.Workbook()
   const ws = wb.addWorksheet("Dados")
@@ -30,53 +38,63 @@ async function makeBuffer(headers: string[], rows: (string | undefined)[][]): Pr
 }
 
 describe("parseImportPreview — header detection", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockFindDepts.mockResolvedValue(ALL_PREVIEW_DEPTS)
+  })
+
   it("detects 'Nome' header (case-insensitive)", async () => {
     const buf = await makeBuffer(PT_HEADERS, [["Ana", VALID_PHONE, DEPT_NAME]])
-    const preview = await parseImportPreview(buf)
+    const preview = await parseImportPreview(buf, TENANT_ID)
     expect(preview.items[0]?.name).toBe("Ana")
   })
 
   it("detects 'name' header (English lowercase)", async () => {
     const buf = await makeBuffer(EN_HEADERS, [["Carlos", VALID_PHONE_2, "RH"]])
-    const preview = await parseImportPreview(buf)
+    const preview = await parseImportPreview(buf, TENANT_ID)
     expect(preview.items[0]?.name).toBe("Carlos")
   })
 
   it("detects 'Telefone' header for phone", async () => {
     const buf = await makeBuffer(PT_HEADERS, [["Ana", "+5511777777777", DEPT_NAME]])
-    const preview = await parseImportPreview(buf)
+    const preview = await parseImportPreview(buf, TENANT_ID)
     expect(preview.items[0]?.phone).toBe("+5511777777777")
   })
 
   it("detects 'phone' header (English)", async () => {
     const buf = await makeBuffer(EN_HEADERS, [["Ana", "+5511666666666", DEPT_NAME]])
-    const preview = await parseImportPreview(buf)
+    const preview = await parseImportPreview(buf, TENANT_ID)
     expect(preview.items[0]?.phone).toBe("+5511666666666")
   })
 
   it("detects 'Departamento' header for departmentName", async () => {
     const buf = await makeBuffer(PT_HEADERS, [["Ana", VALID_PHONE, "Marketing"]])
-    const preview = await parseImportPreview(buf)
+    const preview = await parseImportPreview(buf, TENANT_ID)
     expect(preview.items[0]?.departmentName).toBe("Marketing")
   })
 
   it("reads optional email column when present", async () => {
     const buf = await makeBuffer([...PT_HEADERS, "Email"], [["Ana", VALID_PHONE, DEPT_NAME, VALID_EMAIL]])
-    const preview = await parseImportPreview(buf)
+    const preview = await parseImportPreview(buf, TENANT_ID)
     expect(preview.items[0]?.email).toBe(VALID_EMAIL)
   })
 
   it("leaves email undefined when column is absent", async () => {
     const buf = await makeBuffer(PT_HEADERS, [["Ana", VALID_PHONE, DEPT_NAME]])
-    const preview = await parseImportPreview(buf)
+    const preview = await parseImportPreview(buf, TENANT_ID)
     expect(preview.items[0]?.email).toBeUndefined()
   })
 })
 
 describe("parseImportPreview — valid rows", () => {
-  it("marks row as valid when all required fields are present", async () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockFindDepts.mockResolvedValue(ALL_PREVIEW_DEPTS)
+  })
+
+  it("marks row as valid when all required fields are present and department exists", async () => {
     const buf = await makeBuffer(PT_HEADERS, [["Ana", VALID_PHONE, DEPT_NAME]])
-    const preview = await parseImportPreview(buf)
+    const preview = await parseImportPreview(buf, TENANT_ID)
     expect(preview.items[0]?.valid).toBe(true)
   })
 
@@ -85,51 +103,63 @@ describe("parseImportPreview — valid rows", () => {
       ["Ana", VALID_PHONE, DEPT_NAME],
       ["Bruno", VALID_PHONE_2, "RH"],
     ])
-    const preview = await parseImportPreview(buf)
+    const preview = await parseImportPreview(buf, TENANT_ID)
     expect(preview.valid).toBe(2)
   })
 
   it("trims leading and trailing whitespace from cell values", async () => {
     const buf = await makeBuffer(PT_HEADERS, [["  Ana  ", VALID_PHONE, DEPT_NAME]])
-    const preview = await parseImportPreview(buf)
+    const preview = await parseImportPreview(buf, TENANT_ID)
     expect(preview.items[0]?.name).toBe("Ana")
   })
 
   it("returns empty errors array for valid rows", async () => {
     const buf = await makeBuffer(PT_HEADERS, [["Ana", VALID_PHONE, DEPT_NAME]])
-    const preview = await parseImportPreview(buf)
+    const preview = await parseImportPreview(buf, TENANT_ID)
     expect(preview.items[0]?.errors).toEqual([])
   })
 
   it("includes correct row number (data starts at row 2)", async () => {
     const buf = await makeBuffer(PT_HEADERS, [["Ana", VALID_PHONE, DEPT_NAME]])
-    const preview = await parseImportPreview(buf)
+    const preview = await parseImportPreview(buf, TENANT_ID)
     expect(preview.items[0]?.row).toBe(2)
   })
 })
 
 describe("parseImportPreview — invalid rows", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockFindDepts.mockResolvedValue(ALL_PREVIEW_DEPTS)
+  })
+
   it("marks row as invalid when name is missing", async () => {
     const buf = await makeBuffer(PT_HEADERS, [["", VALID_PHONE, DEPT_NAME]])
-    const preview = await parseImportPreview(buf)
+    const preview = await parseImportPreview(buf, TENANT_ID)
     expect(preview.items[0]?.valid).toBe(false)
   })
 
   it("marks row as invalid when phone is missing", async () => {
     const buf = await makeBuffer(PT_HEADERS, [["Ana", "", DEPT_NAME]])
-    const preview = await parseImportPreview(buf)
+    const preview = await parseImportPreview(buf, TENANT_ID)
     expect(preview.items[0]?.valid).toBe(false)
   })
 
   it("marks row as invalid when departmentName is missing", async () => {
     const buf = await makeBuffer(PT_HEADERS, [["Ana", VALID_PHONE, ""]])
-    const preview = await parseImportPreview(buf)
+    const preview = await parseImportPreview(buf, TENANT_ID)
     expect(preview.items[0]?.valid).toBe(false)
+  })
+
+  it("marks row as invalid when department does not exist in the database", async () => {
+    const buf = await makeBuffer(PT_HEADERS, [["Ana", VALID_PHONE, "Inexistente"]])
+    const preview = await parseImportPreview(buf, TENANT_ID)
+    expect(preview.items[0]?.valid).toBe(false)
+    expect(preview.items[0]?.errors[0]).toMatch(/Inexistente/)
   })
 
   it("populates errors array with messages for invalid rows", async () => {
     const buf = await makeBuffer(PT_HEADERS, [["", VALID_PHONE, DEPT_NAME]])
-    const preview = await parseImportPreview(buf)
+    const preview = await parseImportPreview(buf, TENANT_ID)
     expect(preview.items[0]?.errors.length).toBeGreaterThan(0)
   })
 
@@ -138,14 +168,14 @@ describe("parseImportPreview — invalid rows", () => {
       ["Ana", VALID_PHONE, DEPT_NAME],
       ["", "", ""],
     ])
-    const preview = await parseImportPreview(buf)
+    const preview = await parseImportPreview(buf, TENANT_ID)
     expect(preview.invalid).toBe(1)
   })
 
   it("throws SHEET_NOT_FOUND when workbook has no sheets", async () => {
     const wb = new ExcelJS.Workbook()
     const buf = await wb.xlsx.writeBuffer() as ArrayBuffer
-    await expect(parseImportPreview(buf)).rejects.toMatchObject({ code: "SHEET_NOT_FOUND" })
+    await expect(parseImportPreview(buf, TENANT_ID)).rejects.toMatchObject({ code: "SHEET_NOT_FOUND" })
   })
 })
 

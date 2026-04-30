@@ -81,6 +81,22 @@ export interface CreateHealthSurveyConfigInput {
   questions: { text: string; order: number; scoreDirection: ScoreDirection }[]
 }
 
+export interface GlobalHealthSurveyConfigInput {
+  frequency: "daily" | "twice_weekly" | "weekly" | "biweekly" | "monthly"
+  workStartTime: string
+  workEndTime: string
+  workDays: number[]
+  questions: { text: string; order: number; scoreDirection: ScoreDirection }[]
+}
+
+export interface ExistingGlobalHealthSurveyConfig {
+  frequency: "daily" | "twice_weekly" | "weekly" | "biweekly" | "monthly"
+  workStartTime: string
+  workEndTime: string
+  workDays: number[]
+  questions: { id: string; text: string; order: number; scoreDirection: ScoreDirection }[]
+}
+
 export interface SubmitHealthSurveyInput {
   token: string
   answers: { questionId: string; score: number }[]

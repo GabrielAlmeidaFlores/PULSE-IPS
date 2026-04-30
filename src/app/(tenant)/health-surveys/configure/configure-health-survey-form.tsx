@@ -7,15 +7,10 @@ import { toast } from "sonner"
 import Link from "next/link"
 import { configureHealthSurveyAction } from "@/app/(tenant)/health-surveys/configure/actions"
 import { PageHelp } from "@/components/page-help"
-import type { ScoreDirection } from "@/modules/health-surveys/health-survey.types"
-
-interface Department {
-  id: string
-  name: string
-}
+import type { ScoreDirection, ExistingGlobalHealthSurveyConfig } from "@/modules/health-surveys/health-survey.types"
 
 interface ConfigureHealthSurveyFormProps {
-  departments: Department[]
+  initialConfig: ExistingGlobalHealthSurveyConfig | null
 }
 
 interface QuestionItem {
@@ -23,6 +18,12 @@ interface QuestionItem {
   order: number
   scoreDirection: ScoreDirection
 }
+
+const DEFAULT_QUESTIONS: QuestionItem[] = [
+  { text: "Como você se sente em relação ao seu bem-estar no trabalho hoje?", order: 1, scoreDirection: "higher_is_better" },
+  { text: "Você se sente sobrecarregado com as demandas do trabalho?", order: 2, scoreDirection: "lower_is_better" },
+  { text: "Você tem recebido suporte adequado da sua liderança?", order: 3, scoreDirection: "higher_is_better" },
+]
 
 const inputCls =
   "w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
@@ -45,20 +46,21 @@ const DIRECTION_LABELS: Record<ScoreDirection, string> = {
   lower_is_better: "1 = bom · 5 = ruim",
 }
 
-export function ConfigureHealthSurveyForm({ departments }: ConfigureHealthSurveyFormProps): React.ReactElement {
+export function ConfigureHealthSurveyForm({ initialConfig }: ConfigureHealthSurveyFormProps): React.ReactElement {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
-  const [departmentId, setDepartmentId] = useState("")
-  const [frequency, setFrequency] = useState<"daily" | "twice_weekly" | "weekly" | "biweekly" | "monthly">("weekly")
-  const [workStartTime, setWorkStartTime] = useState("09:00")
-  const [workEndTime, setWorkEndTime] = useState("18:00")
-  const [workDays, setWorkDays] = useState(new Set([1, 2, 3, 4, 5]))
-  const [questions, setQuestions] = useState<QuestionItem[]>([
-    { text: "Como você se sente em relação ao seu bem-estar no trabalho hoje?", order: 1, scoreDirection: "higher_is_better" },
-    { text: "Você se sente sobrecarregado com as demandas do trabalho?", order: 2, scoreDirection: "lower_is_better" },
-    { text: "Você tem recebido suporte adequado da sua liderança?", order: 3, scoreDirection: "higher_is_better" },
-  ])
+  const [frequency, setFrequency] = useState<"daily" | "twice_weekly" | "weekly" | "biweekly" | "monthly">(
+    initialConfig?.frequency ?? "weekly",
+  )
+  const [workStartTime, setWorkStartTime] = useState(initialConfig?.workStartTime ?? "09:00")
+  const [workEndTime, setWorkEndTime] = useState(initialConfig?.workEndTime ?? "18:00")
+  const [workDays, setWorkDays] = useState(
+    new Set(initialConfig?.workDays ?? [1, 2, 3, 4, 5]),
+  )
+  const [questions, setQuestions] = useState<QuestionItem[]>(
+    initialConfig?.questions.map((q) => ({ text: q.text, order: q.order, scoreDirection: q.scoreDirection })) ?? DEFAULT_QUESTIONS,
+  )
   const [newQuestion, setNewQuestion] = useState("")
 
   function toggleDay(value: number): void {
@@ -98,12 +100,10 @@ export function ConfigureHealthSurveyForm({ departments }: ConfigureHealthSurvey
   }
 
   function handleSubmit(): void {
-    if (!departmentId) { toast.error("Selecione um departamento"); return }
     if (questions.length === 0) { toast.error("Adicione ao menos uma pergunta"); return }
 
     startTransition(async () => {
       const result = await configureHealthSurveyAction({
-        departmentId,
         frequency,
         workStartTime,
         workEndTime,
@@ -122,40 +122,21 @@ export function ConfigureHealthSurveyForm({ departments }: ConfigureHealthSurvey
   return (
     <div className="max-w-xl space-y-4">
       <div className="border border-border bg-card" style={{ borderRadius: 0 }}>
-        <div className="border-b border-border px-4 py-2.5 bg-muted">
-          <span className="text-[10px] font-black tracking-widest uppercase text-foreground">Departamento</span>
-        </div>
-        <div className="p-4">
-          <select
-            value={departmentId}
-            onChange={(e) => setDepartmentId(e.target.value)}
-            className={selectCls}
-            style={{ borderRadius: 0 }}
-          >
-            <option value="">Selecione um departamento</option>
-            {departments.map((d) => (
-              <option key={d.id} value={d.id}>{d.name}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div className="border border-border bg-card" style={{ borderRadius: 0 }}>
         <div className="border-b border-border px-4 py-2.5 bg-muted flex items-center gap-1.5">
           <span className="text-[10px] font-black tracking-widest uppercase text-foreground">Configuração</span>
           <PageHelp content={
             <div className="space-y-3 text-[12px] leading-relaxed">
               <div>
                 <p className="font-bold uppercase tracking-widest text-[10px] text-primary mb-1">Quem recebe a pesquisa?</p>
-                <p className="text-foreground">Todos os funcionários <strong>ativos</strong> do departamento recebem a mensagem ao mesmo tempo, no momento do disparo. Não há filtro por turno no envio.</p>
+                <p className="text-foreground">Todos os funcionários <strong>ativos</strong> de todos os departamentos recebem a mensagem ao mesmo tempo, no momento do disparo.</p>
               </div>
               <div>
                 <p className="font-bold uppercase tracking-widest text-[10px] text-primary mb-1">Horário para responder</p>
-                <p className="text-foreground">Cada funcionário recebe um link individual válido por <strong>24 horas</strong>. Ao abrir o link, o sistema verifica o horário:</p>
+                <p className="text-foreground">Cada funcionário recebe um link individual válido por <strong>48 horas</strong>. Ao abrir o link, o sistema verifica o horário:</p>
                 <ul className="mt-1 space-y-0.5 text-muted-foreground">
                   <li>• Dentro do turno → pesquisa exibida normalmente</li>
                   <li>• Fora do turno → link bloqueado, pesquisa não aparece</li>
-                  <li>• Após 24h → link expirado</li>
+                  <li>• Após 48h → link expirado</li>
                 </ul>
               </div>
               <div>
@@ -165,10 +146,6 @@ export function ConfigureHealthSurveyForm({ departments }: ConfigureHealthSurvey
               <div>
                 <p className="font-bold uppercase tracking-widest text-[10px] text-primary mb-1">Dias e frequência</p>
                 <p className="text-foreground">Nos dias não marcados, o disparo não ocorre. O próximo envio é agendado automaticamente contando os dias desde o último disparo: diário=1d · 2×/sem=3d · semanal=7d · quinzenal=14d · mensal=28d.</p>
-              </div>
-              <div>
-                <p className="font-bold uppercase tracking-widest text-[10px] text-primary mb-1">Atenção</p>
-                <p className="text-muted-foreground">Departamentos sem funcionários ativos são ignorados. É necessário ter ao menos uma configuração de pesquisa criada para que os disparos aconteçam.</p>
               </div>
             </div>
           } />

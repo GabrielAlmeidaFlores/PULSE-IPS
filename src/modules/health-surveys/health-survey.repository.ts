@@ -28,6 +28,14 @@ export function findHealthSurveyConfigById(tenantId: string, configId: string): 
   })
 }
 
+export function findFirstHealthSurveyConfigByTenant(tenantId: string): Promise<HealthSurveyConfigWithDetails | null> {
+  return prisma.healthSurveyConfiguration.findFirst({
+    where: { tenantId, isActive: true },
+    include: { department: true, questions: { where: { isActive: true }, orderBy: { order: "asc" } }, workDays: true },
+    orderBy: { createdAt: "asc" },
+  })
+}
+
 export async function upsertHealthSurveyConfig(tenantId: string, input: CreateHealthSurveyConfigInput): Promise<HealthSurveyConfiguration & { questions: HealthSurveyQuestion[] }> {
   const existing = await prisma.healthSurveyConfiguration.findFirst({
     where: { tenantId, departmentId: input.departmentId },
