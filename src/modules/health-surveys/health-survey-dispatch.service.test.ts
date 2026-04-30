@@ -433,7 +433,7 @@ describe("runHealthSurveyAutoDispatchScheduler — edge cases", () => {
 })
 
 describe("runHealthSurveyDispatcher — consent-based adherence and messaging filter", () => {
-  it("does not create tokens or send messages when no employee has accepted consent", async () => {
+  it("marca dispatch como sent com 0 tokens quando nenhum funcionário tem consent aceito", async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
 
@@ -443,7 +443,7 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
     const result = await runHealthSurveyDispatcher()
 
     expect(result).toEqual({ dispatched: 1, errors: 0 })
-    expect(mockCreateSurveyTokensAndMarkSent).not.toHaveBeenCalled()
+    expect(mockCreateSurveyTokensAndMarkSent).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID, [])
     expect(mockAddBulk).not.toHaveBeenCalled()
 
     vi.useRealTimers()

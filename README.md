@@ -865,16 +865,18 @@ Referência de tudo que o usuário vê na tela para cada alerta (`/alerts`) e su
 
 ### 11. Consentimento LGPD
 
-O fluxo de consentimento garante que a coleta de dados de saúde dos funcionários seja juridicamente válida:
+O fluxo de consentimento garante que a coleta de dados de saúde dos funcionários seja juridicamente válida. O consentimento é coletado **inline na primeira pesquisa** — não há envio separado de link de consentimento:
 
-1. Ao cadastrar um funcionário, um registro de `EmployeeConsent` é criado com `event = "invited"` e um token temporário.
-2. O funcionário recebe um link `/consent/[token]` por SMS/WhatsApp.
-3. Ao acessar, vê o texto dos Termos de Consentimento (versão ativa de `consent_term_versions`).
-4. Pode aceitar ou recusar:
-   - **Aceitar**: cria um novo `EmployeeConsent` com `event = "accepted"`, registra hash do CPF (opcional) e fonte.
-   - **Recusar**: cria um registro com `event = "refused"`.
-5. O token é inativado após o uso.
-6. O histórico de consentimentos é imutável e auditável.
+1. O funcionário é cadastrado no sistema (sem convite de consentimento separado).
+2. Quando a primeira pesquisa é disparada, o funcionário recebe o link `/health-survey/[token]` por SMS/WhatsApp.
+3. Ao acessar o link, a página exibe a **Consent Gate** — o texto dos Termos de Consentimento (versão ativa de `consent_term_versions`) antes do formulário da pesquisa.
+4. O funcionário pode aceitar ou recusar:
+   - **Aceitar**: cria um `EmployeeConsent` com `event = "accepted"`. A página exibe o formulário da pesquisa.
+   - **Recusar**: cria um registro com `event = "refused"` e encerra o fluxo.
+5. Nas pesquisas seguintes, o funcionário já aceitou e vai direto para o formulário (sem a Consent Gate).
+6. A qualquer momento, o funcionário pode clicar em **"Não quero mais participar"** no formulário → cria `event = "opted_out"` e marca o token como usado.
+7. O token é inativado após o uso (aceite, recusa, opt-out ou envio de resposta).
+8. O histórico de consentimentos é imutável e auditável.
 
 ---
 

@@ -53,8 +53,6 @@ async function sendDispatchTokensAndMessages(
   const acceptedEmployeeIds = new Set(await findEmployeeIdsWithAcceptedConsent(tenantId, allEmployeeIds))
   const consentedEmployees = eligibleEmployees.filter((e) => acceptedEmployeeIds.has(e.id))
 
-  if (consentedEmployees.length === 0) return
-
   const tokens = consentedEmployees.map((emp) => ({
     tenantId,
     dispatchId,
@@ -66,6 +64,8 @@ async function sendDispatchTokensAndMessages(
   }))
 
   await createHealthSurveyTokensAndMarkSent(tenantId, dispatchId, tokens)
+
+  if (tokens.length === 0) return
 
   const hasMessaging = await hasTenantPlanFeature(tenantId, "messaging")
   if (!hasMessaging) return

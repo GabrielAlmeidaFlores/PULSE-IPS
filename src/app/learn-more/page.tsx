@@ -267,8 +267,8 @@ export default function LearnMorePage(): React.ReactElement {
               },
               {
                 icon: <UserCheck className="w-5 h-5" />,
-                title: "Consentimento no piloto automático",
-                desc: "Ao ser cadastrado, o colaborador recebe automaticamente um link exclusivo de consentimento (TCLE) por mensagem. Ele lê os termos e decide se quer participar. O aceite fica registrado e é imutável.",
+                title: "Consentimento sem burocracia",
+                desc: "Na primeira pesquisa, o colaborador lê os Termos de Consentimento direto no link — sem etapa separada. Aceita ou recusa antes de responder. O aceite fica registrado e é imutável.",
                 benefit: "Participação voluntária e documentada",
               },
               {
@@ -358,9 +358,8 @@ export default function LearnMorePage(): React.ReactElement {
               { actor: "voce", icon: <ClipboardList className="w-5 h-5" />, title: "Você cria os departamentos", desc: "Cadastra os setores da empresa com os horários de expediente e dias de trabalho de cada equipe." },
               { actor: "voce", icon: <Clock className="w-5 h-5" />, title: "Você configura a pesquisa uma vez", desc: "Define as perguntas e a frequência de envio para cada setor — diariamente, semanalmente, quinzenalmente ou mensalmente." },
               { actor: "voce", icon: <Users className="w-5 h-5" />, title: "Você cadastra sua equipe", desc: "Registra os colaboradores por setor — um a um ou importando uma planilha Excel. Leva minutos." },
-              { actor: "pulse", icon: <MessageSquare className="w-5 h-5" />, title: "Pulse envia o convite de consentimento (TCLE)", desc: "Cada colaborador recebe automaticamente um link exclusivo por mensagem para ler e aceitar os Termos de Consentimento." },
-              { actor: "colaborador", icon: <UserCheck className="w-5 h-5" />, title: "Colaborador lê e aceita os termos", desc: "Via link exclusivo, o colaborador lê o TCLE e confirma a participação. Sem papel, sem burocracia. O aceite fica registrado e é imutável." },
-              { actor: "pulse", icon: <Zap className="w-5 h-5" />, title: "Pulse dispara as pesquisas automaticamente", desc: "Apenas para quem aceitou o TCLE. Só envia dentro do horário de expediente configurado — o colaborador recebe quando está trabalhando." },
+              { actor: "pulse", icon: <Zap className="w-5 h-5" />, title: "Pulse dispara as pesquisas automaticamente", desc: "Dentro do horário de expediente e nos dias configurados, o Pulse envia o link da pesquisa para cada colaborador cadastrado." },
+              { actor: "colaborador", icon: <UserCheck className="w-5 h-5" />, title: "Colaborador abre o link — e consente no primeiro acesso", desc: "Na primeira vez, o colaborador lê os Termos de Consentimento (TCLE) direto no link. Aceita ou recusa com um clique. O registro é imutável. Nas próximas pesquisas, vai direto para o formulário." },
               { actor: "colaborador", icon: <EyeOff className="w-5 h-5" />, title: "Colaborador responde — com total anonimato", desc: "Sem login, sem identificação. Só as respostas. Ninguém na empresa sabe quem disse o quê." },
               { actor: "pulse", icon: <BarChart3 className="w-5 h-5" />, title: "Pulse analisa e atualiza o painel", desc: "Os indicadores de cada setor são calculados automaticamente. Você vê tudo no painel em tempo real." },
               { actor: "pulse", icon: <Bell className="w-5 h-5" />, title: "Pulse avisa quando há algo a resolver", desc: "Se algum setor tiver queda nos resultados ou baixa participação, você recebe um alerta para agir." },
@@ -478,7 +477,7 @@ export default function LearnMorePage(): React.ReactElement {
                   {
                     icon: <UserCheck className="w-5 h-5" />,
                     title: "Consentimento formal registrado",
-                    desc: "Antes de receber qualquer pesquisa, o colaborador recebe um link exclusivo de TCLE para ler e aceitar os termos. O aceite fica registrado e guardado permanentemente — e é imutável.",
+                    desc: "Na primeira pesquisa, o colaborador vê os Termos de Consentimento direto no link — sem etapa separada. Aceita ou recusa antes de responder qualquer coisa. O aceite fica registrado permanentemente e é imutável.",
                   },
                   {
                     icon: <CheckCircle2 className="w-5 h-5" />,
@@ -690,7 +689,7 @@ export default function LearnMorePage(): React.ReactElement {
                 q: "E se um colaborador não quiser participar?",
                 a: (
                   <span>
-                    <strong className="text-foreground">Participação é sempre voluntária.</strong> Ao ser cadastrado, o colaborador recebe um link exclusivo de consentimento (TCLE) antes de qualquer pesquisa. Ele lê os termos e decide se quer participar.{"\n\n"}
+                    <strong className="text-foreground">Participação é sempre voluntária.</strong> Ao receber o link da primeira pesquisa, o colaborador vê os Termos de Consentimento antes de responder qualquer coisa. Ele lê os termos e decide se quer participar.{"\n\n"}
                     Se recusar — ou quiser sair a qualquer momento — basta indicar isso no link. A recusa fica registrada no sistema e o colaborador deixa de receber novas pesquisas.{"\n\n"}
                     Todo esse histórico de consentimento é imutável e pode ser apresentado como evidência legal caso necessário.
                   </span>

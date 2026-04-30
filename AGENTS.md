@@ -553,7 +553,7 @@ Cada plano pode ter múltiplas variantes (mensal, anual). Preços antigos nunca 
 | id | uuid | PK |
 | plan_id | uuid | NOT NULL, FK → plans.id |
 | external_price_id | varchar(255) | UNIQUE — ID do Price no Stripe |
-| interval | varchar(10) | NOT NULL — `'monthly'` \| `'annual'` |
+| interval | varchar(10) | NOT NULL — `'month'` \| `'year'` |
 | price_in_cents | integer | NOT NULL |
 | is_active | boolean | NOT NULL, default true |
 | created_at | timestamptz | NOT NULL |
@@ -1354,7 +1354,7 @@ interface CreatePlanInput {
   name: string
   priceInCents: number
   maxEmployees: number | null
-  interval: "monthly" | "annual"
+  interval: "month" | "year"
 }
 function createPlan(data: CreatePlanInput): Promise<Plan> { ... }
 ```
@@ -3138,6 +3138,9 @@ CRON_SECRET=...                           # proteção dos endpoints /api/jobs/*
 
 # URL pública
 NEXT_PUBLIC_APP_URL=https://app.pulse.com
+
+# Número do consultor — usado no botão "Falar com consultor" quando o plano não tem preço
+NEXT_PUBLIC_CONSULTANT_WHATSAPP=5511999999999  # substituir pelo número real em produção
 
 # Endereços de e-mail públicos (exibidos em páginas, modais e templates)
 NEXT_PUBLIC_EMAIL_SUPPORT=suporte@pulseips.com.br
