@@ -243,8 +243,7 @@ Todo o projeto usa `"strict": true` mais flags adicionais (ver seção 9). `any`
 src/
 ├── app/                                    # Next.js App Router
 │   ├── (public)/                           # Rotas públicas (sem autenticação)
-│   │   ├── consent/[token]/page.tsx        # Fluxo de aceite do TCLE
-│   │   ├── health-survey/[token]/page.tsx         # Formulário de pesquisa (sem login)
+│   │   ├── health-survey/[token]/page.tsx         # Formulário de pesquisa + Consent Gate inline (sem login)
 │   │   └── report/[orgSlug]/page.tsx       # Canal de relato anônimo
 │   ├── platform-terms/page.tsx             # Termos de Uso — página pública standalone (linked no footer)
 │   ├── privacy-policy/page.tsx             # Política de Privacidade — página pública standalone
@@ -823,7 +822,7 @@ Dias de trabalho do departamento em `department_work_days` (join table — ver a
 | tenant_id | uuid | NOT NULL |
 | employee_id | uuid | NOT NULL, FK → employees.id |
 | consent_term_version_id | uuid | NOT NULL, FK → consent_term_versions.id |
-| event | varchar(20) | `'invited'` \| `'accepted'` \| `'refused'` \| `'revoked'` \| `'opt_out'` |
+| event | varchar(20) | `'accepted'` \| `'refused'` \| `'revoked'` \| `'opt_out'` \| `'invited'` (legado — não criado pelo fluxo atual) |
 | source | varchar(20) | `'message_link'` \| `'health_survey_form'` \| `'system'` |
 | document_hash | varchar(255) | SHA-256 do documento (ex: CPF) — apenas no evento `accepted` |
 | token | varchar(255) | UNIQUE |
@@ -1136,7 +1135,7 @@ Registro de todas as mensagens enviadas. Fonte dos dados de métricas do Super A
 | id | uuid | PK |
 | tenant_id | uuid | FK → organizations.id — NULL para mensagens da plataforma |
 | recipient_phone | varchar(20) | NOT NULL |
-| type | varchar(30) | `'consent_invite'` \| `'health_survey_dispatch'` \| `'health_survey_resend'` |
+| type | varchar(30) | `'survey_dispatch'` \| `'survey_resend'` |
 | dispatch_id | uuid | FK → health_survey_dispatches.id |
 | status | varchar(20) | `'sent'` \| `'failed'` |
 | external_id | varchar(255) | — ID retornado pelo provedor |
@@ -2060,7 +2059,7 @@ O arquivo `src/proxy.ts` com export `proxy` substitui o antigo `middleware.ts` n
 - Bloquear acesso de `org_user` ao `/super-admin/*`
 - Bloquear acesso de `super_admin` ao `/(tenant)/*`
 
-**Caminhos públicos** (sem autenticação): `/login`, `/forgot-password`, `/reset-password/*`, `/invite/*`, `/consent/*`, `/health-survey/*`, `/report/*`, `/accept-terms`, `/api/webhooks/*`, `/platform-terms`, `/privacy-policy`, `/consent-terms`
+**Caminhos públicos** (sem autenticação): `/login`, `/forgot-password`, `/reset-password/*`, `/invite/*`, `/health-survey/*`, `/report/*`, `/accept-terms`, `/api/webhooks/*`, `/platform-terms`, `/privacy-policy`, `/consent-terms`
 
 ### Fluxo de login (tenant)
 
@@ -2563,11 +2562,11 @@ return (
 
 | `event` | `source` típico | Descrição |
 |---|---|---|
-| `invited` | `system` | Colaborador recebeu link de TCLE |
-| `accepted` | `message_link` | Aceitou — hash do documento salvo |
-| `refused` | `message_link` | Recusou explicitamente |
+| `accepted` | `message_link` | Aceitou inline na Consent Gate — hash do documento salvo |
+| `refused` | `message_link` | Recusou explicitamente na Consent Gate |
 | `revoked` | `message_link` | Revogou aceite anterior |
 | `opt_out` | `health_survey_form` | Pediu não-participação dentro do formulário |
+| `invited` | `system` | **Legado** — evento criado pelo fluxo anterior de convite separado. Não gerado pelo fluxo atual. Mantido no tipo para compatibilidade com alertas `consent_expired` existentes. |
 
 ### Estado atual do colaborador
 
@@ -2583,8 +2582,8 @@ async getCurrentConsent(
   })
 }
 
-// Um colaborador PODE ser re-convidado após opt_out ou refused.
-// Basta que o RH envie novo link de TCLE — novo ciclo, nova linha 'invited'.
+// Um colaborador pode ser re-convidado após opt_out ou refused.
+// Basta que o RH o reative — na próxima pesquisa disparada, receberá o link e verá a Consent Gate novamente.
 ```
 
 ### Acesso aos dados de consentimento
@@ -2708,9 +2707,9 @@ src/modules/privacy-policy/
 
 Versões do Termo de Consentimento Livre e Esclarecido enviado aos colaboradores. Gerenciado em `/super-admin/consent-terms` e exibido publicamente em `/consent-terms`.
 
-- Campo `is_current = true` marca a versão usada em novos convites de consentimento
-- Ao publicar nova versão → job `consent-renotifier` re-convida colaboradores que aceitaram a versão anterior
-- Sem aceite de admin — o aceite é feito diretamente pelo colaborador via link de convite
+- Campo `is_current = true` marca a versão ativa usada na Consent Gate
+- Ao publicar nova versão → na próxima pesquisa recebida, o colaborador vê a Consent Gate com o novo TCLE (re-consentimento inline, sem job separado)
+- Sem aceite de admin — o aceite é feito diretamente pelo colaborador ao abrir o link da pesquisa
 
 ### 17.4 Páginas públicas standalone
 
@@ -2907,15 +2906,16 @@ Super Admin cria org → billing_status = 'pending'
 ### 20.2 Fluxo de consentimento (TCLE)
 
 ```
-Employee cadastrado
-  → consent.service.ts cria employee_consents (event: 'invited', token gerado)
-  → getMessageQueue().add("send-message", { type: "consent_invite", phone, link })
-    → Job Worker consome e chama getMessagingService().send(...)
-      → Employee aceita: informa documento → document_hash = SHA-256(document), event: 'accepted'
-      → Employee recusa: event: 'refused' (registrado para auditoria)
+Employee cadastrado (sem convite separado)
+  → Quando a primeira pesquisa é disparada, employee recebe link /health-survey/[token]
+    → Employee abre o link
+      → validateHealthSurveyToken: se consentStatus = 'needs_consent' → exibe Consent Gate
+        → Employee aceita: INSERT employee_consents { event: 'accepted', source: 'message_link' }
+                            → página exibe o formulário da pesquisa
+        → Employee recusa: INSERT employee_consents { event: 'refused', source: 'message_link' }
+                            → fluxo encerra
+      → Se consentStatus = 'accepted' → vai direto ao formulário da pesquisa
 ```
-
-> **Nota:** o convite passa pela fila BullMQ (não chamada direta) para garantir retry em caso de falha, logging em `job_logs` e monitoramento no painel `/super-admin/jobs`.
 
 ### 20.3 Envio de pesquisa
 
@@ -2973,11 +2973,14 @@ async getDepartmentMetrics(tenantId, departmentId, periodId) {
 
 ```
 Super Admin publica nova versão do TCLE (is_current = true)
-  └─→ Job consent-renotifier executado
-        ├─ Busca todos employees com consent status = 'accepted' para versão anterior
-        └─→ Para cada um: cria novo employee_consents (status: 'pending', novo token)
-              └─→ Envia mensagem com novo link de consentimento
+  └─→ Na próxima pesquisa que o employee receber, validateHealthSurveyToken
+        detecta que o consent aceito é de versão anterior
+        → consentStatus = 'needs_consent'
+        → employee vê a Consent Gate novamente com o novo TCLE
+        → aceita ou recusa o novo termo
 ```
+
+> Não existe job `consent-renotifier`. O re-consentimento acontece naturalmente no próximo acesso ao link da pesquisa, sem envio ativo de mensagens adicionais.
 
 ### 20.8 Reenvio para não-respondentes
 
