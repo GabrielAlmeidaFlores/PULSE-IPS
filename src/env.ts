@@ -16,7 +16,12 @@ export const env = createEnv({
       .default("console"),
     TWILIO_ACCOUNT_SID: z.string().startsWith("AC").optional(),
     TWILIO_AUTH_TOKEN: z.string().min(1).optional(),
-    TWILIO_FROM_NUMBER: z.string().startsWith("+").optional(),
+    TWILIO_FROM_NUMBER: z
+      .string()
+      .refine((v) => v.startsWith("+") || v.startsWith("MG"), {
+        message: "TWILIO_FROM_NUMBER deve ser um número de telefone (+...) ou Messaging Service SID (MG...)",
+      })
+      .optional(),
     WHATSAPP_PHONE_NUMBER_ID: z.string().min(1).optional(),
     WHATSAPP_ACCESS_TOKEN: z.string().min(1).optional(),
     WHATSAPP_API_VERSION: z.string().default("v20.0"),

@@ -15,12 +15,12 @@ export class TwilioMessageAdapter implements IMessagingService {
     if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN || !env.TWILIO_FROM_NUMBER) {
       throw new Error("Twilio não configurado: defina TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN e TWILIO_FROM_NUMBER")
     }
+    const from = env.TWILIO_FROM_NUMBER
+    const messageParams = from.startsWith("MG")
+      ? { body: params.body, to: params.to, messagingServiceSid: from }
+      : { body: params.body, to: params.to, from }
     try {
-      const message = await this.client.messages.create({
-        body: params.body,
-        from: env.TWILIO_FROM_NUMBER,
-        to: params.to,
-      })
+      const message = await this.client.messages.create(messageParams)
       return { externalId: message.sid, status: "queued" }
     } catch (error) {
       return { externalId: "", status: "failed", error: String(error) }
