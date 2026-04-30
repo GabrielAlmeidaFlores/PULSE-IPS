@@ -5,12 +5,15 @@ import { createEmployee } from "@/modules/employees/employee.repository"
 import { findActiveDepartmentsByTenant } from "@/modules/departments/department.repository"
 import type { ImportPreview, ImportPreviewItem, ImportResult } from "@/modules/employees/employee.types"
 
-export async function parseImportPreview(buffer: ArrayBuffer): Promise<ImportPreview> {
+export async function parseImportPreview(buffer: ArrayBuffer, tenantId: string): Promise<ImportPreview> {
   const workbook = new ExcelJS.Workbook()
   await workbook.xlsx.load(buffer)
 
   const sheet = workbook.worksheets[0]
   if (!sheet) throw new AppError("SHEET_NOT_FOUND", "Nenhuma planilha encontrada no arquivo.")
+
+  const departments = await findActiveDepartmentsByTenant(tenantId)
+  const validDepartmentNames = new Set(departments.map((d) => d.name.toLowerCase()))
 
   const headerRow = sheet.getRow(1)
   const headers: Record<number, string> = {}
@@ -42,14 +45,29 @@ export async function parseImportPreview(buffer: ArrayBuffer): Promise<ImportPre
     }
 
     const result = importRowSchema.safeParse(rawItem)
-    if (result.success) {
+    if (!result.success) {
+      const item: ImportPreviewItem = {
+        row: rowNumber,
+        name: rawItem.name,
+        phone: rawItem.phone,
+        departmentName: rawItem.departmentName,
+        valid: false,
+        errors: result.error.issues.map((e) => e.message),
+      }
+      if (rawEmail) item.email = rawEmail
+      items.push(item)
+      return
+    }
+
+    const departmentExists = validDepartmentNames.has(result.data.departmentName.toLowerCase())
+    if (!departmentExists) {
       const item: ImportPreviewItem = {
         row: rowNumber,
         name: result.data.name,
         phone: result.data.phone,
         departmentName: result.data.departmentName,
-        valid: true,
-        errors: [],
+        valid: false,
+        errors: [`Departamento "${result.data.departmentName}" não encontrado`],
       }
       if (result.data.email !== undefined) item.email = result.data.email
       items.push(item)
@@ -58,13 +76,13 @@ export async function parseImportPreview(buffer: ArrayBuffer): Promise<ImportPre
 
     const item: ImportPreviewItem = {
       row: rowNumber,
-      name: rawItem.name,
-      phone: rawItem.phone,
-      departmentName: rawItem.departmentName,
-      valid: false,
-      errors: result.error.issues.map((e) => e.message),
+      name: result.data.name,
+      phone: result.data.phone,
+      departmentName: result.data.departmentName,
+      valid: true,
+      errors: [],
     }
-    if (rawEmail) item.email = rawEmail
+    if (result.data.email !== undefined) item.email = result.data.email
     items.push(item)
   })
 
@@ -79,7 +97,7 @@ export async function executeImport(
   tenantId: string,
   buffer: ArrayBuffer,
 ): Promise<ImportResult> {
-  const preview = await parseImportPreview(buffer)
+  const preview = await parseImportPreview(buffer, tenantId)
   const departments = await findActiveDepartmentsByTenant(tenantId)
   const deptMap = new Map(departments.map((d) => [d.name.toLowerCase(), d.id]))
 

@@ -36,7 +36,7 @@ export async function previewImportAction(formData: FormData): Promise<PreviewRe
 
   try {
     const buffer = await file.arrayBuffer()
-    const preview = await parseImportPreview(buffer)
+    const preview = await parseImportPreview(buffer, session.tenantId)
     return { preview }
   } catch (err) {
     if (err instanceof AppError) return { error: err.message }
