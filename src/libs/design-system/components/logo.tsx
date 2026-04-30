@@ -1,22 +1,64 @@
+import Image from "next/image"
 import React from "react"
 
 interface LogoProps {
   size?: "sm" | "md" | "lg"
   align?: "start" | "center"
+  variant?: "auto" | "dark" | "light"
 }
 
-export function Logo({ size = "md", align = "start" }: LogoProps): React.ReactElement {
-  const sizeMap = { sm: "text-lg", md: "text-2xl", lg: "text-3xl" }
-  const alignment = align === "center" ? "justify-center" : "justify-start"
+const HEIGHT_MAP = { sm: 20, md: 28, lg: 36 }
+const WIDTH_MAP = { sm: 142, md: 198, lg: 255 }
+
+export function Logo({ size = "md", align = "start", variant = "auto" }: LogoProps): React.ReactElement {
+  const h = HEIGHT_MAP[size]
+  const w = WIDTH_MAP[size]
+  const alignment = align === "center" ? "mx-auto" : ""
+
+  if (variant === "dark") {
+    return (
+      <Image
+        src="/logo-horizontal-dark.svg"
+        alt="Pulse IPS"
+        width={w}
+        height={h}
+        className={alignment}
+        priority
+      />
+    )
+  }
+
+  if (variant === "light") {
+    return (
+      <Image
+        src="/logo-horizontal-light.svg"
+        alt="Pulse IPS"
+        width={w}
+        height={h}
+        className={alignment}
+        priority
+      />
+    )
+  }
 
   return (
-    <div className={`flex items-baseline leading-none gap-1.5 ${alignment}`}>
-      <span className={`font-black tracking-tight text-primary ${sizeMap[size]}`}>
-        PULSE
-      </span>
-      <span className={`font-light tracking-[0.18em] text-foreground/50 ${sizeMap[size]}`}>
-        IPS
-      </span>
-    </div>
+    <>
+      <Image
+        src="/logo-horizontal-light.svg"
+        alt="Pulse IPS"
+        width={w}
+        height={h}
+        className={`block dark:hidden ${alignment}`}
+        priority
+      />
+      <Image
+        src="/logo-horizontal-dark.svg"
+        alt="Pulse IPS"
+        width={w}
+        height={h}
+        className={`hidden dark:block ${alignment}`}
+        priority
+      />
+    </>
   )
 }
