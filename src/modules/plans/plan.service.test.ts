@@ -11,6 +11,9 @@ import {
   getPlanPriceWithPlan,
   updatePlanDetails,
   togglePlanActive,
+  getAllPlansPaginated,
+  getPlanFeatures,
+  updatePlanFeatures,
 } from "@/modules/plans/plan.service"
 import {
   findPlanById,
@@ -23,7 +26,10 @@ import {
   deletePlan,
   findAllPlans,
   findAllPlansIncludingInactive,
+  findAllPlansPaginated,
   findPlanPriceWithPlan,
+  setPlanFeatures,
+  findPlanFeatures,
 } from "@/modules/plans/plan.repository"
 import { getBillingService } from "@/libs/integrations"
 import type { IBillingService } from "@/libs/integrations/billing/billing.interface"
@@ -41,6 +47,9 @@ const mockUpdatePlanPriceAmount = vi.mocked(updatePlanPriceAmount)
 const mockUpdatePlanPriceRecord = vi.mocked(updatePlanPriceRecord)
 const mockDeletePlan = vi.mocked(deletePlan)
 const mockGetBillingService = vi.mocked(getBillingService)
+const mockSetPlanFeatures = vi.mocked(setPlanFeatures)
+const mockFindPlanFeatures = vi.mocked(findPlanFeatures)
+const mockFindAllPlansPaginated = vi.mocked(findAllPlansPaginated)
 
 const PLAN = { id: "plan-1", name: "Starter", externalProductId: "prod_abc", maxEmployees: 50, description: "Starter plan" }
 const PLAN_PRICE = {
@@ -236,5 +245,77 @@ describe("togglePlanActive", () => {
     const result = await togglePlanActive("p-1", false)
     expect(result).toEqual({ id: "p-1", isActive: false })
     expect(updatePlan).toHaveBeenCalledWith("p-1", { isActive: false })
+  })
+})
+
+describe("getAllPlansPaginated", () => {
+  it("calcula skip corretamente e repassa para o repository", async () => {
+    const paged = { items: [], total: 0 } as Awaited<ReturnType<typeof findAllPlansPaginated>>
+    mockFindAllPlansPaginated.mockResolvedValue(paged)
+
+    await getAllPlansPaginated({ page: 3, pageSize: 10 })
+
+    expect(mockFindAllPlansPaginated).toHaveBeenCalledWith(20, 10)
+  })
+
+  it("retorna resultado do repository diretamente", async () => {
+    const paged = { items: [{ id: "p-1" }], total: 1 } as Awaited<ReturnType<typeof findAllPlansPaginated>>
+    mockFindAllPlansPaginated.mockResolvedValue(paged)
+
+    const result = await getAllPlansPaginated({ page: 1, pageSize: 10 })
+    expect(result).toEqual(paged)
+  })
+})
+
+describe("getPlanFeatures", () => {
+  it("retorna as funcionalidades do plano pelo id", async () => {
+    const features = ["action_plans", "pgr"] as Awaited<ReturnType<typeof findPlanFeatures>>
+    mockFindPlanFeatures.mockResolvedValue(features)
+
+    const result = await getPlanFeatures("plan-1")
+    expect(result).toEqual(features)
+    expect(mockFindPlanFeatures).toHaveBeenCalledWith("plan-1")
+  })
+})
+
+describe("updatePlanFeatures", () => {
+  it("lança AppError quando plano não existe", async () => {
+    mockFindPlanById.mockResolvedValue(null)
+
+    await expect(updatePlanFeatures({ planId: "plan-x", features: ["pgr"] })).rejects.toMatchObject({
+      code: "PLAN_NOT_FOUND",
+    })
+    expect(mockSetPlanFeatures).not.toHaveBeenCalled()
+  })
+
+  it("persiste as funcionalidades quando plano existe", async () => {
+    mockFindPlanById.mockResolvedValue(PLAN as Awaited<ReturnType<typeof findPlanById>>)
+    mockSetPlanFeatures.mockResolvedValue(undefined)
+
+    await updatePlanFeatures({ planId: "plan-1", features: ["action_plans", "pgr"] })
+
+    expect(mockSetPlanFeatures).toHaveBeenCalledWith("plan-1", ["action_plans", "pgr"])
+  })
+})
+
+describe("createNewPlan — com features", () => {
+  it("chama setPlanFeatures quando features são fornecidas", async () => {
+    mockSetPlanFeatures.mockResolvedValue(undefined)
+
+    await createNewPlan({ name: "Enterprise", maxEmployees: 200, features: ["action_plans", "pgr"] })
+
+    expect(mockSetPlanFeatures).toHaveBeenCalledWith(PLAN.id, ["action_plans", "pgr"])
+  })
+
+  it("não chama setPlanFeatures quando features estão ausentes", async () => {
+    await createNewPlan({ name: "Starter", maxEmployees: 50 })
+
+    expect(mockSetPlanFeatures).not.toHaveBeenCalled()
+  })
+
+  it("não chama setPlanFeatures quando features é array vazio", async () => {
+    await createNewPlan({ name: "Starter", maxEmployees: 50, features: [] })
+
+    expect(mockSetPlanFeatures).not.toHaveBeenCalled()
   })
 })

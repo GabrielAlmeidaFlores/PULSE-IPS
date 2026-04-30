@@ -7,6 +7,7 @@ import {
   getEmployee,
   updateExistingEmployee,
   getTotalEmployeeCount,
+  getEmployeesForListingPage,
 } from "@/modules/employees/employee.service"
 import {
   countEmployees,
@@ -16,18 +17,21 @@ import {
   findEmployeesByTenant,
   findEmployeeById,
   updateEmployee,
+  findEmployeesForListingPage,
   type EmployeeWithDepartment,
 } from "@/modules/employees/employee.repository"
 import { findOrganizationById } from "@/modules/organizations/organization.repository"
 import { findPlanById } from "@/modules/plans/plan.repository"
 import { findActiveSubscription } from "@/modules/billing/billing.repository"
 import { createAuditLog } from "@/modules/audit/audit.repository"
+import { getEmployeeIdsForConsentState } from "@/modules/consent/consent.service"
 
 vi.mock("@/modules/employees/employee.repository")
 vi.mock("@/modules/organizations/organization.repository")
 vi.mock("@/modules/plans/plan.repository")
 vi.mock("@/modules/billing/billing.repository")
 vi.mock("@/modules/audit/audit.repository")
+vi.mock("@/modules/consent/consent.service")
 vi.mock("@/env", () => ({ env: { NEXT_PUBLIC_APP_URL: "http://localhost:3000" } }))
 
 const mockCountEmployees = vi.mocked(countEmployees)
@@ -41,6 +45,8 @@ const mockFindOrganizationById = vi.mocked(findOrganizationById)
 const mockFindPlanById = vi.mocked(findPlanById)
 const mockFindActiveSubscription = vi.mocked(findActiveSubscription)
 const mockCreateAuditLog = vi.mocked(createAuditLog)
+const mockFindEmployeesForListingPage = vi.mocked(findEmployeesForListingPage)
+const mockGetEmployeeIdsForConsentState = vi.mocked(getEmployeeIdsForConsentState)
 
 const TENANT_ID = "tenant-1"
 const EMPLOYEE_INPUT = { name: "Ana Silva", phone: "+5511999999999", departmentId: "dept-1" }
@@ -205,5 +211,63 @@ describe("getTotalEmployeeCount", () => {
     const result = await getTotalEmployeeCount(TENANT_ID)
     expect(result).toBe(42)
     expect(mockCountEmployees).toHaveBeenCalledWith(TENANT_ID)
+  })
+})
+
+describe("getEmployeesForListingPage", () => {
+  const PAGED_RESULT = {
+    employees: [{ id: "emp-1" }] as EmployeeWithDepartment[],
+    total: 1,
+  }
+
+  beforeEach(() => {
+    mockFindEmployeesForListingPage.mockResolvedValue(PAGED_RESULT as Awaited<ReturnType<typeof findEmployeesForListingPage>>)
+  })
+
+  it("calcula skip corretamente e repassa para o repository", async () => {
+    await getEmployeesForListingPage(TENANT_ID, { page: 3, pageSize: 10 })
+
+    expect(mockFindEmployeesForListingPage).toHaveBeenCalledWith(TENANT_ID, {}, 20, 10)
+  })
+
+  it("repassa filtro q quando definido", async () => {
+    await getEmployeesForListingPage(TENANT_ID, { page: 1, pageSize: 10, q: "ana" })
+
+    expect(mockFindEmployeesForListingPage).toHaveBeenCalledWith(TENANT_ID, { q: "ana" }, 0, 10)
+  })
+
+  it("repassa filtro departmentId quando definido", async () => {
+    await getEmployeesForListingPage(TENANT_ID, { page: 1, pageSize: 10, departmentId: "dept-1" })
+
+    expect(mockFindEmployeesForListingPage).toHaveBeenCalledWith(TENANT_ID, { departmentId: "dept-1" }, 0, 10)
+  })
+
+  it("repassa filtro status quando definido", async () => {
+    await getEmployeesForListingPage(TENANT_ID, { page: 1, pageSize: 10, status: "active" })
+
+    expect(mockFindEmployeesForListingPage).toHaveBeenCalledWith(TENANT_ID, { status: "active" }, 0, 10)
+  })
+
+  it("retorna lista vazia imediatamente quando filtro consent retorna zero ids", async () => {
+    mockGetEmployeeIdsForConsentState.mockResolvedValue([])
+
+    const result = await getEmployeesForListingPage(TENANT_ID, { page: 1, pageSize: 10, consent: "accepted" })
+
+    expect(result).toEqual({ employees: [], total: 0 })
+    expect(mockFindEmployeesForListingPage).not.toHaveBeenCalled()
+  })
+
+  it("filtra por ids de consentimento quando filtro consent retorna ids", async () => {
+    const ids = ["emp-1", "emp-2"]
+    mockGetEmployeeIdsForConsentState.mockResolvedValue(ids)
+
+    await getEmployeesForListingPage(TENANT_ID, { page: 1, pageSize: 10, consent: "accepted" })
+
+    expect(mockFindEmployeesForListingPage).toHaveBeenCalledWith(
+      TENANT_ID,
+      { consentEmployeeIds: ids },
+      0,
+      10,
+    )
   })
 })
