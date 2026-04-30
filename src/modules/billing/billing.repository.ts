@@ -29,6 +29,15 @@ export async function createSubscriptionFeatureSnapshot(subscriptionId: string, 
   })
 }
 
+export async function replaceSubscriptionFeatures(subscriptionId: string, features: PlanFeature[]): Promise<void> {
+  await prisma.$transaction([
+    prisma.subscriptionFeature.deleteMany({ where: { subscriptionId } }),
+    prisma.subscriptionFeature.createMany({
+      data: features.map((feature) => ({ subscriptionId, feature })),
+    }),
+  ])
+}
+
 export async function findTenantSubscriptionFeatures(tenantId: string): Promise<PlanFeature[]> {
   const sub = await prisma.organizationSubscription.findUnique({
     where: { tenantId },

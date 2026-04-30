@@ -1,5 +1,5 @@
 import type { BillingWebhookEvent } from "@/libs/integrations/billing/billing.interface"
-import { upsertSubscription, recordWebhookEvent, findWebhookEvent, findFailedWebhookEvents, markWebhookEventProcessed, markWebhookEventFailed, createSubscriptionFeatureSnapshot, findTenantSubscriptionFeatures, findPlanPriceForProvisioning, cancelOrganizationSubscription } from "@/modules/billing/billing.repository"
+import { upsertSubscription, recordWebhookEvent, findWebhookEvent, findFailedWebhookEvents, markWebhookEventProcessed, markWebhookEventFailed, replaceSubscriptionFeatures, findPlanPriceForProvisioning, cancelOrganizationSubscription } from "@/modules/billing/billing.repository"
 import type { BillingStatus } from "@/modules/billing/billing.types"
 import { findOrganizationByCustomerId, updateOrganizationBillingStatus } from "@/modules/organizations/organization.repository"
 import { findPlanFeatures } from "@/modules/plans/plan.repository"
