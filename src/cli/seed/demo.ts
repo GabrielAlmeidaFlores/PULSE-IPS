@@ -518,7 +518,6 @@ async function main(): Promise<void> {
     id: string
     tenantId: string
     dispatchId: string
-    tokenId: string
     createdAt: Date
   }[] = []
   const allItems: {
@@ -586,7 +585,6 @@ async function main(): Promise<void> {
           id: responseId,
           tenantId,
           dispatchId,
-          tokenId,
           createdAt: usedAt,
         })
 
