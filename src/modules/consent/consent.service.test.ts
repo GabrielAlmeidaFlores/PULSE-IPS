@@ -82,10 +82,10 @@ const baseConsentInvite = {
   employeeId: EMPLOYEE_ID,
   consentTermVersionId: TERM_VERSION_ID,
   event: "invited",
-  source: "sms_link",
+  source: "message_link",
   token: INVITE_TOKEN,
   tokenExpiresAt: new Date(Date.now() + 86400000),
-  cpfHash: null,
+  documentHash: null,
   createdAt: new Date(),
 }
 
@@ -95,6 +95,7 @@ const activeEmployee = {
   name: "João Silva",
   phone: "+5511999999999",
   departmentId: "dept-1",
+  document: null,
   email: null,
   status: "active",
   workStartTime: null,
@@ -117,7 +118,7 @@ describe("sendConsentInvite", () => {
     await sendConsentInvite(TENANT_ID, EMPLOYEE_ID)
 
     expect(mockCreateConsentRecord).toHaveBeenCalledWith(
-      expect.objectContaining({ event: "invited", source: "sms_link", tenantId: TENANT_ID, employeeId: EMPLOYEE_ID, consentTermVersionId: TERM_VERSION_ID }),
+      expect.objectContaining({ event: "invited", source: "message_link", tenantId: TENANT_ID, employeeId: EMPLOYEE_ID, consentTermVersionId: TERM_VERSION_ID }),
     )
   })
 
@@ -173,18 +174,18 @@ describe("recordAcceptance — LGPD append-only rule", () => {
     )
   })
 
-  it("stores cpfHash when provided", async () => {
-    await recordAcceptance(INVITE_TOKEN, "hashed-cpf-value")
+  it("stores documentHash when provided", async () => {
+    await recordAcceptance(INVITE_TOKEN, "hashed-document-value")
 
     const call = mockCreateConsentRecord.mock.calls[0]?.[0]
-    expect(call?.cpfHash).toBe("hashed-cpf-value")
+    expect(call?.documentHash).toBe("hashed-document-value")
   })
 
-  it("does not store cpfHash when not provided", async () => {
+  it("does not store documentHash when not provided", async () => {
     await recordAcceptance(INVITE_TOKEN)
 
     const call = mockCreateConsentRecord.mock.calls[0]?.[0]
-    expect(call?.cpfHash).toBeUndefined()
+    expect(call?.documentHash).toBeUndefined()
   })
 
   it("throws TOKEN_INVALID when token does not exist", async () => {

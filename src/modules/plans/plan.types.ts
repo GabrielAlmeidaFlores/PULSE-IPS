@@ -1,12 +1,13 @@
-export type PlanFeature = "action_plans" | "documents" | "anonymous_reports" | "pgr"
+export type PlanFeature = "action_plans" | "documents" | "anonymous_reports" | "pgr" | "messaging"
 
-export const ALL_PLAN_FEATURES: PlanFeature[] = ["action_plans", "documents", "anonymous_reports", "pgr"]
+export const ALL_PLAN_FEATURES: PlanFeature[] = ["action_plans", "documents", "anonymous_reports", "pgr", "messaging"]
 
 export const PLAN_FEATURE_LABELS: Record<PlanFeature, string> = {
   action_plans: "Planos de Ação",
   documents: "Documentos",
   anonymous_reports: "Relatos Anônimos",
   pgr: "PGR",
+  messaging: "Envio de Mensagens",
 }
 
 export interface PlanDisplayFeature {
@@ -17,6 +18,7 @@ export interface PlanDisplayFeature {
 
 export const ALL_DISPLAY_FEATURES: PlanDisplayFeature[] = [
   { key: "health-surveys", label: "Pesquisas de Clima e Saúde", alwaysEnabled: true },
+  { key: "messaging", label: "Envio de Mensagens", alwaysEnabled: false },
   { key: "action_plans", label: "Planos de Ação", alwaysEnabled: false },
   { key: "documents", label: "Documentos", alwaysEnabled: false },
   { key: "anonymous_reports", label: "Relatos Anônimos", alwaysEnabled: false },

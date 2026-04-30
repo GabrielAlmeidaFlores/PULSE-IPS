@@ -60,11 +60,11 @@ function QuestionTooltip({ active, payload }: QuestionTooltipProps): React.React
   )
 }
 
-interface Props {
+interface HealthSurveyQuestionScoreChartProps {
   stats: HealthSurveyDispatchDashboardStats
 }
 
-export function HealthSurveyQuestionScoreChart({ stats }: Props): React.ReactElement {
+export function HealthSurveyQuestionScoreChart({ stats }: HealthSurveyQuestionScoreChartProps): React.ReactElement {
   const data = stats.questions
     .filter((q) => q.avgScore !== null)
     .map((q) => {

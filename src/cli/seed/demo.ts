@@ -57,8 +57,8 @@ function sample<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)] as T
 }
 
-function cpfHash(cpf: string): string {
-  return createHash("sha256").update(cpf).digest("hex")
+function documentHash(doc: string): string {
+  return createHash("sha256").update(doc).digest("hex")
 }
 
 interface DeptProfile {
@@ -428,8 +428,8 @@ async function main(): Promise<void> {
           employeeId: empRecord.id,
           consentTermVersionId: consentTermVersion.id,
           event: "accepted",
-          source: "sms_link",
-          cpfHash: cpfHash(`000.000.000-${empIds.length.toString().padStart(2, "0")}`),
+          source: "message_link",
+          documentHash: documentHash(`000.000.000-${empIds.length.toString().padStart(2, "0")}`),
           createdAt: addDays(ONE_YEAR_AGO, 1),
         },
       })

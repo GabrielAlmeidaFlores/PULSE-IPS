@@ -51,6 +51,7 @@ const DISPATCH_DATA = {
   frequency: "weekly",
   totalRecipients: 10,
   totalResponses: 7,
+  signedLinkToken: null,
   questions: QUESTIONS,
   responseItems: RESPONSE_ITEMS,
 }
@@ -169,7 +170,7 @@ describe("scheduleHealthSurveyDispatch", () => {
 
     const result = await scheduleHealthSurveyDispatch(TENANT_ID, "config-1", at)
     expect(result).toEqual({ id: "new-d" })
-    expect(mockCreate).toHaveBeenCalledWith(TENANT_ID, "config-1", at)
+    expect(mockCreate).toHaveBeenCalledWith(TENANT_ID, "config-1", at, expect.any(String))
   })
 })
 

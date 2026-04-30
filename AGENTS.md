@@ -54,7 +54,7 @@
 
 O **Pulse** é um software SaaS de monitoramento de saúde ocupacional que ajuda empresas a monitorar a saúde ocupacional dos colaboradores e cumprir obrigações legais trabalhistas. O sistema:
 
-1. Envia pesquisas rápidas e anônimas para colaboradores via SMS/WhatsApp automaticamente por setor
+1. Envia pesquisas rápidas e anônimas para colaboradores via mensagem automaticamente por setor (funcionalidade opcional no plano)
 2. Agrupa resultados por setor e emite alertas automáticos quando detecta queda de indicadores
 3. Oferece canal permanente de relato anônimo
 4. Gera relatórios de evidência em PDF para o PGR (Programa de Gerenciamento de Riscos)
@@ -185,7 +185,7 @@ export function assertOrgMember(context: OrgSessionContext, tenantId: string): v
 
 ### 5.3 Adapter Pattern para integrações externas
 
-Toda integração (email, SMS, storage, billing) é acessada via interface. O service nunca instancia o adapter diretamente — usa a factory em `src/libs/integrations/index.ts`. Trocar de provedor exige apenas criar novo adapter e atualizar a variável `*_PROVIDER` no `.env`.
+Toda integração (email, messaging, storage, billing) é acessada via interface. O service nunca instancia o adapter diretamente — usa a factory em `src/libs/integrations/index.ts`. Trocar de provedor exige apenas criar novo adapter e atualizar a variável `*_PROVIDER` no `.env`.
 
 ### 5.4 Multi-tenancy por Row-Level Isolation
 
@@ -231,7 +231,7 @@ Todo o projeto usa `"strict": true` mais flags adicionais (ver seção 9). `any`
 | `@react-pdf/renderer` | Geração de PDFs (relatório PGR) |
 | `stripe` | SDK Stripe (billing) |
 | `resend` | SDK Resend (e-mail) |
-| `twilio` | SDK Twilio (SMS) |
+| `twilio` | SDK Twilio (mensagem) |
 | `bullmq` + `ioredis` | Fila de jobs com Redis |
 | `@base-ui/react` | Componentes primitivos de UI (Select usa Base UI, não Radix) |
 
@@ -324,6 +324,7 @@ src/
 │   │
 │   └── api/
 │       ├── webhooks/stripe/route.ts        # POST — recebe eventos Stripe (assinado)
+│       ├── webhooks/meta-cloud/route.ts    # GET (verificação) + POST (eventos) Meta Cloud API
 │       └── jobs/[job-name]/route.ts        # Manual trigger de jobs (x-cron-secret)
 │
 ├── modules/                                # Módulos de domínio (feature-first)
@@ -402,6 +403,9 @@ src/
 │   │   ├── request-log.repository.ts       # Append-only — sem update/delete
 │   │   ├── request-log.service.ts
 │   │   └── request-log.types.ts
+│   ├── messaging/
+│   │   ├── message-log.repository.ts       # Append-only — createMessageLog(tenantId, data), MessageLogType
+│   │   └── (sem service — acesso direto ao repositório pelos workers)
 │   └── audit/
 │       ├── audit.repository.ts             # Apenas INSERT — sem update/delete
 │       └── audit.types.ts
@@ -418,9 +422,9 @@ src/
 │   ├── integrations/
 │   │   ├── messaging/
 │   │   │   ├── messaging.interface.ts      # IMessagingService
-│   │   │   ├── twilio-sms.adapter.ts       # ✅ Implementação Twilio SMS
+│   │   │   ├── twilio-message.adapter.ts   # ✅ Implementação Twilio
 │   │   │   ├── whatsapp.adapter.ts         # ✅ Implementação WhatsApp Cloud API
-│   │   │   └── console-sms.adapter.ts      # Desenvolvimento local
+│   │   │   └── console-message.adapter.ts  # Desenvolvimento local
 │   │   ├── email/
 │   │   │   ├── email.interface.ts          # IEmailService
 │   │   │   ├── resend.adapter.ts           # ✅ Implementação atual
@@ -563,7 +567,7 @@ Funcionalidades incluídas em cada plano. Append por transação — ao atualiza
 | Coluna | Tipo | Constraints |
 |---|---|---|
 | plan_id | uuid | NOT NULL, FK → plans.id ON DELETE CASCADE |
-| feature | varchar(30) | NOT NULL — `'action_plans'` \| `'documents'` \| `'anonymous_reports'` \| `'pgr'` |
+| feature | varchar(30) | NOT NULL — `'action_plans'` \| `'documents'` \| `'anonymous_reports'` \| `'pgr'` \| `'messaging'` |
 | PK | (plan_id, feature) | |
 
 > Alterar `plan_features` **não afeta** clientes que já assinaram. As features vigentes ficam imutáveis em `subscription_features`.
@@ -575,7 +579,7 @@ Snapshot imutável das funcionalidades no momento da contratação. Mesmo princ�
 | Coluna | Tipo | Constraints |
 |---|---|---|
 | subscription_id | uuid | NOT NULL, FK → organization_subscriptions.id ON DELETE CASCADE |
-| feature | varchar(30) | NOT NULL — mesmos valores de `plan_features` |
+| feature | varchar(30) | NOT NULL — mesmos valores de `plan_features` (inclui `'messaging'`) |
 | PK | (subscription_id, feature) | |
 
 > Inserido uma única vez na criação da assinatura (webhook `customer.subscription.created` ou via fake adapter em dev). Nunca alterado após isso.
@@ -797,6 +801,7 @@ Dias de trabalho do departamento em `department_work_days` (join table — ver a
 | name | varchar(255) | NOT NULL |
 | email | varchar(255) | |
 | phone | varchar(20) | NOT NULL |
+| document | varchar(50) | NULL — número do documento do colaborador (opcional); usado para identificação no link assinado |
 | work_start_time | varchar(5) | `"HH:MM"` — horário de início do turno (ex: `"09:00"`). NULL = usa config do setor |
 | work_end_time | varchar(5) | `"HH:MM"` — horário de fim do turno. NULL = usa config do setor |
 | status | varchar(20) | `'active'` \| `'inactive'` \| `'paused'` |
@@ -819,13 +824,13 @@ Dias de trabalho do departamento em `department_work_days` (join table — ver a
 | employee_id | uuid | NOT NULL, FK → employees.id |
 | consent_term_version_id | uuid | NOT NULL, FK → consent_term_versions.id |
 | event | varchar(20) | `'invited'` \| `'accepted'` \| `'refused'` \| `'revoked'` \| `'opt_out'` |
-| source | varchar(20) | `'whatsapp_link'` \| `'sms_link'` \| `'health_survey_form'` \| `'system'` |
-| cpf_hash | varchar(255) | SHA-256 do CPF — apenas no evento `accepted` |
+| source | varchar(20) | `'message_link'` \| `'health_survey_form'` \| `'system'` |
+| document_hash | varchar(255) | SHA-256 do documento (ex: CPF) — apenas no evento `accepted` |
 | token | varchar(255) | UNIQUE |
 | token_expires_at | timestamptz | |
 | created_at | timestamptz | NOT NULL |
 
-> CPF nunca armazenado em texto puro. `ConsentRepository` não expõe `update()` nem `delete()`.
+> Documento nunca armazenado em texto puro. `ConsentRepository` não expõe `update()` nem `delete()`.
 
 #### `health_survey_configurations`
 
@@ -901,6 +906,7 @@ Dias de trabalho configurados para uma pesquisa. Define em quais dias o schedule
 | status | varchar(20) | `'scheduled'` \| `'sent'` \| `'failed'` \| `'cancelled'` |
 | total_recipients | integer | |
 | total_responses | integer | NOT NULL, default 0 |
+| signed_link_token | varchar(255) | NOT NULL, UNIQUE — token do link assinado público (`/health-survey/link/[token]`) |
 | created_at | timestamptz | NOT NULL |
 
 **Índice:** `(tenant_id, department_id, scheduled_at DESC)`
@@ -1896,9 +1902,9 @@ await messaging.send({ to: employee.phone, body: healthSurveyLink })
 // libs/integrations/index.ts
 export function getMessagingService(): IMessagingService {
   switch (env.MESSAGING_PROVIDER) {
-    case "whatsapp_cloud": return new WhatsAppAdapter()
-    case "twilio_sms":     return new TwilioSmsAdapter()
-    default:               return new ConsoleSmsAdapter()
+    case "whatsapp_cloud":  return new MetaCloudMessageAdapter()
+    case "twilio_message":  return new TwilioMessageAdapter()
+    default:                return new ConsoleMessageAdapter()
   }
 }
 
@@ -1982,7 +1988,7 @@ Client Component (formulário)
 ### Fluxo público — Formulário de pesquisa
 
 ```
-Link SMS → GET /health-survey/[token]
+Link individual → GET /health-survey/[token]
   ├─ [GUARD 1] Token não existe → TokenInvalidPage
   ├─ [GUARD 2] used_at IS NOT NULL → AlreadyAnsweredPage
   ├─ [GUARD 3] expires_at < now() → LinkExpiredPage
@@ -2092,7 +2098,7 @@ O Super Admin **não possui** mecanismo de "login como organização". Não exis
 
 > **Princípio:** nenhum service do domínio conhece a implementação concreta. Trocar de provedor exige apenas criar novo adapter e atualizar a variável `*_PROVIDER` no `.env`. Zero alteração em código de negócio. **Nomes de provedores externos (Stripe, Twilio, Resend) nunca aparecem na UI** — apenas nos adapters e variáveis de ambiente.
 
-### Messaging (SMS / WhatsApp)
+### Messaging
 
 ```typescript
 // libs/integrations/messaging/messaging.interface.ts
@@ -2102,12 +2108,13 @@ export interface IMessagingService {
 }
 ```
 
-**Implementação Twilio SMS:** `MESSAGING_PROVIDER=twilio_sms` → `TwilioSmsAdapter`  
-**Implementação WhatsApp Cloud:** `MESSAGING_PROVIDER=whatsapp_cloud` → `WhatsAppAdapter` ✅  
-**Desenvolvimento:** `MESSAGING_PROVIDER=console` → `ConsoleSmsAdapter` (imprime no terminal)  
+**Implementação Twilio:** `MESSAGING_PROVIDER=twilio_message` → `TwilioMessageAdapter`  
+**Implementação Meta Cloud:** `MESSAGING_PROVIDER=whatsapp_cloud` → `MetaCloudMessageAdapter` ✅  
+**Desenvolvimento:** `MESSAGING_PROVIDER=console` → `ConsoleMessageAdapter` (imprime no terminal)  
 **Variáveis Twilio:** `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`  
 **Variáveis WhatsApp:** `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_API_VERSION` (default `"v20.0"`), `WHATSAPP_API_BASE_URL` (default `"https://graph.facebook.com"`)
 
+> **Regra de terminologia:** os termos "SMS", "WhatsApp" e "CPF" **nunca devem aparecer em código, banco de dados ou UI**. Substituições obrigatórias: SMS/WhatsApp → `mensagem`/`message`; CPF → `document`/`documento`. Essa proibição se aplica a nomes de arquivos, classes, funções, variáveis, campos de banco, labels de UI e mensagens de erro.
 ### Email
 
 ```typescript
@@ -2412,10 +2419,13 @@ O `<body>` em `src/app/layout.tsx` tem `suppressHydrationWarning` para evitar er
 | Documentos | `documents` | `/documents` |
 | Relatos Anônimos | `anonymous_reports` | `/reports` |
 | PGR | `pgr` | `/pgr`, `/pgr/[id]`, alertas `pgr_review_due` |
+| Mensagens | `messaging` | Disparo automático de mensagens ao criar pesquisa. Sem essa feature, o RH distribui apenas via link assinado. |
 
 **Guard de acesso em páginas tenant:** o `(tenant)/layout.tsx` carrega `getTenantPlanFeatures(tenantId)` e passa para o `Sidebar`, que filtra os itens de navegação. Cada página de funcionalidade gateada chama `hasTenantPlanFeature(tenantId, feature)` e redireciona para `/dashboard` se o tenant não possui a funcionalidade no plano adquirido.
 
 **Guard em jobs:** antes de criar alertas relacionados a uma funcionalidade específica (ex: `pgr_review_due`), o job deve verificar `hasTenantPlanFeature(tenantId, "pgr")`. Se o tenant não tem a feature → pular.
+
+**Guard de messaging em dispatch:** `sendDispatchTokensAndMessages` chama `hasTenantPlanFeature(tenantId, "messaging")` antes de enfileirar mensagens. Sem a feature, tokens individuais são criados normalmente (o link assinado funciona) mas nenhuma mensagem é enviada.
 
 ### Fluxo: Checkout (organização assina um plano)
 
@@ -2544,7 +2554,7 @@ return (
 
 1. **Append-only:** `ConsentRepository` não expõe `update()` nem `delete()`
 2. **Cada evento gera linha nova** — incluindo opt-out no formulário
-3. **CPF armazenado apenas como hash SHA-256** e somente no evento `accepted`
+3. **Documento armazenado apenas como hash SHA-256** e somente no evento `accepted` (campo `documentHash`)
 4. **Sem `employee_id` em `health_survey_responses`** — desvinculamento garante anonimato
 5. **Mínimo de 5 respondentes** para exibir métricas (enforçado no service, nunca na UI)
 6. **`responded_at`** armazena apenas data (sem hora) — segunda camada de proteção ao anonimato
@@ -2554,9 +2564,9 @@ return (
 | `event` | `source` típico | Descrição |
 |---|---|---|
 | `invited` | `system` | Colaborador recebeu link de TCLE |
-| `accepted` | `sms_link` | Aceitou — CPF hasheado salvo |
-| `refused` | `sms_link` | Recusou explicitamente |
-| `revoked` | `sms_link` | Revogou aceite anterior |
+| `accepted` | `message_link` | Aceitou — hash do documento salvo |
+| `refused` | `message_link` | Recusou explicitamente |
+| `revoked` | `message_link` | Revogou aceite anterior |
 | `opt_out` | `health_survey_form` | Pediu não-participação dentro do formulário |
 
 ### Estado atual do colaborador
@@ -2630,7 +2640,7 @@ async getFullHistory(tenantId: string, employeeId: string): Promise<ConsentHisto
 }
 ```
 
-A presença de um registro `event = 'accepted'` com `cpfHash` correspondente ao CPF do colaborador, em data anterior ao litígio, é prova de aceite. O `contentHash` da versão do termo prova qual texto foi aceito.
+A presença de um registro `event = 'accepted'` com `documentHash` correspondente ao documento do colaborador, em data anterior ao litígio, é prova de aceite. O `contentHash` da versão do termo prova qual texto foi aceito.
 
 ### Detecção de crise em relatos anônimos
 
@@ -2901,7 +2911,7 @@ Employee cadastrado
   → consent.service.ts cria employee_consents (event: 'invited', token gerado)
   → getMessageQueue().add("send-message", { type: "consent_invite", phone, link })
     → Job Worker consome e chama getMessagingService().send(...)
-      → Employee aceita: informa CPF → cpf_hash = SHA-256(cpf), event: 'accepted'
+      → Employee aceita: informa documento → document_hash = SHA-256(document), event: 'accepted'
       → Employee recusa: event: 'refused' (registrado para auditoria)
 ```
 
@@ -2914,8 +2924,9 @@ Job health-survey-dispatcher (a cada 15min)
   → Busca dispatches status='scheduled' e scheduled_at <= now()
     → Filtra employees: status='active', consent='accepted'
     → Gera health_survey_response_token por employee (expires_at = +48h, snapshot do horário)
-    → messagingService.sendBulk
-    → Registra em message_logs
+    → [GATE] hasTenantPlanFeature(tenantId, "messaging")
+        ├─ SEM feature: tokens criados, nenhuma mensagem enviada → RH usa link assinado
+        └─ COM feature: messagingService.sendBulk → Registra em message_logs
     → Atualiza dispatch: status='sent', sent_at, total_recipients
 ```
 
@@ -2965,7 +2976,7 @@ Super Admin publica nova versão do TCLE (is_current = true)
   └─→ Job consent-renotifier executado
         ├─ Busca todos employees com consent status = 'accepted' para versão anterior
         └─→ Para cada um: cria novo employee_consents (status: 'pending', novo token)
-              └─→ Envia WhatsApp com novo link de consentimento
+              └─→ Envia mensagem com novo link de consentimento
 ```
 
 ### 20.8 Reenvio para não-respondentes
@@ -2976,11 +2987,34 @@ RH aciona "Reenviar" em setor com adesão crítica (<60%)
         ├─ Busca health_survey_response_tokens onde used_at IS NULL e expires_at > now()
         ├─ Para cada token não usado: gera novo token (expires_at = +48h), invalida o anterior
         ├─ Chama messagingService.sendBulk
-        ├─ Registra em message_logs com type='health_survey_resend'
+        ├─ Registra em message_logs com type='survey_resend'
         └─ Cria novo dispatch com status='sent' vinculado ao original
 ```
 
-### 20.9 Importação de colaboradores via Excel
+### 20.9 Acesso via Link Assinado (sem mensagem)
+
+Quando a organização **não possui** a feature `messaging`, ou o RH/Admin deseja distribuir a pesquisa manualmente em canais externos:
+
+```
+RH acessa /health-surveys/[dispatchId]
+  └─ Painel exibe link assinado: https://app.pulse.com/health-survey/link/[signedLinkToken]
+       └─ RH distribui em canal externo (e-mail, grupo, intranet, etc.)
+
+Colaborador acessa /health-survey/link/[signedLinkToken]
+  └─ Tela de identificação: campo único aceita telefone ou documento
+       ├─ Colaborador não encontrado → erro "Colaborador não encontrado"
+       ├─ Sem consentimento aceito → erro "Você precisa aceitar os termos"
+       ├─ Já respondeu → retorna { alreadyAnswered: true } → mensagem "Você já respondeu esta pesquisa"
+       ├─ Fora da janela de trabalho → erro "Pesquisa disponível apenas entre HH:MM e HH:MM"
+       └─ Token gerado → redirect para /health-survey/[token]
+             └─ Resposta salva normalmente (sem employee_id) → aderência calculada corretamente
+```
+
+O `signedLinkToken` é gerado pelo `randomUUID()` no momento da criação do dispatch e armazenado em `health_survey_dispatches.signed_link_token`. É permanente enquanto o dispatch existir — o mesmo link pode ser usado por múltiplos colaboradores.
+
+**Módulo de unlock:** `unlockHealthSurveyViaIdentifier(signedLinkToken, identifier)` em `health-survey-response.service.ts`.
+
+### 20.10 Importação de colaboradores via Excel
 
 ```typescript
 // modules/employees/employee-import.service.ts
@@ -2991,7 +3025,7 @@ const HEADER_MAP: Record<string, keyof ImportRow> = {
   "e-mail":        "email",
   "email":         "email",
   "telefone":      "phone",
-  "whatsapp":      "phone",
+  "mensagem":      "phone",
   "setor":         "departmentName",
 }
 
@@ -3004,7 +3038,7 @@ const HEADER_MAP: Record<string, keyof ImportRow> = {
 //    └─ Cria todos os válidos em batch
 ```
 
-### 20.10 Métricas de plataforma (Super Admin Dashboard)
+### 20.11 Métricas de plataforma (Super Admin Dashboard)
 
 ```typescript
 // modules/platform-metrics/platform-metrics.repository.ts
@@ -3026,7 +3060,7 @@ async getPlatformMetrics(): Promise<PlatformMetrics> {
 }
 ```
 
-### 20.11 Exclusão de conta (tenant Admin)
+### 20.12 Exclusão de conta (tenant Admin)
 
 Fluxo de exclusão voluntária de organização com período de carência.
 
@@ -3083,10 +3117,13 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
 
 # Messaging
-MESSAGING_PROVIDER=twilio_sms
+MESSAGING_PROVIDER=twilio_message
 TWILIO_ACCOUNT_SID=AC...
 TWILIO_AUTH_TOKEN=...
 TWILIO_FROM_NUMBER=+55...
+
+# Mensagem de pesquisa de saúde (template com {name} e {link})
+SURVEY_MESSAGE_TEMPLATE="Olá {name}, sua pesquisa de saúde ocupacional está disponível: {link}"
 
 # WhatsApp Cloud API (quando MESSAGING_PROVIDER=whatsapp_cloud)
 WHATSAPP_PHONE_NUMBER_ID=...

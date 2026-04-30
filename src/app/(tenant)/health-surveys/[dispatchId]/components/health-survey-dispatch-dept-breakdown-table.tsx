@@ -12,11 +12,11 @@ interface DeptBreakdownItem {
   healthIndex: number | null
 }
 
-interface Props {
+interface HealthSurveyDispatchDeptBreakdownTableProps {
   items: DeptBreakdownItem[]
 }
 
-export function HealthSurveyDispatchDeptBreakdownTable({ items }: Props): React.ReactElement {
+export function HealthSurveyDispatchDeptBreakdownTable({ items }: HealthSurveyDispatchDeptBreakdownTableProps): React.ReactElement {
   const [selectedIds, setSelectedIds] = useQueryState(
     "depts",
     parseAsArrayOf(parseAsString).withDefault([]).withOptions({ shallow: false }),

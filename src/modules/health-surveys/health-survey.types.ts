@@ -13,6 +13,7 @@ export interface HealthSurveyDispatchDashboardStats {
   notResponded: number
   adherenceRate: number
   avgScore: number | null
+  signedLinkToken: string | null
   questions: {
     id: string
     text: string
@@ -108,13 +109,4 @@ export interface CreateHealthSurveyAdherenceAlertInput {
   adherenceRate: number
   responseCount: number
   totalRecipients: number
-}
-
-export interface CreateHealthSurveyMessageLogInput {
-  tenantId: string
-  employeeId: string
-  type: "consent_invite" | "health_survey_dispatch" | "health_survey_resend"
-  provider: string
-  status: "sent" | "failed"
-  externalId?: string
 }

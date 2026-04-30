@@ -2,11 +2,9 @@ import { z } from "zod"
 
 export const acceptConsentSchema = z.object({
   token: z.string().min(1, "Token inválido"),
-  cpf: z
+  document: z
     .string()
-    .min(11, "CPF inválido")
-    .max(14, "CPF inválido")
-    .transform((v) => v.replace(/\D/g, "")),
+    .optional(),
 })
 
 export const optOutConsentSchema = z.object({

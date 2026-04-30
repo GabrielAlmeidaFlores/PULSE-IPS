@@ -29,7 +29,7 @@ export function createConsentRecord(data: CreateConsentRecordInput): Promise<Emp
       consentTermVersionId: data.consentTermVersionId,
       event: data.event,
       source: data.source,
-      ...(data.cpfHash !== undefined && { cpfHash: data.cpfHash }),
+      ...(data.documentHash !== undefined && { documentHash: data.documentHash }),
       ...(data.token !== undefined && { token: data.token }),
       ...(data.tokenExpiresAt !== undefined && { tokenExpiresAt: data.tokenExpiresAt }),
     },

@@ -5,6 +5,7 @@ export interface Employee {
   name: string
   phone: string
   email: string | null
+  document: string | null
   status: "active" | "inactive" | "paused"
   workStartTime: string | null
   workEndTime: string | null
@@ -18,6 +19,7 @@ export interface CreateEmployeeInput {
   name: string
   phone: string
   email?: string | undefined
+  document?: string | undefined
   workStartTime?: string | undefined
   workEndTime?: string | undefined
   workDays?: number[] | undefined
@@ -28,6 +30,7 @@ export interface UpdateEmployeeInput {
   name?: string | undefined
   phone?: string | undefined
   email?: string | null | undefined
+  document?: string | null | undefined
   status?: "active" | "inactive" | "paused" | undefined
   workStartTime?: string | null | undefined
   workEndTime?: string | null | undefined

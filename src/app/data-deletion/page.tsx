@@ -124,7 +124,7 @@ export default function DataDeletionPage(): React.ReactElement {
             <p className="text-sm text-muted-foreground leading-relaxed">
               O Pulse IPS é contratado pela empresa onde você trabalha para monitorar saúde e bem-estar ocupacional.
               Para isso, armazenamos o número de telefone fornecido pelo seu empregador e enviamos pesquisas rápidas
-              via WhatsApp ou SMS. Todas as respostas são{" "}
+              via mensagem. Todas as respostas são{" "}
               <strong className="text-foreground">completamente anônimas</strong> — nenhuma resposta é
               vinculada ao seu nome, telefone ou qualquer identificação pessoal.
             </p>
@@ -142,7 +142,7 @@ export default function DataDeletionPage(): React.ReactElement {
                 <strong className="text-foreground">Nome</strong> — fornecido pela sua empresa no cadastro
               </Bullet>
               <Bullet>
-                <strong className="text-foreground">Número de telefone</strong> — utilizado exclusivamente para envio de pesquisas via WhatsApp/SMS
+                <strong className="text-foreground">Número de telefone</strong> — utilizado exclusivamente para envio de pesquisas via mensagem
               </Bullet>
               <Bullet>
                 <strong className="text-foreground">E-mail</strong> — opcional, se fornecido pela empresa

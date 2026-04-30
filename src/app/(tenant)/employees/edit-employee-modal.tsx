@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label"
 const schema = z.object({
   name: z.string().min(1, "Nome obrigatório"),
   phone: z.string().min(8, "Telefone inválido"),
+  document: z.string().optional().or(z.literal("")),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
   departmentId: z.string().uuid("Departamento obrigatório"),
   status: z.enum(["active", "inactive"]),
@@ -32,6 +33,7 @@ export interface EmployeeEditData {
   id: string
   name: string
   phone: string
+  document: string | null
   email: string | null
   departmentId: string
   status: string
@@ -72,6 +74,7 @@ export function EditEmployeeModal({ open, onClose, onSave, loading, employee, de
     defaultValues: {
       name: "",
       phone: "",
+      document: "",
       email: "",
       departmentId: "",
       status: "active",
@@ -90,6 +93,7 @@ export function EditEmployeeModal({ open, onClose, onSave, loading, employee, de
       form.reset({
         name: employee.name,
         phone: employee.phone,
+        document: employee.document ?? "",
         email: employee.email ?? "",
         departmentId: employee.departmentId,
         status: employee.status === "inactive" ? "inactive" : "active",
@@ -132,6 +136,10 @@ export function EditEmployeeModal({ open, onClose, onSave, loading, employee, de
               {form.formState.errors.phone && (
                 <p className="text-[11px] text-destructive">{form.formState.errors.phone.message}</p>
               )}
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] font-bold uppercase tracking-widest">Documento (opcional)</Label>
+              <Input {...form.register("document")} placeholder="Número do documento (opcional)" style={{ borderRadius: 0 }} />
             </div>
             <div className="space-y-1">
               <Label className="text-[10px] font-bold uppercase tracking-widest">Email</Label>

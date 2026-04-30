@@ -12,7 +12,7 @@ export const env = createEnv({
     STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_").optional(),
 
     MESSAGING_PROVIDER: z
-      .enum(["twilio_sms", "whatsapp_cloud", "console"])
+      .enum(["twilio_message", "whatsapp_cloud", "console"])
       .default("console"),
     TWILIO_ACCOUNT_SID: z.string().startsWith("AC").optional(),
     TWILIO_AUTH_TOKEN: z.string().min(1).optional(),
@@ -35,7 +35,7 @@ export const env = createEnv({
         "Oi, {nome}! 👋 Você foi convidado(a) para participar das pesquisas de bem-estar da sua empresa 🌱 É rápido, anônimo e sua opinião faz toda a diferença. Acesse o link para revisar os termos e confirmar sua participação: {link}",
       ),
 
-    HEALTH_SURVEY_MESSAGE_TEMPLATE: z
+    SURVEY_MESSAGE_TEMPLATE: z
       .string()
       .default(
         "Oi, {nome}! 👋 Tudo bem por aí? Sua opinião faz a diferença para a gente 🌱 Quando tiver um momento, aqui está o seu formulário de bem-estar: {link}",
@@ -119,7 +119,7 @@ export const env = createEnv({
 
     CONSENT_MESSAGE_TEMPLATE: process.env.CONSENT_MESSAGE_TEMPLATE,
 
-    HEALTH_SURVEY_MESSAGE_TEMPLATE: process.env.HEALTH_SURVEY_MESSAGE_TEMPLATE,
+    SURVEY_MESSAGE_TEMPLATE: process.env.SURVEY_MESSAGE_TEMPLATE,
 
     EMAIL_PROVIDER: process.env.EMAIL_PROVIDER ?? "console",
     RESEND_API_KEY: process.env.RESEND_API_KEY,

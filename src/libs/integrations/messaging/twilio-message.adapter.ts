@@ -8,7 +8,7 @@ import type {
   BulkMessageResult,
 } from "@/libs/integrations/messaging/messaging.interface"
 
-export class TwilioSmsAdapter implements IMessagingService {
+export class TwilioMessageAdapter implements IMessagingService {
   private client = Twilio(env.TWILIO_ACCOUNT_SID ?? "", env.TWILIO_AUTH_TOKEN ?? "")
 
   async send(params: SendMessageParams): Promise<SendMessageResult> {

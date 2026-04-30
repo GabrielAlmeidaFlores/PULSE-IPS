@@ -16,6 +16,7 @@ import {
 } from "@/modules/health-surveys/health-survey.repository"
 import { hasOpenAlertOfType } from "@/modules/alerts/alert.repository"
 import { findEmployeeIdsWithAcceptedConsent } from "@/modules/consent/consent.repository"
+import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
 
 const FREQUENCY_INTERVAL_DAYS: Record<string, number> = {
   daily: 1,
@@ -25,7 +26,7 @@ const FREQUENCY_INTERVAL_DAYS: Record<string, number> = {
   monthly: 28,
 }
 
-function buildHealthSurveyMessage(template: string, employeeName: string, surveyUrl: string): string {
+function buildMessageFromTemplate(template: string, employeeName: string, surveyUrl: string): string {
   return template.replace("{nome}", employeeName).replace("{link}", surveyUrl)
 }
 
@@ -60,6 +61,9 @@ async function sendDispatchTokensAndMessages(
 
   await createHealthSurveyTokensAndMarkSent(tenantId, dispatchId, tokens)
 
+  const hasMessaging = await hasTenantPlanFeature(tenantId, "messaging")
+  if (!hasMessaging) return
+
   const messageQueue = getMessageQueue()
   const bulkJobs = tokens
     .map((empToken) => {
@@ -70,11 +74,11 @@ async function sendDispatchTokensAndMessages(
         name: "send-message" as const,
         data: {
           to: employee.phone,
-          body: buildHealthSurveyMessage(env.HEALTH_SURVEY_MESSAGE_TEMPLATE, employee.name, healthSurveyUrl),
+          body: buildMessageFromTemplate(env.SURVEY_MESSAGE_TEMPLATE, employee.name, healthSurveyUrl),
           tenantId,
           employeeId: employee.id,
           provider: env.MESSAGING_PROVIDER,
-          type: "health_survey_dispatch" as const,
+          type: "survey_dispatch" as const,
           templateName: env.WHATSAPP_SURVEY_TEMPLATE_NAME,
           templateVariables: [employee.name, healthSurveyUrl],
         },
@@ -108,7 +112,7 @@ async function fireDispatch(
 
   if (eligibleEmployees.length === 0) return false
 
-  const dispatch = await createHealthSurveyDispatch(tenantId, configId, new Date())
+  const dispatch = await createHealthSurveyDispatch(tenantId, configId, new Date(), randomUUID())
 
   await sendDispatchTokensAndMessages(
     dispatch.id,

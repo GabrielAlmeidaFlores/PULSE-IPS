@@ -24,7 +24,7 @@ import { LearnMoreHeader } from "@/app/learn-more-header"
 import { Logo } from "@/libs/design-system/components/logo"
 import { env } from "@/env"
 
-function whatsappUrl(message: string): string {
+function contactUrl(message: string): string {
   return `https://wa.me/5511999999999?text=${encodeURIComponent(message)}`
 }
 
@@ -268,7 +268,7 @@ export default function LearnMorePage(): React.ReactElement {
               {
                 icon: <UserCheck className="w-5 h-5" />,
                 title: "Consentimento no piloto automático",
-                desc: "Ao ser cadastrado, o colaborador recebe automaticamente um link exclusivo de consentimento (TCLE) por WhatsApp. Ele lê os termos e decide se quer participar. O aceite fica registrado e é imutável.",
+                desc: "Ao ser cadastrado, o colaborador recebe automaticamente um link exclusivo de consentimento (TCLE) por mensagem. Ele lê os termos e decide se quer participar. O aceite fica registrado e é imutável.",
                 benefit: "Participação voluntária e documentada",
               },
               {
@@ -358,7 +358,7 @@ export default function LearnMorePage(): React.ReactElement {
               { actor: "voce", icon: <ClipboardList className="w-5 h-5" />, title: "Você cria os departamentos", desc: "Cadastra os setores da empresa com os horários de expediente e dias de trabalho de cada equipe." },
               { actor: "voce", icon: <Clock className="w-5 h-5" />, title: "Você configura a pesquisa uma vez", desc: "Define as perguntas e a frequência de envio para cada setor — diariamente, semanalmente, quinzenalmente ou mensalmente." },
               { actor: "voce", icon: <Users className="w-5 h-5" />, title: "Você cadastra sua equipe", desc: "Registra os colaboradores por setor — um a um ou importando uma planilha Excel. Leva minutos." },
-              { actor: "pulse", icon: <MessageSquare className="w-5 h-5" />, title: "Pulse envia o convite de consentimento (TCLE)", desc: "Cada colaborador recebe automaticamente um link exclusivo por WhatsApp para ler e aceitar os Termos de Consentimento." },
+              { actor: "pulse", icon: <MessageSquare className="w-5 h-5" />, title: "Pulse envia o convite de consentimento (TCLE)", desc: "Cada colaborador recebe automaticamente um link exclusivo por mensagem para ler e aceitar os Termos de Consentimento." },
               { actor: "colaborador", icon: <UserCheck className="w-5 h-5" />, title: "Colaborador lê e aceita os termos", desc: "Via link exclusivo, o colaborador lê o TCLE e confirma a participação. Sem papel, sem burocracia. O aceite fica registrado e é imutável." },
               { actor: "pulse", icon: <Zap className="w-5 h-5" />, title: "Pulse dispara as pesquisas automaticamente", desc: "Apenas para quem aceitou o TCLE. Só envia dentro do horário de expediente configurado — o colaborador recebe quando está trabalhando." },
               { actor: "colaborador", icon: <EyeOff className="w-5 h-5" />, title: "Colaborador responde — com total anonimato", desc: "Sem login, sem identificação. Só as respostas. Ninguém na empresa sabe quem disse o quê." },
@@ -446,7 +446,7 @@ export default function LearnMorePage(): React.ReactElement {
               <ArrowRight className="w-4 h-4" />
             </Link>
             <a
-              href={whatsappUrl("Olá! Tenho dúvidas sobre o Pulse.")}
+              href={contactUrl("Olá! Tenho dúvidas sobre o Pulse.")}
               className="inline-flex items-center justify-center h-11 px-7 rounded-lg border border-border bg-background font-semibold text-sm text-foreground hover:border-primary/30 hover:bg-primary/5 transition-all"
             >
               Falar com a equipe
@@ -629,7 +629,7 @@ export default function LearnMorePage(): React.ReactElement {
               Dúvidas frequentes
             </h2>
             <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-              Tudo o que você precisa saber antes de começar. Se ainda tiver alguma dúvida, é só chamar no WhatsApp.
+              Tudo o que você precisa saber antes de começar. Se ainda tiver alguma dúvida, é só chamar .
             </p>
           </div>
           <div className="space-y-4">
@@ -638,7 +638,7 @@ export default function LearnMorePage(): React.ReactElement {
                 q: "Os colaboradores precisam criar uma conta ou instalar algum aplicativo?",
                 a: (
                   <span>
-                    <strong className="text-foreground">Não.</strong> O colaborador recebe um link pelo WhatsApp e responde diretamente no navegador do celular. Não é necessário criar conta, fazer login ou instalar nada.{"\n\n"}
+                    <strong className="text-foreground">Não.</strong> O colaborador recebe um link pela mensagem e responde diretamente no navegador do celular. Não é necessário criar conta, fazer login ou instalar nada.{"\n\n"}
                     O link funciona em qualquer smartphone, sem dependência de sistema operacional ou versão de app.
                   </span>
                 ),
@@ -723,10 +723,10 @@ export default function LearnMorePage(): React.ReactElement {
           <div className="mt-10 text-center">
             <p className="text-sm text-muted-foreground mb-4">Ainda tem dúvidas?</p>
             <a
-              href={whatsappUrl("Olá! Tenho algumas dúvidas sobre o Pulse antes de contratar.")}
+              href={contactUrl("Olá! Tenho algumas dúvidas sobre o Pulse antes de contratar.")}
               className="inline-flex items-center justify-center h-10 px-6 rounded-lg border border-border text-sm font-semibold text-foreground hover:border-primary/40 hover:bg-primary/5 transition-all"
             >
-              Falar com a equipe no WhatsApp
+              Falar com a equipe
             </a>
           </div>
         </div>
@@ -756,7 +756,7 @@ export default function LearnMorePage(): React.ReactElement {
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <a
-                href={whatsappUrl("Olá! Gostaria de falar com um consultor sobre o Pulse.")}
+                href={contactUrl("Olá! Gostaria de falar com um consultor sobre o Pulse.")}
                 className="inline-flex items-center justify-center h-12 px-8 rounded-lg border-2 border-white/40 text-white font-semibold text-base hover:bg-white/10 transition-all"
               >
                 Falar com um consultor

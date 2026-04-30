@@ -8,14 +8,14 @@ import type {
   BulkMessageResult,
 } from "@/libs/integrations/messaging/messaging.interface"
 
-const whatsAppResponseSchema = z.union([
+const metaCloudResponseSchema = z.union([
   z.object({ messages: z.array(z.object({ id: z.string() })) }),
   z.object({ error: z.object({ message: z.string() }) }),
 ])
 
-type WhatsAppResponse = z.infer<typeof whatsAppResponseSchema>
+type MetaCloudResponse = z.infer<typeof metaCloudResponseSchema>
 
-function isErrorResponse(data: WhatsAppResponse): data is { error: { message: string } } {
+function isErrorResponse(data: MetaCloudResponse): data is { error: { message: string } } {
   return "error" in data
 }
 
@@ -46,14 +46,14 @@ function buildTextPayload(to: string, body: string): Record<string, unknown> {
   }
 }
 
-export class WhatsAppAdapter implements IMessagingService {
+export class MetaCloudMessageAdapter implements IMessagingService {
   async send(params: SendMessageParams): Promise<SendMessageResult> {
     const phoneNumberId = env.WHATSAPP_PHONE_NUMBER_ID
     const accessToken = env.WHATSAPP_ACCESS_TOKEN
 
     if (!phoneNumberId || !accessToken) {
       throw new Error(
-        "WhatsApp não configurado: defina WHATSAPP_PHONE_NUMBER_ID e WHATSAPP_ACCESS_TOKEN",
+        "Meta Cloud API não configurada: defina WHATSAPP_PHONE_NUMBER_ID e WHATSAPP_ACCESS_TOKEN",
       )
     }
 
@@ -75,7 +75,7 @@ export class WhatsAppAdapter implements IMessagingService {
     })
 
     const raw: unknown = await response.json()
-    const parsed = whatsAppResponseSchema.safeParse(raw)
+    const parsed = metaCloudResponseSchema.safeParse(raw)
 
     if (!parsed.success) {
       return { externalId: "", status: "failed", error: `Resposta inesperada da API: HTTP ${response.status}` }

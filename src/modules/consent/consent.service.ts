@@ -44,7 +44,7 @@ export async function sendConsentInvite(tenantId: string, employeeId: string): P
     employeeId,
     consentTermVersionId: activeVersion.id,
     event: "invited",
-    source: "sms_link",
+    source: "message_link",
     token,
     tokenExpiresAt,
   })
@@ -65,7 +65,7 @@ export async function sendConsentInvite(tenantId: string, employeeId: string): P
   })
 }
 
-export async function recordAcceptance(token: string, cpfHash?: string): Promise<void> {
+export async function recordAcceptance(token: string, documentHash?: string): Promise<void> {
   const consentInvite = await findConsentByToken(token)
   if (!consentInvite) throw new AppError("TOKEN_INVALID", "Token inválido.")
   if (consentInvite.tokenExpiresAt && consentInvite.tokenExpiresAt < new Date()) {
@@ -79,8 +79,8 @@ export async function recordAcceptance(token: string, cpfHash?: string): Promise
     employeeId: consentInvite.employeeId,
     consentTermVersionId: consentInvite.consentTermVersionId,
     event: "accepted",
-    source: "sms_link",
-    ...(cpfHash !== undefined ? { cpfHash } : {}),
+    source: "message_link",
+    ...(documentHash !== undefined ? { documentHash } : {}),
   })
 }
 
@@ -98,7 +98,7 @@ export async function recordRefusal(token: string): Promise<void> {
     employeeId: consentInvite.employeeId,
     consentTermVersionId: consentInvite.consentTermVersionId,
     event: "refused",
-    source: "sms_link",
+    source: "message_link",
   })
 }
 

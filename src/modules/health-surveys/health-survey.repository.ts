@@ -1,7 +1,7 @@
 import type { HealthSurveyConfiguration, HealthSurveyQuestion, Department, HealthSurveyDispatch, HealthSurveyResponse, HealthSurveyResponseToken, Organization, Employee, Prisma } from "@prisma/client"
 import { prisma } from "@/libs/db"
 import { AppError } from "@/libs/errors/app-error"
-import type { CreateHealthSurveyConfigInput, CreateHealthSurveyResponseInput, CreateHealthSurveyTokenInput, CreateHealthSurveyAdherenceAlertInput, CreateHealthSurveyMessageLogInput } from "@/modules/health-surveys/health-survey.types"
+import type { CreateHealthSurveyConfigInput, CreateHealthSurveyResponseInput, CreateHealthSurveyTokenInput, CreateHealthSurveyAdherenceAlertInput } from "@/modules/health-surveys/health-survey.types"
 
 type HealthSurveyConfigWithWorkDays = Prisma.HealthSurveyConfigurationGetPayload<{ include: { workDays: true } }>
 export type HealthSurveyConfigWithDetails = HealthSurveyConfigWithWorkDays & { department: Department; questions: HealthSurveyQuestion[] }
@@ -201,6 +201,7 @@ export interface HealthSurveyDispatchDashboardData {
   totalResponses: number
   departmentName: string
   frequency: string
+  signedLinkToken: string | null
   questions: { id: string; text: string; order: number; scoreDirection: string }[]
   responseItems: HealthSurveyDispatchResponseItem[]
 }
@@ -261,6 +262,7 @@ export async function findHealthSurveyDispatchWithDashboard(tenantId: string, di
     departmentId: dispatch.healthSurveyConfiguration.departmentId,
     departmentName: dispatch.healthSurveyConfiguration.department.name,
     frequency: dispatch.healthSurveyConfiguration.frequency,
+    signedLinkToken: dispatch.signedLinkToken ?? null,
     questions,
     responseItems,
   }
@@ -297,6 +299,7 @@ export async function findHealthSurveyMultipleDispatchesWithDashboard(
       departmentId: dispatch.healthSurveyConfiguration.departmentId,
       departmentName: dispatch.healthSurveyConfiguration.department.name,
       frequency: dispatch.healthSurveyConfiguration.frequency,
+      signedLinkToken: dispatch.signedLinkToken ?? null,
       questions,
       responseItems: dispatch.responses.flatMap((r) =>
         r.items.map((item) => ({ questionId: item.questionId, score: item.score })),
@@ -370,6 +373,7 @@ export function createHealthSurveyDispatch(
   tenantId: string,
   configId: string,
   scheduledAt: Date,
+  signedLinkToken?: string,
 ): Promise<HealthSurveyDispatch> {
   return prisma.healthSurveyDispatch.create({
     data: {
@@ -377,6 +381,7 @@ export function createHealthSurveyDispatch(
       healthSurveyConfigurationId: configId,
       scheduledAt,
       status: "scheduled",
+      ...(signedLinkToken !== undefined && { signedLinkToken }),
     },
   })
 }
@@ -384,6 +389,48 @@ export function createHealthSurveyDispatch(
 export function deleteAllTenantsExpiredHealthSurveyTokens(): Promise<{ count: number }> {
   return prisma.healthSurveyResponseToken.deleteMany({
     where: { expiresAt: { lt: new Date() }, usedAt: null },
+  })
+}
+
+export function findHealthSurveyDispatchBySignedLinkToken(
+  signedLinkToken: string,
+): Promise<(HealthSurveyDispatch & { healthSurveyConfiguration: HealthSurveyConfiguration & { organization: Organization } }) | null> {
+  return prisma.healthSurveyDispatch.findUnique({
+    where: { signedLinkToken },
+    include: { healthSurveyConfiguration: { include: { organization: true } } },
+  })
+}
+
+export function findEmployeeByPhoneOrDocument(
+  tenantId: string,
+  identifier: string,
+): Promise<Employee | null> {
+  return prisma.employee.findFirst({
+    where: {
+      tenantId,
+      status: "active",
+      OR: [{ phone: identifier }, { document: identifier }],
+    },
+  })
+}
+
+export function findUnusedHealthSurveyTokenForEmployee(
+  tenantId: string,
+  dispatchId: string,
+  employeeId: string,
+): Promise<HealthSurveyResponseToken | null> {
+  return prisma.healthSurveyResponseToken.findFirst({
+    where: { tenantId, dispatchId, employeeId, usedAt: null },
+  })
+}
+
+export function findUsedHealthSurveyTokenForEmployee(
+  tenantId: string,
+  dispatchId: string,
+  employeeId: string,
+): Promise<HealthSurveyResponseToken | null> {
+  return prisma.healthSurveyResponseToken.findFirst({
+    where: { tenantId, dispatchId, employeeId, usedAt: { not: null } },
   })
 }
 
@@ -577,8 +624,4 @@ export async function markHealthSurveyDispatchAdherenceChecked(tenantId: string,
     where: { id: dispatchId, tenantId },
     data: { adherenceCheckedAt: new Date(), totalResponses },
   })
-}
-
-export async function createHealthSurveyMessageLog(data: CreateHealthSurveyMessageLogInput): Promise<void> {
-  await prisma.messageLog.create({ data })
 }

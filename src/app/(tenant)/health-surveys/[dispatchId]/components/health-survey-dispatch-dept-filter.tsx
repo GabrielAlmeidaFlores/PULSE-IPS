@@ -9,11 +9,11 @@ interface DeptOption {
   name: string
 }
 
-interface Props {
+interface HealthSurveyDispatchDeptFilterProps {
   departments: DeptOption[]
 }
 
-export function HealthSurveyDispatchDeptFilter({ departments }: Props): React.ReactElement {
+export function HealthSurveyDispatchDeptFilter({ departments }: HealthSurveyDispatchDeptFilterProps): React.ReactElement {
   const [selectedIds, setSelectedIds] = useQueryState(
     "depts",
     parseAsArrayOf(parseAsString).withDefault([]).withOptions({ shallow: false }),
