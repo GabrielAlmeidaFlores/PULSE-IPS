@@ -1,6 +1,7 @@
 "use client"
 
 import { useTransition } from "react"
+import { useRouter } from "next/navigation"
 import { LogOut } from "lucide-react"
 import { logoutAction } from "@/app/(auth)/logout/actions"
 
@@ -10,10 +11,12 @@ interface HeaderProps {
 
 export function Header({ email }: HeaderProps): React.ReactElement {
   const [pending, startTransition] = useTransition()
+  const router = useRouter()
 
   function handleLogout(): void {
     startTransition(async () => {
       await logoutAction()
+      router.push("/login")
     })
   }
 
