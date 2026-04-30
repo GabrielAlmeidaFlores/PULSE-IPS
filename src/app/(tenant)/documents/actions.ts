@@ -47,7 +47,7 @@ export async function createDocumentAction(
   try {
     const key = await uploadFile(session.tenantId, file)
     const doc = await createNewDocument(session.tenantId, { title, type, fileUrl: key })
-    await addDocumentVersion(session.tenantId, doc.id, key, session.email)
+    await addDocumentVersion(session.tenantId, doc.id, key, session.userId)
     revalidatePath("/documents")
     return {}
   } catch (err) {
@@ -74,7 +74,7 @@ export async function uploadDocumentVersionAction(
     if (!doc) return { error: "Documento não encontrado." }
 
     const key = await uploadFile(session.tenantId, file)
-    await addDocumentVersion(session.tenantId, documentId, key, session.email)
+    await addDocumentVersion(session.tenantId, documentId, key, session.userId)
     revalidatePath("/documents")
     return {}
   } catch (err) {
@@ -99,7 +99,7 @@ export async function getDocumentVersionsAction(documentId: string): Promise<Ver
       versions: versions.map((v) => ({
         id: v.id,
         version: v.version,
-        uploadedBy: v.uploadedBy,
+        uploadedByName: v.uploadedBy?.name ?? null,
         createdAt: v.createdAt,
       })),
     }

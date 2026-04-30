@@ -1,14 +1,34 @@
 import { prisma } from "@/libs/db"
-import type { Prisma, Document, DocumentVersion } from "@prisma/client"
+import type { Prisma, Document } from "@prisma/client"
 import type { CreateDocumentInput, CreateDocumentVersionInput } from "@/modules/documents/document.types"
 
-export type DocumentWithVersions = Document & { versions: DocumentVersion[] }
-export type DocumentWithLatestVersion = Document & { versions: DocumentVersion[] }
+export interface DocumentVersionRow {
+  id: string
+  documentId: string
+  version: number
+  fileUrl: string
+  uploadedById: string | null
+  createdAt: Date
+  uploadedBy: { name: string } | null
+}
+
+export type DocumentWithVersions = Document & { versions: DocumentVersionRow[] }
+export type DocumentWithLatestVersion = Document & { versions: DocumentVersionRow[] }
+
+const versionSelect = {
+  id: true,
+  documentId: true,
+  version: true,
+  fileUrl: true,
+  uploadedById: true,
+  createdAt: true,
+  uploadedBy: { select: { name: true } },
+} as const
 
 export function findDocumentsByTenant(tenantId: string): Promise<DocumentWithLatestVersion[]> {
   return prisma.document.findMany({
     where: { tenantId, isActive: true },
-    include: { versions: { orderBy: { version: "desc" }, take: 1 } },
+    include: { versions: { select: versionSelect, orderBy: { version: "desc" }, take: 1 } },
     orderBy: { updatedAt: "desc" },
   })
 }
@@ -16,7 +36,7 @@ export function findDocumentsByTenant(tenantId: string): Promise<DocumentWithLat
 export function findDocumentById(tenantId: string, documentId: string): Promise<DocumentWithVersions | null> {
   return prisma.document.findFirst({
     where: { id: documentId, tenantId },
-    include: { versions: { orderBy: { version: "desc" } } },
+    include: { versions: { select: versionSelect, orderBy: { version: "desc" } } },
   })
 }
 
@@ -24,20 +44,25 @@ export function createDocument(tenantId: string, data: CreateDocumentInput): Pro
   return prisma.document.create({ data: { ...data, tenantId } })
 }
 
-export function createDocumentVersion(data: CreateDocumentVersionInput): Promise<DocumentVersion> {
-  return prisma.documentVersion.create({ data })
+export function createDocumentVersion(data: CreateDocumentVersionInput): Promise<DocumentVersionRow> {
+  return prisma.documentVersion.create({
+    data,
+    select: versionSelect,
+  })
 }
 
-export function findVersionsByDocument(tenantId: string, documentId: string): Promise<DocumentVersion[]> {
+export function findVersionsByDocument(tenantId: string, documentId: string): Promise<DocumentVersionRow[]> {
   return prisma.documentVersion.findMany({
     where: { documentId, document: { tenantId } },
+    select: versionSelect,
     orderBy: { version: "desc" },
   })
 }
 
-export function findVersionByIdForDownload(tenantId: string, documentId: string, versionId: string): Promise<DocumentVersion | null> {
+export function findVersionByIdForDownload(tenantId: string, documentId: string, versionId: string): Promise<DocumentVersionRow | null> {
   return prisma.documentVersion.findFirst({
     where: { id: versionId, documentId, document: { tenantId } },
+    select: versionSelect,
   })
 }
 
@@ -66,7 +91,7 @@ export async function findDocumentsForListingPage(
   const [items, total] = await Promise.all([
     prisma.document.findMany({
       where,
-      include: { versions: { orderBy: { version: "desc" }, take: 1 } },
+      include: { versions: { select: versionSelect, orderBy: { version: "desc" }, take: 1 } },
       orderBy: { updatedAt: "desc" },
       skip,
       take,

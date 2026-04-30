@@ -2,12 +2,12 @@ import type { ConsentTermVersion } from "@/modules/consent/consent.types"
 import { AppError } from "@/libs/errors/app-error"
 import {
   createConsentRecord,
-  findExistingConsentEvent,
   getActiveConsentTermVersion,
   getAllConsentTermVersions,
   createConsentTermVersion,
   findLatestConsentEventsByEmployeeIds,
   findEmployeeIdsForConsentState,
+  atomicAcceptConsentFromToken,
 } from "@/modules/consent/consent.repository"
 import { findHealthSurveyTokenByValue, markHealthSurveyTokenUsed } from "@/modules/health-surveys/health-survey.repository"
 
@@ -39,18 +39,12 @@ export async function acceptConsentFromHealthSurveyToken(healthSurveyToken: stri
   const activeVersion = await getActiveConsentTermVersion()
   if (!activeVersion) throw new AppError("NO_ACTIVE_TERMS", NO_ACTIVE_TERMS_MSG)
 
-  const existing = await findExistingConsentEvent(tokenRecord.tenantId, tokenRecord.employeeId, activeVersion.id, ["accepted"])
-  if (!existing) {
-    await createConsentRecord({
-      tenantId: tokenRecord.tenantId,
-      employeeId: tokenRecord.employeeId,
-      consentTermVersionId: activeVersion.id,
-      event: "accepted",
-      source: "health_survey_form",
-    })
-  }
-
-  await markHealthSurveyTokenUsed(tokenRecord.tenantId, tokenRecord.id)
+  await atomicAcceptConsentFromToken(
+    tokenRecord.id,
+    tokenRecord.tenantId,
+    tokenRecord.employeeId,
+    activeVersion.id,
+  )
 }
 
 export async function refuseConsentFromHealthSurveyToken(healthSurveyToken: string): Promise<void> {

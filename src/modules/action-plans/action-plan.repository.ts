@@ -156,7 +156,12 @@ export async function findSuggestionContextData(tenantId: string): Promise<Sugge
     }),
     prisma.employee.groupBy({
       by: ["departmentId"],
-      where: { tenantId, status: "active", consents: { none: { event: "accepted" } } },
+      where: {
+        tenantId,
+        status: "active",
+        consents: { none: { event: "accepted" } },
+        NOT: { consents: { some: { event: { in: ["refused", "opted_out"] } } } },
+      },
       _count: { departmentId: true },
       orderBy: { _count: { departmentId: "desc" } },
     }),

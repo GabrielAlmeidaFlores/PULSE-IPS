@@ -19,12 +19,12 @@ export interface CreateDocumentVersionInput {
   documentId: string
   version: number
   fileUrl: string
-  uploadedBy: string
+  uploadedById: string
 }
 
 export interface DocumentVersionItem {
   id: string
   version: number
-  uploadedBy: string
+  uploadedByName: string | null
   createdAt: Date
 }

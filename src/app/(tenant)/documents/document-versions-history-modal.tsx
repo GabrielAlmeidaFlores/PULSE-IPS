@@ -99,7 +99,7 @@ export function DocumentVersionsHistoryModal({ document, open, onClose }: Props)
                         </span>
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {v.uploadedBy}
+                        {v.uploadedByName ?? "–"}
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
                         {format(new Date(v.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}

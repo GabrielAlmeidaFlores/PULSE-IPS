@@ -329,11 +329,15 @@ export function findAllTenantsPendingHealthSurveyDispatches(): Promise<
         })[]
       }
     }
-    organization: Organization
+    organization: { timezone: string; billingStatus: string }
   })[]
 > {
   return prisma.healthSurveyDispatch.findMany({
-    where: { status: "scheduled", scheduledAt: { lte: new Date() } },
+    where: {
+      status: "scheduled",
+      scheduledAt: { lte: new Date() },
+      organization: { billingStatus: { in: ["active", "trialing"] } },
+    },
     include: {
       healthSurveyConfiguration: {
         include: {
@@ -347,7 +351,7 @@ export function findAllTenantsPendingHealthSurveyDispatches(): Promise<
           },
         },
       },
-      organization: true,
+      organization: { select: { timezone: true, billingStatus: true } },
     },
   })
 }

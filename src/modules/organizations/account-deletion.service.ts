@@ -4,6 +4,7 @@ import { ptBR } from "date-fns/locale"
 import { AppError } from "@/libs/errors/app-error"
 import { getEmailService, getBillingService } from "@/libs/integrations"
 import { renderEmailTemplate } from "@/libs/email-templates"
+import { createLogger } from "@/libs/utils/logger"
 import { findOrganizationById } from "@/modules/organizations/organization.repository"
 import { findSubscriptionByTenantId } from "@/modules/billing/billing.repository"
 import {
@@ -18,6 +19,7 @@ import {
 
 const ACCOUNT_DELETION_CODE_EXPIRES_MINUTES = 15
 const ACCOUNT_DELETION_GRACE_DAYS = 30
+const logger = createLogger("account-deletion")
 const ACTIVE_SUBSCRIPTION_STATUSES = new Set(["active", "trialing"])
 
 function generateSixDigitCode(): string {
@@ -72,7 +74,8 @@ export async function confirmAccountDeletion(
     const billing = getBillingService()
     try {
       await billing.cancelSubscription(subscription.externalSubscriptionId)
-    } catch {
+    } catch (err) {
+      logger.error("falha ao cancelar assinatura no billing durante exclusão de conta", err instanceof Error ? err.message : String(err))
     }
   }
 

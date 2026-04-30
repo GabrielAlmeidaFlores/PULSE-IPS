@@ -30,7 +30,7 @@ export async function computeRawSuggestions(tenantId: string): Promise<ActionPla
   const ctx = await findSuggestionContextData(tenantId)
 
   const lowAdherenceDispatches = ctx.recentDispatches.filter(
-    (d) => d.totalResponses / d.totalRecipients < 0.8,
+    (d) => d.totalRecipients > 0 && d.totalResponses / d.totalRecipients < 0.8,
   )
 
   const existingTitles = new Set(ctx.recentPlanTitles.map((p: { title: string }) => p.title.toLowerCase()))

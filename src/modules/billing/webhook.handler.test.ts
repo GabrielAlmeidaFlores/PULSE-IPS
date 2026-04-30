@@ -9,8 +9,7 @@ import {
   findFailedWebhookEvents,
   markWebhookEventProcessed,
   markWebhookEventFailed,
-  findTenantSubscriptionFeatures,
-  createSubscriptionFeatureSnapshot,
+  replaceSubscriptionFeatures,
   findPlanPriceForProvisioning,
   cancelOrganizationSubscription,
 } from "@/modules/billing/billing.repository"
@@ -28,8 +27,7 @@ const mockUpsertSubscription = vi.mocked(upsertSubscription)
 const mockFindFailedWebhookEvents = vi.mocked(findFailedWebhookEvents)
 const mockMarkWebhookEventProcessed = vi.mocked(markWebhookEventProcessed)
 const mockMarkWebhookEventFailed = vi.mocked(markWebhookEventFailed)
-const mockFindTenantSubscriptionFeatures = vi.mocked(findTenantSubscriptionFeatures)
-const mockCreateSubscriptionFeatureSnapshot = vi.mocked(createSubscriptionFeatureSnapshot)
+const mockReplaceSubscriptionFeatures = vi.mocked(replaceSubscriptionFeatures)
 const mockFindOrgByCustomerId = vi.mocked(findOrganizationByCustomerId)
 const mockUpdateOrgBillingStatus = vi.mocked(updateOrganizationBillingStatus)
 const mockFindPlanPriceForProvisioning = vi.mocked(findPlanPriceForProvisioning)
@@ -90,9 +88,8 @@ beforeEach(() => {
   mockRecordWebhookEvent.mockResolvedValue({ id: "webhook-record-1" } as Awaited<ReturnType<typeof recordWebhookEvent>>)
   mockUpsertSubscription.mockResolvedValue({ id: "sub-1" } as Awaited<ReturnType<typeof upsertSubscription>>)
   mockUpdateOrgBillingStatus.mockResolvedValue(undefined)
-  mockFindTenantSubscriptionFeatures.mockResolvedValue([])
-  mockCreateSubscriptionFeatureSnapshot.mockResolvedValue(undefined)
   mockFindPlanFeatures.mockResolvedValue([])
+  mockReplaceSubscriptionFeatures.mockResolvedValue(undefined)
   mockFindOrgByCustomerId.mockResolvedValue(ORG as Awaited<ReturnType<typeof findOrganizationByCustomerId>>)
   mockFindPlanPriceForProvisioning.mockResolvedValue(PLAN_PRICE as Awaited<ReturnType<typeof findPlanPriceForProvisioning>>)
   mockCancelOrganizationSubscription.mockResolvedValue(undefined)
@@ -116,6 +113,7 @@ describe("handleStripeWebhook — customer.subscription.created/updated", () => 
     expect(mockUpsertSubscription).toHaveBeenCalledWith(
       expect.objectContaining({ tenantId: ORG.id, externalSubscriptionId: "sub_123", status: "active" }),
     )
+    expect(mockReplaceSubscriptionFeatures).toHaveBeenCalledOnce()
     expect(mockUpdateOrgBillingStatus).toHaveBeenCalledWith(ORG.id, "active", PLAN_PRICE.planId)
     expect(mockRecordWebhookEvent).toHaveBeenCalledOnce()
   })
@@ -126,6 +124,7 @@ describe("handleStripeWebhook — customer.subscription.created/updated", () => 
     expect(mockUpsertSubscription).toHaveBeenCalledWith(
       expect.objectContaining({ status: "past_due" }),
     )
+    expect(mockReplaceSubscriptionFeatures).toHaveBeenCalledOnce()
     expect(mockUpdateOrgBillingStatus).toHaveBeenCalledWith(ORG.id, "past_due", PLAN_PRICE.planId)
   })
 
@@ -243,6 +242,25 @@ describe("retryFailedWebhookEvents", () => {
 
     expect(result).toEqual({ retried: 1, succeeded: 1, failed: 0 })
     expect(mockMarkWebhookEventProcessed).toHaveBeenCalledWith(failedEvent.id)
+  })
+
+  it("skips and counts as failed when event has null payload", async () => {
+    const nullPayloadEvent: Awaited<ReturnType<typeof findFailedWebhookEvents>>[number] = {
+      id: "webhook-log-null",
+      tenantId: null,
+      externalEventId: "evt_null",
+      type: SUBSCRIPTION_CREATED,
+      processedAt: null,
+      error: null,
+      payload: null,
+      createdAt: new Date(),
+    }
+    mockFindFailedWebhookEvents.mockResolvedValue([nullPayloadEvent])
+
+    const result = await retryFailedWebhookEvents()
+
+    expect(result).toEqual({ retried: 1, succeeded: 0, failed: 1 })
+    expect(mockMarkWebhookEventProcessed).not.toHaveBeenCalled()
   })
 
   it("marks failed and counts error when retry throws", async () => {

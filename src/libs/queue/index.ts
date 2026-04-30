@@ -28,7 +28,7 @@ export interface SendMessageJobData {
   tenantId: string
   employeeId: string
   provider: string
-  type: "survey_dispatch" | "survey_resend"
+  type: "survey_dispatch"
   templateName?: string
   templateVariables?: string[]
 }

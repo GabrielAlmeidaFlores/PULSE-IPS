@@ -30,6 +30,7 @@ export const env = createEnv({
       .url()
       .default("https://graph.facebook.com"),
     WHATSAPP_WEBHOOK_VERIFY_TOKEN: z.string().min(1).optional(),
+    WHATSAPP_APP_SECRET: z.string().min(1).optional(),
     WHATSAPP_TEMPLATE_LANGUAGE: z.string().default("pt_BR"),
     WHATSAPP_SURVEY_TEMPLATE_NAME: z.string().default("pulse_survey_dispatch"),
 
@@ -109,6 +110,7 @@ export const env = createEnv({
     WHATSAPP_API_BASE_URL:
       process.env.WHATSAPP_API_BASE_URL ?? "https://graph.facebook.com",
     WHATSAPP_WEBHOOK_VERIFY_TOKEN: process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN,
+    WHATSAPP_APP_SECRET: process.env.WHATSAPP_APP_SECRET,
     WHATSAPP_TEMPLATE_LANGUAGE: process.env.WHATSAPP_TEMPLATE_LANGUAGE ?? "pt_BR",
     WHATSAPP_SURVEY_TEMPLATE_NAME:
       process.env.WHATSAPP_SURVEY_TEMPLATE_NAME ?? "pulse_survey_dispatch",

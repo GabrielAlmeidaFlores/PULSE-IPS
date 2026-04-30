@@ -25,7 +25,17 @@ export default async function DocumentsPage({
   const docQuery: { page: number; pageSize: number; q?: string } = { page, pageSize }
   if (params["q"] !== undefined) docQuery.q = params["q"]
 
-  const { items: documents, total } = await getDocumentsPaginated(session.tenantId, docQuery)
+  const { items, total } = await getDocumentsPaginated(session.tenantId, docQuery)
+  const documents = items.map((doc) => ({
+    ...doc,
+    versions: doc.versions.map((v) => ({
+      id: v.id,
+      version: v.version,
+      fileUrl: v.fileUrl,
+      uploadedByName: v.uploadedBy?.name ?? null,
+      createdAt: v.createdAt,
+    })),
+  }))
 
   return (
     <div className="flex flex-col h-full">
