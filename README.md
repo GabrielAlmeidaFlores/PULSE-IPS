@@ -1,6 +1,6 @@
 # Pulse — Plataforma de Saúde Ocupacional
 
-Plataforma SaaS multi-tenant de gestão de saúde e bem-estar ocupacional voltada à conformidade com a **LGPD** e às obrigações legais trabalhistas. Permite que empresas cadastrem colaboradores, apliquem pesquisas de saúde/clima com envio automático por SMS ou WhatsApp, monitorem alertas, criem planos de ação e gerem o PGR.
+Plataforma SaaS multi-tenant de gestão de saúde e bem-estar ocupacional voltada à conformidade com a **LGPD** e às obrigações legais trabalhistas. Permite que empresas cadastrem colaboradores, apliquem pesquisas de saúde/clima com envio automático de mensagens, monitorem alertas, criem planos de ação e gerem o PGR.
 
 ---
 
@@ -843,9 +843,9 @@ Referência de tudo que o usuário vê na tela para cada alerta (`/alerts`) e su
 | | Chave de dedup | `consent-pending` |
 | | Título | `Engajamento no TCLE — colaboradores sem aceite` |
 | | Motivo *(card colapsado)* | `{N} colaborador(es) sem TCLE aceito — {setor1} ({n}), {setor2} ({n})` |
-| | Descrição *(card expandido)* | `{N} colaboradores ativos não aceitaram o Termo de Consentimento — distribuídos em: {setor1} ({n}), {setor2} ({n}). Sem o aceite, esses colaboradores ficam excluídos das pesquisas e das métricas de saúde ocupacional, reduzindo a representatividade dos dados e comprometendo a documentação de conformidade legal.` |
+| | Descrição *(card expandido)* | `{N} colaboradores ativos não aceitaram o Termo de Consentimento — distribuídos em: {setor1} ({n}), {setor2} ({n}). Sem o aceite, esses colaboradores não contribuem com dados nas pesquisas, reduzindo a representatividade dos indicadores de saúde ocupacional e comprometendo a documentação de conformidade legal.` |
 | | Tarefa 1 | Identificar colaboradores com aceite pendente por setor |
-| | Tarefa 2 | Reenviar o convite de aceite do TCLE para esses colaboradores |
+| | Tarefa 2 | Verificar se colaboradores sem aceite receberam o link da pesquisa e se o TCLE foi exibido corretamente inline |
 | | Tarefa 3 | Comunicar gestores sobre a importância do aceite nos seus setores |
 | | Tarefa 4 | Registrar colaboradores que recusaram explicitamente |
 | **"Geração do relatório PGR do mês"** *(Sugestão)* | Condição | Nenhum `pgr_reviews` com `createdAt` no mês corrente |
@@ -1110,7 +1110,7 @@ flowchart TD
 %% ════════════════════════════════════════════════
 
     HEALTH_SURVEY_CFG --> AUTO_SEND["⏰ Sistema envia automaticamente\nno dia e horário do expediente"]
-    AUTO_SEND --> FUNC_MSG["Funcionário recebe\nSMS ou WhatsApp\ncom link da pesquisa"]
+    AUTO_SEND --> FUNC_MSG["Funcionário recebe\nmensagem com link da pesquisa"]
     FUNC --> FUNC_MSG
 
     FUNC_MSG --> ANSWERED{"Funcionário\nresponde?"}
@@ -1168,7 +1168,7 @@ end
 
 subgraph PULSE ["⚙️ Pulse — automático"]
     direction TB
-    SEND["Envia SMS ou WhatsApp\npara os funcionários de\ncada departamento configurado"]
+    SEND["Envia mensagem para os funcionários de\ncada departamento configurado"]
     WAIT["Aguarda as respostas\npor até 48 horas"]
     ANALYZE["Analisa os resultados:\nparticipação e notas do período"]
     SEND --> WAIT --> ANALYZE

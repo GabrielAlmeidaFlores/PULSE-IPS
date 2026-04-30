@@ -62,8 +62,8 @@ O **Pulse** é um software SaaS de monitoramento de saúde ocupacional que ajuda
 **Fluxo resumido:**
 
 ```
-RH cadastra colaboradores → sistema envia TCLE → colaborador aceita
-  → sistema envia pesquisas periodicamente → RH acompanha métricas e alertas
+RH cadastra colaboradores → sistema envia pesquisas periodicamente → colaborador aceita TCLE inline na primeira pesquisa
+  → colaborador responde pesquisas → RH acompanha métricas e alertas
   → Admin exporta relatório mensal para o PGR
 ```
 
@@ -2922,7 +2922,7 @@ Employee cadastrado (sem convite separado)
 ```
 Job health-survey-dispatcher (a cada 15min)
   → Busca dispatches status='scheduled' e scheduled_at <= now()
-    → Filtra employees: status='active', consent='accepted'
+    → Filtra employees: status='active', excluindo apenas refused/opted_out
     → Gera health_survey_response_token por employee (expires_at = +48h, snapshot do horário)
     → [GATE] hasTenantPlanFeature(tenantId, "messaging")
         ├─ SEM feature: tokens criados, nenhuma mensagem enviada → RH usa link assinado

@@ -13,7 +13,7 @@ import {
 } from "@/modules/health-surveys/health-survey.repository"
 import { hasOpenAlertOfType } from "@/modules/alerts/alert.repository"
 import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
-import { findEmployeeIdsWithAcceptedConsent } from "@/modules/consent/consent.repository"
+import { findEmployeeIdsEligibleForDispatch } from "@/modules/consent/consent.repository"
 type PendingDispatch = Awaited<ReturnType<typeof findAllTenantsPendingHealthSurveyDispatches>>[number]
 
 const mockAddBulk = vi.hoisted(() => vi.fn().mockResolvedValue([]))
@@ -42,7 +42,7 @@ const mockCreateAdherenceAlert = vi.mocked(createHealthSurveyAdherenceAlert)
 const mockMarkDispatchAdherenceChecked = vi.mocked(markHealthSurveyDispatchAdherenceChecked)
 const mockHasOpenAlertOfType = vi.mocked(hasOpenAlertOfType)
 const mockHasTenantPlanFeature = vi.mocked(hasTenantPlanFeature)
-const mockFindEmployeeIdsWithAcceptedConsent = vi.mocked(findEmployeeIdsWithAcceptedConsent)
+const mockFindEmployeeIdsEligibleForDispatch = vi.mocked(findEmployeeIdsEligibleForDispatch)
 
 const TENANT_ID = "tenant-1"
 const DISPATCH_ID = "dispatch-1"
@@ -115,7 +115,7 @@ beforeEach(() => {
   mockMarkDispatchAdherenceChecked.mockResolvedValue(undefined)
   mockHasOpenAlertOfType.mockResolvedValue(false)
   mockHasTenantPlanFeature.mockResolvedValue(true)
-  mockFindEmployeeIdsWithAcceptedConsent.mockResolvedValue(["emp-1"])
+  mockFindEmployeeIdsEligibleForDispatch.mockResolvedValue(["emp-1"])
 })
 
 describe("runHealthSurveyDispatcher", () => {
@@ -438,7 +438,7 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
     vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
 
     mockFindPendingDispatches.mockResolvedValue([makePendingDispatch()])
-    mockFindEmployeeIdsWithAcceptedConsent.mockResolvedValue([])
+    mockFindEmployeeIdsEligibleForDispatch.mockResolvedValue([])
 
     const result = await runHealthSurveyDispatcher()
 
@@ -466,7 +466,7 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
       },
     } as unknown as Awaited<ReturnType<typeof findAllTenantsPendingHealthSurveyDispatches>>[number]
     mockFindPendingDispatches.mockResolvedValue([dispatch])
-    mockFindEmployeeIdsWithAcceptedConsent.mockResolvedValue(["emp-1"])
+    mockFindEmployeeIdsEligibleForDispatch.mockResolvedValue(["emp-1"])
 
     await runHealthSurveyDispatcher()
 
@@ -486,7 +486,7 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
     vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
 
     mockFindPendingDispatches.mockResolvedValue([makePendingDispatch()])
-    mockFindEmployeeIdsWithAcceptedConsent.mockResolvedValue(["emp-1"])
+    mockFindEmployeeIdsEligibleForDispatch.mockResolvedValue(["emp-1"])
 
     await runHealthSurveyDispatcher()
 

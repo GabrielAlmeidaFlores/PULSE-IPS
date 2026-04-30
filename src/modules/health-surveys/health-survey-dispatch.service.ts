@@ -16,7 +16,7 @@ import {
 } from "@/modules/health-surveys/health-survey.repository"
 import { hasOpenAlertOfType } from "@/modules/alerts/alert.repository"
 import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
-import { findEmployeeIdsWithAcceptedConsent } from "@/modules/consent/consent.repository"
+import { findEmployeeIdsEligibleForDispatch } from "@/modules/consent/consent.repository"
 
 const FREQUENCY_INTERVAL_DAYS: Record<string, number> = {
   daily: 1,
@@ -50,10 +50,10 @@ async function sendDispatchTokensAndMessages(
   configWorkEndTime: string,
 ): Promise<void> {
   const allEmployeeIds = eligibleEmployees.map((e) => e.id)
-  const acceptedEmployeeIds = new Set(await findEmployeeIdsWithAcceptedConsent(tenantId, allEmployeeIds))
-  const consentedEmployees = eligibleEmployees.filter((e) => acceptedEmployeeIds.has(e.id))
+  const eligibleForDispatchIds = new Set(await findEmployeeIdsEligibleForDispatch(tenantId, allEmployeeIds))
+  const dispatchTargetEmployees = eligibleEmployees.filter((e) => eligibleForDispatchIds.has(e.id))
 
-  const tokens = consentedEmployees.map((emp) => ({
+  const tokens = dispatchTargetEmployees.map((emp) => ({
     tenantId,
     dispatchId,
     employeeId: emp.id,
@@ -73,7 +73,7 @@ async function sendDispatchTokensAndMessages(
   const messageQueue = getMessageQueue()
   const bulkJobs = tokens
     .map((empToken) => {
-      const employee = consentedEmployees.find((e) => e.id === empToken.employeeId)
+      const employee = dispatchTargetEmployees.find((e) => e.id === empToken.employeeId)
       if (!employee) return null
       const healthSurveyUrl = `${env.NEXT_PUBLIC_APP_URL}/health-survey/${empToken.token}`
       return {

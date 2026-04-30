@@ -368,7 +368,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
               },
               {
                 q: "E se o colaborador não quiser participar?",
-                a: "Participação é sempre voluntária. O colaborador recebe um link exclusivo de consentimento (TCLE) antes de qualquer pesquisa. Pode recusar a qualquer momento — a recusa fica registrada no sistema.",
+                a: "Participação é sempre voluntária. Na primeira pesquisa, o colaborador vê o Termo de Consentimento (TCLE) inline e pode aceitar ou recusar antes de responder. Pode revogar o consentimento a qualquer momento — a recusa fica registrada no sistema.",
               },
               {
                 q: "Posso cancelar quando quiser?",
