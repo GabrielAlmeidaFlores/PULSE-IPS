@@ -8,7 +8,7 @@ import {
   createTermsAcceptance,
   findAcceptancesByVersion,
 } from "@/modules/terms/terms.repository"
-import type { CreateTermsVersionInput, AcceptTermsInput } from "@/modules/terms/terms.types"
+import type { CreateTermsVersionInput, AcceptTermsInput, PlatformTermsVersion, PlatformTermsAcceptance } from "@/modules/terms/terms.types"
 
 export function getActiveTermsVersion(): ReturnType<typeof findActiveTermsVersion> {
   return findActiveTermsVersion()
@@ -26,7 +26,7 @@ export function createNewTermsVersion(input: CreateTermsVersionInput): ReturnTyp
   return createTermsVersion(input)
 }
 
-export async function getPendingTermsForUser(userId: string): Promise<import("@prisma/client").PlatformTermsVersion | null> {
+export async function getPendingTermsForUser(userId: string): Promise<PlatformTermsVersion | null> {
   const active = await findActiveTermsVersion()
   if (!active) return null
 
@@ -36,7 +36,7 @@ export async function getPendingTermsForUser(userId: string): Promise<import("@p
   return active
 }
 
-export async function acceptTerms(input: AcceptTermsInput): Promise<import("@prisma/client").PlatformTermsAcceptance> {
+export async function acceptTerms(input: AcceptTermsInput): Promise<PlatformTermsAcceptance> {
   const version = await findTermsVersionById(input.termsVersionId)
   if (!version) throw new AppError("TERMS_NOT_FOUND", "Versão dos termos não encontrada.")
   if (!version.isActive) throw new AppError("TERMS_INACTIVE", "Esta versão dos termos não está mais ativa.")

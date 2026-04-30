@@ -107,7 +107,7 @@ export default async function OrgBillingPage({ params }: Props): Promise<React.R
                   <p className="text-[11px] text-muted-foreground">{plan.description ?? "—"}</p>
                 </div>
                 <div className="text-[11px] text-muted-foreground">
-                  Máx. {plan.maxEmployees.toLocaleString("pt-BR")} colaboradores
+                  Máx. {plan.maxEmployees !== null ? plan.maxEmployees.toLocaleString("pt-BR") : "Ilimitado"} colaboradores
                 </div>
                 <div className="space-y-1">
                   {plan.prices.map((p) => (

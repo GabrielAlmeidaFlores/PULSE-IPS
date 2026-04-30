@@ -26,7 +26,7 @@ export async function createNewEmployee(tenantId: string, input: CreateEmployeeI
   } else {
     const subscription = await findActiveSubscription(tenantId)
     if (subscription) {
-      if (currentCount >= subscription.snapshotMaxEmployees) throw new AppError("EMPLOYEE_LIMIT_REACHED", "Limite de colaboradores atingido.")
+      if (subscription.snapshotMaxEmployees !== null && currentCount >= subscription.snapshotMaxEmployees) throw new AppError("EMPLOYEE_LIMIT_REACHED", "Limite de colaboradores atingido.")
     } else if (org.planId) {
       const plan = await findPlanById(org.planId)
       if (plan && plan.maxEmployees !== null && currentCount >= plan.maxEmployees) throw new AppError("EMPLOYEE_LIMIT_REACHED", "Limite de colaboradores atingido.")

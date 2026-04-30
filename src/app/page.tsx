@@ -258,7 +258,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
                       <div className="text-3xl font-extrabold tracking-tight">Sob consulta</div>
                     )}
                     <div className={`text-xs mt-1 font-medium ${highlightSecondary}`}>
-                      Até {plan.maxEmployees} funcionários
+                      {plan.maxEmployees !== null ? `Até ${plan.maxEmployees} funcionários` : "Colaboradores ilimitados"}
                     </div>
                   </div>
 

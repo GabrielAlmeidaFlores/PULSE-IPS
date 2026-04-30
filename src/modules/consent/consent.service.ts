@@ -1,4 +1,4 @@
-import type { ConsentTermVersion } from "@prisma/client"
+import type { ConsentTermVersion } from "@/modules/consent/consent.types"
 import { AppError } from "@/libs/errors/app-error"
 import {
   createConsentRecord,

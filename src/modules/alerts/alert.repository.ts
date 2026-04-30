@@ -1,6 +1,6 @@
 import { prisma } from "@/libs/db"
-import type { Alert, Prisma } from "@prisma/client"
-import type { AlertSeverity, AlertType } from "@/modules/alerts/alert.types"
+import type { Prisma } from "@prisma/client"
+import type { AlertSeverity, AlertType, AlertWithDepartment } from "@/modules/alerts/alert.types"
 import { MINIMUM_RESPONDENTS_FOR_DISPLAY } from "@/libs/utils/anonymity"
 
 export interface CreateAlertInput {
@@ -11,13 +11,13 @@ export interface CreateAlertInput {
   message: string
 }
 
-export function findAlertsByTenant(tenantId: string): Promise<(Alert & { department: import("@prisma/client").Department | null })[]> {
+export function findAlertsByTenant(tenantId: string): Promise<AlertWithDepartment[]> {
   return prisma.alert.findMany({
     where: { tenantId },
     include: { department: true },
     orderBy: { createdAt: "desc" },
     take: 100,
-  })
+  }) as unknown as Promise<AlertWithDepartment[]>
 }
 
 export interface AlertListingFilters {
@@ -31,7 +31,7 @@ export async function findAlertsByTenantPaginated(
   filters: AlertListingFilters,
   skip: number,
   take: number,
-): Promise<{ alerts: (Alert & { department: import("@prisma/client").Department | null })[]; total: number }> {
+): Promise<{ alerts: AlertWithDepartment[]; total: number }> {
   const where: Prisma.AlertWhereInput = { tenantId }
 
   if (filters.type !== undefined) {
@@ -61,7 +61,7 @@ export async function findAlertsByTenantPaginated(
     prisma.alert.count({ where }),
   ])
 
-  return { alerts, total }
+  return { alerts: alerts as unknown as AlertWithDepartment[], total }
 }
 
 export interface AlertStats {

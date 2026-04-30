@@ -17,9 +17,9 @@ import {
 import { toHealthIndex, healthIndexLabel } from "@/libs/utils/health-index"
 import { MINIMUM_RESPONDENTS_FOR_DISPLAY } from "@/libs/utils/anonymity"
 import { AppError } from "@/libs/errors/app-error"
-import type { Alert, Department } from "@prisma/client"
+import type { AlertWithDepartment } from "@/modules/alerts/alert.types"
 
-export function getAlerts(tenantId: string): Promise<(Alert & { department: Department | null })[]> {
+export function getAlerts(tenantId: string): Promise<AlertWithDepartment[]> {
   return findAlertsByTenant(tenantId)
 }
 
@@ -34,7 +34,7 @@ export interface AlertListingQuery {
 export function getAlertsPaginated(
   tenantId: string,
   query: AlertListingQuery,
-): Promise<{ alerts: (Alert & { department: Department | null })[]; total: number }> {
+): Promise<{ alerts: AlertWithDepartment[]; total: number }> {
   const filters: AlertListingFilters = {}
   if (query.type !== undefined) filters.type = query.type
   if (query.severity !== undefined) filters.severity = query.severity

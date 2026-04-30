@@ -1,4 +1,5 @@
 import type { JsonValue } from "@/libs/utils/json"
+import type { Plan } from "@/modules/plans/plan.types"
 
 export type BillingStatus = "pending" | "active" | "past_due" | "cancelled" | "trialing" | "suspended" | "unpaid"
 
@@ -19,6 +20,8 @@ export interface OrganizationSubscription {
   createdAt: Date
   updatedAt: Date
 }
+
+export type SubscriptionWithPlan = OrganizationSubscription & { plan: Plan }
 
 export interface SubscriptionUpsertInput {
   tenantId: string

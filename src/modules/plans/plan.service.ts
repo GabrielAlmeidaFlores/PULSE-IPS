@@ -16,8 +16,7 @@ import {
   findPlanFeatures,
   type PlanWithPricesAndFeatures,
 } from "@/modules/plans/plan.repository"
-import type { CreatePlanInput, CreatePlanPriceInput, UpdatePlanInput, AddDirectPriceInput, PlanFeature, SetPlanFeaturesInput } from "@/modules/plans/plan.types"
-import type { Plan, PlanPrice } from "@prisma/client"
+import type { CreatePlanInput, CreatePlanPriceInput, UpdatePlanInput, AddDirectPriceInput, PlanFeature, SetPlanFeaturesInput, Plan, PlanPrice } from "@/modules/plans/plan.types"
 import { AppError } from "@/libs/errors/app-error"
 
 export type { PlanWithPricesAndFeatures }

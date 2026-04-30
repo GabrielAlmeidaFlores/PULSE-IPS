@@ -8,6 +8,7 @@ export interface Organization {
   maxEmployeesOverride: number | null
   timezone: string
   isActive: boolean
+  deletionScheduledAt: Date | null
   createdAt: Date
   updatedAt: Date
 }

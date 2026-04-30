@@ -45,7 +45,7 @@ function PriceRow({ label, value, onChange }: { label: string; value: string; on
 }
 
 interface PlanPrice { id: string; priceInCents: number; currency: string; interval: string; isActive: boolean }
-interface Plan { id: string; name: string; description: string | null; maxEmployees: number; isActive: boolean; features: PlanFeature[]; prices: PlanPrice[] }
+interface Plan { id: string; name: string; description: string | null; maxEmployees: number | null; isActive: boolean; features: PlanFeature[]; prices: PlanPrice[] }
 
 export function PlanRowActions({ plan }: { plan: Plan }): React.ReactElement {
   const router = useRouter()
@@ -55,7 +55,7 @@ export function PlanRowActions({ plan }: { plan: Plan }): React.ReactElement {
 
   const [name, setName] = useState(plan.name)
   const [description, setDescription] = useState(plan.description ?? "")
-  const [maxEmployees, setMaxEmployees] = useState(plan.maxEmployees)
+  const [maxEmployees, setMaxEmployees] = useState<number | null>(plan.maxEmployees)
   const [selectedFeatures, setSelectedFeatures] = useState<PlanFeature[]>(plan.features)
 
   const [priceValues, setPriceValues] = useState<Record<string, string>>(
@@ -183,7 +183,7 @@ export function PlanRowActions({ plan }: { plan: Plan }): React.ReactElement {
                 <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className={`${inputCls} resize-none`} style={{ borderRadius: 0 }} />
               </AdminField>
               <AdminField label="Limite de colaboradores" hint="Máximo: 300 colaboradores">
-                <input type="number" min={1} max={300} value={maxEmployees} onChange={(e) => setMaxEmployees(Number(e.target.value))} className={inputCls} style={{ borderRadius: 0 }} />
+                <input type="number" min={1} max={300} value={maxEmployees ?? ""} onChange={(e) => setMaxEmployees(e.target.value ? Number(e.target.value) : null)} className={inputCls} style={{ borderRadius: 0 }} />
               </AdminField>
 
               <div className="space-y-1">

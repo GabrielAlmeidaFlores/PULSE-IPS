@@ -49,6 +49,10 @@ services:
       context: .
       dockerfile: Dockerfile
       target: runner
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
+        NEXT_PUBLIC_CONSULTANT_WHATSAPP: ${NEXT_PUBLIC_CONSULTANT_WHATSAPP:-5511999999999}
     image: pulse-app:latest
     container_name: pulse_app
     restart: unless-stopped

@@ -3416,7 +3416,7 @@ modules/*/types.ts         ← qualquer camada pode importar (tipos puros)
 | `src/modules/*/service.ts` | repositories, libs/integrations (via factory), libs/auth, libs/utils, types, schemas | Prisma diretamente, SDKs externos diretamente |
 | `src/modules/*/repository.ts` | libs/db (Prisma), libs/utils, types | services, SDKs externos que não sejam o ORM |
 | `src/libs/integrations/**` | SDKs externos (Twilio, Resend, Stripe), libs/utils | Prisma, modules |
-| `src/modules/*/types.ts` | libs/utils/json, outros types | `@prisma/client` (exceto re-export de entidade), SDKs externos |
+| `src/modules/*/types.ts` | libs/utils/json, outros types | `@prisma/client`, SDKs externos |
 
 ### Exemplos práticos
 
@@ -3449,17 +3449,34 @@ import type { JsonValue } from "@/libs/utils/json"
 export interface WebhookEventInput { payload?: JsonValue }
 ```
 
-### Re-export de entidades Prisma em types.ts — regra
+### Interfaces de domínio em types.ts — proibido importar de @prisma/client
 
-O único uso aceitável de `@prisma/client` em arquivos `types.ts` é **re-exportar entidades** para que o app layer não precise importar diretamente:
+**Arquivos `*.types.ts` nunca importam nem re-exportam tipos de `@prisma/client`.** Cada entidade de domínio deve ter sua própria interface TypeScript, definida manualmente e independente do ORM.
 
 ```typescript
-// src/modules/employees/employee.types.ts
-export type { Employee } from "@prisma/client"  // ✅ re-export aceitável
+// ❌ PROIBIDO — re-exportar tipo do Prisma
+export type { Employee } from "@prisma/client"
 
-// app layer usa:
-import type { Employee } from "@/modules/employees/employee.types"  // ✅ correto
+// ❌ PROIBIDO — importar tipo do Prisma como base
+import type { Employee } from "@prisma/client"
+export interface EmployeeWithDept extends Employee { ... }
+
+// ✅ CORRETO — interface própria, sem dependência de ORM
+export interface Employee {
+  id: string
+  tenantId: string
+  name: string
+  email: string | null
+  phone: string
+  status: "active" | "inactive" | "paused"
+  createdAt: Date
+  updatedAt: Date
+}
 ```
+
+**Motivo:** as interfaces de domínio são contratos do negócio — devem existir independentemente do ORM utilizado. Se o Prisma for trocado por outro ORM, apenas `repository.ts` deve mudar. `types.ts`, `service.ts` e toda a camada de app devem permanecer intactos.
+
+**Como lidar com campos extras do Prisma:** os modelos Prisma geralmente têm mais campos que as interfaces de domínio precisam. Isso é intencional — a interface de domínio expõe apenas o contrato necessário. O TypeScript structural typing garante que o retorno do repository (Prisma type, que é um superset) seja compatível com a interface de domínio.
 
 ---
 
@@ -3558,7 +3575,7 @@ Execute `grep` para confirmar cada item:
 | # | Verificação | Comando de grep |
 |---|---|---|
 | 1 | Nenhum `@prisma/client` importado em `src/app/**` | `grep -r "from \"@prisma/client\"" src/app/` |
-| 2 | Nenhum `@prisma/client` importado em `modules/*/types.ts` (exceto re-exports de entidade) | `grep -r "Prisma\." src/modules/` |
+| 2 | Nenhum `@prisma/client` importado em `modules/*/types.ts` ou `modules/*/service.ts` | `grep -r "@prisma/client" src/modules/` |
 | 3 | Nenhum `prisma` importado em `service.ts` | `grep -rn "from \"@/libs/db\"" src/modules/ \| grep service` |
 | 4 | Nenhum `$queryRaw` / `$executeRaw` em qualquer arquivo | `grep -r "\$queryRaw\|\$executeRaw" src/` |
 | 5 | Todas as queries em tabelas com `tenant_id` incluem `tenantId` no `where` | Revisar manualmente qualquer novo repository |

@@ -1,8 +1,10 @@
 import { prisma } from "@/libs/db"
-import type { Plan, PlanPrice, PlanFeature as PrismaFeature } from "@prisma/client"
-import type { CreatePlanInput, UpdatePlanInput, CreatePlanPriceRecord, PlanFeature, PlanWithFeatures } from "@/modules/plans/plan.types"
+import type { PlanFeature as PrismaFeature } from "@prisma/client"
+import type { CreatePlanInput, UpdatePlanInput, CreatePlanPriceRecord, PlanFeature, PlanWithFeatures, Plan, PlanPrice } from "@/modules/plans/plan.types"
 
-type PlanWithPrismaFeatures = Plan & { prices: PlanPrice[]; features: PrismaFeature[] }
+interface PrismaPlainPlan { id: string; name: string; description: string | null; maxEmployees: number | null; externalProductId: string | null; isActive: boolean; deletedAt: Date | null; createdAt: Date; updatedAt: Date }
+interface PrismaPlainPlanPrice { id: string; planId: string; externalPriceId: string | null; priceInCents: number; currency: string; interval: string; isActive: boolean; createdAt: Date }
+type PlanWithPrismaFeatures = PrismaPlainPlan & { prices: PrismaPlainPlanPrice[]; features: PrismaFeature[] }
 
 function toPlanWithFeatures(raw: PlanWithPrismaFeatures): PlanWithFeatures & { prices: PlanPrice[] } {
   return {
@@ -44,7 +46,7 @@ export function createPlan(data: CreatePlanInput & { externalProductId?: string 
       ...(data.description !== undefined && { description: data.description }),
       ...(data.externalProductId !== undefined && { externalProductId: data.externalProductId }),
     },
-  })
+  }) as unknown as Promise<Plan>
 }
 
 export function updatePlan(planId: string, data: UpdatePlanInput): Promise<Plan> {
@@ -57,7 +59,7 @@ export function updatePlan(planId: string, data: UpdatePlanInput): Promise<Plan>
       ...(data.isActive !== undefined && { isActive: data.isActive }),
       ...(data.externalProductId !== undefined && { externalProductId: data.externalProductId }),
     },
-  })
+  }) as unknown as Promise<Plan>
 }
 
 export async function setPlanFeatures(planId: string, features: PlanFeature[]): Promise<void> {
@@ -82,21 +84,21 @@ export function createPlanPrice(data: CreatePlanPriceRecord): Promise<PlanPrice>
       currency: data.currency,
       interval: data.interval,
     },
-  })
+  }) as unknown as Promise<PlanPrice>
 }
 
 export function deactivatePlanPrice(priceId: string): Promise<PlanPrice> {
   return prisma.planPrice.update({
     where: { id: priceId },
     data: { isActive: false },
-  })
+  }) as unknown as Promise<PlanPrice>
 }
 
 export function findPlanPriceById(priceId: string): Promise<(PlanPrice & { plan: Plan }) | null> {
   return prisma.planPrice.findUnique({
     where: { id: priceId },
     include: { plan: true },
-  })
+  }) as unknown as Promise<(PlanPrice & { plan: Plan }) | null>
 }
 
 export function updatePlanPriceRecord(
@@ -106,14 +108,14 @@ export function updatePlanPriceRecord(
   return prisma.planPrice.update({
     where: { id: priceId },
     data,
-  })
+  }) as unknown as Promise<PlanPrice>
 }
 
 export function updatePlanPriceAmount(priceId: string, priceInCents: number): Promise<PlanPrice> {
   return prisma.planPrice.update({
     where: { id: priceId },
     data: { priceInCents },
-  })
+  }) as unknown as Promise<PlanPrice>
 }
 
 
@@ -125,7 +127,7 @@ export function findPlanPriceWithPlan(priceId: string): Promise<(PlanPrice & { p
   return prisma.planPrice.findUnique({
     where: { id: priceId, isActive: true },
     include: { plan: true },
-  })
+  }) as unknown as Promise<(PlanPrice & { plan: Plan }) | null>
 }
 
 export async function findAllPlansPaginated(
