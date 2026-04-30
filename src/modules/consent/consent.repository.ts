@@ -105,6 +105,22 @@ export async function findEmployeeIdsWithAcceptedConsent(tenantId: string, emplo
     .map((c) => c.employeeId)
 }
 
+export async function findEmployeeIdsEligibleForDispatch(tenantId: string, employeeIds: string[]): Promise<string[]> {
+  if (employeeIds.length === 0) return []
+  const latestConsents = await prisma.employeeConsent.findMany({
+    where: { tenantId, employeeId: { in: employeeIds } },
+    orderBy: { createdAt: "desc" },
+    distinct: ["employeeId"],
+    select: { employeeId: true, event: true },
+  })
+  const excludedIds = new Set(
+    latestConsents
+      .filter((c) => c.event === "refused" || c.event === "opted_out")
+      .map((c) => c.employeeId),
+  )
+  return employeeIds.filter((id) => !excludedIds.has(id))
+}
+
 export async function findEmployeeIdsForConsentState(tenantId: string, consentFilter: string): Promise<string[]> {
   if (consentFilter === "not_sent") {
     const [withConsent, allEmployees] = await Promise.all([
