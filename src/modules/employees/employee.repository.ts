@@ -51,6 +51,7 @@ export function createEmployee(tenantId: string, data: CreateEmployeeInput): Pro
       name: data.name,
       phone: data.phone,
       ...(data.email !== undefined && { email: data.email }),
+      ...(data.document !== undefined && { document: data.document }),
       ...(data.workStartTime !== undefined && { workStartTime: data.workStartTime }),
       ...(data.workEndTime !== undefined && { workEndTime: data.workEndTime }),
       ...(data.workDays !== undefined && data.workDays.length > 0 && {
@@ -61,42 +62,53 @@ export function createEmployee(tenantId: string, data: CreateEmployeeInput): Pro
   })
 }
 
-export async function updateEmployee(
+function buildEmployeeUpdateData(data: Omit<UpdateEmployeeInput, "workDays">): Prisma.EmployeeUpdateInput {
+  return {
+    ...(data.departmentId !== undefined && { department: { connect: { id: data.departmentId } } }),
+    ...(data.name !== undefined && { name: data.name }),
+    ...(data.phone !== undefined && { phone: data.phone }),
+    ...(data.email !== undefined && { email: data.email }),
+    ...(data.document !== undefined && { document: data.document }),
+    ...(data.status !== undefined && { status: data.status }),
+    ...(data.workStartTime !== undefined && { workStartTime: data.workStartTime }),
+    ...(data.workEndTime !== undefined && { workEndTime: data.workEndTime }),
+  }
+}
+
+async function updateEmployeeWithWorkDays(
+  employeeId: string,
+  tenantId: string,
+  workDays: number[] | null,
+  rest: Omit<UpdateEmployeeInput, "workDays">,
+): Promise<{ count: number }> {
+  const emp = await prisma.employee.findFirst({ where: { id: employeeId, tenantId }, select: { id: true } })
+  if (!emp) return { count: 0 }
+  const updateData = buildEmployeeUpdateData(rest)
+  if (workDays === null || workDays.length === 0) {
+    await prisma.$transaction([
+      prisma.employeeWorkDay.deleteMany({ where: { employeeId: emp.id } }),
+      prisma.employee.update({ where: { id: emp.id }, data: updateData }),
+    ])
+  } else {
+    await prisma.$transaction([
+      prisma.employeeWorkDay.deleteMany({ where: { employeeId: emp.id } }),
+      prisma.employee.update({
+        where: { id: emp.id },
+        data: { ...updateData, workDays: { createMany: { data: workDays.map((d) => ({ dayOfWeek: d })) } } },
+      }),
+    ])
+  }
+  return { count: 1 }
+}
+
+export function updateEmployee(
   tenantId: string,
   employeeId: string,
   data: UpdateEmployeeInput,
 ): Promise<{ count: number }> {
   if (data.workDays !== undefined) {
-    const emp = await prisma.employee.findFirst({ where: { id: employeeId, tenantId }, select: { id: true } })
-    if (!emp) return { count: 0 }
     const { workDays, ...rest } = data
-    const updateData: Prisma.EmployeeUpdateInput = {
-      ...(rest.departmentId !== undefined && { department: { connect: { id: rest.departmentId } } }),
-      ...(rest.name !== undefined && { name: rest.name }),
-      ...(rest.phone !== undefined && { phone: rest.phone }),
-      ...(rest.email !== undefined && { email: rest.email }),
-      ...(rest.status !== undefined && { status: rest.status }),
-      ...(rest.workStartTime !== undefined && { workStartTime: rest.workStartTime }),
-      ...(rest.workEndTime !== undefined && { workEndTime: rest.workEndTime }),
-    }
-    if (workDays === null || workDays.length === 0) {
-      await prisma.$transaction([
-        prisma.employeeWorkDay.deleteMany({ where: { employeeId: emp.id } }),
-        prisma.employee.update({ where: { id: emp.id }, data: updateData }),
-      ])
-    } else {
-      await prisma.$transaction([
-        prisma.employeeWorkDay.deleteMany({ where: { employeeId: emp.id } }),
-        prisma.employee.update({
-          where: { id: emp.id },
-          data: {
-            ...updateData,
-            workDays: { createMany: { data: workDays.map((d) => ({ dayOfWeek: d })) } },
-          },
-        }),
-      ])
-    }
-    return { count: 1 }
+    return updateEmployeeWithWorkDays(employeeId, tenantId, workDays, rest)
   }
   return prisma.employee.updateMany({
     where: { id: employeeId, tenantId },
@@ -105,6 +117,7 @@ export async function updateEmployee(
       ...(data.name !== undefined && { name: data.name }),
       ...(data.phone !== undefined && { phone: data.phone }),
       ...(data.email !== undefined && { email: data.email }),
+      ...(data.document !== undefined && { document: data.document }),
       ...(data.status !== undefined && { status: data.status }),
       ...(data.workStartTime !== undefined && { workStartTime: data.workStartTime }),
       ...(data.workEndTime !== undefined && { workEndTime: data.workEndTime }),

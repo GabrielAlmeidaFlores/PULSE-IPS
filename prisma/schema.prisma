@@ -246,6 +246,7 @@ model Employee {
   name          String
   phone         String
   email         String?
+  document      String?   @db.VarChar(50)
   status        String    @default("active")
   workStartTime String?   @map("work_start_time")
   workEndTime   String?   @map("work_end_time")
@@ -299,7 +300,7 @@ model EmployeeConsent {
   consentTermVersionId String    @map("consent_term_version_id")
   event                String
   source               String
-  cpfHash              String?   @map("cpf_hash")
+  documentHash         String?   @map("document_hash")
   token                String?   @unique
   tokenExpiresAt       DateTime? @map("token_expires_at")
   createdAt            DateTime  @default(now()) @map("created_at")
@@ -361,6 +362,7 @@ model HealthSurveyDispatch {
   status                String    @default("scheduled")
   totalRecipients       Int       @default(0) @map("total_recipients")
   totalResponses        Int       @default(0) @map("total_responses")
+  signedLinkToken       String?   @unique @db.VarChar(255) @map("signed_link_token")
   createdAt             DateTime  @default(now()) @map("created_at")
 
   organization        Organization          @relation(fields: [tenantId], references: [id], onDelete: Cascade)

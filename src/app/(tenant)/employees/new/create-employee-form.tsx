@@ -16,6 +16,7 @@ const schema = z.object({
   departmentId: z.string().uuid(),
   name: z.string().min(1),
   phone: z.string().min(8),
+  document: z.string().optional().or(z.literal("")),
   email: z.string().email().optional().or(z.literal("")),
   workStartTime: z.string().optional(),
   workEndTime: z.string().optional(),
@@ -80,6 +81,7 @@ export function CreateEmployeeForm({ departments }: Props): React.ReactElement {
   async function onSubmit(values: FormValues): Promise<void> {
     const result = await createEmployeeAction({
       ...values,
+      document: values.document === "" ? undefined : values.document,
       email: values.email === "" ? undefined : values.email,
       workStartTime: values.workStartTime !== "" ? values.workStartTime : undefined,
       workEndTime: values.workEndTime !== "" ? values.workEndTime : undefined,
@@ -131,6 +133,10 @@ export function CreateEmployeeForm({ departments }: Props): React.ReactElement {
           {form.formState.errors.phone && (
             <p className="text-xs text-destructive">{form.formState.errors.phone.message}</p>
           )}
+        </div>
+        <div className="space-y-1.5">
+          <Label className={fieldCls}>Documento (opcional)</Label>
+          <Input placeholder="Número do documento (opcional)" {...form.register("document")} />
         </div>
         <div className="space-y-1.5">
           <Label className={fieldCls}>E-mail (opcional)</Label>

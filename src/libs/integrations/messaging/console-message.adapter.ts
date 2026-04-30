@@ -7,12 +7,12 @@ import type {
 } from "@/libs/integrations/messaging/messaging.interface"
 import { createLogger } from "@/libs/utils/logger"
 
-const logger = createLogger("fake-sms")
+const logger = createLogger("fake-message")
 
-export class ConsoleSmsAdapter implements IMessagingService {
+export class ConsoleMessageAdapter implements IMessagingService {
   async send(params: SendMessageParams): Promise<SendMessageResult> {
-    const externalId = `fake-sms-${Date.now()}`
-    logger.info("📱 FAKE SMS", { to: params.to, body: params.body, id: externalId })
+    const externalId = `fake-message-${Date.now()}`
+    logger.info("📱 FAKE MESSAGE", { to: params.to, body: params.body, id: externalId })
     return { externalId, status: "sent" }
   }
 

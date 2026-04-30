@@ -6,7 +6,7 @@ interface SurveyFilters {
   dateTo?: string
 }
 
-interface Props {
+interface HealthSurveyListFiltersProps {
   filters: SurveyFilters
 }
 
@@ -38,7 +38,7 @@ const SURVEY_FILTER_FIELDS: FilterField[] = [
   },
 ]
 
-export function HealthSurveyListFilters({ filters }: Props): React.ReactElement {
+export function HealthSurveyListFilters({ filters }: HealthSurveyListFiltersProps): React.ReactElement {
   return (
     <FilterBar
       fields={SURVEY_FILTER_FIELDS}

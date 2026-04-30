@@ -6,11 +6,11 @@ import { CalendarClock } from "lucide-react"
 import { toast } from "sonner"
 import { scheduleAllHealthSurveyDispatchesAction } from "@/app/(tenant)/health-surveys/actions"
 
-interface Props {
+interface ScheduleHealthSurveyDispatchButtonProps {
   hasConfigs: boolean
 }
 
-export function ScheduleHealthSurveyDispatchButton({ hasConfigs }: Props): React.ReactElement {
+export function ScheduleHealthSurveyDispatchButton({ hasConfigs }: ScheduleHealthSurveyDispatchButtonProps): React.ReactElement {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [open, setOpen] = useState(false)

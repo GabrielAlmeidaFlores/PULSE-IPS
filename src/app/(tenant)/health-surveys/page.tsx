@@ -12,7 +12,7 @@ import { DataTable, TablePagination } from "@/libs/design-system"
 import { PageHelp } from "@/components/page-help"
 import { CheckCircle2, XCircle, ChevronRight } from "lucide-react"
 
-interface Props {
+interface HealthSurveysListPageProps {
   searchParams: Promise<Record<string, string | undefined>>
 }
 
@@ -79,7 +79,7 @@ function groupDispatchesByDay(dispatches: HealthSurveyDispatchWithConfig[]): Day
   )
 }
 
-export default async function HealthSurveysListPage({ searchParams }: Props): Promise<React.ReactElement> {
+export default async function HealthSurveysListPage({ searchParams }: HealthSurveysListPageProps): Promise<React.ReactElement> {
   const session = await getSession()
   if (!session) redirect("/login")
 
@@ -117,7 +117,7 @@ export default async function HealthSurveysListPage({ searchParams }: Props): Pr
               <div className="space-y-3">
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">O que são as pesquisas?</p>
-                  <p className="text-[12px] text-foreground leading-relaxed">Pesquisas rápidas e anônimas enviadas automaticamente por SMS/WhatsApp para os colaboradores. Cada respondente avalia de 1 a 5 fatores como carga de trabalho, clima, reconhecimento e saúde emocional. Levam menos de 2 minutos para responder.</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">Pesquisas rápidas e anônimas enviadas automaticamente para os colaboradores. Cada respondente avalia de 1 a 5 fatores como carga de trabalho, clima, reconhecimento e saúde emocional. Levam menos de 2 minutos para responder.</p>
                 </div>
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Status de um disparo</p>

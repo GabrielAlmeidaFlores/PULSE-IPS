@@ -22,6 +22,7 @@ interface EmployeeRow {
   id: string
   name: string
   phone: string
+  document: string | null
   email: string | null
   status: string
   departmentId: string
@@ -66,6 +67,7 @@ export function EmployeeTable({ employees, total, departments }: Props): React.R
       id: emp.id,
       name: emp.name,
       phone: emp.phone,
+      document: emp.document,
       email: emp.email,
       departmentId: emp.departmentId,
       status: emp.status,
@@ -80,6 +82,7 @@ export function EmployeeTable({ employees, total, departments }: Props): React.R
     startTransition(async () => {
       const result = await updateEmployeeAction(editTarget.id, {
         ...values,
+        document: values.document === "" ? null : (values.document ?? null),
         email: values.email === "" ? null : values.email,
         workStartTime: values.workStartTime ?? null,
         workEndTime: values.workEndTime ?? null,

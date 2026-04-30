@@ -13,6 +13,7 @@ import {
 } from "@/modules/health-surveys/health-survey.repository"
 import { hasOpenAlertOfType } from "@/modules/alerts/alert.repository"
 import { findEmployeeIdsWithAcceptedConsent } from "@/modules/consent/consent.repository"
+import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
 type PendingDispatch = Awaited<ReturnType<typeof findAllTenantsPendingHealthSurveyDispatches>>[number]
 
 const mockAddBulk = vi.hoisted(() => vi.fn().mockResolvedValue([]))
@@ -20,12 +21,13 @@ const mockAddBulk = vi.hoisted(() => vi.fn().mockResolvedValue([]))
 vi.mock("@/modules/health-surveys/health-survey.repository")
 vi.mock("@/modules/alerts/alert.repository")
 vi.mock("@/modules/consent/consent.repository")
+vi.mock("@/modules/billing/billing.service")
 vi.mock("@/libs/queue", () => ({ getMessageQueue: vi.fn(() => ({ addBulk: mockAddBulk })) }))
 vi.mock("@/libs/logger", () => ({ logger: { error: vi.fn(), info: vi.fn() } }))
 vi.mock("@/env", () => ({
   env: {
     NEXT_PUBLIC_APP_URL: "http://localhost:3000",
-    HEALTH_SURVEY_MESSAGE_TEMPLATE: "Olá {nome}, responda: {link}",
+    SURVEY_MESSAGE_TEMPLATE: "Olá {nome}, responda: {link}",
     MESSAGING_PROVIDER: "console",
   },
 }))
@@ -40,6 +42,7 @@ const mockCreateAdherenceAlert = vi.mocked(createHealthSurveyAdherenceAlert)
 const mockMarkDispatchAdherenceChecked = vi.mocked(markHealthSurveyDispatchAdherenceChecked)
 const mockHasOpenAlertOfType = vi.mocked(hasOpenAlertOfType)
 const mockFindEmployeeIdsWithAcceptedConsent = vi.mocked(findEmployeeIdsWithAcceptedConsent)
+const mockHasTenantPlanFeature = vi.mocked(hasTenantPlanFeature)
 
 const TENANT_ID = "tenant-1"
 const WORK_DAY_TIMESTAMP = "2024-01-15T12:00:00-03:00"
@@ -111,7 +114,7 @@ beforeEach(() => {
   mockMarkDispatchAdherenceChecked.mockResolvedValue(undefined)
   mockHasOpenAlertOfType.mockResolvedValue(false)
   mockFindEmployeeIdsWithAcceptedConsent.mockResolvedValue([])
-  mockAddBulk.mockResolvedValue([])
+  mockHasTenantPlanFeature.mockResolvedValue(true)
 })
 
 describe("runHealthSurveyDispatcher", () => {

@@ -15,6 +15,7 @@ import { updateEmployeeAction, deactivateEmployeeAction, sendConsentInviteAction
 const schema = z.object({
   name: z.string().min(1, "Nome obrigatório"),
   phone: z.string().min(8, "Telefone inválido"),
+  document: z.string().optional().or(z.literal("")),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
   departmentId: z.string().uuid("Departamento obrigatório"),
   workStartTime: z.string().optional(),
@@ -32,6 +33,7 @@ interface Employee {
   id: string
   name: string
   phone: string
+  document: string | null
   email: string | null
   status: string
   departmentId: string
@@ -70,6 +72,7 @@ export function EmployeeDetail({ employee, departments }: Props): React.ReactEle
     defaultValues: {
       name: employee.name,
       phone: employee.phone,
+      document: employee.document ?? "",
       email: employee.email ?? "",
       departmentId: employee.departmentId,
       workStartTime: employee.workStartTime ?? "",
@@ -87,6 +90,7 @@ export function EmployeeDetail({ employee, departments }: Props): React.ReactEle
     startTransition(async () => {
       const result = await updateEmployeeAction(employee.id, {
         ...values,
+        document: values.document === "" ? null : (values.document ?? null),
         email: values.email === "" ? null : values.email,
         workStartTime: values.workStartTime ?? null,
         workEndTime: values.workEndTime ?? null,
@@ -140,6 +144,10 @@ export function EmployeeDetail({ employee, departments }: Props): React.ReactEle
           {form.formState.errors.phone && (
             <p className="text-[11px] text-destructive">{form.formState.errors.phone.message}</p>
           )}
+        </div>
+        <div className="space-y-1">
+          <Label className="text-[10px] font-bold uppercase tracking-widest">Documento (opcional)</Label>
+          <Input {...form.register("document")} placeholder="Número do documento (opcional)" />
         </div>
         <div className="space-y-1">
           <Label className="text-[10px] font-bold uppercase tracking-widest">Email</Label>
@@ -230,7 +238,7 @@ export function EmployeeDetail({ employee, departments }: Props): React.ReactEle
       {employee.status === "active" && (
         <div className="border border-border bg-card p-6">
           <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Consentimento</p>
-          <p className="text-xs text-muted-foreground mb-4">Envie um link de consentimento para o colaborador via e-mail ou WhatsApp.</p>
+          <p className="text-xs text-muted-foreground mb-4">Envie um link de consentimento para o colaborador via link de consentimento.</p>
           <Button
             variant="outline"
             onClick={handleSendConsentInvite}

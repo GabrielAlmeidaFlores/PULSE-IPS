@@ -18,7 +18,7 @@ function formatPrice(priceInCents: number, currency: string, interval: string): 
   return `${amount}/${interval === "year" ? "ano" : "mês"}`
 }
 
-function whatsappUrl(message: string): string {
+function contactUrl(message: string): string {
   return `https://wa.me/${env.NEXT_PUBLIC_CONSULTANT_WHATSAPP}?text=${encodeURIComponent(message)}`
 }
 
@@ -107,7 +107,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
           {[
             {
               icon: <ClipboardList className="w-5 h-5" />,
-              title: "Pesquisas automáticas via WhatsApp",
+              title: "Pesquisas automáticas via mensagem",
               desc: "Configure a frequência e o horário de cada setor. O Pulse envia as pesquisas automaticamente para cada colaborador — sem nenhuma intervenção manual.",
             },
             {
@@ -196,7 +196,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
             <p className="text-lg font-medium mb-2">Planos em configuração</p>
             <p className="text-sm mb-6">Entre em contato para conhecer nossas opções.</p>
             <a
-              href={whatsappUrl("Olá! Gostaria de saber mais sobre o Pulse.")}
+              href={contactUrl("Olá! Gostaria de saber mais sobre o Pulse.")}
               className="inline-flex items-center justify-center h-11 px-8 rounded-lg bg-primary text-white font-semibold text-sm"
             >
               Falar com a equipe
@@ -320,7 +320,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
                     </Link>
                   ) : (
                     <a
-                      href={whatsappUrl("Olá! Tenho interesse no Pulse. Poderia me ajudar?")}
+                      href={contactUrl("Olá! Tenho interesse no Pulse. Poderia me ajudar?")}
                       className={`inline-flex items-center justify-center h-11 rounded-lg font-semibold text-sm transition-all ${
                         isHighlight
                           ? "bg-white/20 text-white hover:bg-white/30 border border-white/30"
@@ -352,7 +352,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
             {[
               {
                 q: "Os colaboradores precisam instalar algum aplicativo?",
-                a: "Não. O colaborador recebe um link pelo WhatsApp e responde diretamente no navegador do celular. Sem cadastro, sem download, sem fricção.",
+                a: "Não. O colaborador recebe um link e responde diretamente no navegador do celular. Sem cadastro, sem download, sem fricção.",
               },
               {
                 q: "Quanto tempo leva para configurar e começar?",
@@ -392,10 +392,10 @@ export default async function LandingPage(): Promise<React.ReactElement> {
           <div className="mt-10 text-center">
             <p className="text-sm text-muted-foreground mb-4">Ainda tem dúvidas?</p>
             <a
-              href={whatsappUrl("Olá! Tenho algumas dúvidas sobre o Pulse antes de contratar.")}
+              href={contactUrl("Olá! Tenho algumas dúvidas sobre o Pulse antes de contratar.")}
               className="inline-flex items-center justify-center h-10 px-6 rounded-lg border border-border text-sm font-semibold text-foreground hover:border-primary/40 hover:bg-primary/5 transition-all"
             >
-              Falar com a equipe no WhatsApp
+              Falar com a equipe
             </a>
           </div>
         </div>
@@ -423,7 +423,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
               <ArrowRight className="w-4 h-4" />
             </a>
             <a
-              href={whatsappUrl("Olá! Gostaria de falar com um consultor sobre o Pulse.")}
+              href={contactUrl("Olá! Gostaria de falar com um consultor sobre o Pulse.")}
               className="inline-flex items-center justify-center h-12 px-8 rounded-lg border-2 border-white/40 text-white font-semibold text-base hover:bg-white/10 transition-all"
             >
               Falar com um consultor

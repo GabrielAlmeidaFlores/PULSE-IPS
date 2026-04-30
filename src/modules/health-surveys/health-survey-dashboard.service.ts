@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto"
 import {
   findHealthSurveyDispatchesByTenant,
   findHealthSurveyDispatchWithDashboard,
@@ -58,6 +59,7 @@ function buildDispatchStats(data: {
   frequency: string
   totalRecipients: number
   totalResponses: number
+  signedLinkToken: string | null
   questions: { id: string; text: string; order: number; scoreDirection: string }[]
   responseItems: { questionId: string; score: number }[]
 }): HealthSurveyDispatchDashboardStats {
@@ -80,6 +82,7 @@ function buildDispatchStats(data: {
     notResponded,
     adherenceRate,
     avgScore,
+    signedLinkToken: data.signedLinkToken,
     questions,
   }
 }
@@ -131,7 +134,7 @@ export async function getHealthSurveyDispatchesPaginatedByDay(
 }
 
 export function scheduleHealthSurveyDispatch(tenantId: string, configId: string, scheduledAt: Date): ReturnType<typeof createHealthSurveyDispatch> {
-  return createHealthSurveyDispatch(tenantId, configId, scheduledAt)
+  return createHealthSurveyDispatch(tenantId, configId, scheduledAt, randomUUID())
 }
 
 export async function getHealthSurveyDispatchDashboard(tenantId: string, dispatchId: string): Promise<HealthSurveyDispatchDashboardStats | null> {

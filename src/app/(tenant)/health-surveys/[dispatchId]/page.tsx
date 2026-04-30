@@ -31,6 +31,7 @@ import {
 import { HealthSurveyDispatchDeptFilter } from "@/app/(tenant)/health-surveys/[dispatchId]/components/health-survey-dispatch-dept-filter";
 import { HealthSurveyDispatchDeptBreakdownTable } from "@/app/(tenant)/health-surveys/[dispatchId]/components/health-survey-dispatch-dept-breakdown-table";
 import { adherenceClass } from "@/app/(tenant)/health-surveys/[dispatchId]/components/health-survey-adherence-utils";
+import { HealthSurveySignedLinkCopy } from "@/app/(tenant)/health-surveys/[dispatchId]/components/health-survey-signed-link-copy";
 import { ChartCard } from "@/components/chart-card";
 import type {
   HealthSurveyDispatchDashboardStats,
@@ -40,8 +41,9 @@ import {
   toHealthIndex,
   healthIndexAccent,
 } from "@/libs/utils/health-index";
+import { env } from "@/env";
 
-interface Props {
+interface HealthSurveyDispatchDetailPageProps {
   params: Promise<{ dispatchId: string }>;
   searchParams: Promise<{ depts?: string | string[] }>;
 }
@@ -181,6 +183,7 @@ function mergeDispatchStats(
     notResponded,
     adherenceRate,
     avgScore,
+    signedLinkToken: null,
     questions,
   };
 }
@@ -465,7 +468,7 @@ async function buildDispatchComparisonData(
 export default async function HealthSurveyDispatchDetailPage({
   params,
   searchParams,
-}: Props): Promise<React.ReactElement> {
+}: HealthSurveyDispatchDetailPageProps): Promise<React.ReactElement> {
   const session = await getSession();
   if (!session) redirect("/login");
 
@@ -713,6 +716,12 @@ export default async function HealthSurveyDispatchDetailPage({
         </div>
 
         {showDeptBreakdown && <HealthSurveyDispatchDeptBreakdownTable items={deptRanking} />}
+
+        {anchorStats.signedLinkToken !== null && (
+          <HealthSurveySignedLinkCopy
+            signedLink={`${env.NEXT_PUBLIC_APP_URL}/health-survey/link/${anchorStats.signedLinkToken}`}
+          />
+        )}
 
         <DeptChartSection deptStats={mergedStats} />
 

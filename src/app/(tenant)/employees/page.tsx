@@ -90,6 +90,7 @@ export default async function EmployeesPage({ searchParams }: Props): Promise<Re
             id: emp.id,
             name: emp.name,
             phone: emp.phone,
+            document: emp.document ?? null,
             email: emp.email,
             status: emp.status,
             departmentId: emp.departmentId,

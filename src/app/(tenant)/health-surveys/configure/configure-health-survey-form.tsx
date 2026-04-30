@@ -14,7 +14,7 @@ interface Department {
   name: string
 }
 
-interface Props {
+interface ConfigureHealthSurveyFormProps {
   departments: Department[]
 }
 
@@ -45,7 +45,7 @@ const DIRECTION_LABELS: Record<ScoreDirection, string> = {
   lower_is_better: "1 = bom · 5 = ruim",
 }
 
-export function ConfigureHealthSurveyForm({ departments }: Props): React.ReactElement {
+export function ConfigureHealthSurveyForm({ departments }: ConfigureHealthSurveyFormProps): React.ReactElement {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
