@@ -15,8 +15,8 @@ import {
   type HealthSurveyDispatchEmployee,
 } from "@/modules/health-surveys/health-survey.repository"
 import { hasOpenAlertOfType } from "@/modules/alerts/alert.repository"
-import { findEmployeeIdsWithAcceptedConsent } from "@/modules/consent/consent.repository"
 import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
+import { findEmployeeIdsWithAcceptedConsent } from "@/modules/consent/consent.repository"
 
 const FREQUENCY_INTERVAL_DAYS: Record<string, number> = {
   daily: 1,
@@ -49,7 +49,13 @@ async function sendDispatchTokensAndMessages(
   configWorkStartTime: string,
   configWorkEndTime: string,
 ): Promise<void> {
-  const tokens = eligibleEmployees.map((emp) => ({
+  const allEmployeeIds = eligibleEmployees.map((e) => e.id)
+  const acceptedEmployeeIds = new Set(await findEmployeeIdsWithAcceptedConsent(tenantId, allEmployeeIds))
+  const consentedEmployees = eligibleEmployees.filter((e) => acceptedEmployeeIds.has(e.id))
+
+  if (consentedEmployees.length === 0) return
+
+  const tokens = consentedEmployees.map((emp) => ({
     tenantId,
     dispatchId,
     employeeId: emp.id,
@@ -67,7 +73,7 @@ async function sendDispatchTokensAndMessages(
   const messageQueue = getMessageQueue()
   const bulkJobs = tokens
     .map((empToken) => {
-      const employee = eligibleEmployees.find((e) => e.id === empToken.employeeId)
+      const employee = consentedEmployees.find((e) => e.id === empToken.employeeId)
       if (!employee) return null
       const healthSurveyUrl = `${env.NEXT_PUBLIC_APP_URL}/health-survey/${empToken.token}`
       return {
@@ -107,17 +113,12 @@ async function fireDispatch(
 
   if (workDayFiltered.length === 0) return false
 
-  const acceptedIds = await findEmployeeIdsWithAcceptedConsent(tenantId, workDayFiltered.map((e) => e.id))
-  const eligibleEmployees = workDayFiltered.filter((emp) => acceptedIds.includes(emp.id))
-
-  if (eligibleEmployees.length === 0) return false
-
   const dispatch = await createHealthSurveyDispatch(tenantId, configId, new Date(), randomUUID())
 
   await sendDispatchTokensAndMessages(
     dispatch.id,
     tenantId,
-    eligibleEmployees,
+    workDayFiltered,
     department,
     configWorkStartTime,
     configWorkEndTime,
@@ -152,9 +153,7 @@ export async function runHealthSurveyDispatcher(): Promise<{ dispatched: number;
 
       if (workDayFiltered.length === 0) continue
 
-      const acceptedIds = await findEmployeeIdsWithAcceptedConsent(dispatch.tenantId, workDayFiltered.map((e) => e.id))
       const eligibleEmployees: HealthSurveyDispatchEmployee[] = workDayFiltered
-        .filter((emp) => acceptedIds.includes(emp.id))
         .map((emp) => ({
           id: emp.id,
           name: emp.name,

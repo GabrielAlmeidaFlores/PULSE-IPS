@@ -5,7 +5,14 @@ import {
   healthIndexAccent,
   healthIndexBarColor,
   healthIndexChartColor,
+  adherenceRateTextColor,
+  adherenceRateBarClass,
+  trendDirectionTextColor,
 } from "@/libs/utils/health-index"
+
+const COLOR_SUCCESS = "text-status-success"
+const COLOR_WARNING = "text-status-warning"
+const COLOR_DANGER = "text-status-danger"
 
 describe("toHealthIndex", () => {
   it("maps score 1 (minimum) to 0%", () => {
@@ -59,15 +66,15 @@ describe("healthIndexAccent", () => {
   })
 
   it("returns green for healthy range", () => {
-    expect(healthIndexAccent(75)).toBe("text-status-success")
+    expect(healthIndexAccent(75)).toBe(COLOR_SUCCESS)
   })
 
   it("returns yellow for warning range", () => {
-    expect(healthIndexAccent(50)).toBe("text-status-warning")
+    expect(healthIndexAccent(50)).toBe(COLOR_WARNING)
   })
 
   it("returns red for critical range", () => {
-    expect(healthIndexAccent(20)).toBe("text-status-danger")
+    expect(healthIndexAccent(20)).toBe(COLOR_DANGER)
   })
 })
 
@@ -96,5 +103,55 @@ describe("healthIndexChartColor", () => {
 
   it("returns red hex for critical", () => {
     expect(healthIndexChartColor(20)).toBe("var(--status-danger)")
+  })
+})
+
+describe("adherenceRateTextColor", () => {
+  it("returns success color when rate >= 80", () => {
+    expect(adherenceRateTextColor(80)).toBe(COLOR_SUCCESS)
+    expect(adherenceRateTextColor(100)).toBe(COLOR_SUCCESS)
+  })
+
+  it("returns warning color when rate >= 50 and < 80", () => {
+    expect(adherenceRateTextColor(50)).toBe(COLOR_WARNING)
+    expect(adherenceRateTextColor(79)).toBe(COLOR_WARNING)
+  })
+
+  it("returns danger color when rate < 50", () => {
+    expect(adherenceRateTextColor(49)).toBe(COLOR_DANGER)
+    expect(adherenceRateTextColor(0)).toBe(COLOR_DANGER)
+  })
+})
+
+describe("adherenceRateBarClass", () => {
+  it("returns success bar class when rate >= 80", () => {
+    expect(adherenceRateBarClass(80)).toBe("bg-status-success")
+    expect(adherenceRateBarClass(95)).toBe("bg-status-success")
+  })
+
+  it("returns warning bar class when rate >= 50 and < 80", () => {
+    expect(adherenceRateBarClass(60)).toBe("bg-status-warning")
+  })
+
+  it("returns danger bar class when rate < 50", () => {
+    expect(adherenceRateBarClass(20)).toBe("bg-status-danger")
+  })
+})
+
+describe("trendDirectionTextColor", () => {
+  it("returns success color for up trend", () => {
+    expect(trendDirectionTextColor("up")).toBe(COLOR_SUCCESS)
+  })
+
+  it("returns danger color for down trend", () => {
+    expect(trendDirectionTextColor("down")).toBe(COLOR_DANGER)
+  })
+
+  it("returns muted color for stable trend", () => {
+    expect(trendDirectionTextColor("stable")).toBe("text-muted-foreground")
+  })
+
+  it("returns muted color for null trend", () => {
+    expect(trendDirectionTextColor(null)).toBe("text-muted-foreground")
   })
 })

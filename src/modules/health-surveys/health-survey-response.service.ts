@@ -13,7 +13,6 @@ import {
   createHealthSurveyTokens,
 } from "@/modules/health-surveys/health-survey.repository"
 import {
-  findEmployeeIdsWithAcceptedConsent,
   getCurrentConsent,
   getActiveConsentTermVersion,
 } from "@/modules/consent/consent.repository"
@@ -125,11 +124,6 @@ export async function unlockHealthSurveyViaIdentifier(
 
   const employee = await findEmployeeByPhoneOrDocument(tenantId, identifier.trim())
   if (!employee) throw new AppError("EMPLOYEE_NOT_FOUND", "Colaborador não encontrado. Verifique o número de telefone ou documento.")
-
-  const acceptedIds = await findEmployeeIdsWithAcceptedConsent(tenantId, [employee.id])
-  if (!acceptedIds.includes(employee.id)) {
-    throw new AppError("CONSENT_REQUIRED", "Você precisa aceitar os termos de consentimento antes de responder.")
-  }
 
   const usedToken = await findUsedHealthSurveyTokenForEmployee(tenantId, dispatch.id, employee.id)
   if (usedToken) return { token: usedToken.token, alreadyAnswered: true }

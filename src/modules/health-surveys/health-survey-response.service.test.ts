@@ -3,11 +3,17 @@ import {
   validateHealthSurveyToken,
   submitHealthSurveyResponse,
   cleanupExpiredHealthSurveyTokens,
+  unlockHealthSurveyViaIdentifier,
 } from "@/modules/health-surveys/health-survey-response.service"
 import {
   findHealthSurveyTokenByValue,
   deleteAllTenantsExpiredHealthSurveyTokens,
   createHealthSurveyResponseWithItems,
+  findHealthSurveyDispatchBySignedLinkToken,
+  findEmployeeByPhoneOrDocument,
+  findUnusedHealthSurveyTokenForEmployee,
+  findUsedHealthSurveyTokenForEmployee,
+  createHealthSurveyTokens,
 } from "@/modules/health-surveys/health-survey.repository"
 import {
   getCurrentConsent,
@@ -24,15 +30,24 @@ const mockFormatFn = vi.hoisted(() => vi.fn(() => "12:00"))
 vi.mock("date-fns-tz", () => ({
   toZonedTime: vi.fn((date: Date) => date),
 }))
-vi.mock("date-fns", () => ({
-  format: mockFormatFn,
-}))
+vi.mock("date-fns", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("date-fns")>()
+  return {
+    ...actual,
+    format: mockFormatFn,
+  }
+})
 
 const mockFindToken = vi.mocked(findHealthSurveyTokenByValue)
 const mockDeleteExpiredTokens = vi.mocked(deleteAllTenantsExpiredHealthSurveyTokens)
 const mockCreateResponse = vi.mocked(createHealthSurveyResponseWithItems)
 const mockGetCurrentConsent = vi.mocked(getCurrentConsent)
 const mockGetActiveConsentTermVersion = vi.mocked(getActiveConsentTermVersion)
+const mockFindDispatchBySignedLink = vi.mocked(findHealthSurveyDispatchBySignedLinkToken)
+const mockFindEmployeeByPhoneOrDocument = vi.mocked(findEmployeeByPhoneOrDocument)
+const mockFindUnusedToken = vi.mocked(findUnusedHealthSurveyTokenForEmployee)
+const mockFindUsedToken = vi.mocked(findUsedHealthSurveyTokenForEmployee)
+const mockCreateTokens = vi.mocked(createHealthSurveyTokens)
 
 const TOKEN_VALUE = "token-abc-123"
 const WORK_HOUR_MIDDAY = "12:00"
@@ -40,8 +55,13 @@ const TENANT_ID = "tenant-1"
 const EMPLOYEE_ID = "employee-1"
 const DISPATCH_ID = "dispatch-1"
 const CONFIG_ID = "config-1"
+const SIGNED_LINK_TOKEN = "signed-link-token-xyz"
+const EMPLOYEE_PHONE = "+5511999999999"
 
 type TokenRecord = NonNullable<Awaited<ReturnType<typeof findHealthSurveyTokenByValue>>>
+type DispatchRecord = NonNullable<Awaited<ReturnType<typeof findHealthSurveyDispatchBySignedLinkToken>>>
+type EmployeeRecord = NonNullable<Awaited<ReturnType<typeof findEmployeeByPhoneOrDocument>>>
+type TokenRow = NonNullable<Awaited<ReturnType<typeof findUnusedHealthSurveyTokenForEmployee>>>
 
 function makeTokenRecord(overrides?: Partial<TokenRecord>): TokenRecord {
   const base: TokenRecord = {
@@ -62,7 +82,7 @@ function makeTokenRecord(overrides?: Partial<TokenRecord>): TokenRecord {
       name: "Ana Silva",
       email: null,
       document: null,
-      phone: "+5511999999999",
+      phone: EMPLOYEE_PHONE,
       workStartTime: null,
       workEndTime: null,
       status: "active",
@@ -383,5 +403,194 @@ describe("cleanupExpiredHealthSurveyTokens", () => {
 
     expect(mockDeleteExpiredTokens).toHaveBeenCalledOnce()
     expect(result).toEqual({ count: 5 })
+  })
+})
+
+function makeDispatchRecord(overrides?: Partial<DispatchRecord>): DispatchRecord {
+  const base: DispatchRecord = {
+    id: DISPATCH_ID,
+    tenantId: TENANT_ID,
+    healthSurveyConfigurationId: CONFIG_ID,
+    scheduledAt: new Date(),
+    dispatchedAt: new Date(),
+    status: "sent",
+    totalRecipients: 10,
+    totalResponses: 0,
+    adherenceCheckedAt: null,
+    signedLinkToken: SIGNED_LINK_TOKEN,
+    createdAt: new Date(),
+    healthSurveyConfiguration: {
+      id: CONFIG_ID,
+      tenantId: TENANT_ID,
+      departmentId: "dept-1",
+      frequency: "weekly",
+      workStartTime: "09:00",
+      workEndTime: "18:00",
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      organization: {
+        id: TENANT_ID,
+        slug: "acme",
+        name: "Acme Corp",
+        planId: null,
+        externalCustomerId: null,
+        timezone: "America/Sao_Paulo",
+        billingStatus: "active",
+        maxEmployeesOverride: null,
+        isActive: true,
+        deletionScheduledAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    },
+  }
+  return { ...base, ...overrides }
+}
+
+function makeEmployee(overrides?: Partial<EmployeeRecord>): EmployeeRecord {
+  const base: EmployeeRecord = {
+    id: EMPLOYEE_ID,
+    tenantId: TENANT_ID,
+    departmentId: "dept-1",
+    name: "Ana Silva",
+    email: null,
+    document: null,
+    phone: EMPLOYEE_PHONE,
+    workStartTime: null,
+    workEndTime: null,
+    status: "active",
+    pauseStartAt: null,
+    pauseEndAt: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }
+  return { ...base, ...overrides }
+}
+
+function makeTokenRow(overrides?: Partial<TokenRow>): TokenRow {
+  const base: TokenRow = {
+    id: "token-row-1",
+    tenantId: TENANT_ID,
+    dispatchId: DISPATCH_ID,
+    employeeId: EMPLOYEE_ID,
+    token: "existing-token-xyz",
+    usedAt: null,
+    expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 48),
+    workStartTime: "09:00",
+    workEndTime: "18:00",
+    createdAt: new Date(),
+  }
+  return { ...base, ...overrides }
+}
+
+describe("unlockHealthSurveyViaIdentifier — guards", () => {
+  beforeEach(() => {
+    mockFindDispatchBySignedLink.mockResolvedValue(makeDispatchRecord())
+    mockFindEmployeeByPhoneOrDocument.mockResolvedValue(makeEmployee())
+    mockFindUsedToken.mockResolvedValue(null)
+    mockFindUnusedToken.mockResolvedValue(null)
+    mockCreateTokens.mockResolvedValue(undefined)
+  })
+
+  it("lança DISPATCH_NOT_FOUND quando o signed link não existe", async () => {
+    mockFindDispatchBySignedLink.mockResolvedValue(null)
+
+    await expect(unlockHealthSurveyViaIdentifier(SIGNED_LINK_TOKEN, EMPLOYEE_PHONE))
+      .rejects.toMatchObject({ code: "DISPATCH_NOT_FOUND" })
+  })
+
+  it("lança EMPLOYEE_NOT_FOUND quando o identificador não corresponde a nenhum colaborador", async () => {
+    mockFindEmployeeByPhoneOrDocument.mockResolvedValue(null)
+
+    await expect(unlockHealthSurveyViaIdentifier(SIGNED_LINK_TOKEN, "99999999999"))
+      .rejects.toMatchObject({ code: "EMPLOYEE_NOT_FOUND" })
+  })
+
+  it("lança OUTSIDE_WORK_WINDOW quando fora do horário de trabalho", async () => {
+    mockFormatFn.mockReturnValue("22:00")
+
+    await expect(unlockHealthSurveyViaIdentifier(SIGNED_LINK_TOKEN, EMPLOYEE_PHONE))
+      .rejects.toMatchObject({ code: "OUTSIDE_WORK_WINDOW" })
+  })
+})
+
+describe("unlockHealthSurveyViaIdentifier — retorno de token existente", () => {
+  beforeEach(() => {
+    mockFindDispatchBySignedLink.mockResolvedValue(makeDispatchRecord())
+    mockFindEmployeeByPhoneOrDocument.mockResolvedValue(makeEmployee())
+  })
+
+  it("retorna alreadyAnswered true quando o funcionário já respondeu", async () => {
+    mockFindUsedToken.mockResolvedValue(makeTokenRow({ token: "used-token", usedAt: new Date() }))
+    mockFindUnusedToken.mockResolvedValue(null)
+
+    const result = await unlockHealthSurveyViaIdentifier(SIGNED_LINK_TOKEN, EMPLOYEE_PHONE)
+
+    expect(result).toEqual({ token: "used-token", alreadyAnswered: true })
+    expect(mockCreateTokens).not.toHaveBeenCalled()
+  })
+
+  it("retorna token existente sem criar novo quando já existe token não usado", async () => {
+    mockFindUsedToken.mockResolvedValue(null)
+    mockFindUnusedToken.mockResolvedValue(makeTokenRow({ token: "existing-unused-token" }))
+
+    const result = await unlockHealthSurveyViaIdentifier(SIGNED_LINK_TOKEN, EMPLOYEE_PHONE)
+
+    expect(result).toEqual({ token: "existing-unused-token", alreadyAnswered: false })
+    expect(mockCreateTokens).not.toHaveBeenCalled()
+  })
+})
+
+describe("unlockHealthSurveyViaIdentifier — criação de novo token", () => {
+  beforeEach(() => {
+    mockFindDispatchBySignedLink.mockResolvedValue(makeDispatchRecord())
+    mockFindEmployeeByPhoneOrDocument.mockResolvedValue(makeEmployee())
+    mockFindUsedToken.mockResolvedValue(null)
+    mockFindUnusedToken.mockResolvedValue(null)
+    mockCreateTokens.mockResolvedValue(undefined)
+  })
+
+  it("cria novo token e retorna alreadyAnswered false", async () => {
+    const result = await unlockHealthSurveyViaIdentifier(SIGNED_LINK_TOKEN, EMPLOYEE_PHONE)
+
+    expect(result.alreadyAnswered).toBe(false)
+    expect(typeof result.token).toBe("string")
+    expect(result.token.length).toBeGreaterThan(0)
+    expect(mockCreateTokens).toHaveBeenCalledOnce()
+  })
+
+  it("usa workStartTime e workEndTime do funcionário quando preenchidos", async () => {
+    mockFindEmployeeByPhoneOrDocument.mockResolvedValue(
+      makeEmployee({ workStartTime: "07:00", workEndTime: "16:00" }),
+    )
+
+    await unlockHealthSurveyViaIdentifier(SIGNED_LINK_TOKEN, EMPLOYEE_PHONE)
+
+    expect(mockCreateTokens).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ workStartTime: "07:00", workEndTime: "16:00" }),
+      ]),
+    )
+  })
+
+  it("usa workStartTime e workEndTime da configuração quando funcionário não tem horário próprio", async () => {
+    mockFindEmployeeByPhoneOrDocument.mockResolvedValue(
+      makeEmployee({ workStartTime: null, workEndTime: null }),
+    )
+
+    await unlockHealthSurveyViaIdentifier(SIGNED_LINK_TOKEN, EMPLOYEE_PHONE)
+
+    expect(mockCreateTokens).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ workStartTime: "09:00", workEndTime: "18:00" }),
+      ]),
+    )
+  })
+
+  it("busca funcionário pelo documento quando identficador é um documento", async () => {
+    await unlockHealthSurveyViaIdentifier(SIGNED_LINK_TOKEN, "12345678901")
+
+    expect(mockFindEmployeeByPhoneOrDocument).toHaveBeenCalledWith(TENANT_ID, "12345678901")
   })
 })

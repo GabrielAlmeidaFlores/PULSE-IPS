@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { updatePlan, createPlanWithTasks, completeTask, getActionPlans, getActionPlan, addTask } from "@/modules/action-plans/action-plan.service"
+import { updatePlan, createPlanWithTasks, completeTask, getActionPlans, getActionPlan, addTask, createPlan, getActionPlansPaginated } from "@/modules/action-plans/action-plan.service"
 import {
   updateActionPlan,
   createActionPlanWithTasks,
@@ -7,8 +7,11 @@ import {
   findActionPlansByTenant,
   findActionPlanById,
   createActionPlanTask,
+  createActionPlan,
+  findActionPlansForListingPage,
+  type ActionPlanListingFilters,
 } from "@/modules/action-plans/action-plan.repository"
-import type { CreateActionPlanTaskInput } from "@/modules/action-plans/action-plan.types"
+import type { CreateActionPlanTaskInput, CreateActionPlanInput } from "@/modules/action-plans/action-plan.types"
 
 vi.mock("@/modules/action-plans/action-plan.repository")
 vi.mock("@/env", () => ({ env: { NEXT_PUBLIC_APP_URL: "http://localhost:3000" } }))
@@ -19,6 +22,8 @@ const mockCompleteActionPlanTask = vi.mocked(completeActionPlanTask)
 const mockFindActionPlansByTenant = vi.mocked(findActionPlansByTenant)
 const mockFindActionPlanById = vi.mocked(findActionPlanById)
 const mockCreateActionPlanTask = vi.mocked(createActionPlanTask)
+const mockCreateActionPlan = vi.mocked(createActionPlan)
+const mockFindActionPlansForListingPage = vi.mocked(findActionPlansForListingPage)
 
 const TENANT_ID = "tenant-1"
 const PLAN = { id: "plan-1", tenantId: TENANT_ID, title: "Reduzir estresse", status: "open" }
@@ -112,5 +117,36 @@ describe("addTask", () => {
     const result = await addTask(TENANT_ID, PLAN.id, input)
     expect(result).toEqual(task)
     expect(mockCreateActionPlanTask).toHaveBeenCalledWith(TENANT_ID, PLAN.id, input)
+  })
+})
+
+describe("createPlan", () => {
+  it("delega criação ao repository", async () => {
+    mockCreateActionPlan.mockResolvedValue(PLAN as Awaited<ReturnType<typeof createActionPlan>>)
+
+    const input: CreateActionPlanInput = { title: "Reduzir estresse", description: "Ações para reduzir estresse", alertId: "alert-1" }
+    const result = await createPlan(TENANT_ID, input)
+
+    expect(mockCreateActionPlan).toHaveBeenCalledWith(TENANT_ID, input)
+    expect(result).toEqual(PLAN)
+  })
+})
+
+describe("getActionPlansPaginated", () => {
+  it("calcula skip e repassa filtros ao repository", async () => {
+    mockFindActionPlansForListingPage.mockResolvedValue({ items: [], total: 0 } as Awaited<ReturnType<typeof findActionPlansForListingPage>>)
+
+    await getActionPlansPaginated(TENANT_ID, { page: 2, pageSize: 10, q: "estresse", status: "open" })
+
+    const expectedFilters: ActionPlanListingFilters = { q: "estresse", status: "open" }
+    expect(mockFindActionPlansForListingPage).toHaveBeenCalledWith(TENANT_ID, expectedFilters, 10, 10)
+  })
+
+  it("omite filtros ausentes", async () => {
+    mockFindActionPlansForListingPage.mockResolvedValue({ items: [], total: 0 } as Awaited<ReturnType<typeof findActionPlansForListingPage>>)
+
+    await getActionPlansPaginated(TENANT_ID, { page: 1, pageSize: 5 })
+
+    expect(mockFindActionPlansForListingPage).toHaveBeenCalledWith(TENANT_ID, {}, 0, 5)
   })
 })

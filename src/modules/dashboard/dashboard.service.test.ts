@@ -198,3 +198,30 @@ describe("getAvailableQuestions", () => {
     expect(mockFindUniqueQuestions).toHaveBeenCalledWith(TENANT_ID)
   })
 })
+
+describe("getDashboardData — trend down", () => {
+  it("retorna trend 'down' quando avg do mês atual é menor que avg do mês anterior", async () => {
+    const prevMonthDispatch: DispatchWithData = {
+      id: "prev-month",
+      dispatchedAt: (() => { const d = new Date(); d.setDate(d.getDate() - 35); return d })(),
+      totalRecipients: 10,
+      responses: Array.from({ length: 6 }, () => ({
+        items: [
+          { questionId: "q-1", score: 1, question: { text: "Estresse", order: 1, scoreDirection: "lower_is_better" } },
+        ],
+      })),
+      healthSurveyConfiguration: {
+        department: { id: DEPT_ID, name: DEPT_NAME },
+        questions: [{ id: "q-1", text: "Estresse", order: 1, scoreDirection: "lower_is_better" }],
+      },
+    } as unknown as DispatchWithData
+
+    mockFindDispatchesWithData.mockResolvedValue([makeDispatch(5, 6), prevMonthDispatch])
+
+    const result = await getDashboardData(TENANT_ID)
+
+    expect(result.deptCards[0]?.trend).toBe("down")
+    expect(result.deptCards[0]?.prevAvg).not.toBeNull()
+    expect(result.deptCards[0]?.trendDelta).not.toBe(0)
+  })
+})

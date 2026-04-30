@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { createCheckoutSession, getBillingPortalUrl, getSubscription } from "@/modules/billing/billing.service"
+import { createCheckoutSession, getBillingPortalUrl, getSubscription, getTenantPlanFeatures, hasTenantPlanFeature } from "@/modules/billing/billing.service"
 import { findOrganizationRequired, updateOrganizationBillingStatus } from "@/modules/organizations/organization.repository"
 import { findActiveSubscription, upsertSubscription, findPlanPriceForProvisioning, findTenantSubscriptionFeatures, createSubscriptionFeatureSnapshot } from "@/modules/billing/billing.repository"
 import { findPlanFeatures } from "@/modules/plans/plan.repository"
@@ -156,5 +156,34 @@ describe("getSubscription", () => {
     const result = await getSubscription("org-1")
     expect(result).toEqual(sub)
     expect(mockFindActiveSubscription).toHaveBeenCalledWith("org-1")
+  })
+})
+
+describe("getTenantPlanFeatures", () => {
+  it("retorna lista de features da assinatura do tenant", async () => {
+    mockFindTenantSubscriptionFeatures.mockResolvedValue(["action_plans", "pgr"] as Awaited<ReturnType<typeof findTenantSubscriptionFeatures>>)
+
+    const result = await getTenantPlanFeatures("org-1")
+
+    expect(mockFindTenantSubscriptionFeatures).toHaveBeenCalledWith("org-1")
+    expect(result).toEqual(["action_plans", "pgr"])
+  })
+})
+
+describe("hasTenantPlanFeature", () => {
+  it("retorna true quando tenant tem a feature", async () => {
+    mockFindTenantSubscriptionFeatures.mockResolvedValue(["action_plans", "documents"] as Awaited<ReturnType<typeof findTenantSubscriptionFeatures>>)
+
+    const result = await hasTenantPlanFeature("org-1", "action_plans")
+
+    expect(result).toBe(true)
+  })
+
+  it("retorna false quando tenant não tem a feature", async () => {
+    mockFindTenantSubscriptionFeatures.mockResolvedValue(["action_plans"] as Awaited<ReturnType<typeof findTenantSubscriptionFeatures>>)
+
+    const result = await hasTenantPlanFeature("org-1", "pgr")
+
+    expect(result).toBe(false)
   })
 })
