@@ -22,6 +22,7 @@ export default defineConfig({
         "src/libs/utils/cron-auth.ts",
         "src/libs/utils/date.ts",
         "src/libs/utils/health-index.ts",
+        "src/libs/utils/phone.ts",
         "src/modules/auth/auth.service.ts",
         "src/modules/employees/employee.service.ts",
         "src/modules/employees/employee-import.service.ts",

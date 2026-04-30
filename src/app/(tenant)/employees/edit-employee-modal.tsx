@@ -1,17 +1,22 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useForm, useWatch } from "react-hook-form"
+import { useForm, useWatch, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { ChevronDown, ChevronUp } from "lucide-react"
 import { Dialog, DialogClose, DialogContent, DialogOverlay, DialogPortal, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { PhoneInput } from "@/components/phone-input"
+import { normalizePhoneToE164 } from "@/libs/utils/phone"
 
 const schema = z.object({
   name: z.string().min(1, "Nome obrigatório"),
-  phone: z.string().min(8, "Telefone inválido"),
+  phone: z.string().min(1, "Telefone obrigatório").refine(
+    (val) => normalizePhoneToE164(val) !== null,
+    "Telefone inválido",
+  ),
   document: z.string().optional().or(z.literal("")),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
   departmentId: z.string().uuid("Departamento obrigatório"),
@@ -71,6 +76,7 @@ export function EditEmployeeModal({ open, onClose, onSave, loading, employee, de
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
+    mode: "onBlur",
     defaultValues: {
       name: "",
       phone: "",
@@ -132,7 +138,20 @@ export function EditEmployeeModal({ open, onClose, onSave, loading, employee, de
             </div>
             <div className="space-y-1">
               <Label className="text-[10px] font-bold uppercase tracking-widest">Telefone</Label>
-              <Input {...form.register("phone")} placeholder="+55 11 99999-9999" style={{ borderRadius: 0 }} />
+              <Controller
+                name="phone"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <PhoneInput
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    name={field.name}
+                    style={{ borderRadius: 0 }}
+                    aria-invalid={fieldState.invalid}
+                  />
+                )}
+              />
               {form.formState.errors.phone && (
                 <p className="text-[11px] text-destructive">{form.formState.errors.phone.message}</p>
               )}

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useForm } from "react-hook-form"
+import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
@@ -10,12 +10,17 @@ import { ChevronDown, ChevronUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { PhoneInput } from "@/components/phone-input"
 import { createEmployeeAction } from "@/app/(tenant)/employees/new/actions"
+import { normalizePhoneToE164 } from "@/libs/utils/phone"
 
 const schema = z.object({
   departmentId: z.string().uuid(),
   name: z.string().min(1),
-  phone: z.string().min(8),
+  phone: z.string().min(1, "Telefone obrigatório").refine(
+    (val) => normalizePhoneToE164(val) !== null,
+    "Telefone inválido",
+  ),
   document: z.string().optional().or(z.literal("")),
   email: z.string().email().optional().or(z.literal("")),
   workStartTime: z.string().optional(),
@@ -56,7 +61,7 @@ const ALL_DAYS = [
 
 export function CreateEmployeeForm({ departments }: Props): React.ReactElement {
   const router = useRouter()
-  const form = useForm<FormValues>({ resolver: zodResolver(schema) })
+  const form = useForm<FormValues>({ resolver: zodResolver(schema), mode: "onBlur" })
   const [showSchedule, setShowSchedule] = useState(false)
   const [shiftPreset, setShiftPreset] = useState<ShiftPreset | "">("")
   const [selectedDays, setSelectedDays] = useState<number[]>([])
@@ -129,7 +134,19 @@ export function CreateEmployeeForm({ departments }: Props): React.ReactElement {
         </div>
         <div className="space-y-1.5">
           <Label className={fieldCls}>Telefone</Label>
-          <Input placeholder="(11) 99999-9999" {...form.register("phone")} />
+          <Controller
+            name="phone"
+            control={form.control}
+            render={({ field, fieldState }) => (
+              <PhoneInput
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                name={field.name}
+                aria-invalid={fieldState.invalid}
+              />
+            )}
+          />
           {form.formState.errors.phone && (
             <p className="text-xs text-destructive">{form.formState.errors.phone.message}</p>
           )}
