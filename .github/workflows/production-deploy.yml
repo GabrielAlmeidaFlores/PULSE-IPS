@@ -26,7 +26,7 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
-      - name: "Type check — tsc --noEmit (0 erros)"
+      - name: Type check
         run: npx tsc --noEmit
 
       - name: Generate Prisma Client
