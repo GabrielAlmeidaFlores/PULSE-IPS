@@ -63,9 +63,12 @@ async function sendDispatchTokensAndMessages(
     workEndTime: emp.workEndTime ?? department.workEndTime ?? configWorkEndTime,
   }))
 
-  await createHealthSurveyTokensAndMarkSent(tenantId, dispatchId, tokens)
+  if (tokens.length === 0) {
+    await createHealthSurveyTokensAndMarkSent(tenantId, dispatchId, [])
+    return
+  }
 
-  if (tokens.length === 0) return
+  await createHealthSurveyTokensAndMarkSent(tenantId, dispatchId, tokens)
 
   const hasMessaging = await hasTenantPlanFeature(tenantId, "messaging")
   if (!hasMessaging) return
