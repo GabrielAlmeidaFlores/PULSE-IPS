@@ -130,6 +130,7 @@ model OrganizationUser {
   authTokens                     AuthToken[]
   termsAcceptances               PlatformTermsAcceptance[]
   dismissedActionPlanSuggestions ActionPlanSuggestion[]    @relation("ActionPlanSuggestionDismisser")
+  uploadedDocumentVersions       DocumentVersion[]         @relation("DocumentVersionUploader")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -535,14 +536,15 @@ model Document {
 }
 
 model DocumentVersion {
-  id         String   @id @default(uuid())
-  documentId String   @map("document_id")
-  version    Int
-  fileUrl    String   @map("file_url")
-  uploadedBy String   @map("uploaded_by")
-  createdAt  DateTime @default(now()) @map("created_at")
+  id           String   @id @default(uuid())
+  documentId   String   @map("document_id")
+  version      Int
+  fileUrl      String   @map("file_url")
+  uploadedById String?  @map("uploaded_by_id")
+  createdAt    DateTime @default(now()) @map("created_at")
 
-  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  document   Document           @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  uploadedBy OrganizationUser?  @relation("DocumentVersionUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
 
   @@index([documentId])
   @@map("document_versions")

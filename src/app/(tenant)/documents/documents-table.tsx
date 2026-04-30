@@ -10,7 +10,7 @@ interface DocumentVersion {
   id: string
   version: number
   fileUrl: string
-  uploadedBy: string
+  uploadedByName: string | null
   createdAt: Date
 }
 

@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import {
   createConsentRecord,
-  findExistingConsentEvent,
   getActiveConsentTermVersion,
   createConsentTermVersion,
   getAllConsentTermVersions,
   findLatestConsentEventsByEmployeeIds,
   findEmployeeIdsForConsentState,
+  atomicAcceptConsentFromToken,
 } from "@/modules/consent/consent.repository"
 import { findHealthSurveyTokenByValue, markHealthSurveyTokenUsed } from "@/modules/health-surveys/health-survey.repository"
 import {
@@ -24,7 +24,7 @@ import { AppError } from "@/libs/errors/app-error"
 
 vi.mock("@/modules/consent/consent.repository", () => ({
   createConsentRecord: vi.fn(),
-  findExistingConsentEvent: vi.fn(),
+  atomicAcceptConsentFromToken: vi.fn(),
   getActiveConsentTermVersion: vi.fn(),
   getAllConsentTermVersions: vi.fn(),
   createConsentTermVersion: vi.fn(),
@@ -47,7 +47,7 @@ vi.mock("@/env", () => ({
 }))
 
 const mockCreateConsentRecord = vi.mocked(createConsentRecord)
-const mockFindExistingConsentEvent = vi.mocked(findExistingConsentEvent)
+const mockAtomicAcceptConsent = vi.mocked(atomicAcceptConsentFromToken)
 const mockGetActiveConsentTermVersion = vi.mocked(getActiveConsentTermVersion)
 const mockCreateConsentTermVersion = vi.mocked(createConsentTermVersion)
 const mockGetAllConsentTermVersions = vi.mocked(getAllConsentTermVersions)
@@ -294,22 +294,21 @@ describe("acceptConsentFromHealthSurveyToken", () => {
     vi.clearAllMocks()
     mockFindTokenByValue.mockResolvedValue(tokenRecord as Awaited<ReturnType<typeof findHealthSurveyTokenByValue>>)
     mockGetActiveConsentTermVersion.mockResolvedValue(activeVersion)
-    mockFindExistingConsentEvent.mockResolvedValue(null)
+    mockAtomicAcceptConsent.mockResolvedValue(undefined)
   })
 
-  it("creates accepted consent record when no existing acceptance", async () => {
+  it("delegates accept to atomicAcceptConsentFromToken with correct args", async () => {
     await acceptConsentFromHealthSurveyToken(HEALTH_SURVEY_TOKEN)
 
-    expect(mockCreateConsentRecord).toHaveBeenCalledWith(expect.objectContaining({
-      tenantId: TENANT_ID,
-      employeeId: EMPLOYEE_ID,
-      event: "accepted",
-    }))
+    expect(mockAtomicAcceptConsent).toHaveBeenCalledWith(
+      tokenRecord.id,
+      TENANT_ID,
+      EMPLOYEE_ID,
+      TERM_VERSION_ID,
+    )
   })
 
-  it("skips creating record when consent already accepted", async () => {
-    mockFindExistingConsentEvent.mockResolvedValue({ id: "existing" } as Awaited<ReturnType<typeof findExistingConsentEvent>>)
-
+  it("does not call legacy createConsentRecord directly", async () => {
     await acceptConsentFromHealthSurveyToken(HEALTH_SURVEY_TOKEN)
 
     expect(mockCreateConsentRecord).not.toHaveBeenCalled()

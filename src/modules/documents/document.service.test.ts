@@ -176,11 +176,11 @@ describe("addDocumentVersion", () => {
     )
   })
 
-  it("passa fileUrl e uploadedBy ao repository", async () => {
+  it("passa fileUrl e uploadedById ao repository", async () => {
     await addDocumentVersion(TENANT_ID, DOC_ID, "https://storage/v2.pdf", "user-42")
 
     expect(mockCreateDocumentVersion).toHaveBeenCalledWith(
-      expect.objectContaining({ fileUrl: "https://storage/v2.pdf", uploadedBy: "user-42" }),
+      expect.objectContaining({ fileUrl: "https://storage/v2.pdf", uploadedById: "user-42" }),
     )
   })
 })

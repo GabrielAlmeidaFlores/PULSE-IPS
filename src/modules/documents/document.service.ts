@@ -35,7 +35,7 @@ export async function addDocumentVersion(
   tenantId: string,
   documentId: string,
   fileUrl: string,
-  uploadedBy: string,
+  uploadedById: string,
 ): ReturnType<typeof createDocumentVersion> {
   const doc = await findDocumentById(tenantId, documentId)
   if (!doc) throw new AppError("DOCUMENT_NOT_FOUND", "Documento não encontrado.")
@@ -46,7 +46,7 @@ export async function addDocumentVersion(
     documentId,
     version: currentVersion + 1,
     fileUrl,
-    uploadedBy,
+    uploadedById,
   })
 }
 

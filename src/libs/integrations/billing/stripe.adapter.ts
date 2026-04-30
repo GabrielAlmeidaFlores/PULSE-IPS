@@ -13,7 +13,14 @@ import type {
 import type { JsonValue } from "@/libs/utils/json"
 
 export class StripeAdapter implements IBillingService {
-  private stripe = new Stripe(env.STRIPE_SECRET_KEY ?? "")
+  private stripe: Stripe
+
+  constructor() {
+    if (!env.STRIPE_SECRET_KEY) {
+      throw new Error("STRIPE_SECRET_KEY é obrigatória quando BILLING_PROVIDER=stripe.")
+    }
+    this.stripe = new Stripe(env.STRIPE_SECRET_KEY)
+  }
 
   async createProduct(params: CreateStripeProductParams): Promise<{ id: string }> {
     const product = await this.stripe.products.create({
@@ -67,7 +74,10 @@ export class StripeAdapter implements IBillingService {
   }
 
   constructWebhookEvent(payload: string | Buffer, signature: string): BillingWebhookEvent {
-    const raw = this.stripe.webhooks.constructEvent(payload, signature, env.STRIPE_WEBHOOK_SECRET ?? "")
+    if (!env.STRIPE_WEBHOOK_SECRET) {
+      throw new Error("STRIPE_WEBHOOK_SECRET é obrigatória quando BILLING_PROVIDER=stripe.")
+    }
+    const raw = this.stripe.webhooks.constructEvent(payload, signature, env.STRIPE_WEBHOOK_SECRET)
     return {
       id: raw.id,
       type: raw.type,

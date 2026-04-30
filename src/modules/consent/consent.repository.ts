@@ -121,6 +121,32 @@ export async function findEmployeeIdsEligibleForDispatch(tenantId: string, emplo
   return employeeIds.filter((id) => !excludedIds.has(id))
 }
 
+export async function atomicAcceptConsentFromToken(
+  tokenId: string,
+  tenantId: string,
+  employeeId: string,
+  consentTermVersionId: string,
+): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    const token = await tx.healthSurveyResponseToken.findUnique({ where: { id: tokenId } })
+    if (!token || token.usedAt) return
+
+    const existing = await tx.employeeConsent.findFirst({
+      where: { tenantId, employeeId, consentTermVersionId, event: "accepted" },
+    })
+    if (!existing) {
+      await tx.employeeConsent.create({
+        data: { tenantId, employeeId, consentTermVersionId, event: "accepted", source: "health_survey_form" },
+      })
+    }
+
+    await tx.healthSurveyResponseToken.update({
+      where: { id: tokenId },
+      data: { usedAt: new Date() },
+    })
+  })
+}
+
 export async function findEmployeeIdsForConsentState(tenantId: string, consentFilter: string): Promise<string[]> {
   if (consentFilter === "not_sent") {
     const [withConsent, allEmployees] = await Promise.all([

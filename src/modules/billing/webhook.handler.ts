@@ -90,11 +90,8 @@ async function handleSubscriptionUpdate(subscription: WebhookSubscriptionData): 
     snapshotExternalPriceId: priceId,
   })
 
-  const existingFeatures = await findTenantSubscriptionFeatures(customer.id)
-  if (existingFeatures.length === 0) {
-    const planFeatures = await findPlanFeatures(planPrice.planId)
-    await createSubscriptionFeatureSnapshot(sub.id, planFeatures)
-  }
+  const planFeatures = await findPlanFeatures(planPrice.planId)
+  await replaceSubscriptionFeatures(sub.id, planFeatures)
 
   await updateOrganizationBillingStatus(customer.id, mapStripeStatusToBillingStatus(subscription.status), planPrice.planId)
 }
@@ -125,6 +122,10 @@ export async function retryFailedWebhookEvents(): Promise<{ retried: number; suc
   let failed = 0
 
   for (const event of failedEvents) {
+    if (!event.payload) {
+      failed++
+      continue
+    }
     try {
       const webhookEvent = event.payload as unknown as BillingWebhookEvent
       await handleStripeWebhook(webhookEvent)
