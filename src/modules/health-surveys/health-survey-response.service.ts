@@ -125,6 +125,15 @@ export async function unlockHealthSurveyViaIdentifier(
   const employee = await findEmployeeByPhoneOrDocument(tenantId, identifier.trim())
   if (!employee) throw new AppError("EMPLOYEE_NOT_FOUND", "Colaborador não encontrado. Verifique o número de telefone ou documento.")
 
+  const currentConsent = await getCurrentConsent(tenantId, employee.id)
+  const activeTermVersion = await getActiveConsentTermVersion()
+  const hasAcceptedCurrentVersion =
+    currentConsent?.event === "accepted" &&
+    currentConsent?.consentTermVersionId === activeTermVersion?.id
+  if (!hasAcceptedCurrentVersion) {
+    throw new AppError("CONSENT_REQUIRED", "Você precisa aceitar os termos de consentimento antes de responder.")
+  }
+
   const usedToken = await findUsedHealthSurveyTokenForEmployee(tenantId, dispatch.id, employee.id)
   if (usedToken) return { token: usedToken.token, alreadyAnswered: true }
 

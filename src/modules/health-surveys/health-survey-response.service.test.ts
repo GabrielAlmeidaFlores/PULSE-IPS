@@ -513,6 +513,33 @@ describe("unlockHealthSurveyViaIdentifier — guards", () => {
     await expect(unlockHealthSurveyViaIdentifier(SIGNED_LINK_TOKEN, EMPLOYEE_PHONE))
       .rejects.toMatchObject({ code: "OUTSIDE_WORK_WINDOW" })
   })
+
+  it("lança CONSENT_REQUIRED quando o colaborador não aceitou o TCLE", async () => {
+    mockGetCurrentConsent.mockResolvedValue(null)
+
+    await expect(unlockHealthSurveyViaIdentifier(SIGNED_LINK_TOKEN, EMPLOYEE_PHONE))
+      .rejects.toMatchObject({ code: "CONSENT_REQUIRED" })
+  })
+
+  it("lança CONSENT_REQUIRED quando o colaborador recusou o TCLE", async () => {
+    mockGetCurrentConsent.mockResolvedValue({
+      ...ACCEPTED_CONSENT,
+      event: "refused",
+    })
+
+    await expect(unlockHealthSurveyViaIdentifier(SIGNED_LINK_TOKEN, EMPLOYEE_PHONE))
+      .rejects.toMatchObject({ code: "CONSENT_REQUIRED" })
+  })
+
+  it("lança CONSENT_REQUIRED quando o colaborador aceitou versão anterior do TCLE", async () => {
+    mockGetCurrentConsent.mockResolvedValue({
+      ...ACCEPTED_CONSENT,
+      consentTermVersionId: "term-antiga",
+    })
+
+    await expect(unlockHealthSurveyViaIdentifier(SIGNED_LINK_TOKEN, EMPLOYEE_PHONE))
+      .rejects.toMatchObject({ code: "CONSENT_REQUIRED" })
+  })
 })
 
 describe("unlockHealthSurveyViaIdentifier — retorno de token existente", () => {
