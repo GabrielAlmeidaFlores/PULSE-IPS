@@ -9,13 +9,14 @@ interface PlanCardProps {
   externalPriceId: string | null
   planName: string
   priceLabel: string
-  maxEmployees: number
+  maxEmployees: number | null
   description: string | null
   features: PlanFeature[]
   isCurrent?: boolean
+  consultantUrl: string
 }
 
-export function PlanCard({ externalPriceId, planName, priceLabel, maxEmployees, description, features, isCurrent = false }: PlanCardProps): React.ReactElement {
+export function PlanCard({ externalPriceId, planName, priceLabel, maxEmployees, description, features, isCurrent = false, consultantUrl }: PlanCardProps): React.ReactElement {
   const [pending, startTransition] = useTransition()
   const enabledFeatureKeys = new Set<string>(features)
 
@@ -27,17 +28,43 @@ export function PlanCard({ externalPriceId, planName, priceLabel, maxEmployees, 
     })
   }
 
-  let buttonLabel = "Assinar"
-  if (isCurrent) buttonLabel = "Plano atual"
-  else if (pending) buttonLabel = "Aguarde..."
+  const hasPrice = externalPriceId !== null
 
-  let buttonTitle: string | undefined
-  if (isCurrent) buttonTitle = "Este é seu plano atual"
-  else if (!externalPriceId) buttonTitle = "Plano sem preço configurado"
-
-  const disabledClass = (pending || !externalPriceId) ? " opacity-40 cursor-not-allowed" : ""
-  let buttonClass = `border-primary bg-primary text-primary-foreground hover:opacity-90${disabledClass}`
-  if (isCurrent) buttonClass = "border-primary/30 bg-primary/10 text-primary cursor-default"
+  let actionElement: React.ReactElement
+  if (isCurrent) {
+    actionElement = (
+      <button
+        disabled
+        style={{ borderRadius: 0 }}
+        className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest border border-primary/30 bg-primary/10 text-primary cursor-default"
+      >
+        Plano atual
+      </button>
+    )
+  } else if (!hasPrice) {
+    actionElement = (
+      <a
+        href={consultantUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ borderRadius: 0 }}
+        className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+      >
+        Falar com consultor
+      </a>
+    )
+  } else {
+    actionElement = (
+      <button
+        onClick={handleCheckout}
+        disabled={pending}
+        style={{ borderRadius: 0 }}
+        className={`px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest border border-primary bg-primary text-primary-foreground hover:opacity-90${pending ? " opacity-40 cursor-not-allowed" : ""}`}
+      >
+        {pending ? "Aguarde..." : "Assinar"}
+      </button>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-3 px-4 py-4">
@@ -45,19 +72,11 @@ export function PlanCard({ externalPriceId, planName, priceLabel, maxEmployees, 
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold">{planName}</p>
           {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
-          <p className="text-xs text-muted-foreground mt-0.5">Até {maxEmployees} colaboradores</p>
+          {maxEmployees !== null && <p className="text-xs text-muted-foreground mt-0.5">Até {maxEmployees} colaboradores</p>}
         </div>
         <div className="flex flex-col items-end gap-2 shrink-0">
-          <span className="text-sm font-semibold text-foreground">{priceLabel}</span>
-          <button
-            onClick={handleCheckout}
-            disabled={pending || !externalPriceId || isCurrent}
-            title={buttonTitle}
-            style={{ borderRadius: 0 }}
-            className={`px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest border ${buttonClass}`}
-          >
-            {buttonLabel}
-          </button>
+          {hasPrice && <span className="text-sm font-semibold text-foreground">{priceLabel}</span>}
+          {actionElement}
         </div>
       </div>
 

@@ -7,6 +7,12 @@ import { format } from "date-fns"
 import { CheckCircle2 } from "lucide-react"
 import { PlanCard, ManageSubscriptionButton } from "@/app/(tenant)/billing/billing-actions"
 import { PageHelp } from "@/components/page-help"
+import { env } from "@/env"
+
+function buildConsultantUrl(): string {
+  const message = encodeURIComponent("Olá! Gostaria de falar com um consultor sobre o Pulse.")
+  return `https://wa.me/${env.NEXT_PUBLIC_CONSULTANT_WHATSAPP}?text=${message}`
+}
 
 const BILLING_STATUS_LABELS: Record<string, string> = {
   pending: "Pendente",
@@ -38,6 +44,8 @@ export default async function BillingPage(): Promise<React.ReactElement> {
     getAllPlans(),
     getTenantPlanFeatures(session.tenantId),
   ])
+
+  const consultantUrl = buildConsultantUrl()
 
   return (
     <div className="flex flex-col h-full">
@@ -125,11 +133,12 @@ export default async function BillingPage(): Promise<React.ReactElement> {
                     key={plan.id}
                     externalPriceId={plan.prices[0]?.externalPriceId ?? null}
                     planName={plan.name}
-                    priceLabel={plan.prices[0] ? `${(plan.prices[0].priceInCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}/mês` : "—"}
+                    priceLabel={plan.prices[0] ? `${(plan.prices[0].priceInCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}/mês` : ""}
                     maxEmployees={plan.maxEmployees}
                     description={plan.description}
                     features={plan.features}
                     isCurrent={plan.id === subscription.plan.id}
+                    consultantUrl={consultantUrl}
                   />
                 ))}
               </div>
@@ -149,10 +158,11 @@ export default async function BillingPage(): Promise<React.ReactElement> {
                     <PlanCard
                       externalPriceId={plan.prices[0]?.externalPriceId ?? null}
                       planName={plan.name}
-                      priceLabel={plan.prices[0] ? `${(plan.prices[0].priceInCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })  }/mês` : "—"}
+                      priceLabel={plan.prices[0] ? `${(plan.prices[0].priceInCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}/mês` : ""}
                       maxEmployees={plan.maxEmployees}
                       description={plan.description}
                       features={plan.features}
+                      consultantUrl={consultantUrl}
                     />
                   </div>
                 ))}

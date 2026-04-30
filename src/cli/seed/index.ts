@@ -566,8 +566,8 @@ const PLANS = [
     maxEmployees: 50,
     externalProductId: "prod_starter_pulse",
     prices: [
-      { interval: "monthly", priceInCents: 29900, externalPriceId: "price_starter_monthly" },
-      { interval: "annual",  priceInCents: 287040, externalPriceId: "price_starter_annual" },
+      { interval: "month", priceInCents: 29900, externalPriceId: "price_starter_monthly" },
+      { interval: "year",  priceInCents: 287040, externalPriceId: "price_starter_annual" },
     ],
   },
   {
@@ -576,8 +576,8 @@ const PLANS = [
     maxEmployees: 150,
     externalProductId: "prod_professional_pulse",
     prices: [
-      { interval: "monthly", priceInCents: 69900, externalPriceId: "price_professional_monthly" },
-      { interval: "annual",  priceInCents: 671040, externalPriceId: "price_professional_annual" },
+      { interval: "month", priceInCents: 69900, externalPriceId: "price_professional_monthly" },
+      { interval: "year",  priceInCents: 671040, externalPriceId: "price_professional_annual" },
     ],
   },
   {
@@ -586,8 +586,8 @@ const PLANS = [
     maxEmployees: 300,
     externalProductId: "prod_enterprise_pulse",
     prices: [
-      { interval: "monthly", priceInCents: 149900, externalPriceId: "price_enterprise_monthly" },
-      { interval: "annual",  priceInCents: 1439040, externalPriceId: "price_enterprise_annual" },
+      { interval: "month", priceInCents: 149900, externalPriceId: "price_enterprise_monthly" },
+      { interval: "year",  priceInCents: 1439040, externalPriceId: "price_enterprise_annual" },
     ],
   },
 ] as const
@@ -619,7 +619,15 @@ async function seedPlans(): Promise<void> {
     for (const price of plan.prices) {
       const existingPrice = await prisma.planPrice.findUnique({ where: { externalPriceId: price.externalPriceId } })
       if (existingPrice) {
-        logger.info(`⏭️  Price already exists: ${plan.name} ${price.interval}`)
+        if (existingPrice.interval !== price.interval) {
+          await prisma.planPrice.update({
+            where: { externalPriceId: price.externalPriceId },
+            data: { interval: price.interval },
+          })
+          logger.info(`  🔄 Price interval corrected: ${plan.name} ${existingPrice.interval} → ${price.interval}`)
+        } else {
+          logger.info(`⏭️  Price already exists: ${plan.name} ${price.interval}`)
+        }
         continue
       }
       await prisma.planPrice.create({
