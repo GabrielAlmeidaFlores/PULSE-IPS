@@ -72,7 +72,7 @@ export function ImportEmployeesForm(): React.ReactElement {
           <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2">
             {[
               ["Nome", "Obrigatório"],
-              ["Telefone", "Obrigatório"],
+              ["Telefone", "Obrigatório — ex: +5511999999999"],
               ["Departamento", "Obrigatório — deve existir no sistema"],
               ["Email", "Opcional"],
             ].map(([col, desc]) => (

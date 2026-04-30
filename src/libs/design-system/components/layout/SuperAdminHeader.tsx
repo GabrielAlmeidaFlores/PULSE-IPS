@@ -1,6 +1,7 @@
 "use client"
 
 import { useTransition } from "react"
+import { useRouter } from "next/navigation"
 import { LogOut } from "lucide-react"
 import { superAdminLogoutAction } from "@/app/(super-admin-public)/super-admin/logout/actions"
 
@@ -10,10 +11,12 @@ interface SuperAdminHeaderProps {
 
 export function SuperAdminHeader({ email }: SuperAdminHeaderProps): React.ReactElement {
   const [pending, startTransition] = useTransition()
+  const router = useRouter()
 
   function handleLogout(): void {
     startTransition(async () => {
       await superAdminLogoutAction()
+      router.push("/super-admin/login")
     })
   }
 

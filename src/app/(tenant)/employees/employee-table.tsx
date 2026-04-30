@@ -4,14 +4,13 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
-import { Pencil, UserX, ChevronRight, SendHorizontal } from "lucide-react"
+import { Pencil, UserX, ChevronRight } from "lucide-react"
 import { DataTable } from "@/libs/design-system"
 import { TablePagination } from "@/libs/design-system/components/data-display/TablePagination"
-import { BADGE_BASE, BADGE_DEFAULT, BADGE_GREEN, BADGE_BLUE, BADGE_RED, BADGE_AMBER } from "@/libs/design-system/alert-labels"
+import { BADGE_BASE, BADGE_DEFAULT, BADGE_GREEN, BADGE_RED, BADGE_AMBER } from "@/libs/design-system/alert-labels"
 import { ConfirmDeleteModal } from "@/components/confirm-delete-modal"
 import { EditEmployeeModal, type EmployeeEditData, type EmployeeFormValues } from "@/app/(tenant)/employees/edit-employee-modal"
 import { updateEmployeeAction, deactivateEmployeeAction } from "@/app/(tenant)/employees/[id]/actions"
-import { resendConsentInviteAction } from "@/app/(tenant)/employees/actions"
 
 interface Department {
   id: string
@@ -33,7 +32,7 @@ interface EmployeeRow {
   consentEvent: string | null
 }
 
-interface Props {
+interface EmployeeTableProps {
   employees: EmployeeRow[]
   total: number
   departments: Department[]
@@ -43,24 +42,20 @@ function consentBadge(event: string | null): React.ReactElement {
   if (event === "accepted") {
     return <span className={`${BADGE_BASE} ${BADGE_GREEN}`}>Aceito</span>
   }
-  if (event === "invited") {
-    return <span className={`${BADGE_BASE} ${BADGE_BLUE}`}>Enviado</span>
-  }
   if (event === "refused") {
     return <span className={`${BADGE_BASE} ${BADGE_RED}`}>Recusado</span>
   }
   if (event === "opted_out" || event === "revoked") {
     return <span className={`${BADGE_BASE} ${BADGE_AMBER}`}>Opt-out</span>
   }
-  return <span className={`${BADGE_BASE} ${BADGE_DEFAULT}`}>Não enviado</span>
+  return <span className={`${BADGE_BASE} ${BADGE_DEFAULT}`}>Pendente</span>
 }
 
-export function EmployeeTable({ employees, total, departments }: Props): React.ReactElement {
+export function EmployeeTable({ employees, total, departments }: EmployeeTableProps): React.ReactElement {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [editTarget, setEditTarget] = useState<EmployeeEditData | null>(null)
   const [deactivateTarget, setDeactivateTarget] = useState<EmployeeRow | null>(null)
-  const [sendingConsentFor, setSendingConsentFor] = useState<string | null>(null)
 
   function handleEdit(emp: EmployeeRow): void {
     setEditTarget({
@@ -113,21 +108,6 @@ export function EmployeeTable({ employees, total, departments }: Props): React.R
     })
   }
 
-  function handleResendConsent(emp: EmployeeRow): void {
-    setSendingConsentFor(emp.id)
-    startTransition(async () => {
-      const result = await resendConsentInviteAction(emp.id)
-      setSendingConsentFor(null)
-      if (result.error) {
-        toast.error(result.error)
-        return
-      }
-      const label = emp.consentEvent === null ? "Convite de consentimento enviado." : "Convite de consentimento reenviado."
-      toast.success(label)
-      router.refresh()
-    })
-  }
-
   return (
     <>
       <DataTable
@@ -137,7 +117,7 @@ export function EmployeeTable({ employees, total, departments }: Props): React.R
           { label: "Telefone" },
           { label: "Status" },
           { label: "Consentimento" },
-          { label: "Ações", align: "right", className: "w-28" },
+          { label: "Ações", align: "right", className: "w-20" },
           { label: "", className: "w-8" },
         ]}
         total={total}
@@ -166,19 +146,8 @@ export function EmployeeTable({ employees, total, departments }: Props): React.R
             <td className="px-4 py-3">
               {consentBadge(emp.consentEvent)}
             </td>
-            <td className="px-4 py-3 w-28">
+            <td className="px-4 py-3 w-20">
               <div className="flex items-center justify-end gap-1">
-                {emp.consentEvent !== "accepted" && (
-                  <button
-                    onClick={() => handleResendConsent(emp)}
-                    disabled={sendingConsentFor === emp.id || pending}
-                    style={{ borderRadius: 0 }}
-                    className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider border border-primary/40 text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
-                    title={emp.consentEvent === null ? "Enviar TCLE" : "Reenviar TCLE"}
-                  >
-                    <SendHorizontal size={12} />
-                  </button>
-                )}
                 <button
                   onClick={() => handleEdit(emp)}
                   style={{ borderRadius: 0 }}
@@ -229,3 +198,4 @@ export function EmployeeTable({ employees, total, departments }: Props): React.R
     </>
   )
 }
+

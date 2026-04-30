@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { submitReport, updateReportStatus, getReports, getReport } from "@/modules/anonymous-reports/anonymous-report.service"
-import { createReport, updateReport, findReportsByTenant, findReportById } from "@/modules/anonymous-reports/anonymous-report.repository"
+import { submitReport, updateReportStatus, getReports, getReport, getReportsPaginated } from "@/modules/anonymous-reports/anonymous-report.service"
+import { createReport, updateReport, findReportsByTenant, findReportById, findReportsForListingPage } from "@/modules/anonymous-reports/anonymous-report.repository"
 import { findOrganizationBySlug } from "@/modules/organizations/organization.repository"
 
 vi.mock("@/modules/anonymous-reports/anonymous-report.repository")
@@ -12,6 +12,7 @@ const mockUpdateReport = vi.mocked(updateReport)
 const mockFindOrgBySlug = vi.mocked(findOrganizationBySlug)
 const mockFindReportsByTenant = vi.mocked(findReportsByTenant)
 const mockFindReportById = vi.mocked(findReportById)
+const mockFindReportsForListingPage = vi.mocked(findReportsForListingPage)
 
 const ORG = { id: "org-1", slug: "acme" }
 const REPORT_INPUT = { orgSlug: "acme", content: "Relato anônimo" }
@@ -84,5 +85,23 @@ describe("getReport", () => {
     const result = await getReport("org-1", "rep-1")
     expect(result).toEqual(CREATED_REPORT)
     expect(mockFindReportById).toHaveBeenCalledWith("org-1", "rep-1")
+  })
+})
+
+describe("getReportsPaginated", () => {
+  it("calcula skip e repassa filtros ao repository", async () => {
+    mockFindReportsForListingPage.mockResolvedValue({ items: [], total: 0 } as Awaited<ReturnType<typeof findReportsForListingPage>>)
+
+    await getReportsPaginated("org-1", { page: 2, pageSize: 10, status: "open", category: "harassment" })
+
+    expect(mockFindReportsForListingPage).toHaveBeenCalledWith("org-1", { status: "open", category: "harassment" }, 10, 10)
+  })
+
+  it("omite filtros ausentes", async () => {
+    mockFindReportsForListingPage.mockResolvedValue({ items: [], total: 0 } as Awaited<ReturnType<typeof findReportsForListingPage>>)
+
+    await getReportsPaginated("org-1", { page: 1, pageSize: 5 })
+
+    expect(mockFindReportsForListingPage).toHaveBeenCalledWith("org-1", {}, 0, 5)
   })
 })

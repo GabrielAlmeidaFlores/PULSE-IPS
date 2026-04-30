@@ -10,7 +10,7 @@ import { ChevronDown, ChevronUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { updateEmployeeAction, deactivateEmployeeAction, sendConsentInviteAction } from "@/app/(tenant)/employees/[id]/actions"
+import { updateEmployeeAction, deactivateEmployeeAction } from "@/app/(tenant)/employees/[id]/actions"
 
 const schema = z.object({
   name: z.string().min(1, "Nome obrigatório"),
@@ -62,7 +62,6 @@ export function EmployeeDetail({ employee, departments }: Props): React.ReactEle
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [isDeactivating, setIsDeactivating] = useState(false)
-  const [isSendingConsent, setIsSendingConsent] = useState(false)
   const hasCustomSchedule = Boolean(employee.workStartTime) || employee.workDays.length > 0
   const [showSchedule, setShowSchedule] = useState(hasCustomSchedule)
   const [selectedDays, setSelectedDays] = useState<number[]>(employee.workDays.map((w) => w.dayOfWeek))
@@ -115,17 +114,6 @@ export function EmployeeDetail({ employee, departments }: Props): React.ReactEle
     }
     toast.success("Colaborador desativado.")
     router.push("/employees")
-  }
-
-  async function handleSendConsentInvite(): Promise<void> {
-    setIsSendingConsent(true)
-    const result = await sendConsentInviteAction(employee.id)
-    setIsSendingConsent(false)
-    if (result.error) {
-      toast.error(result.error)
-      return
-    }
-    toast.success("Convite de consentimento enviado.")
   }
 
   return (
@@ -234,21 +222,6 @@ export function EmployeeDetail({ employee, departments }: Props): React.ReactEle
           </Button>
         </div>
       </form>
-
-      {employee.status === "active" && (
-        <div className="border border-border bg-card p-6">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Consentimento</p>
-          <p className="text-xs text-muted-foreground mb-4">Envie um link de consentimento para o colaborador via link de consentimento.</p>
-          <Button
-            variant="outline"
-            onClick={handleSendConsentInvite}
-            disabled={isSendingConsent}
-            className="rounded-none text-[11px] font-bold uppercase tracking-widest"
-          >
-            {isSendingConsent ? "Enviando..." : "Enviar Convite de Consentimento"}
-          </Button>
-        </div>
-      )}
 
       {employee.status === "active" && (
         <div className="border border-destructive/30 bg-card p-6">

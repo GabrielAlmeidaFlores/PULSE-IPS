@@ -574,8 +574,6 @@ const color = healthIndexAccent(hi)          // → classe CSS de cor
 **Cadastro manual:**
 1. Usuário preenche nome, telefone, e-mail (opcional), departamento e horário de trabalho (`workStartTime`, `workEndTime`).
 2. A action `createEmployeeAction` lê `tenantId` da sessão e cria o funcionário no banco.
-3. Dispara a action de consentimento: cria um `EmployeeConsent` com `event = "invited"` e um token temporário.
-4. Envia SMS/WhatsApp para o funcionário com o link de consentimento `/consent/[token]`.
 
 **Importação por planilha Excel:**
 1. Usuário faz upload de um arquivo `.xlsx` em `/employees/import`.
@@ -756,13 +754,13 @@ Referência de tudo que o usuário vê na tela para cada alerta (`/alerts`) e su
 | | Tooltip — label | Sem resposta |
 | | Tooltip — descrição | Nenhuma resposta foi recebida neste ciclo de pesquisa. |
 | | Tooltip — ação | Verifique se o disparo foi concluído sem erros nos logs de jobs e se os colaboradores do setor têm dados de contato cadastrados. |
-| **`consent_expired`** *(Alerta — gerado automaticamente)* | Condição | Colaborador ativo com último evento `invited` e `tokenExpiresAt < now()`, agrupado por setor |
+| **`consent_expired`** *(Alerta — gerado automaticamente)* | Condição | Colaborador ativo com último evento `invited` e `tokenExpiresAt < now()`, agrupado por setor (aplica-se a registros do fluxo legado) |
 | | Job | `health-survey-score-alert-detector` · 03:00 diário |
 | | Severidade | `warning` |
 | | Mensagem | `{N} colaborador(es) do setor {X} com convite de consentimento expirado. Reenvie o convite para retomar a participação.` |
 | | Tooltip — label | Consentimento expirado |
 | | Tooltip — descrição | O termo de consentimento (TCLE) de um ou mais colaboradores está expirado ou ainda pendente de aceite. |
-| | Tooltip — ação | Reenvie o convite de consentimento para os colaboradores pendentes para que possam voltar a participar das pesquisas. |
+| | Tooltip — ação | Verifique o status de participação dos colaboradores pendentes no painel de funcionários. |
 | **`pgr_review_due`** *(Alerta — gerado automaticamente)* | Condição | `nextReviewAt` nos próximos 30 dias e sem alerta aberto do mesmo tipo |
 | | Job | `pgr-review-reminder` · 08:00 diário |
 | | Severidade | `warning` |
@@ -865,16 +863,18 @@ Referência de tudo que o usuário vê na tela para cada alerta (`/alerts`) e su
 
 ### 11. Consentimento LGPD
 
-O fluxo de consentimento garante que a coleta de dados de saúde dos funcionários seja juridicamente válida:
+O fluxo de consentimento garante que a coleta de dados de saúde dos funcionários seja juridicamente válida. O consentimento é coletado **inline na primeira pesquisa** — não há envio separado de link de consentimento:
 
-1. Ao cadastrar um funcionário, um registro de `EmployeeConsent` é criado com `event = "invited"` e um token temporário.
-2. O funcionário recebe um link `/consent/[token]` por SMS/WhatsApp.
-3. Ao acessar, vê o texto dos Termos de Consentimento (versão ativa de `consent_term_versions`).
-4. Pode aceitar ou recusar:
-   - **Aceitar**: cria um novo `EmployeeConsent` com `event = "accepted"`, registra hash do CPF (opcional) e fonte.
-   - **Recusar**: cria um registro com `event = "refused"`.
-5. O token é inativado após o uso.
-6. O histórico de consentimentos é imutável e auditável.
+1. O funcionário é cadastrado no sistema (sem convite de consentimento separado).
+2. Quando a primeira pesquisa é disparada, o funcionário recebe o link `/health-survey/[token]` por SMS/WhatsApp.
+3. Ao acessar o link, a página exibe a **Consent Gate** — o texto dos Termos de Consentimento (versão ativa de `consent_term_versions`) antes do formulário da pesquisa.
+4. O funcionário pode aceitar ou recusar:
+   - **Aceitar**: cria um `EmployeeConsent` com `event = "accepted"`. A página exibe o formulário da pesquisa.
+   - **Recusar**: cria um registro com `event = "refused"` e encerra o fluxo.
+5. Nas pesquisas seguintes, o funcionário já aceitou e vai direto para o formulário (sem a Consent Gate).
+6. A qualquer momento, o funcionário pode clicar em **"Não quero mais participar"** no formulário → cria `event = "opted_out"` e marca o token como usado.
+7. O token é inativado após o uso (aceite, recusa, opt-out ou envio de resposta).
+8. O histórico de consentimentos é imutável e auditável.
 
 ---
 

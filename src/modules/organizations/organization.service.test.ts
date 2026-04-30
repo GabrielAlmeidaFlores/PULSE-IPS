@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { createOrg, getOrganization, updateOrg, getOrganizationForAdmin, getOrganizationBilling, getOrganizationsForExport, getOrganizationFullDetail } from "@/modules/organizations/organization.service"
+import { createOrg, getOrganization, updateOrg, getOrganizationForAdmin, getOrganizationBilling, getOrganizationsForExport, getOrganizationFullDetail, getAllOrganizations, getAllOrganizationsPaginatedAdmin } from "@/modules/organizations/organization.service"
 import {
   findOrganizationBySlug,
   createOrganization,
@@ -10,6 +10,8 @@ import {
   findOrganizationBilling,
   findAllOrganizationsForExport,
   findOrganizationFullDetail,
+  findAllOrganizations,
+  findAllOrganizationsPaginatedAdmin,
 } from "@/modules/organizations/organization.repository"
 import { getBillingService } from "@/libs/integrations"
 import type { IBillingService } from "@/libs/integrations/billing/billing.interface"
@@ -28,6 +30,8 @@ const mockFindOrgForAdmin = vi.mocked(findOrganizationForAdmin)
 const mockFindOrgBilling = vi.mocked(findOrganizationBilling)
 const mockFindAllOrgsForExport = vi.mocked(findAllOrganizationsForExport)
 const mockFindOrgFullDetail = vi.mocked(findOrganizationFullDetail)
+const mockFindAllOrganizations = vi.mocked(findAllOrganizations)
+const mockFindAllOrganizationsPaginatedAdmin = vi.mocked(findAllOrganizationsPaginatedAdmin)
 
 const ORG = { id: "org-1", slug: "acme", name: "Acme Corp", externalCustomerId: "cus_123" }
 
@@ -129,5 +133,34 @@ describe("getOrganizationFullDetail", () => {
     const result = await getOrganizationFullDetail(ORG.id)
     expect(mockFindOrgFullDetail).toHaveBeenCalledWith(ORG.id)
     expect(result).toEqual({ id: ORG.id })
+  })
+})
+
+describe("getAllOrganizations", () => {
+  it("delega ao repository e retorna lista", async () => {
+    mockFindAllOrganizations.mockResolvedValue([{ id: ORG.id }] as Awaited<ReturnType<typeof findAllOrganizations>>)
+
+    const result = await getAllOrganizations()
+
+    expect(mockFindAllOrganizations).toHaveBeenCalled()
+    expect(result).toEqual([{ id: ORG.id }])
+  })
+})
+
+describe("getAllOrganizationsPaginatedAdmin", () => {
+  it("calcula skip e repassa ao repository sem filtros", async () => {
+    mockFindAllOrganizationsPaginatedAdmin.mockResolvedValue({ items: [], total: 0 } as Awaited<ReturnType<typeof findAllOrganizationsPaginatedAdmin>>)
+
+    await getAllOrganizationsPaginatedAdmin({ page: 2, pageSize: 10 })
+
+    expect(mockFindAllOrganizationsPaginatedAdmin).toHaveBeenCalledWith({}, 10, 10)
+  })
+
+  it("inclui filtro de busca quando q está presente", async () => {
+    mockFindAllOrganizationsPaginatedAdmin.mockResolvedValue({ items: [], total: 0 } as Awaited<ReturnType<typeof findAllOrganizationsPaginatedAdmin>>)
+
+    await getAllOrganizationsPaginatedAdmin({ page: 1, pageSize: 5, q: "acme" })
+
+    expect(mockFindAllOrganizationsPaginatedAdmin).toHaveBeenCalledWith({ q: "acme" }, 0, 5)
   })
 })

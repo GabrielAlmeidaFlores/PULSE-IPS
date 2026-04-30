@@ -16,6 +16,8 @@ vi.mock("@/modules/action-plans/action-plan.repository", () => ({
 const mockFindContext = vi.mocked(findSuggestionContextData)
 
 const DEPT_ID_1 = "dept-1"
+const DEPT_NAME_VENDAS = "Vendas"
+const DISPATCH_DATE = "2026-04-20"
 const SCORE_DROP_TYPE = "score_drop"
 const CAT_HARASSMENT = "harassment"
 const CAT_OVERLOAD = "overload"
@@ -180,8 +182,8 @@ describe("buildDispatchSuggestion", () => {
     id: "dispatch-1",
     totalRecipients: 10,
     totalResponses: 5,
-    dispatchedAt: new Date("2026-04-20"),
-    healthSurveyConfiguration: { department: { name: "Vendas" } },
+    dispatchedAt: new Date(DISPATCH_DATE),
+    healthSurveyConfiguration: { department: { name: DEPT_NAME_VENDAS } },
   }
 
   it("returns null when no dispatches", () => {
@@ -195,7 +197,7 @@ describe("buildDispatchSuggestion", () => {
 
   it("dispatch suggestion title contains department name", () => {
     const result = buildDispatchSuggestion([dispatch], new Set())
-    expect(result?.title).toContain("Vendas")
+    expect(result?.title).toContain(DEPT_NAME_VENDAS)
   })
 
   it("dispatch suggestion description shows adherence percentage", () => {
@@ -339,7 +341,7 @@ describe("computeRawSuggestions", () => {
           departmentId: DEPT_ID_1,
           department: { name: "TI" },
           message: "Queda detectada",
-          createdAt: new Date("2026-04-20"),
+          createdAt: new Date(DISPATCH_DATE),
         },
       ],
     })
@@ -370,5 +372,41 @@ describe("computeRawSuggestions", () => {
     })
     const result = await computeRawSuggestions("tenant-1")
     expect(result.some((s) => s.key === "consent-pending")).toBe(true)
+  })
+
+  it("generates dispatch suggestion for low-adherence dispatch", async () => {
+    mockFindContext.mockResolvedValue({
+      ...emptyContext,
+      lastPgrReview: { period: PGR_PERIOD_CURRENT, createdAt: new Date() },
+      recentDispatches: [
+        {
+          id: "dispatch-1",
+          totalRecipients: 10,
+          totalResponses: 5,
+          dispatchedAt: new Date(DISPATCH_DATE),
+          healthSurveyConfiguration: { department: { name: DEPT_NAME_VENDAS } },
+        },
+      ],
+    })
+    const result = await computeRawSuggestions("tenant-1")
+    expect(result.some((s) => s.key.startsWith("dispatch-"))).toBe(true)
+  })
+
+  it("skips dispatch with zero recipients to avoid NaN comparison", async () => {
+    mockFindContext.mockResolvedValue({
+      ...emptyContext,
+      lastPgrReview: { period: PGR_PERIOD_CURRENT, createdAt: new Date() },
+      recentDispatches: [
+        {
+          id: "dispatch-zero",
+          totalRecipients: 0,
+          totalResponses: 0,
+          dispatchedAt: new Date(DISPATCH_DATE),
+          healthSurveyConfiguration: { department: { name: DEPT_NAME_VENDAS } },
+        },
+      ],
+    })
+    const result = await computeRawSuggestions("tenant-1")
+    expect(result.some((s) => s.key.startsWith("dispatch-"))).toBe(false)
   })
 })

@@ -12,16 +12,16 @@ import {
   type ActiveHealthSurveyConfigForDispatch,
 } from "@/modules/health-surveys/health-survey.repository"
 import { hasOpenAlertOfType } from "@/modules/alerts/alert.repository"
-import { findEmployeeIdsWithAcceptedConsent } from "@/modules/consent/consent.repository"
 import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
+import { findEmployeeIdsWithAcceptedConsent } from "@/modules/consent/consent.repository"
 type PendingDispatch = Awaited<ReturnType<typeof findAllTenantsPendingHealthSurveyDispatches>>[number]
 
 const mockAddBulk = vi.hoisted(() => vi.fn().mockResolvedValue([]))
 
 vi.mock("@/modules/health-surveys/health-survey.repository")
 vi.mock("@/modules/alerts/alert.repository")
-vi.mock("@/modules/consent/consent.repository")
 vi.mock("@/modules/billing/billing.service")
+vi.mock("@/modules/consent/consent.repository")
 vi.mock("@/libs/queue", () => ({ getMessageQueue: vi.fn(() => ({ addBulk: mockAddBulk })) }))
 vi.mock("@/libs/logger", () => ({ logger: { error: vi.fn(), info: vi.fn() } }))
 vi.mock("@/env", () => ({
@@ -41,10 +41,11 @@ const mockCountResponses = vi.mocked(countHealthSurveyResponsesForDispatch)
 const mockCreateAdherenceAlert = vi.mocked(createHealthSurveyAdherenceAlert)
 const mockMarkDispatchAdherenceChecked = vi.mocked(markHealthSurveyDispatchAdherenceChecked)
 const mockHasOpenAlertOfType = vi.mocked(hasOpenAlertOfType)
-const mockFindEmployeeIdsWithAcceptedConsent = vi.mocked(findEmployeeIdsWithAcceptedConsent)
 const mockHasTenantPlanFeature = vi.mocked(hasTenantPlanFeature)
+const mockFindEmployeeIdsWithAcceptedConsent = vi.mocked(findEmployeeIdsWithAcceptedConsent)
 
 const TENANT_ID = "tenant-1"
+const DISPATCH_ID = "dispatch-1"
 const WORK_DAY_TIMESTAMP = "2024-01-15T12:00:00-03:00"
 
 const EMPLOYEE = {
@@ -76,7 +77,7 @@ const AUTO_DISPATCH_DEPT = {
 
 function makePendingDispatch(workDays = [1, 2, 3, 4, 5]): PendingDispatch {
   return {
-    id: "dispatch-1",
+    id: DISPATCH_ID,
     tenantId: TENANT_ID,
     organization: { timezone: "America/Sao_Paulo" },
     healthSurveyConfiguration: {
@@ -113,8 +114,8 @@ beforeEach(() => {
   mockCreateAdherenceAlert.mockResolvedValue(undefined)
   mockMarkDispatchAdherenceChecked.mockResolvedValue(undefined)
   mockHasOpenAlertOfType.mockResolvedValue(false)
-  mockFindEmployeeIdsWithAcceptedConsent.mockResolvedValue([])
   mockHasTenantPlanFeature.mockResolvedValue(true)
+  mockFindEmployeeIdsWithAcceptedConsent.mockResolvedValue(["emp-1"])
 })
 
 describe("runHealthSurveyDispatcher", () => {
@@ -143,7 +144,6 @@ describe("runHealthSurveyDispatcher", () => {
     vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
 
     mockFindPendingDispatches.mockResolvedValue([makePendingDispatch()])
-    mockFindEmployeeIdsWithAcceptedConsent.mockResolvedValue([EMPLOYEE.id])
 
     const result = await runHealthSurveyDispatcher()
     expect(result).toEqual({ dispatched: 1, errors: 0 })
@@ -158,12 +158,11 @@ describe("runHealthSurveyDispatcher", () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2024-01-14T12:00:00-03:00"))
 
-    const sundayEmployee = { ...EMPLOYEE, workDays: [{ dayOfWeek: 0 }] }
-    const dept = { ...DEPARTMENT, workDays: [{ dayOfWeek: 1 }], employees: [sundayEmployee] }
+    const mondayEmployee = { ...EMPLOYEE, workDays: [{ dayOfWeek: 1 }] }
+    const dept = { ...DEPARTMENT, workDays: [{ dayOfWeek: 1 }], employees: [mondayEmployee] }
     const dispatch = { ...makePendingDispatch([0, 1, 2, 3, 4, 5]), healthSurveyConfiguration: { ...(makePendingDispatch().healthSurveyConfiguration as Record<string, unknown>), department: dept, workDays: [{ dayOfWeek: 0 }] } } as unknown as PendingDispatch
 
     mockFindPendingDispatches.mockResolvedValue([dispatch])
-    mockFindEmployeeIdsWithAcceptedConsent.mockResolvedValue([])
 
     const result = await runHealthSurveyDispatcher()
     expect(result).toEqual({ dispatched: 0, errors: 0 })
@@ -176,7 +175,7 @@ describe("runHealthSurveyDispatcher", () => {
     vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
 
     mockFindPendingDispatches.mockResolvedValue([makePendingDispatch()])
-    mockFindEmployeeIdsWithAcceptedConsent.mockRejectedValue(new Error("DB error"))
+    mockCreateSurveyTokensAndMarkSent.mockRejectedValue(new Error("DB error"))
 
     const result = await runHealthSurveyDispatcher()
     expect(result).toEqual({ dispatched: 0, errors: 1 })
@@ -224,7 +223,6 @@ describe("runHealthSurveyAutoDispatchScheduler", () => {
     vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
 
     mockFindActiveConfigs.mockResolvedValue([makeAutoDispatchConfig()])
-    mockFindEmployeeIdsWithAcceptedConsent.mockResolvedValue([EMPLOYEE.id])
 
     const result = await runHealthSurveyAutoDispatchScheduler()
     expect(result.triggered).toBe(1)
@@ -239,7 +237,6 @@ describe("runHealthSurveyAutoDispatchScheduler", () => {
 
     const oldDispatch = new Date(Date.now() - 1000 * 60 * 60 * 24 * 2)
     mockFindActiveConfigs.mockResolvedValue([makeAutoDispatchConfig({ lastDispatchedAt: oldDispatch, frequency: "daily" })])
-    mockFindEmployeeIdsWithAcceptedConsent.mockResolvedValue([EMPLOYEE.id])
 
     const result = await runHealthSurveyAutoDispatchScheduler()
     expect(result.triggered).toBe(1)
@@ -252,7 +249,7 @@ describe("runHealthSurveyAutoDispatchScheduler", () => {
     vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
 
     mockFindActiveConfigs.mockResolvedValue([makeAutoDispatchConfig()])
-    mockFindEmployeeIdsWithAcceptedConsent.mockRejectedValue(new Error("DB fail"))
+    mockCreateDispatch.mockRejectedValue(new Error("DB fail"))
 
     const result = await runHealthSurveyAutoDispatchScheduler()
     expect(result.skipped).toBe(1)
@@ -343,13 +340,12 @@ describe("runHealthSurveyDispatcher — token work hours fallback chain", () => 
       },
     } as unknown as PendingDispatch
     mockFindPendingDispatches.mockResolvedValue([dispatch])
-    mockFindEmployeeIdsWithAcceptedConsent.mockResolvedValue([EMPLOYEE.id])
 
     await runHealthSurveyDispatcher()
 
     expect(mockCreateSurveyTokensAndMarkSent).toHaveBeenCalledWith(
       TENANT_ID,
-      "dispatch-1",
+      DISPATCH_ID,
       expect.arrayContaining([
         expect.objectContaining({ workStartTime: "07:00", workEndTime: "16:00" }),
       ]),
@@ -376,13 +372,12 @@ describe("runHealthSurveyDispatcher — token work hours fallback chain", () => 
       },
     } as unknown as PendingDispatch
     mockFindPendingDispatches.mockResolvedValue([dispatch])
-    mockFindEmployeeIdsWithAcceptedConsent.mockResolvedValue([EMPLOYEE.id])
 
     await runHealthSurveyDispatcher()
 
     expect(mockCreateSurveyTokensAndMarkSent).toHaveBeenCalledWith(
       TENANT_ID,
-      "dispatch-1",
+      DISPATCH_ID,
       expect.arrayContaining([
         expect.objectContaining({ workStartTime: "08:00", workEndTime: "17:00" }),
       ]),
@@ -397,8 +392,11 @@ describe("runHealthSurveyAutoDispatchScheduler — edge cases", () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
 
-    mockFindActiveConfigs.mockResolvedValue([makeAutoDispatchConfig()])
-    mockFindEmployeeIdsWithAcceptedConsent.mockResolvedValue([])
+    const weekendEmployee = { ...EMPLOYEE, workDays: [0, 6] }
+    const configWithWeekendEmployees = makeAutoDispatchConfig({
+      department: { ...AUTO_DISPATCH_DEPT, employees: [weekendEmployee] },
+    })
+    mockFindActiveConfigs.mockResolvedValue([configWithWeekendEmployees])
 
     const result = await runHealthSurveyAutoDispatchScheduler()
     expect(result.triggered).toBe(0)
@@ -413,7 +411,6 @@ describe("runHealthSurveyAutoDispatchScheduler — edge cases", () => {
 
     const eightDaysAgo = new Date(Date.now() - 1000 * 60 * 60 * 24 * 8)
     mockFindActiveConfigs.mockResolvedValue([makeAutoDispatchConfig({ frequency: "unknown_frequency", lastDispatchedAt: eightDaysAgo })])
-    mockFindEmployeeIdsWithAcceptedConsent.mockResolvedValue([EMPLOYEE.id])
 
     const result = await runHealthSurveyAutoDispatchScheduler()
     expect(result.triggered).toBe(1)
@@ -434,3 +431,84 @@ describe("runHealthSurveyAutoDispatchScheduler — edge cases", () => {
     vi.useRealTimers()
   })
 })
+
+describe("runHealthSurveyDispatcher — consent-based adherence and messaging filter", () => {
+  it("marca dispatch como sent com 0 tokens quando nenhum funcionário tem consent aceito", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
+
+    mockFindPendingDispatches.mockResolvedValue([makePendingDispatch()])
+    mockFindEmployeeIdsWithAcceptedConsent.mockResolvedValue([])
+
+    const result = await runHealthSurveyDispatcher()
+
+    expect(result).toEqual({ dispatched: 1, errors: 0 })
+    expect(mockCreateSurveyTokensAndMarkSent).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID, [])
+    expect(mockAddBulk).not.toHaveBeenCalled()
+
+    vi.useRealTimers()
+  })
+
+  it("creates tokens and sends messages only for employees with accepted consent", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
+
+    const refusedEmployee = { ...EMPLOYEE, id: "emp-2", phone: "+5511888888888" }
+    const dept = { ...DEPARTMENT, employees: [EMPLOYEE, refusedEmployee] }
+    const dispatch = {
+      ...makePendingDispatch(),
+      healthSurveyConfiguration: {
+        id: "config-1",
+        workStartTime: "09:00",
+        workEndTime: "18:00",
+        workDays: [{ dayOfWeek: 1 }],
+        department: dept,
+      },
+    } as unknown as Awaited<ReturnType<typeof findAllTenantsPendingHealthSurveyDispatches>>[number]
+    mockFindPendingDispatches.mockResolvedValue([dispatch])
+    mockFindEmployeeIdsWithAcceptedConsent.mockResolvedValue(["emp-1"])
+
+    await runHealthSurveyDispatcher()
+
+    expect(mockCreateSurveyTokensAndMarkSent).toHaveBeenCalledWith(
+      TENANT_ID,
+      DISPATCH_ID,
+      expect.arrayContaining([expect.objectContaining({ employeeId: "emp-1" })]),
+    )
+    const tokensArg = mockCreateSurveyTokensAndMarkSent.mock.calls[0]?.[2]
+    expect(tokensArg?.some((t) => t.employeeId === "emp-2")).toBe(false)
+
+    vi.useRealTimers()
+  })
+
+  it("totalRecipients reflects only accepted-consent employees, preserving adherence accuracy", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
+
+    mockFindPendingDispatches.mockResolvedValue([makePendingDispatch()])
+    mockFindEmployeeIdsWithAcceptedConsent.mockResolvedValue(["emp-1"])
+
+    await runHealthSurveyDispatcher()
+
+    const tokensArg = mockCreateSurveyTokensAndMarkSent.mock.calls[0]?.[2]
+    expect(tokensArg).toHaveLength(1)
+
+    vi.useRealTimers()
+  })
+
+  it("does not send messages when tenant has no messaging feature even with accepted employees", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
+
+    mockHasTenantPlanFeature.mockResolvedValue(false)
+    mockFindPendingDispatches.mockResolvedValue([makePendingDispatch()])
+
+    await runHealthSurveyDispatcher()
+
+    expect(mockCreateSurveyTokensAndMarkSent).toHaveBeenCalledOnce()
+    expect(mockAddBulk).not.toHaveBeenCalled()
+
+    vi.useRealTimers()
+  })
+})
+

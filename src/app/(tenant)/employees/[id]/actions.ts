@@ -6,7 +6,6 @@ import { AppError } from "@/libs/errors/app-error"
 import type { ActionResult } from "@/libs/utils/action-result"
 import { getSession } from "@/modules/auth/session"
 import { updateExistingEmployee, deactivateExistingEmployee } from "@/modules/employees/employee.service"
-import { sendConsentInvite } from "@/modules/consent/consent.service"
 import { updateEmployeeSchema } from "@/modules/employees/employee.schema"
 
 const employeeIdSchema = z.string().uuid()
@@ -41,18 +40,6 @@ export async function deactivateEmployeeAction(employeeId: string): Promise<Acti
     await deactivateExistingEmployee(session.tenantId, idParsed.data, session.userId)
     revalidatePath("/employees")
     revalidatePath(`/employees/${idParsed.data}`)
-    return {}
-  } catch (err) {
-    if (err instanceof AppError) return { error: err.message }
-    throw err
-  }
-}
-
-export async function sendConsentInviteAction(employeeId: string): Promise<ActionResult> {
-  const session = await getSession()
-  if (!session) return { error: "Sessão expirada." }
-  try {
-    await sendConsentInvite(session.tenantId, employeeId)
     return {}
   } catch (err) {
     if (err instanceof AppError) return { error: err.message }

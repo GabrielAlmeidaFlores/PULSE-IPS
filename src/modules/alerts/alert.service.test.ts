@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { normalizeItemScore, calcAvgFromResponses, detectLowScoreAlerts, detectScoreDropAlerts, detectNegativeTrendAlerts, detectConsentExpiredAlerts, getAlerts, markRead, resolve } from "@/modules/alerts/alert.service"
+import { normalizeItemScore, calcAvgFromResponses, detectLowScoreAlerts, detectScoreDropAlerts, detectNegativeTrendAlerts, detectConsentExpiredAlerts, getAlerts, getAlertsPaginated, getAlertStats, markRead, resolve } from "@/modules/alerts/alert.service"
 import {
   findAllTenantsRecentHealthSurveyResponsesForAlerts,
   findAllTenantsResponsesInWindow,
@@ -9,6 +9,8 @@ import {
   createAlert,
   hasOpenAlertOfType,
   findAlertsByTenant,
+  findAlertsByTenantPaginated,
+  findAlertStatsByTenant,
   markAlertRead,
   resolveAlert,
 } from "@/modules/alerts/alert.repository"
@@ -24,6 +26,8 @@ const mockFindExpiredConsent = vi.mocked(findAllTenantsEmployeesWithExpiredConse
 const mockCreateAlert = vi.mocked(createAlert)
 const mockHasOpenAlert = vi.mocked(hasOpenAlertOfType)
 const mockFindAlertsByTenant = vi.mocked(findAlertsByTenant)
+const mockFindAlertsByTenantPaginated = vi.mocked(findAlertsByTenantPaginated)
+const mockFindAlertStatsByTenant = vi.mocked(findAlertStatsByTenant)
 const mockMarkAlertRead = vi.mocked(markAlertRead)
 const mockResolveAlert = vi.mocked(resolveAlert)
 
@@ -511,5 +515,40 @@ describe("detectLowScoreAlerts — groupByDept branch (multiple responses same d
     await detectLowScoreAlerts()
 
     expect(mockCreateAlert).toHaveBeenCalledOnce()
+  })
+})
+
+describe("getAlertsPaginated", () => {
+  it("repassa filtros e paginação ao repository", async () => {
+    mockFindAlertsByTenantPaginated.mockResolvedValue({ alerts: [], total: 0 } as Awaited<ReturnType<typeof findAlertsByTenantPaginated>>)
+
+    await getAlertsPaginated("t-1", { page: 2, pageSize: 10, type: "score_drop", severity: "high", status: "open" })
+
+    expect(mockFindAlertsByTenantPaginated).toHaveBeenCalledWith(
+      "t-1",
+      { type: "score_drop", severity: "high", status: "open" },
+      10,
+      10,
+    )
+  })
+
+  it("omite filtros ausentes", async () => {
+    mockFindAlertsByTenantPaginated.mockResolvedValue({ alerts: [], total: 0 } as Awaited<ReturnType<typeof findAlertsByTenantPaginated>>)
+
+    await getAlertsPaginated("t-1", { page: 1, pageSize: 5 })
+
+    expect(mockFindAlertsByTenantPaginated).toHaveBeenCalledWith("t-1", {}, 0, 5)
+  })
+})
+
+describe("getAlertStats", () => {
+  it("delega ao repository e retorna estatísticas", async () => {
+    const stats = { total: 5, unresolved: 3, criticalUnresolved: 1, resolved: 2 }
+    mockFindAlertStatsByTenant.mockResolvedValue(stats as Awaited<ReturnType<typeof findAlertStatsByTenant>>)
+
+    const result = await getAlertStats("t-1")
+
+    expect(mockFindAlertStatsByTenant).toHaveBeenCalledWith("t-1")
+    expect(result).toEqual(stats)
   })
 })

@@ -1,37 +1,37 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import {
   createConsentRecord,
-  findConsentByToken,
   findExistingConsentEvent,
   getActiveConsentTermVersion,
-  findEmployeeForConsent,
   createConsentTermVersion,
+  getAllConsentTermVersions,
+  findLatestConsentEventsByEmployeeIds,
+  findEmployeeIdsForConsentState,
 } from "@/modules/consent/consent.repository"
 import { findHealthSurveyTokenByValue, markHealthSurveyTokenUsed } from "@/modules/health-surveys/health-survey.repository"
 import {
-  sendConsentInvite,
-  recordAcceptance,
-  recordRefusal,
   optOut,
   optOutFromHealthSurveyToken,
   publishNewConsentTermVersion,
-  getConsentByToken,
   getActiveTermVersion,
   acceptConsentFromHealthSurveyToken,
   refuseConsentFromHealthSurveyToken,
+  listAllConsentTermVersions,
+  getConsentEventsByEmployeeIds,
+  getEmployeeIdsForConsentState,
 } from "@/modules/consent/consent.service"
 import { AppError } from "@/libs/errors/app-error"
 
 vi.mock("@/modules/consent/consent.repository", () => ({
   createConsentRecord: vi.fn(),
-  findConsentByToken: vi.fn(),
   findExistingConsentEvent: vi.fn(),
   getActiveConsentTermVersion: vi.fn(),
-  findEmployeeForConsent: vi.fn(),
   getAllConsentTermVersions: vi.fn(),
   createConsentTermVersion: vi.fn(),
   getCurrentConsent: vi.fn(),
   findEmployeeIdsWithAcceptedConsent: vi.fn(),
+  findLatestConsentEventsByEmployeeIds: vi.fn(),
+  findEmployeeIdsForConsentState: vi.fn(),
 }))
 
 vi.mock("@/modules/health-surveys/health-survey.repository", () => ({
@@ -39,25 +39,20 @@ vi.mock("@/modules/health-surveys/health-survey.repository", () => ({
   markHealthSurveyTokenUsed: vi.fn(),
 }))
 
-vi.mock("@/libs/queue", () => ({
-  getMessageQueue: vi.fn(() => ({ add: vi.fn() })),
-}))
-
 vi.mock("@/env", () => ({
   env: {
     NEXT_PUBLIC_APP_URL: "http://localhost:3000",
     MESSAGING_PROVIDER: "console",
-    CONSENT_MESSAGE_TEMPLATE: "Oi, {nome}! Acesse: {link}",
-    WHATSAPP_CONSENT_TEMPLATE_NAME: "pulse_consent_invite",
   },
 }))
 
 const mockCreateConsentRecord = vi.mocked(createConsentRecord)
-const mockFindConsentByToken = vi.mocked(findConsentByToken)
 const mockFindExistingConsentEvent = vi.mocked(findExistingConsentEvent)
 const mockGetActiveConsentTermVersion = vi.mocked(getActiveConsentTermVersion)
-const mockFindEmployeeForConsent = vi.mocked(findEmployeeForConsent)
 const mockCreateConsentTermVersion = vi.mocked(createConsentTermVersion)
+const mockGetAllConsentTermVersions = vi.mocked(getAllConsentTermVersions)
+const mockFindLatestConsentEvents = vi.mocked(findLatestConsentEventsByEmployeeIds)
+const mockFindEmployeeIdsForConsentState = vi.mocked(findEmployeeIdsForConsentState)
 const mockFindTokenByValue = vi.mocked(findHealthSurveyTokenByValue)
 const mockMarkTokenUsed = vi.mocked(markHealthSurveyTokenUsed)
 
@@ -88,203 +83,6 @@ const baseConsentInvite = {
   documentHash: null,
   createdAt: new Date(),
 }
-
-const activeEmployee = {
-  id: EMPLOYEE_ID,
-  tenantId: TENANT_ID,
-  name: "João Silva",
-  phone: "+5511999999999",
-  departmentId: "dept-1",
-  document: null,
-  email: null,
-  status: "active",
-  workStartTime: null,
-  workEndTime: null,
-  pauseStartAt: null,
-  pauseEndAt: null,
-  createdAt: new Date(),
-  updatedAt: new Date(),
-}
-
-describe("sendConsentInvite", () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockGetActiveConsentTermVersion.mockResolvedValue(activeTermVersion)
-    mockFindEmployeeForConsent.mockResolvedValue(activeEmployee)
-    mockCreateConsentRecord.mockResolvedValue(baseConsentInvite)
-  })
-
-  it("creates an invited consent record with correct tenant and employee", async () => {
-    await sendConsentInvite(TENANT_ID, EMPLOYEE_ID)
-
-    expect(mockCreateConsentRecord).toHaveBeenCalledWith(
-      expect.objectContaining({ event: "invited", source: "message_link", tenantId: TENANT_ID, employeeId: EMPLOYEE_ID, consentTermVersionId: TERM_VERSION_ID }),
-    )
-  })
-
-  it("throws NO_ACTIVE_TERMS when no active term version exists", async () => {
-    mockGetActiveConsentTermVersion.mockResolvedValue(null)
-
-    await expect(sendConsentInvite(TENANT_ID, EMPLOYEE_ID)).rejects.toMatchObject({ code: "NO_ACTIVE_TERMS" })
-  })
-
-  it("does not create consent record when no active term version exists", async () => {
-    mockGetActiveConsentTermVersion.mockResolvedValue(null)
-
-    await expect(sendConsentInvite(TENANT_ID, EMPLOYEE_ID)).rejects.toThrow()
-    expect(mockCreateConsentRecord).not.toHaveBeenCalled()
-  })
-
-  it("throws EMPLOYEE_NOT_FOUND when employee does not exist", async () => {
-    mockFindEmployeeForConsent.mockResolvedValue(null)
-
-    await expect(sendConsentInvite(TENANT_ID, EMPLOYEE_ID)).rejects.toMatchObject({ code: "EMPLOYEE_NOT_FOUND" })
-  })
-
-  it("does not create consent record when employee does not exist", async () => {
-    mockFindEmployeeForConsent.mockResolvedValue(null)
-
-    await expect(sendConsentInvite(TENANT_ID, EMPLOYEE_ID)).rejects.toThrow()
-    expect(mockCreateConsentRecord).not.toHaveBeenCalled()
-  })
-
-  it("generates a unique token for each invite", async () => {
-    await sendConsentInvite(TENANT_ID, EMPLOYEE_ID)
-    await sendConsentInvite(TENANT_ID, EMPLOYEE_ID)
-
-    const token1 = mockCreateConsentRecord.mock.calls[0]?.[0]?.token
-    const token2 = mockCreateConsentRecord.mock.calls[1]?.[0]?.token
-    expect(token1).not.toBe(token2)
-  })
-})
-
-describe("recordAcceptance — LGPD append-only rule", () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockFindConsentByToken.mockResolvedValue(baseConsentInvite)
-    mockFindExistingConsentEvent.mockResolvedValue(null)
-    mockCreateConsentRecord.mockResolvedValue(baseConsentInvite)
-  })
-
-  it("creates an accepted consent record with correct tenant and employee", async () => {
-    await recordAcceptance(INVITE_TOKEN)
-
-    expect(mockCreateConsentRecord).toHaveBeenCalledWith(
-      expect.objectContaining({ event: "accepted", tenantId: TENANT_ID, employeeId: EMPLOYEE_ID }),
-    )
-  })
-
-  it("stores documentHash when provided", async () => {
-    await recordAcceptance(INVITE_TOKEN, "hashed-document-value")
-
-    const call = mockCreateConsentRecord.mock.calls[0]?.[0]
-    expect(call?.documentHash).toBe("hashed-document-value")
-  })
-
-  it("does not store documentHash when not provided", async () => {
-    await recordAcceptance(INVITE_TOKEN)
-
-    const call = mockCreateConsentRecord.mock.calls[0]?.[0]
-    expect(call?.documentHash).toBeUndefined()
-  })
-
-  it("throws TOKEN_INVALID when token does not exist", async () => {
-    mockFindConsentByToken.mockResolvedValue(null)
-
-    await expect(recordAcceptance(INVITE_TOKEN)).rejects.toMatchObject({ code: "TOKEN_INVALID" })
-  })
-
-  it("does not create record when token does not exist", async () => {
-    mockFindConsentByToken.mockResolvedValue(null)
-
-    await expect(recordAcceptance(INVITE_TOKEN)).rejects.toThrow()
-    expect(mockCreateConsentRecord).not.toHaveBeenCalled()
-  })
-
-  it("throws TOKEN_EXPIRED when token is past expiry", async () => {
-    mockFindConsentByToken.mockResolvedValue({
-      ...baseConsentInvite,
-      tokenExpiresAt: new Date(Date.now() - 1000),
-    })
-
-    await expect(recordAcceptance(INVITE_TOKEN)).rejects.toMatchObject({ code: "TOKEN_EXPIRED" })
-  })
-
-  it("does not create record when token is expired", async () => {
-    mockFindConsentByToken.mockResolvedValue({
-      ...baseConsentInvite,
-      tokenExpiresAt: new Date(Date.now() - 1000),
-    })
-
-    await expect(recordAcceptance(INVITE_TOKEN)).rejects.toThrow()
-    expect(mockCreateConsentRecord).not.toHaveBeenCalled()
-  })
-
-  it("throws TOKEN_USED when already accepted or refused — enforces append-only uniqueness", async () => {
-    mockFindExistingConsentEvent.mockResolvedValue({ ...baseConsentInvite, event: "accepted" })
-
-    await expect(recordAcceptance(INVITE_TOKEN)).rejects.toMatchObject({ code: "TOKEN_USED" })
-  })
-
-  it("does not create record when consent already exists", async () => {
-    mockFindExistingConsentEvent.mockResolvedValue({ ...baseConsentInvite, event: "accepted" })
-
-    await expect(recordAcceptance(INVITE_TOKEN)).rejects.toThrow()
-    expect(mockCreateConsentRecord).not.toHaveBeenCalled()
-  })
-
-  it("checks for both accepted and refused events to prevent double submission", async () => {
-    await recordAcceptance(INVITE_TOKEN)
-
-    expect(mockFindExistingConsentEvent).toHaveBeenCalledWith(
-      TENANT_ID,
-      EMPLOYEE_ID,
-      TERM_VERSION_ID,
-      expect.arrayContaining(["accepted", "refused"]),
-    )
-  })
-})
-
-describe("recordRefusal — LGPD append-only rule", () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockFindConsentByToken.mockResolvedValue(baseConsentInvite)
-    mockFindExistingConsentEvent.mockResolvedValue(null)
-    mockCreateConsentRecord.mockResolvedValue(baseConsentInvite)
-  })
-
-  it("creates a refused consent record with correct tenant and employee", async () => {
-    await recordRefusal(INVITE_TOKEN)
-
-    expect(mockCreateConsentRecord).toHaveBeenCalledWith(
-      expect.objectContaining({ event: "refused", tenantId: TENANT_ID, employeeId: EMPLOYEE_ID }),
-    )
-  })
-
-  it("throws TOKEN_INVALID when token does not exist", async () => {
-    mockFindConsentByToken.mockResolvedValue(null)
-    await expect(recordRefusal(INVITE_TOKEN)).rejects.toMatchObject({ code: "TOKEN_INVALID" })
-  })
-
-  it("throws TOKEN_EXPIRED when token is past expiry", async () => {
-    mockFindConsentByToken.mockResolvedValue({
-      ...baseConsentInvite,
-      tokenExpiresAt: new Date(Date.now() - 1000),
-    })
-    await expect(recordRefusal(INVITE_TOKEN)).rejects.toMatchObject({ code: "TOKEN_EXPIRED" })
-  })
-
-  it("throws TOKEN_USED when already responded", async () => {
-    mockFindExistingConsentEvent.mockResolvedValue({ ...baseConsentInvite, event: "refused" })
-    await expect(recordRefusal(INVITE_TOKEN)).rejects.toMatchObject({ code: "TOKEN_USED" })
-  })
-
-  it("does not create record when consent already exists", async () => {
-    mockFindExistingConsentEvent.mockResolvedValue({ ...baseConsentInvite, event: "refused" })
-    await expect(recordRefusal(INVITE_TOKEN)).rejects.toThrow()
-    expect(mockCreateConsentRecord).not.toHaveBeenCalled()
-  })
-})
 
 describe("optOut — LGPD opt-out flow", () => {
   beforeEach(() => {
@@ -458,22 +256,6 @@ describe("AppError structure", () => {
   })
 })
 
-describe("getConsentByToken", () => {
-  it("returns consent record matching repository result", async () => {
-    mockFindConsentByToken.mockResolvedValue(baseConsentInvite)
-
-    const result = await getConsentByToken(INVITE_TOKEN)
-    expect(result).toEqual(baseConsentInvite)
-  })
-
-  it("queries repository with the provided token", async () => {
-    mockFindConsentByToken.mockResolvedValue(baseConsentInvite)
-
-    await getConsentByToken(INVITE_TOKEN)
-    expect(mockFindConsentByToken).toHaveBeenCalledWith(INVITE_TOKEN)
-  })
-})
-
 describe("getActiveTermVersion", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -590,5 +372,40 @@ describe("refuseConsentFromHealthSurveyToken", () => {
     mockFindTokenByValue.mockResolvedValue({ ...tokenRecord, usedAt: new Date() } as Awaited<ReturnType<typeof findHealthSurveyTokenByValue>>)
 
     await expect(refuseConsentFromHealthSurveyToken(HEALTH_SURVEY_TOKEN)).rejects.toMatchObject({ code: "TOKEN_USED" })
+  })
+})
+
+describe("listAllConsentTermVersions", () => {
+  it("delega ao repository e retorna lista de versões", async () => {
+    const versions = [{ id: "v-1", version: "1.0.0", content: "Termos..." }]
+    mockGetAllConsentTermVersions.mockResolvedValue(versions as Awaited<ReturnType<typeof getAllConsentTermVersions>>)
+
+    const result = await listAllConsentTermVersions()
+
+    expect(mockGetAllConsentTermVersions).toHaveBeenCalled()
+    expect(result).toEqual(versions)
+  })
+})
+
+describe("getConsentEventsByEmployeeIds", () => {
+  it("delega ao repository e retorna map de eventos", async () => {
+    const eventsMap = new Map([["emp-1", "accepted"], ["emp-2", "refused"]])
+    mockFindLatestConsentEvents.mockResolvedValue(eventsMap)
+
+    const result = await getConsentEventsByEmployeeIds("tenant-1", ["emp-1", "emp-2"])
+
+    expect(mockFindLatestConsentEvents).toHaveBeenCalledWith("tenant-1", ["emp-1", "emp-2"])
+    expect(result).toEqual(eventsMap)
+  })
+})
+
+describe("getEmployeeIdsForConsentState", () => {
+  it("delega ao repository e retorna ids filtrados por estado", async () => {
+    mockFindEmployeeIdsForConsentState.mockResolvedValue(["emp-1", "emp-3"])
+
+    const result = await getEmployeeIdsForConsentState("tenant-1", "accepted")
+
+    expect(mockFindEmployeeIdsForConsentState).toHaveBeenCalledWith("tenant-1", "accepted")
+    expect(result).toEqual(["emp-1", "emp-3"])
   })
 })

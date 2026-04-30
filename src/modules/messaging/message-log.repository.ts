@@ -1,6 +1,6 @@
 import { prisma } from "@/libs/db"
 
-export type MessageLogType = "consent_invite" | "survey_dispatch" | "survey_resend"
+export type MessageLogType = "survey_dispatch" | "survey_resend"
 
 export interface CreateMessageLogInput {
   employeeId: string
