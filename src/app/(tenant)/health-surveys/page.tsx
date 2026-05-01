@@ -4,8 +4,9 @@ import { getSession } from "@/modules/auth/session"
 import { getHealthSurveyDispatchesPaginatedByDay, type HealthSurveyDispatchWithConfig } from "@/modules/health-surveys/health-survey-dashboard.service"
 import { getHealthSurveyConfigs } from "@/modules/health-surveys/health-survey-config.service"
 import { buildPaginationParams } from "@/libs/utils/pagination"
-import { format } from "date-fns"
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz"
 import { ScheduleHealthSurveyDispatchButton } from "@/app/(tenant)/health-surveys/schedule-health-survey-dispatch-button"
+import { getOrganization } from "@/modules/organizations/organization.service"
 import { HealthSurveyListFilters } from "@/app/(tenant)/health-surveys/health-survey-list-filters"
 import { adherenceRateBarClass } from "@/libs/utils/health-index"
 import { DataTable, TablePagination } from "@/libs/design-system"
@@ -47,11 +48,11 @@ interface DayGroup {
   deptCount: number
 }
 
-function groupDispatchesByDay(dispatches: HealthSurveyDispatchWithConfig[]): DayGroup[] {
+function groupDispatchesByDay(dispatches: HealthSurveyDispatchWithConfig[], timezone: string): DayGroup[] {
   const buckets = new Map<string, DayGroup>()
 
   for (const d of dispatches) {
-    const dayKey = format(new Date(d.scheduledAt), "yyyy-MM-dd")
+    const dayKey = formatInTimeZone(new Date(d.scheduledAt), timezone, "yyyy-MM-dd")
     const existing = buckets.get(dayKey)
 
     if (existing) {
@@ -87,9 +88,13 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
   const statusFilter = params["status"]
   const dateFromStr = params["dateFrom"]
   const dateToStr = params["dateTo"]
-  const dateFrom = dateFromStr !== undefined ? new Date(`${dateFromStr}T00:00:00`) : undefined
-  const dateTo = dateToStr !== undefined ? new Date(`${dateToStr}T23:59:59`) : undefined
   const pageParams = buildPaginationParams(params["page"], params["pageSize"])
+
+  const org = await getOrganization(session.tenantId)
+  const timezone = org?.timezone ?? "America/Sao_Paulo"
+
+  const dateFrom = dateFromStr !== undefined ? fromZonedTime(new Date(`${dateFromStr}T00:00:00`), timezone) : undefined
+  const dateTo = dateToStr !== undefined ? fromZonedTime(new Date(`${dateToStr}T23:59:59`), timezone) : undefined
 
   const dispatchQuery: { page: number; pageSize: number; status?: string; dateFrom?: Date; dateTo?: Date } = {
     page: pageParams.page,
@@ -104,7 +109,7 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
     getHealthSurveyConfigs(session.tenantId),
   ])
 
-  const dayGroups = groupDispatchesByDay(pageDispatches)
+  const dayGroups = groupDispatchesByDay(pageDispatches, timezone)
   const hasAnyDispatches = total > 0
 
   return (
@@ -210,7 +215,7 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
                 >
                   <td className="px-4 py-3">
                     <Link href={`/health-surveys/${g.anchorId}`} className="block font-mono text-xs text-foreground">
-                      {format(g.scheduledAt, "dd/MM/yyyy")}
+                      {formatInTimeZone(g.scheduledAt, timezone, "dd/MM/yyyy")}
                     </Link>
                   </td>
                   <td className="px-4 py-3">
