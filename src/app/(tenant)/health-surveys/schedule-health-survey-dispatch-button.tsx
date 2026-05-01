@@ -18,7 +18,8 @@ export function ScheduleHealthSurveyDispatchButton({ hasConfigs }: ScheduleHealt
     const now = new Date()
     now.setMinutes(0, 0, 0)
     now.setHours(now.getHours() + 1)
-    return now.toISOString().slice(0, 16)
+    const pad = (n: number): string => n.toString().padStart(2, "0")
+    return `${now.getFullYear().toString()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`
   })
 
   function handleSubmit(): void {

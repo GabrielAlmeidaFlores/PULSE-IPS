@@ -7,7 +7,8 @@ import {
   getHealthSurveyMultipleDispatchDashboards,
   type HealthSurveyDispatchWithConfig,
 } from "@/modules/health-surveys/health-survey-dashboard.service";
-import { format } from "date-fns";
+import { getOrganization } from "@/modules/organizations/organization.service";
+import { formatInTimeZone } from "date-fns-tz"
 import { ptBR } from "date-fns/locale";
 import {
   ArrowLeft,
@@ -351,10 +352,11 @@ interface HistoryBucket {
 function buildSameDayPerDept(
   allDispatches: HealthSurveyDispatchWithConfig[],
   anchorDay: string,
+  timezone: string,
 ): Map<string, HealthSurveyDispatchWithConfig> {
   const map = new Map<string, HealthSurveyDispatchWithConfig>();
   for (const d of allDispatches) {
-    if (format(new Date(d.scheduledAt), DAY_FORMAT) !== anchorDay) continue;
+    if (formatInTimeZone(new Date(d.scheduledAt), timezone, DAY_FORMAT) !== anchorDay) continue;
     const deptId = d.healthSurveyConfiguration.departmentId;
     const existing = map.get(deptId);
     if (!existing || new Date(d.scheduledAt) > new Date(existing.scheduledAt)) {
@@ -366,10 +368,11 @@ function buildSameDayPerDept(
 
 function buildHistoryBucketMap(
   relevantDispatches: HealthSurveyDispatchWithConfig[],
+  timezone: string,
 ): Map<string, HistoryBucket> {
   const map = new Map<string, HistoryBucket>();
   for (const d of relevantDispatches) {
-    const dayKey = format(new Date(d.scheduledAt), DAY_FORMAT);
+    const dayKey = formatInTimeZone(new Date(d.scheduledAt), timezone, DAY_FORMAT);
     const existing = map.get(dayKey);
     if (existing !== undefined) {
       existing.totalRecipients += d.totalRecipients;
@@ -394,10 +397,11 @@ async function buildDispatchComparisonData(
   mergedStats: HealthSurveyDispatchDashboardStats,
   anchorDispatchId: string,
   anchorScheduledAt: Date,
+  timezone: string,
 ): Promise<ComparisonPoint[]> {
   const dayToIds = new Map<string, string[]>();
   for (const d of relevantDispatches) {
-    const dayKey = format(new Date(d.scheduledAt), DAY_FORMAT);
+    const dayKey = formatInTimeZone(new Date(d.scheduledAt), timezone, DAY_FORMAT);
     const existing = dayToIds.get(dayKey);
     if (existing !== undefined) {
       existing.push(d.id);
@@ -431,7 +435,7 @@ async function buildDispatchComparisonData(
       const totalRes = dayStats.reduce((s, d) => s + d.totalResponses, 0);
       const adherence = totalRec > 0 ? Math.round((totalRes / totalRec) * 100) : 0;
       const firstDispatch = relevantDispatches.find(
-        (d) => format(new Date(d.scheduledAt), DAY_FORMAT) === dayKey,
+        (d) => formatInTimeZone(new Date(d.scheduledAt), timezone, DAY_FORMAT) === dayKey,
       );
       const base: MergedStatsBase = {
         id: ids[0] ?? "",
@@ -444,7 +448,7 @@ async function buildDispatchComparisonData(
       };
       const dayMerged = mergeDispatchStats(dayStats, base);
       return {
-        date: firstDispatch ? format(new Date(firstDispatch.scheduledAt), "dd/MM") : dayKey,
+        date: firstDispatch ? formatInTimeZone(new Date(firstDispatch.scheduledAt), timezone, "dd/MM") : dayKey,
         healthIndex: dayMerged.avgScore !== null ? toHealthIndex(dayMerged.avgScore) : null,
         adherence,
         isCurrent: false,
@@ -456,7 +460,7 @@ async function buildDispatchComparisonData(
   return [
     ...previousPoints,
     {
-      date: format(anchorScheduledAt, "dd/MM"),
+      date: formatInTimeZone(anchorScheduledAt, timezone, "dd/MM"),
       healthIndex: mergedStats.avgScore !== null ? toHealthIndex(mergedStats.avgScore) : null,
       adherence: Math.round(mergedStats.adherenceRate * 100),
       isCurrent: true,
@@ -475,15 +479,18 @@ export default async function HealthSurveyDispatchDetailPage({
   const { dispatchId } = await params;
   const resolvedSearch = await searchParams;
 
-  const [anchorStats, allDispatches] = await Promise.all([
+  const [anchorStats, allDispatches, org] = await Promise.all([
     getHealthSurveyDispatchDashboard(session.tenantId, dispatchId),
     getHealthSurveyDispatches(session.tenantId),
+    getOrganization(session.tenantId),
   ]);
   if (!anchorStats) notFound();
 
-  const anchorDay = format(anchorStats.scheduledAt, DAY_FORMAT);
+  const timezone = org?.timezone ?? "America/Sao_Paulo"
 
-  const sameDayPerDept = buildSameDayPerDept(allDispatches, anchorDay);
+  const anchorDay = formatInTimeZone(anchorStats.scheduledAt, timezone, DAY_FORMAT);
+
+  const sameDayPerDept = buildSameDayPerDept(allDispatches, anchorDay, timezone);
 
   const allDeptOptions = Array.from(sameDayPerDept.entries()).map(
     ([id, d]) => ({
@@ -533,7 +540,7 @@ export default async function HealthSurveyDispatchDetailPage({
     historyDeptIds.includes(d.healthSurveyConfiguration.departmentId),
   );
 
-  const historyBucketMap = buildHistoryBucketMap(relevantDispatches);
+  const historyBucketMap = buildHistoryBucketMap(relevantDispatches, timezone);
 
   const allDeptStatsForRanking: HealthSurveyDispatchDashboardStats[] =
     selectedIds.length === 0
@@ -563,10 +570,10 @@ export default async function HealthSurveyDispatchDetailPage({
     a.dayKey.localeCompare(b.dayKey),
   );
 
-  const anchorDayKey = format(new Date(anchorStats.scheduledAt), DAY_FORMAT);
+  const anchorDayKey = formatInTimeZone(new Date(anchorStats.scheduledAt), timezone, DAY_FORMAT);
 
   const trendData: TrendPoint[] = sortedBuckets.map((b) => ({
-    date: format(b.scheduledAt, "dd/MM"),
+    date: formatInTimeZone(b.scheduledAt, timezone, "dd/MM"),
     adherence:
       b.totalRecipients > 0
         ? Math.round((b.totalResponses / b.totalRecipients) * 100)
@@ -581,6 +588,7 @@ export default async function HealthSurveyDispatchDetailPage({
     mergedStats,
     dispatchId,
     new Date(anchorStats.scheduledAt),
+    timezone,
   );
 
   const showHealthComparison = comparisonData.length > 1;
@@ -628,8 +636,9 @@ export default async function HealthSurveyDispatchDetailPage({
               <p className="text-xs text-muted-foreground mt-0.5">
                 {anchorStats.departmentName}
                 {" · "}
-                {format(
+                {formatInTimeZone(
                   new Date(anchorStats.scheduledAt),
+                  timezone,
                   "dd 'de' MMMM 'de' yyyy 'às' HH:mm",
                   { locale: ptBR },
                 )}
@@ -765,7 +774,7 @@ export default async function HealthSurveyDispatchDetailPage({
                       <span
                         className={`font-mono ${isCurrent ? "font-bold text-primary" : "text-muted-foreground"}`}
                       >
-                        {format(b.scheduledAt, "dd/MM/yyyy")}
+                        {formatInTimeZone(b.scheduledAt, timezone, "dd/MM/yyyy")}
                         {isCurrent && (
                           <span className="ml-2 text-[9px] font-bold uppercase tracking-wider">
                             ← atual

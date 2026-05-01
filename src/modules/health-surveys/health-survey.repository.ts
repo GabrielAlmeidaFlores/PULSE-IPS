@@ -1,4 +1,5 @@
 import type { HealthSurveyConfiguration, HealthSurveyQuestion, Department, HealthSurveyDispatch, HealthSurveyResponse, HealthSurveyResponseToken, Organization, Employee, Prisma } from "@prisma/client"
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz"
 import { prisma } from "@/libs/db"
 import { AppError } from "@/libs/errors/app-error"
 import type { CreateHealthSurveyConfigInput, CreateHealthSurveyResponseInput, CreateHealthSurveyTokenInput, CreateHealthSurveyAdherenceAlertInput } from "@/modules/health-surveys/health-survey.types"
@@ -123,11 +124,8 @@ function buildDispatchWhereInput(tenantId: string, filters: HealthSurveyDispatch
   return where
 }
 
-function toDateKey(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, "0")
-  const day = String(d.getDate()).padStart(2, "0")
-  return `${y}-${m}-${day}`
+function toDateKey(d: Date, timezone: string): string {
+  return formatInTimeZone(d, timezone, "yyyy-MM-dd")
 }
 
 export interface HealthSurveyDispatchDayPageResult {
@@ -140,6 +138,7 @@ export async function findHealthSurveyDispatchDaysPaginated(
   filters: HealthSurveyDispatchListingFilters,
   skip: number,
   take: number,
+  timezone: string,
 ): Promise<HealthSurveyDispatchDayPageResult> {
   const where = buildDispatchWhereInput(tenantId, filters)
   const allScheduledAts = await prisma.healthSurveyDispatch.findMany({
@@ -150,7 +149,7 @@ export async function findHealthSurveyDispatchDaysPaginated(
   const seenDates = new Set<string>()
   const distinctDates: string[] = []
   for (const { scheduledAt } of allScheduledAts) {
-    const dayKey = toDateKey(new Date(scheduledAt))
+    const dayKey = toDateKey(new Date(scheduledAt), timezone)
     if (!seenDates.has(dayKey)) {
       seenDates.add(dayKey)
       distinctDates.push(dayKey)
@@ -163,14 +162,15 @@ export function findHealthSurveyDispatchesForDates(
   tenantId: string,
   dates: string[],
   filters: HealthSurveyDispatchListingFilters,
+  timezone: string,
 ): Promise<HealthSurveyDispatchWithConfig[]> {
   if (dates.length === 0) return Promise.resolve([])
   const where: Prisma.HealthSurveyDispatchWhereInput = {
     tenantId,
     OR: dates.map((d) => ({
       scheduledAt: {
-        gte: new Date(`${d}T00:00:00`),
-        lte: new Date(`${d}T23:59:59`),
+        gte: fromZonedTime(new Date(`${d}T00:00:00`), timezone),
+        lte: fromZonedTime(new Date(`${d}T23:59:59`), timezone),
       },
     })),
   }

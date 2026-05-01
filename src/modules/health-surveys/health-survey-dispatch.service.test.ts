@@ -205,6 +205,19 @@ describe("runHealthSurveyAutoDispatchScheduler", () => {
     vi.useRealTimers()
   })
 
+  it("pula quando horário atual está fora da janela de trabalho da org", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2024-01-15T22:00:00-03:00"))
+
+    mockFindActiveConfigs.mockResolvedValue([makeAutoDispatchConfig({ workStartTime: "09:00", workEndTime: "18:00" })])
+
+    const result = await runHealthSurveyAutoDispatchScheduler()
+    expect(result.skipped).toBe(1)
+    expect(result.triggered).toBe(0)
+
+    vi.useRealTimers()
+  })
+
   it("skips when frequency interval not met since last dispatch", async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))

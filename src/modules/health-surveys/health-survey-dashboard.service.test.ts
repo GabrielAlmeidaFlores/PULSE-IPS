@@ -16,8 +16,10 @@ import {
   findHealthSurveyDispatchDaysPaginated,
   findHealthSurveyDispatchesForDates,
 } from "@/modules/health-surveys/health-survey.repository"
+import { findOrganizationById } from "@/modules/organizations/organization.repository"
 
 vi.mock("@/modules/health-surveys/health-survey.repository")
+vi.mock("@/modules/organizations/organization.repository")
 vi.mock("@/env", () => ({ env: { NEXT_PUBLIC_APP_URL: "http://localhost:3000" } }))
 
 const mockFindDispatchWithDashboard = vi.mocked(findHealthSurveyDispatchWithDashboard)
@@ -25,9 +27,11 @@ const mockFindMultipleDispatches = vi.mocked(findHealthSurveyMultipleDispatchesW
 const mockFindDispatchesByTenantFiltered = vi.mocked(findHealthSurveyDispatchesByTenantFiltered)
 const mockFindDispatchDaysPaginated = vi.mocked(findHealthSurveyDispatchDaysPaginated)
 const mockFindDispatchesForDates = vi.mocked(findHealthSurveyDispatchesForDates)
+const mockFindOrganizationById = vi.mocked(findOrganizationById)
 
 const TENANT_ID = "tenant-1"
 const DATE_FROM_ISO = "2024-01-01"
+const DEFAULT_TIMEZONE = "America/Sao_Paulo"
 
 const QUESTIONS = [
   { id: "q-1", text: "Como você está?", order: 1, scoreDirection: "higher_is_better" },
@@ -204,6 +208,7 @@ describe("getHealthSurveyDispatchesFiltered", () => {
 
 describe("getHealthSurveyDispatchesPaginatedByDay", () => {
   it("retorna lista vazia imediatamente quando não há datas", async () => {
+    mockFindOrganizationById.mockResolvedValue({ timezone: DEFAULT_TIMEZONE } as Awaited<ReturnType<typeof findOrganizationById>>)
     mockFindDispatchDaysPaginated.mockResolvedValue({ dates: [], total: 0 })
 
     const result = await getHealthSurveyDispatchesPaginatedByDay(TENANT_ID, { page: 1, pageSize: 10 })
@@ -213,6 +218,7 @@ describe("getHealthSurveyDispatchesPaginatedByDay", () => {
   })
 
   it("calcula skip e busca dispatches quando há datas", async () => {
+    mockFindOrganizationById.mockResolvedValue({ timezone: DEFAULT_TIMEZONE } as Awaited<ReturnType<typeof findOrganizationById>>)
     const dates = ["2024-01-15", "2024-01-16"]
     mockFindDispatchDaysPaginated.mockResolvedValue({ dates, total: 2 })
     const dispatches = [{ id: "d-1" }, { id: "d-2" }] as Awaited<ReturnType<typeof findHealthSurveyDispatchesForDates>>
@@ -220,12 +226,13 @@ describe("getHealthSurveyDispatchesPaginatedByDay", () => {
 
     const result = await getHealthSurveyDispatchesPaginatedByDay(TENANT_ID, { page: 3, pageSize: 5 })
 
-    expect(mockFindDispatchDaysPaginated).toHaveBeenCalledWith(TENANT_ID, {}, 10, 5)
-    expect(mockFindDispatchesForDates).toHaveBeenCalledWith(TENANT_ID, dates, {})
+    expect(mockFindDispatchDaysPaginated).toHaveBeenCalledWith(TENANT_ID, {}, 10, 5, DEFAULT_TIMEZONE)
+    expect(mockFindDispatchesForDates).toHaveBeenCalledWith(TENANT_ID, dates, {}, DEFAULT_TIMEZONE)
     expect(result).toEqual({ items: dispatches, total: 2 })
   })
 
   it("repassa filtros para ambas as queries", async () => {
+    mockFindOrganizationById.mockResolvedValue({ timezone: DEFAULT_TIMEZONE } as Awaited<ReturnType<typeof findOrganizationById>>)
     const dateFrom = new Date(DATE_FROM_ISO)
     mockFindDispatchDaysPaginated.mockResolvedValue({ dates: [DATE_FROM_ISO], total: 1 })
     mockFindDispatchesForDates.mockResolvedValue([])
@@ -237,7 +244,7 @@ describe("getHealthSurveyDispatchesPaginatedByDay", () => {
       dateFrom,
     })
 
-    expect(mockFindDispatchDaysPaginated).toHaveBeenCalledWith(TENANT_ID, { status: "sent", dateFrom }, 0, 10)
-    expect(mockFindDispatchesForDates).toHaveBeenCalledWith(TENANT_ID, [DATE_FROM_ISO], { status: "sent", dateFrom })
+    expect(mockFindDispatchDaysPaginated).toHaveBeenCalledWith(TENANT_ID, { status: "sent", dateFrom }, 0, 10, DEFAULT_TIMEZONE)
+    expect(mockFindDispatchesForDates).toHaveBeenCalledWith(TENANT_ID, [DATE_FROM_ISO], { status: "sent", dateFrom }, DEFAULT_TIMEZONE)
   })
 })

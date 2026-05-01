@@ -1,8 +1,9 @@
 import { randomUUID } from "crypto"
 import { addHours } from "date-fns"
+import { toZonedTime } from "date-fns-tz"
 import { getMessageQueue } from "@/libs/queue"
 import { env } from "@/env"
-import { logger } from "@/libs/logger"
+import { createLogger } from "@/libs/utils/logger"
 import {
   findAllTenantsPendingHealthSurveyDispatches,
   findAllTenantsActiveHealthSurveyConfigsForAutoDispatch,
@@ -17,6 +18,8 @@ import {
 import { hasOpenAlertOfType } from "@/modules/alerts/alert.repository"
 import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
 import { findEmployeeIdsEligibleForDispatch } from "@/modules/consent/consent.repository"
+
+const logger = createLogger("health-survey-dispatcher")
 
 const FREQUENCY_INTERVAL_DAYS: Record<string, number> = {
   daily: 1,
@@ -39,6 +42,19 @@ function getDayOfWeekInTimezone(timezone: string): number {
 function isWorkDay(workDays: number[], timezone: string): boolean {
   const today = getDayOfWeekInTimezone(timezone)
   return workDays.includes(today)
+}
+
+function isWithinWorkHours(workStartTime: string, workEndTime: string, timezone: string): boolean {
+  const nowInTimezone = toZonedTime(new Date(), timezone)
+  const currentMinutes = nowInTimezone.getHours() * 60 + nowInTimezone.getMinutes()
+  const [startH, startM] = workStartTime.split(":").map(Number)
+  const [endH, endM] = workEndTime.split(":").map(Number)
+  const startMinutes = (startH ?? 0) * 60 + (startM ?? 0)
+  const endMinutes = (endH ?? 0) * 60 + (endM ?? 0)
+  if (startMinutes <= endMinutes) {
+    return currentMinutes >= startMinutes && currentMinutes <= endMinutes
+  }
+  return currentMinutes >= startMinutes || currentMinutes <= endMinutes
 }
 
 async function sendDispatchTokensAndMessages(
@@ -180,7 +196,7 @@ export async function runHealthSurveyDispatcher(): Promise<{ dispatched: number;
       dispatched++
     } catch (err) {
       errors++
-      logger.error({ err, dispatchId: dispatch.id }, "health-survey-dispatcher: error processing dispatch")
+      logger.error("health-survey-dispatcher: error processing dispatch", { err, dispatchId: dispatch.id })
     }
   }
 
@@ -197,6 +213,11 @@ export async function runHealthSurveyAutoDispatchScheduler(): Promise<{ triggere
       const timezone = config.organization.timezone
 
       if (!isWorkDay(config.workDays, timezone)) {
+        skipped++
+        continue
+      }
+
+      if (!isWithinWorkHours(config.workStartTime, config.workEndTime, timezone)) {
         skipped++
         continue
       }
@@ -222,7 +243,7 @@ export async function runHealthSurveyAutoDispatchScheduler(): Promise<{ triggere
       if (fired) triggered++
     } catch (err) {
       skipped++
-      logger.error({ err, configId: config.id }, "auto-dispatcher: error triggering dispatch")
+      logger.error("auto-dispatcher: error triggering dispatch", { err, configId: config.id })
     }
   }
 
