@@ -417,11 +417,16 @@ export function findEmployeeByPhoneOrDocument(
   tenantId: string,
   identifier: string,
 ): Promise<Employee | null> {
+  const digitsOnly = identifier.replace(/\D/g, "")
   return prisma.employee.findFirst({
     where: {
       tenantId,
       status: "active",
-      OR: [{ phone: identifier }, { document: identifier }],
+      OR: [
+        { phone: { endsWith: digitsOnly } },
+        { phone: identifier.trim() },
+        { document: identifier.trim() },
+      ],
     },
   })
 }

@@ -45,6 +45,7 @@ interface DayGroup {
   totalRecipients: number
   totalResponses: number
   status: string
+  statusCounts: Record<string, number>
   deptCount: number
 }
 
@@ -59,6 +60,7 @@ function groupDispatchesByDay(dispatches: HealthSurveyDispatchWithConfig[], time
       existing.totalRecipients += d.totalRecipients
       existing.totalResponses += d.totalResponses
       existing.deptCount += 1
+      existing.statusCounts[d.status] = (existing.statusCounts[d.status] ?? 0) + 1
       const currentPriority = STATUS_PRIORITY[existing.status] ?? 3
       const newPriority = STATUS_PRIORITY[d.status] ?? 3
       if (newPriority < currentPriority) existing.status = d.status
@@ -70,6 +72,7 @@ function groupDispatchesByDay(dispatches: HealthSurveyDispatchWithConfig[], time
         totalRecipients: d.totalRecipients,
         totalResponses: d.totalResponses,
         status: d.status,
+        statusCounts: { [d.status]: 1 },
         deptCount: 1,
       })
     }
@@ -100,7 +103,7 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
     page: pageParams.page,
     pageSize: pageParams.pageSize,
   }
-  if (statusFilter !== undefined) dispatchQuery.status = statusFilter
+  if (statusFilter !== undefined && statusFilter !== "all") dispatchQuery.status = statusFilter
   if (dateFrom !== undefined) dispatchQuery.dateFrom = dateFrom
   if (dateTo !== undefined) dispatchQuery.dateTo = dateTo
 
@@ -194,7 +197,7 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
           <DataTable
             columns={[
               { label: "Data" },
-              { label: "Departamentos" },
+              { label: "Rodadas" },
               { label: "Status" },
               { label: "Respostas" },
               { label: "Adesão" },
@@ -220,14 +223,18 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
                   </td>
                   <td className="px-4 py-3">
                     <Link href={`/health-surveys/${g.anchorId}`} className="block text-xs text-muted-foreground">
-                      {g.deptCount} {g.deptCount === 1 ? "departamento" : "departamentos"}
+                      {g.deptCount} {g.deptCount === 1 ? "rodada" : "rodadas"}
                     </Link>
                   </td>
                   <td className="px-4 py-3">
-                    <Link href={`/health-surveys/${g.anchorId}`} className="block">
-                      <span className={`inline-flex items-center px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider border ${STATUS_STYLE[g.status] ?? "bg-muted text-muted-foreground border-border"}`}>
-                        {STATUS_LABELS[g.status] ?? g.status}
-                      </span>
+                    <Link href={`/health-surveys/${g.anchorId}`} className="flex flex-wrap gap-1">
+                      {Object.entries(g.statusCounts)
+                        .sort(([a], [b]) => (STATUS_PRIORITY[a] ?? 3) - (STATUS_PRIORITY[b] ?? 3))
+                        .map(([status, count]) => (
+                          <span key={status} className={`inline-flex items-center px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider border ${STATUS_STYLE[status] ?? "bg-muted text-muted-foreground border-border"}`}>
+                            {STATUS_LABELS[status] ?? status}{count > 1 ? ` ×${count}` : ""}
+                          </span>
+                        ))}
                     </Link>
                   </td>
                   <td className="px-4 py-3">
