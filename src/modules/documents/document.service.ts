@@ -9,6 +9,7 @@ import {
   createDocumentVersion,
   type DocumentListingFilters,
 } from "@/modules/documents/document.repository"
+import { createAuditLog } from "@/modules/audit/audit.repository"
 import type { CreateDocumentInput } from "@/modules/documents/document.types"
 
 export function getDocuments(tenantId: string): ReturnType<typeof findDocumentsByTenant> {
@@ -27,8 +28,10 @@ export function getDocumentVersionForDownload(tenantId: string, documentId: stri
   return findVersionByIdForDownload(tenantId, documentId, versionId)
 }
 
-export function createNewDocument(tenantId: string, input: CreateDocumentInput): ReturnType<typeof createDocument> {
-  return createDocument(tenantId, input)
+export async function createNewDocument(tenantId: string, input: CreateDocumentInput, actorId?: string): ReturnType<typeof createDocument> {
+  const doc = await createDocument(tenantId, input)
+  await createAuditLog({ tenantId, ...(actorId !== undefined ? { userId: actorId } : {}), action: "document.created", resource: "documents", resourceId: doc.id, metadata: { title: doc.title } })
+  return doc
 }
 
 export async function addDocumentVersion(

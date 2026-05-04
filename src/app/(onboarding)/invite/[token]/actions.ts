@@ -5,9 +5,9 @@ import type { ActionResult } from "@/libs/utils/action-result"
 import { acceptInvite } from "@/modules/auth/invite.service"
 
 const acceptInviteSchema = z.object({
-  token: z.string().min(1).max(255),
-  password: z.string().min(8).max(128),
-  name: z.string().min(1).max(100).trim(),
+  token: z.string().min(1, { message: "Token inválido." }).max(255),
+  password: z.string().min(8, { message: "A senha deve ter no mínimo 8 caracteres." }).max(128, { message: "A senha deve ter no máximo 128 caracteres." }),
+  name: z.string().min(1, { message: "Informe seu nome." }).max(100).trim(),
 })
 
 export async function acceptInviteAction(

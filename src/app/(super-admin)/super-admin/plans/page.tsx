@@ -39,7 +39,8 @@ export default async function PlansPage({
 
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
         <div className="border border-border bg-card">
-          <table className="w-full text-[12px]">
+          <div className="overflow-x-auto">
+          <table className="w-full text-[12px]" style={{ minWidth: 640 }}>
             <thead>
               <tr className="border-b border-border bg-muted">
                 <th className="text-left px-4 py-2.5 font-bold tracking-widest uppercase text-[10px] text-muted-foreground">Plano</th>
@@ -108,6 +109,7 @@ export default async function PlansPage({
               ))}
             </tbody>
           </table>
+          </div>
         </div>
         <TablePagination total={total} />
       </div>

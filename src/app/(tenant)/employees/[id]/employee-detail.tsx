@@ -10,6 +10,7 @@ import { ChevronDown, ChevronUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { NativeSelect } from "@/components/ui/native-select"
 import { updateEmployeeAction, deactivateEmployeeAction } from "@/app/(tenant)/employees/[id]/actions"
 
 const schema = z.object({
@@ -146,16 +147,14 @@ export function EmployeeDetail({ employee, departments }: Props): React.ReactEle
         </div>
         <div className="space-y-1">
           <Label className="text-[10px] font-bold uppercase tracking-widest">Departamento</Label>
-          <select
-            style={{ borderRadius: 0 }}
-            className="w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors appearance-none"
+          <NativeSelect
             defaultValue={employee.departmentId}
             onChange={(e) => form.setValue("departmentId", e.target.value)}
           >
             {departments.map((d) => (
               <option key={d.id} value={d.id}>{d.name}</option>
             ))}
-          </select>
+          </NativeSelect>
           {form.formState.errors.departmentId && (
             <p className="text-[11px] text-destructive">{form.formState.errors.departmentId.message}</p>
           )}

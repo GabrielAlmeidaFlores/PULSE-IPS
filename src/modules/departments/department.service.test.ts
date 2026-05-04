@@ -13,18 +13,24 @@ import {
   createDepartment,
   updateDepartment,
   deactivateDepartment,
+  countActiveEmployeesByDepartment,
   findDepartmentsByTenant,
   findDepartmentById,
   findActiveDepartmentsByTenant,
   type DepartmentWithWorkDays,
 } from "@/modules/departments/department.repository"
+import { createAuditLog } from "@/modules/audit/audit.repository"
 
 vi.mock("@/modules/departments/department.repository")
+vi.mock("@/modules/audit/audit.repository")
+
+const mockCreateAuditLog = vi.mocked(createAuditLog)
 
 const mockFindForListing = vi.mocked(findDepartmentsForListingPage)
 const mockCreate = vi.mocked(createDepartment)
 const mockUpdate = vi.mocked(updateDepartment)
 const mockDeactivate = vi.mocked(deactivateDepartment)
+const mockCountActiveEmployees = vi.mocked(countActiveEmployeesByDepartment)
 const mockFindByTenant = vi.mocked(findDepartmentsByTenant)
 const mockFindById = vi.mocked(findDepartmentById)
 const mockFindActive = vi.mocked(findActiveDepartmentsByTenant)
@@ -36,6 +42,8 @@ const DEPT_RESULT = { items: [], total: 0 }
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockCreateAuditLog.mockResolvedValue(undefined)
+  mockCountActiveEmployees.mockResolvedValue(0)
   mockFindForListing.mockResolvedValue(DEPT_RESULT)
   mockCreate.mockResolvedValue({
     id: DEPT_ID,
@@ -67,25 +75,44 @@ describe("getDepartmentsForListingPage", () => {
 })
 
 describe("createDept", () => {
-  it("delega criação ao repository", async () => {
+  it("delega criação ao repository e registra log de auditoria", async () => {
     const input = { name: "Engenharia", workStartTime: "09:00", workEndTime: "18:00", workDays: [1, 2, 3, 4, 5] }
-    await createDept(TENANT_ID, input)
+    await createDept(TENANT_ID, input, "user-1")
     expect(mockCreate).toHaveBeenCalledWith(TENANT_ID, input)
+    expect(mockCreateAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: TENANT_ID, userId: "user-1", action: "department.created" }),
+    )
   })
 })
 
 describe("updateDept", () => {
-  it("delega atualização ao repository", async () => {
+  it("delega atualização ao repository e registra log de auditoria", async () => {
     const input = { name: "Engenharia 2" }
-    await updateDept(TENANT_ID, DEPT_ID, input)
+    await updateDept(TENANT_ID, DEPT_ID, input, "user-1")
     expect(mockUpdate).toHaveBeenCalledWith(TENANT_ID, DEPT_ID, input)
+    expect(mockCreateAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: TENANT_ID, userId: "user-1", action: "department.updated" }),
+    )
   })
 })
 
 describe("removeDept", () => {
-  it("delega desativação ao repository", async () => {
-    await removeDept(TENANT_ID, DEPT_ID)
+  it("delega desativação ao repository e registra log de auditoria", async () => {
+    await removeDept(TENANT_ID, DEPT_ID, "user-1")
     expect(mockDeactivate).toHaveBeenCalledWith(TENANT_ID, DEPT_ID)
+    expect(mockCreateAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: TENANT_ID, userId: "user-1", action: "department.deleted" }),
+    )
+  })
+
+  it("lança AppError quando o setor possui colaboradores ativos", async () => {
+    mockCountActiveEmployees.mockResolvedValue(3)
+
+    await expect(removeDept(TENANT_ID, DEPT_ID, "user-1"))
+      .rejects.toMatchObject({ code: "DEPARTMENT_HAS_EMPLOYEES" })
+
+    expect(mockDeactivate).not.toHaveBeenCalled()
+    expect(mockCreateAuditLog).not.toHaveBeenCalled()
   })
 })
 

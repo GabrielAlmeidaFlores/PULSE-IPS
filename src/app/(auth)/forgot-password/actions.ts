@@ -5,8 +5,8 @@ import type { ActionResult } from "@/libs/utils/action-result"
 import { requestPasswordReset } from "@/modules/auth/auth.service"
 
 const forgotPasswordSchema = z.object({
-  email: z.string().email().max(255),
-  orgSlug: z.string().min(1).max(100),
+  email: z.string().email({ message: "E-mail inválido." }).max(255),
+  orgSlug: z.string().min(1, { message: "Informe o identificador da organização." }).max(100),
 })
 
 export async function forgotPasswordAction(input: {

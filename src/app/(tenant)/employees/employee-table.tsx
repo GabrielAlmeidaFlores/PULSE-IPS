@@ -2,15 +2,13 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
 import { toast } from "sonner"
-import { Pencil, UserX, ChevronRight } from "lucide-react"
+import { Pencil, Trash2 } from "lucide-react"
 import { DataTable } from "@/libs/design-system"
 import { TablePagination } from "@/libs/design-system/components/data-display/TablePagination"
 import { BADGE_BASE, BADGE_DEFAULT, BADGE_GREEN, BADGE_RED, BADGE_AMBER } from "@/libs/design-system/alert-labels"
-import { ConfirmDeleteModal } from "@/components/confirm-delete-modal"
 import { EditEmployeeModal, type EmployeeEditData, type EmployeeFormValues } from "@/app/(tenant)/employees/edit-employee-modal"
-import { updateEmployeeAction, deactivateEmployeeAction } from "@/app/(tenant)/employees/[id]/actions"
+import { updateEmployeeAction, deleteEmployeeAction } from "@/app/(tenant)/employees/[id]/actions"
 
 interface Department {
   id: string
@@ -36,6 +34,7 @@ interface EmployeeTableProps {
   employees: EmployeeRow[]
   total: number
   departments: Department[]
+  isAdmin: boolean
 }
 
 function consentBadge(event: string | null): React.ReactElement {
@@ -51,11 +50,11 @@ function consentBadge(event: string | null): React.ReactElement {
   return <span className={`${BADGE_BASE} ${BADGE_DEFAULT}`}>Pendente</span>
 }
 
-export function EmployeeTable({ employees, total, departments }: EmployeeTableProps): React.ReactElement {
+export function EmployeeTable({ employees, total, departments, isAdmin }: EmployeeTableProps): React.ReactElement {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [editTarget, setEditTarget] = useState<EmployeeEditData | null>(null)
-  const [deactivateTarget, setDeactivateTarget] = useState<EmployeeRow | null>(null)
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
 
   function handleEdit(emp: EmployeeRow): void {
     setEditTarget({
@@ -94,16 +93,17 @@ export function EmployeeTable({ employees, total, departments }: EmployeeTablePr
     })
   }
 
-  function handleDeactivate(): void {
-    if (!deactivateTarget) return
+  function handleConfirmDelete(): void {
+    if (!deleteTargetId) return
     startTransition(async () => {
-      const result = await deactivateEmployeeAction(deactivateTarget.id)
+      const result = await deleteEmployeeAction(deleteTargetId)
       if (result.error) {
         toast.error(result.error)
+        setDeleteTargetId(null)
         return
       }
-      toast.success("Colaborador desativado.")
-      setDeactivateTarget(null)
+      toast.success("Colaborador excluído.")
+      setDeleteTargetId(null)
       router.refresh()
     })
   }
@@ -118,11 +118,11 @@ export function EmployeeTable({ employees, total, departments }: EmployeeTablePr
           { label: "Status" },
           { label: "Consentimento" },
           { label: "Ações", align: "right", className: "w-20" },
-          { label: "", className: "w-8" },
         ]}
         total={total}
         emptyMessage="Nenhum funcionário cadastrado."
         pagination={<TablePagination total={total} />}
+        minWidth={720}
       >
         {employees.map((emp, i) => (
           <tr
@@ -156,26 +156,57 @@ export function EmployeeTable({ employees, total, departments }: EmployeeTablePr
                 >
                   <Pencil size={12} />
                 </button>
-                {emp.status === "active" && (
+                {isAdmin && (
                   <button
-                    onClick={() => setDeactivateTarget(emp)}
+                    onClick={() => setDeleteTargetId(emp.id)}
                     style={{ borderRadius: 0 }}
-                    className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors"
-                    title="Desativar"
+                    className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider border border-status-danger-border text-status-danger hover:bg-status-danger-subtle transition-colors"
+                    title="Excluir"
                   >
-                    <UserX size={12} />
+                    <Trash2 size={12} />
                   </button>
                 )}
               </div>
             </td>
-            <td className="px-3 py-3 text-right">
-              <Link href={`/employees/${emp.id}`} className="block">
-                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors ml-auto" />
-              </Link>
-            </td>
           </tr>
         ))}
       </DataTable>
+
+      {deleteTargetId !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-background border border-border w-full max-w-sm shadow-lg" style={{ borderRadius: 0 }}>
+            <div className="px-5 py-4 border-b border-border">
+              <p className="text-sm font-bold text-foreground">Excluir colaborador</p>
+            </div>
+            <div className="px-5 py-4">
+              <p className="text-xs text-muted-foreground">
+                Esta ação é irreversível. O colaborador e todos os seus dados serão permanentemente excluídos.
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Colaboradores com histórico de consentimento não podem ser excluídos.
+              </p>
+            </div>
+            <div className="px-5 py-3 border-t border-border flex justify-end gap-2">
+              <button
+                onClick={() => setDeleteTargetId(null)}
+                disabled={pending}
+                style={{ borderRadius: 0 }}
+                className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider border border-border text-muted-foreground hover:bg-muted disabled:opacity-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                disabled={pending}
+                style={{ borderRadius: 0 }}
+                className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider bg-status-danger text-white hover:opacity-90 disabled:opacity-50 transition-colors"
+              >
+                {pending ? "Excluindo..." : "Excluir"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <EditEmployeeModal
         key={editTarget?.id ?? "closed"}
@@ -185,15 +216,6 @@ export function EmployeeTable({ employees, total, departments }: EmployeeTablePr
         loading={pending}
         employee={editTarget}
         departments={departments}
-      />
-
-      <ConfirmDeleteModal
-        open={deactivateTarget !== null}
-        onClose={() => setDeactivateTarget(null)}
-        onConfirm={handleDeactivate}
-        loading={pending}
-        title="Desativar colaborador"
-        description={`Tem certeza que deseja desativar "${deactivateTarget?.name}"? Ele deixará de receber pesquisas.`}
       />
     </>
   )

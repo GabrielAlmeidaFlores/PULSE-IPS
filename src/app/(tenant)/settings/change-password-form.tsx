@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react"
 import { toast } from "sonner"
 import { changePasswordAction } from "@/app/(tenant)/settings/actions"
+import { PasswordInput } from "@/components/ui/password-input"
 
 export function ChangePasswordForm(): React.ReactElement {
   const [isPending, startTransition] = useTransition()
@@ -37,12 +38,10 @@ export function ChangePasswordForm(): React.ReactElement {
               {field === "newPassword" && "Nova senha"}
               {field === "confirmPassword" && "Confirmar nova senha"}
             </p>
-            <input
-              type="password"
+            <PasswordInput
               value={form[field]}
               onChange={(e) => update(field, e.target.value)}
-              className="w-full bg-input border border-border text-foreground text-[12px] px-3 py-2 focus:outline-none focus:border-primary"
-              style={{ borderRadius: 0 }}
+              className="text-[12px] py-2"
               disabled={isPending}
             />
           </div>

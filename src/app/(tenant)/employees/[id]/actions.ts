@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache"
 import { AppError } from "@/libs/errors/app-error"
 import type { ActionResult } from "@/libs/utils/action-result"
 import { getSession } from "@/modules/auth/session"
-import { updateExistingEmployee, deactivateExistingEmployee } from "@/modules/employees/employee.service"
+import { assertOrgAdmin } from "@/libs/auth/permissions"
+import { updateExistingEmployee, deactivateExistingEmployee, deleteExistingEmployee } from "@/modules/employees/employee.service"
 import { updateEmployeeSchema } from "@/modules/employees/employee.schema"
 
 const employeeIdSchema = z.string().uuid()
@@ -21,7 +22,7 @@ export async function updateEmployeeAction(
   const parsed = updateEmployeeSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
   try {
-    await updateExistingEmployee(session.tenantId, idParsed.data, parsed.data)
+    await updateExistingEmployee(session.tenantId, idParsed.data, parsed.data, session.userId)
     revalidatePath("/employees")
     revalidatePath(`/employees/${idParsed.data}`)
     return {}
@@ -40,6 +41,22 @@ export async function deactivateEmployeeAction(employeeId: string): Promise<Acti
     await deactivateExistingEmployee(session.tenantId, idParsed.data, session.userId)
     revalidatePath("/employees")
     revalidatePath(`/employees/${idParsed.data}`)
+    return {}
+  } catch (err) {
+    if (err instanceof AppError) return { error: err.message }
+    throw err
+  }
+}
+
+export async function deleteEmployeeAction(employeeId: string): Promise<ActionResult> {
+  const session = await getSession()
+  if (!session) return { error: "Sessão expirada." }
+  assertOrgAdmin(session)
+  const idParsed = employeeIdSchema.safeParse(employeeId)
+  if (!idParsed.success) return { error: "ID inválido." }
+  try {
+    await deleteExistingEmployee(session.tenantId, idParsed.data, session.userId)
+    revalidatePath("/employees")
     return {}
   } catch (err) {
     if (err instanceof AppError) return { error: err.message }

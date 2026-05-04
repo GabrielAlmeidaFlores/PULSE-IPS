@@ -197,6 +197,8 @@ export default async function LandingPage(): Promise<React.ReactElement> {
             <p className="text-sm mb-6">Entre em contato para conhecer nossas opções.</p>
             <a
               href={contactUrl("Olá! Gostaria de saber mais sobre o Pulse.")}
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center justify-center h-11 px-8 rounded-lg bg-primary text-white font-semibold text-sm"
             >
               Falar com a equipe
@@ -214,7 +216,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
                 gridClass = "md:grid-cols-3"
               }
               return (
-            <div className={`grid gap-6 items-start ${gridClass}`}>
+            <div className={`grid gap-6 ${gridClass}`}>
             {plansFromDb.map((plan, index) => {
               const isHighlight = plansFromDb.length >= 2 && index === Math.floor((plansFromDb.length - 1) / 2)
               const monthlyPrice = plan.prices.find((p) => p.interval === "month")
@@ -224,7 +226,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
               const enabledFeatureKeys = new Set<string>(plan.features)
 
               return (
-                <AnimateIn key={plan.id} delay={index * 100} animation="scale-in">
+                <AnimateIn key={plan.id} delay={index * 100} animation="scale-in" className="h-full">
                   <div
                     className={`rounded-2xl border p-8 flex flex-col gap-6 transition-all relative h-full ${
                     isHighlight
@@ -238,24 +240,29 @@ export default async function LandingPage(): Promise<React.ReactElement> {
                     </div>
                   )}
                   <div>
-                    <div className={`text-sm font-semibold mb-1 ${highlightSecondary}`}>
-                      {plan.name}
-                    </div>
                     {primaryPrice ? (
-                      <div className="flex items-end gap-1">
-                        <span className="text-3xl font-extrabold tracking-tight">
-                          {(primaryPrice.priceInCents / 100).toLocaleString("pt-BR", {
-                            style: "currency",
-                            currency: primaryPrice.currency.toUpperCase(),
-                            minimumFractionDigits: 0,
-                          })}
-                        </span>
-                        <span className={`text-sm mb-1 ${highlightSecondary}`}>
-                          /{primaryPrice.interval === "year" ? "ano" : "mês"}
-                        </span>
-                      </div>
+                      <>
+                        <div className={`text-sm font-semibold mb-1 ${highlightSecondary}`}>
+                          {plan.name}
+                        </div>
+                        <div className="flex items-end gap-1">
+                          <span className="text-3xl font-extrabold tracking-tight">
+                            {(primaryPrice.priceInCents / 100).toLocaleString("pt-BR", {
+                              style: "currency",
+                              currency: primaryPrice.currency.toUpperCase(),
+                              minimumFractionDigits: 0,
+                            })}
+                          </span>
+                          <span className={`text-sm mb-1 ${highlightSecondary}`}>
+                            /{primaryPrice.interval === "year" ? "ano" : "mês"}
+                          </span>
+                        </div>
+                      </>
                     ) : (
-                      <div className="text-3xl font-extrabold tracking-tight">Sob consulta</div>
+                      <div className="flex flex-col gap-0.5">
+                        <div className={`text-xs font-medium ${highlightSecondary}`}>Sob encomenda</div>
+                        <div className="text-2xl font-extrabold tracking-tight">{plan.name}</div>
+                      </div>
                     )}
                     <div className={`text-xs mt-1 font-medium ${highlightSecondary}`}>
                       {plan.maxEmployees !== null ? `Até ${plan.maxEmployees} funcionários` : "Colaboradores ilimitados"}
@@ -321,6 +328,8 @@ export default async function LandingPage(): Promise<React.ReactElement> {
                   ) : (
                     <a
                       href={contactUrl("Olá! Tenho interesse no Pulse. Poderia me ajudar?")}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className={`inline-flex items-center justify-center h-11 rounded-lg font-semibold text-sm transition-all ${
                         isHighlight
                           ? "bg-white/20 text-white hover:bg-white/30 border border-white/30"
@@ -393,6 +402,8 @@ export default async function LandingPage(): Promise<React.ReactElement> {
             <p className="text-sm text-muted-foreground mb-4">Ainda tem dúvidas?</p>
             <a
               href={contactUrl("Olá! Tenho algumas dúvidas sobre o Pulse antes de contratar.")}
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center justify-center h-10 px-6 rounded-lg border border-border text-sm font-semibold text-foreground hover:border-primary/40 hover:bg-primary/5 transition-all"
             >
               Falar com a equipe
@@ -424,6 +435,8 @@ export default async function LandingPage(): Promise<React.ReactElement> {
             </a>
             <a
               href={contactUrl("Olá! Gostaria de falar com um consultor sobre o Pulse.")}
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center justify-center h-12 px-8 rounded-lg border-2 border-white/40 text-white font-semibold text-base hover:bg-white/10 transition-all"
             >
               Falar com um consultor
@@ -437,7 +450,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
         <div className="max-w-6xl mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between gap-10 mb-10">
             <div className="flex flex-col gap-3">
-              <Logo size="sm" />
+              <Logo size="sm" className="w-[96px] md:w-[142px]" />
               <p className="text-sm text-muted-foreground max-w-xs">
                 Monitoramento contínuo de saúde ocupacional para equipes de alto desempenho.
               </p>

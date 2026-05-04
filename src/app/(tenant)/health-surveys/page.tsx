@@ -46,7 +46,7 @@ interface DayGroup {
   totalResponses: number
   status: string
   statusCounts: Record<string, number>
-  deptCount: number
+  deptIds: Set<string>
 }
 
 function groupDispatchesByDay(dispatches: HealthSurveyDispatchWithConfig[], timezone: string): DayGroup[] {
@@ -59,7 +59,7 @@ function groupDispatchesByDay(dispatches: HealthSurveyDispatchWithConfig[], time
     if (existing) {
       existing.totalRecipients += d.totalRecipients
       existing.totalResponses += d.totalResponses
-      existing.deptCount += 1
+      existing.deptIds.add(d.healthSurveyConfiguration.department.id)
       existing.statusCounts[d.status] = (existing.statusCounts[d.status] ?? 0) + 1
       const currentPriority = STATUS_PRIORITY[existing.status] ?? 3
       const newPriority = STATUS_PRIORITY[d.status] ?? 3
@@ -73,7 +73,7 @@ function groupDispatchesByDay(dispatches: HealthSurveyDispatchWithConfig[], time
         totalResponses: d.totalResponses,
         status: d.status,
         statusCounts: { [d.status]: 1 },
-        deptCount: 1,
+        deptIds: new Set([d.healthSurveyConfiguration.department.id]),
       })
     }
   }
@@ -147,7 +147,7 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
             } />
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {total} {total === 1 ? "rodada" : "rodadas"}
+            {total} {total === 1 ? "disparo" : "disparos"}
           </p>        </div>
         <div className="flex gap-0">
           <Link
@@ -178,7 +178,7 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
           </div>
         )}
 
-        {hasAnyDispatches && (
+        {configs.length > 0 && (
           <HealthSurveyListFilters filters={{
             ...(statusFilter !== undefined ? { status: statusFilter } : {}),
             ...(dateFromStr !== undefined ? { dateFrom: dateFromStr } : {}),
@@ -197,7 +197,7 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
           <DataTable
             columns={[
               { label: "Data" },
-              { label: "Rodadas" },
+              { label: "Setores" },
               { label: "Status" },
               { label: "Respostas" },
               { label: "Adesão" },
@@ -205,6 +205,7 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
             ]}
             total={total}
             pagination={<TablePagination total={total} />}
+            minWidth={760}
           >
             {dayGroups.map((g, i) => {
               const notResponded = Math.max(0, g.totalRecipients - g.totalResponses)
@@ -223,7 +224,7 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
                   </td>
                   <td className="px-4 py-3">
                     <Link href={`/health-surveys/${g.anchorId}`} className="block text-xs text-muted-foreground">
-                      {g.deptCount} {g.deptCount === 1 ? "rodada" : "rodadas"}
+                      {g.deptIds.size} {g.deptIds.size === 1 ? "setor" : "setores"}
                     </Link>
                   </td>
                   <td className="px-4 py-3">

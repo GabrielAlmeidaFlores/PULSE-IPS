@@ -13,10 +13,10 @@ interface CheckoutResult {
 }
 
 const checkoutSchema = z.object({
-  orgName: z.string().min(2).max(100),
-  slug: z.string().min(2).max(50).regex(/^[a-z0-9-]+$/, "Identificador inválido. Use apenas letras minúsculas, números e hífens."),
-  adminEmail: z.string().email().max(255),
-  priceId: z.string().uuid(),
+  orgName: z.string().min(2, { message: "O nome da empresa deve ter no mínimo 2 caracteres." }).max(100),
+  slug: z.string().min(2, { message: "O identificador deve ter no mínimo 2 caracteres." }).max(50).regex(/^[a-z0-9-]+$/, "Identificador inválido. Use apenas letras minúsculas, números e hífens."),
+  adminEmail: z.string().email({ message: "E-mail inválido." }).max(255),
+  priceId: z.string().uuid({ message: "Plano inválido." }),
 })
 
 export async function selfServiceCheckoutAction(input: {

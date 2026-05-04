@@ -36,7 +36,7 @@ export async function createActionPlanAction(input: unknown): Promise<ActionResu
       title: parsed.data.title,
       description: parsed.data.description?.trim() ?? undefined,
       priority: parsed.data.priority,
-    })
+    }, session.userId)
     revalidatePath("/action-plans")
     redirect(`/action-plans/${plan.id}`)
   } catch (err) {
@@ -58,6 +58,7 @@ export async function createActionPlanFromSuggestionAction(input: unknown): Prom
       session.tenantId,
       { title: parsed.data.title, description: parsed.data.description, priority: parsed.data.priority },
       parsed.data.tasks,
+      session.userId,
     )
     await convertActionPlanSuggestion(session.tenantId, parsed.data.suggestionId, plan.id)
     revalidatePath("/action-plans")

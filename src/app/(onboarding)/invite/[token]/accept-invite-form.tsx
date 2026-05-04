@@ -7,13 +7,14 @@ import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { acceptInviteAction } from "@/app/(onboarding)/invite/[token]/actions"
+import { PasswordInput } from "@/components/ui/password-input"
 
 const schema = z.object({
-  name: z.string().min(1),
-  password: z.string().min(8),
-  confirmPassword: z.string().min(8),
+  name: z.string().min(1, { message: "Informe seu nome." }),
+  password: z.string().min(8, { message: "A senha deve ter no mínimo 8 caracteres." }),
+  confirmPassword: z.string().min(8, { message: "A confirmação deve ter no mínimo 8 caracteres." }),
 }).refine((d) => d.password === d.confirmPassword, {
-  message: "As senhas não coincidem",
+  message: "As senhas não coincidem.",
   path: ["confirmPassword"],
 })
 
@@ -77,11 +78,8 @@ export function AcceptInviteForm({ token, email, orgName }: Props): React.ReactE
           <label className="block text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
             Senha
           </label>
-          <input
-            type="password"
+          <PasswordInput
             placeholder="••••••••"
-            className="w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
-            style={{ borderRadius: 0 }}
             {...form.register("password")}
           />
           {form.formState.errors.password && (
@@ -93,11 +91,8 @@ export function AcceptInviteForm({ token, email, orgName }: Props): React.ReactE
           <label className="block text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
             Confirmar senha
           </label>
-          <input
-            type="password"
+          <PasswordInput
             placeholder="••••••••"
-            className="w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
-            style={{ borderRadius: 0 }}
             {...form.register("confirmPassword")}
           />
           {form.formState.errors.confirmPassword && (

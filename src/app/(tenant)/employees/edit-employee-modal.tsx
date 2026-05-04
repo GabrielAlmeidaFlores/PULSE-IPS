@@ -1,22 +1,30 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useForm, useWatch, Controller } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
-import { ChevronDown, ChevronUp } from "lucide-react"
-import { Dialog, DialogClose, DialogContent, DialogOverlay, DialogPortal, DialogTitle } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { PhoneInput } from "@/components/phone-input"
-import { normalizePhoneToE164 } from "@/libs/utils/phone"
+import { useState, useEffect } from "react";
+import { useForm, useWatch, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogOverlay,
+  DialogPortal,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { NativeSelect } from "@/components/ui/native-select";
+import { PhoneInput } from "@/components/phone-input";
+import { normalizePhoneToE164 } from "@/libs/utils/phone";
 
 const schema = z.object({
   name: z.string().min(1, "Nome obrigatório"),
-  phone: z.string().min(1, "Telefone obrigatório").refine(
-    (val) => normalizePhoneToE164(val) !== null,
-    "Telefone inválido",
-  ),
+  phone: z
+    .string()
+    .min(1, "Telefone obrigatório")
+    .refine((val) => normalizePhoneToE164(val) !== null, "Telefone inválido"),
   document: z.string().optional().or(z.literal("")),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
   departmentId: z.string().uuid("Departamento obrigatório"),
@@ -24,36 +32,36 @@ const schema = z.object({
   workStartTime: z.string().optional(),
   workEndTime: z.string().optional(),
   workDays: z.array(z.number()).optional(),
-})
+});
 
-type FormValues = z.infer<typeof schema>
-export type { FormValues as EmployeeFormValues }
+type FormValues = z.infer<typeof schema>;
+export type { FormValues as EmployeeFormValues };
 
 interface Department {
-  id: string
-  name: string
+  id: string;
+  name: string;
 }
 
 export interface EmployeeEditData {
-  id: string
-  name: string
-  phone: string
-  document: string | null
-  email: string | null
-  departmentId: string
-  status: string
-  workStartTime: string | null
-  workEndTime: string | null
-  workDays: number[] | null
+  id: string;
+  name: string;
+  phone: string;
+  document: string | null;
+  email: string | null;
+  departmentId: string;
+  status: string;
+  workStartTime: string | null;
+  workEndTime: string | null;
+  workDays: number[] | null;
 }
 
 interface Props {
-  open: boolean
-  onClose: () => void
-  onSave: (values: FormValues) => void
-  loading?: boolean
-  employee: EmployeeEditData | null
-  departments: Department[]
+  open: boolean;
+  onClose: () => void;
+  onSave: (values: FormValues) => void;
+  loading?: boolean;
+  employee: EmployeeEditData | null;
+  departments: Department[];
 }
 
 const ALL_DAYS = [
@@ -64,15 +72,23 @@ const ALL_DAYS = [
   { value: 4, label: "Qui" },
   { value: 5, label: "Sex" },
   { value: 6, label: "Sáb" },
-]
+];
 
-export function EditEmployeeModal({ open, onClose, onSave, loading, employee, departments }: Props): React.ReactElement {
+export function EditEmployeeModal({
+  open,
+  onClose,
+  onSave,
+  loading,
+  employee,
+  departments,
+}: Props): React.ReactElement {
   const [showSchedule, setShowSchedule] = useState(
-    ((employee?.workStartTime?.length ?? 0) > 0) || ((employee?.workDays?.length ?? 0) > 0)
-  )
+    (employee?.workStartTime?.length ?? 0) > 0 ||
+      (employee?.workDays?.length ?? 0) > 0,
+  );
   const [selectedDays, setSelectedDays] = useState<number[]>(
-    employee?.workDays ?? []
-  )
+    employee?.workDays ?? [],
+  );
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -88,14 +104,17 @@ export function EditEmployeeModal({ open, onClose, onSave, loading, employee, de
       workEndTime: "",
       workDays: [],
     },
-  })
+  });
 
-  const departmentIdValue = useWatch({ control: form.control, name: "departmentId" })
-  const statusValue = useWatch({ control: form.control, name: "status" })
+  const departmentIdValue = useWatch({
+    control: form.control,
+    name: "departmentId",
+  });
+  const statusValue = useWatch({ control: form.control, name: "status" });
 
   useEffect(() => {
     if (open && employee) {
-      const days = employee.workDays ?? []
+      const days = employee.workDays ?? [];
       form.reset({
         name: employee.name,
         phone: employee.phone,
@@ -106,38 +125,58 @@ export function EditEmployeeModal({ open, onClose, onSave, loading, employee, de
         workStartTime: employee.workStartTime ?? "",
         workEndTime: employee.workEndTime ?? "",
         workDays: days,
-      })
+      });
     }
-  }, [open, employee, form])
+  }, [open, employee, form]);
 
   function toggleDay(day: number): void {
     const next = selectedDays.includes(day)
       ? selectedDays.filter((d) => d !== day)
-      : [...selectedDays, day]
-    setSelectedDays(next)
-    form.setValue("workDays", next)
+      : [...selectedDays, day];
+    setSelectedDays(next);
+    form.setValue("workDays", next);
   }
 
   function handleSubmit(values: FormValues): void {
-    onSave(values)
+    onSave(values);
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose() }}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) onClose();
+      }}
+    >
       <DialogPortal>
         <DialogOverlay />
         <DialogContent className="max-w-md" style={{ borderRadius: 0 }}>
-          <DialogTitle className="text-sm font-bold uppercase tracking-widest">Editar colaborador</DialogTitle>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="mt-4 space-y-4">
+          <DialogTitle className="text-sm font-bold uppercase tracking-widest">
+            Editar colaborador
+          </DialogTitle>
+          <form
+            onSubmit={form.handleSubmit(handleSubmit)}
+            className="mt-4 space-y-4"
+          >
             <div className="space-y-1">
-              <Label className="text-[10px] font-bold uppercase tracking-widest">Nome</Label>
-              <Input {...form.register("name")} placeholder="Nome completo" style={{ borderRadius: 0 }} />
+              <Label className="text-[10px] font-bold uppercase tracking-widest">
+                Nome
+              </Label>
+              <Input
+                {...form.register("name")}
+                placeholder="Nome completo"
+                style={{ borderRadius: 0 }}
+              />
               {form.formState.errors.name && (
-                <p className="text-[11px] text-destructive">{form.formState.errors.name.message}</p>
+                <p className="text-[11px] text-destructive">
+                  {form.formState.errors.name.message}
+                </p>
               )}
             </div>
             <div className="space-y-1">
-              <Label className="text-[10px] font-bold uppercase tracking-widest">Telefone</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-widest">
+                Telefone
+              </Label>
               <Controller
                 name="phone"
                 control={form.control}
@@ -153,48 +192,80 @@ export function EditEmployeeModal({ open, onClose, onSave, loading, employee, de
                 )}
               />
               {form.formState.errors.phone && (
-                <p className="text-[11px] text-destructive">{form.formState.errors.phone.message}</p>
+                <p className="text-[11px] text-destructive">
+                  {form.formState.errors.phone.message}
+                </p>
               )}
             </div>
             <div className="space-y-1">
-              <Label className="text-[10px] font-bold uppercase tracking-widest">Documento (opcional)</Label>
-              <Input {...form.register("document")} placeholder="Número do documento (opcional)" style={{ borderRadius: 0 }} />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-[10px] font-bold uppercase tracking-widest">Email</Label>
-              <Input {...form.register("email")} placeholder="email@exemplo.com" style={{ borderRadius: 0 }} />
-              {form.formState.errors.email && (
-                <p className="text-[11px] text-destructive">{form.formState.errors.email.message}</p>
-              )}
-            </div>
-            <div className="space-y-1">
-              <Label className="text-[10px] font-bold uppercase tracking-widest">Departamento</Label>
-              <select
+              <Label className="text-[10px] font-bold uppercase tracking-widest">
+                Documento (opcional)
+              </Label>
+              <Input
+                {...form.register("document")}
+                placeholder="Número do documento (opcional)"
                 style={{ borderRadius: 0 }}
-                className="w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors appearance-none"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] font-bold uppercase tracking-widest">
+                Email
+              </Label>
+              <Input
+                {...form.register("email")}
+                placeholder="email@exemplo.com"
+                style={{ borderRadius: 0 }}
+              />
+              {form.formState.errors.email && (
+                <p className="text-[11px] text-destructive">
+                  {form.formState.errors.email.message}
+                </p>
+              )}
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] font-bold uppercase tracking-widest">
+                Departamento
+              </Label>
+              <NativeSelect
                 value={departmentIdValue}
                 onChange={(e) => form.setValue("departmentId", e.target.value)}
               >
                 <option value="">Selecione...</option>
                 {departments.map((d) => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
                 ))}
-              </select>
+              </NativeSelect>
               {form.formState.errors.departmentId && (
-                <p className="text-[11px] text-destructive">{form.formState.errors.departmentId.message}</p>
+                <p className="text-[11px] text-destructive">
+                  {form.formState.errors.departmentId.message}
+                </p>
               )}
             </div>
 
-            <div className="flex items-center justify-between border border-border px-4 py-3" style={{ borderRadius: 0 }}>
+            <div
+              className="flex items-center justify-between border border-border px-4 py-3"
+              style={{ borderRadius: 0 }}
+            >
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-foreground">Status</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-foreground">
+                  Status
+                </p>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  {statusValue === "active" ? "Recebe pesquisas normalmente" : "Não receberá pesquisas"}
+                  {statusValue === "active"
+                    ? "Recebe pesquisas normalmente"
+                    : "Não receberá pesquisas"}
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => form.setValue("status", statusValue === "active" ? "inactive" : "active")}
+                onClick={() =>
+                  form.setValue(
+                    "status",
+                    statusValue === "active" ? "inactive" : "active",
+                  )
+                }
                 className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer border-2 border-transparent transition-colors focus:outline-none ${statusValue === "active" ? "bg-primary" : "bg-muted-foreground/30"}`}
                 style={{ borderRadius: 9999 }}
                 role="switch"
@@ -215,18 +286,23 @@ export function EditEmployeeModal({ open, onClose, onSave, loading, employee, de
                 style={{ borderRadius: 0 }}
               >
                 <span className="text-[10px] font-bold uppercase tracking-widest text-foreground">
-                  Horário personalizado{" "}
-                  <span className="text-muted-foreground font-normal">(herda do departamento se não definido)</span>
+                  Horário personalizado
                 </span>
-                {showSchedule ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+                {showSchedule ? (
+                  <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                )}
               </button>
               {showSchedule && (
                 <div className="p-4 space-y-4 border-t border-border">
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest">Dias de trabalho</Label>
+                    <Label className="text-[10px] font-bold uppercase tracking-widest">
+                      Dias de trabalho
+                    </Label>
                     <div className="flex gap-1.5 flex-wrap">
                       {ALL_DAYS.map((day) => {
-                        const active = selectedDays.includes(day.value)
+                        const active = selectedDays.includes(day.value);
                         return (
                           <button
                             key={day.value}
@@ -241,24 +317,69 @@ export function EditEmployeeModal({ open, onClose, onSave, loading, employee, de
                           >
                             {day.label}
                           </button>
-                        )
+                        );
                       })}
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <Label className="text-[10px] font-bold uppercase tracking-widest">Início</Label>
-                      <Input type="time" {...form.register("workStartTime")} style={{ borderRadius: 0 }} />
+                      <Label className="text-[10px] font-bold uppercase tracking-widest">
+                        Início
+                      </Label>
+                      <Input
+                        type="time"
+                        {...form.register("workStartTime")}
+                        style={{ borderRadius: 0 }}
+                      />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-[10px] font-bold uppercase tracking-widest">Fim</Label>
-                      <Input type="time" {...form.register("workEndTime")} style={{ borderRadius: 0 }} />
+                      <Label className="text-[10px] font-bold uppercase tracking-widest">
+                        Fim
+                      </Label>
+                      <Input
+                        type="time"
+                        {...form.register("workEndTime")}
+                        style={{ borderRadius: 0 }}
+                      />
                     </div>
                   </div>
-                  <p className="text-[11px] text-muted-foreground">Deixe em branco para herdar o horário do departamento.</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Deixe em branco para herdar o horário do departamento.
+                  </p>
                 </div>
               )}
             </div>
+
+            {statusValue === "active" && (
+              <div className="border border-status-danger-border">
+                <div className="border-b border-status-danger-border px-4 py-2 bg-status-danger-subtle">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-status-danger">
+                    Zona de Perigo
+                  </span>
+                </div>
+                <div className="px-4 py-3 flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-semibold text-foreground">
+                      Desativar colaborador
+                    </p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      O colaborador deixará de participar pesquisas.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={loading}
+                    className="shrink-0 text-xs font-semibold text-status-danger border border-status-danger-border px-3 py-1.5 hover:bg-status-danger-subtle disabled:opacity-50 transition-colors"
+                    onClick={() => {
+                      form.setValue("status", "inactive");
+                      void form.handleSubmit(handleSubmit)();
+                    }}
+                  >
+                    Desativar
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="flex justify-end gap-2 pt-2">
               <DialogClose
@@ -280,5 +401,5 @@ export function EditEmployeeModal({ open, onClose, onSave, loading, employee, de
         </DialogContent>
       </DialogPortal>
     </Dialog>
-  )
+  );
 }

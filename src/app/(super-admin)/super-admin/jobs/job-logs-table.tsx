@@ -4,10 +4,12 @@ import { Fragment, useState } from "react"
 import type { JobLogRow } from "@/modules/job-logs/job-log.types"
 import { TablePagination } from "@/libs/design-system"
 import { Badge } from "@/components/ui/badge"
+import { extractJobPayloadTenantId } from "@/app/(super-admin)/super-admin/jobs/job-payload-utils"
 
 interface Props {
   rows: JobLogRow[]
   total: number
+  orgMap: Record<string, { name: string; slug: string }>
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -50,13 +52,22 @@ function formatDuration(ms: number | null): string {
   return `${(ms / 1_000).toFixed(1)}s`
 }
 
-export function JobLogsTable({ rows, total }: Props): React.ReactElement {
+export function JobLogsTable({ rows, total, orgMap }: Props): React.ReactElement {
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   return (
     <div className="flex flex-col gap-3">
       <div className="overflow-x-auto rounded-md border border-border">
-        <table className="w-full text-sm border-collapse">
+        <table className="w-full text-sm border-collapse table-fixed">
+          <colgroup>
+            <col className="w-36" />
+            <col className="w-44" />
+            <col className="w-24" />
+            <col className="w-24" />
+            <col className="w-20" />
+            <col className="w-20" />
+            <col />
+          </colgroup>
           <thead>
             <tr className="bg-muted/40 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               <th className="px-3 py-2">Data</th>
@@ -83,11 +94,11 @@ export function JobLogsTable({ rows, total }: Props): React.ReactElement {
                   style={{ borderBottom: "1px solid var(--border)" }}
                   onClick={() => { setExpandedId(expandedId === row.id ? null : row.id) }}
                 >
-                  <td className="px-3 py-2 font-mono text-[11px] text-muted-foreground whitespace-nowrap">
+                  <td className="px-3 py-2 font-mono text-[11px] text-muted-foreground truncate">
                     {formatDate(row.createdAt)}
                   </td>
-                  <td className="px-3 py-2 font-medium">{JOB_NAME_LABELS[row.jobName] ?? row.jobName}</td>
-                  <td className="px-3 py-2 text-muted-foreground">{QUEUE_LABELS[row.queueName] ?? row.queueName}</td>
+                  <td className="px-3 py-2 font-medium truncate">{JOB_NAME_LABELS[row.jobName] ?? row.jobName}</td>
+                  <td className="px-3 py-2 text-muted-foreground truncate">{QUEUE_LABELS[row.queueName] ?? row.queueName}</td>
                   <td className="px-3 py-2">
                     <Badge className={`${STATUS_COLORS[row.status] ?? "bg-muted text-muted-foreground border-border"} border text-[10px] font-semibold`}>
                       {STATUS_LABELS[row.status] ?? row.status}
@@ -96,8 +107,8 @@ export function JobLogsTable({ rows, total }: Props): React.ReactElement {
                   <td className="px-3 py-2 text-muted-foreground">
                     {row.attemptNumber}/{row.maxAttempts}
                   </td>
-                  <td className="px-3 py-2 font-mono">{formatDuration(row.durationMs)}</td>
-                  <td className="px-3 py-2 text-status-danger max-w-[220px] truncate" title={row.errorMessage ?? undefined}>
+                  <td className="px-3 py-2 font-mono truncate">{formatDuration(row.durationMs)}</td>
+                  <td className="px-3 py-2 text-status-danger truncate" title={row.errorMessage ?? undefined}>
                     {row.errorMessage ?? "—"}
                   </td>
                 </tr>
@@ -109,6 +120,19 @@ export function JobLogsTable({ rows, total }: Props): React.ReactElement {
                           <span className="font-semibold text-foreground">Job ID:</span>{" "}
                           <span className="font-mono">{row.jobId}</span>
                         </div>
+                        {(() => {
+                          const tenantId = extractJobPayloadTenantId(row.payload)
+                          const org = tenantId !== null ? orgMap[tenantId] : undefined
+                          if (org === undefined) return null
+                          return (
+                            <div>
+                              <span className="font-semibold text-foreground">Organização:</span>{" "}
+                              <span className="font-medium">{org.name}</span>
+                              {" "}
+                              <span className="font-mono text-[10px] bg-muted px-1 py-0.5">{org.slug}</span>
+                            </div>
+                          )
+                        })()}
                         <div>
                           <span className="font-semibold text-foreground">Iniciado em:</span>{" "}
                           {formatDate(row.startedAt)}
@@ -122,7 +146,7 @@ export function JobLogsTable({ rows, total }: Props): React.ReactElement {
                           {formatDate(row.queuedAt)}
                         </div>
                       </div>
-                      {row.payload !== null && row.payload !== undefined && (
+                      {row.payload !== null && row.payload !== undefined && JSON.stringify(row.payload) !== "{}" && (
                         <div>
                           <div className="text-xs font-semibold text-foreground mb-1">Payload:</div>
                           <pre className="text-[11px] bg-muted p-2 rounded overflow-x-auto max-h-40">
@@ -130,7 +154,7 @@ export function JobLogsTable({ rows, total }: Props): React.ReactElement {
                           </pre>
                         </div>
                       )}
-                      {row.result !== null && row.result !== undefined && (
+                      {row.result !== null && row.result !== undefined && JSON.stringify(row.result) !== "{}" && (
                         <div>
                           <div className="text-xs font-semibold text-foreground mb-1">Resultado:</div>
                           <pre className="text-[11px] bg-muted p-2 rounded overflow-x-auto max-h-40">

@@ -23,6 +23,10 @@ vi.mock("@/modules/organizations/account-deletion.repository")
 vi.mock("@/modules/organizations/organization.repository")
 vi.mock("@/modules/billing/billing.repository")
 vi.mock("@/libs/integrations")
+vi.mock("@/libs/utils/logger", () => ({
+  createLogger: () => ({ info: vi.fn(), success: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }),
+  logger: { info: vi.fn(), success: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+}))
 vi.mock("@/libs/email-templates", () => ({
   renderEmailTemplate: vi.fn().mockReturnValue("<html>email</html>"),
 }))

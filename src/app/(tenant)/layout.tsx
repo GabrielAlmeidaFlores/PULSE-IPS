@@ -5,6 +5,7 @@ import { getTenantPlanFeatures } from "@/modules/billing/billing.service"
 import { getOrganization } from "@/modules/organizations/organization.service"
 import { Sidebar } from "@/libs/design-system/components/layout/Sidebar"
 import { Header } from "@/libs/design-system/components/layout/Header"
+import { SidebarProvider } from "@/libs/design-system/components/layout/sidebar-context"
 import { BillingWallModal } from "@/app/(tenant)/billing/billing-wall-modal"
 import { DeletionScheduledModal } from "@/app/(tenant)/deletion-scheduled-modal"
 
@@ -30,19 +31,21 @@ export default async function TenantLayout({
   const hasBillingWall = deletionScheduledAt === null && !ACTIVE_BILLING_STATUSES.has(billingStatus)
 
   return (
-    <div className="flex h-screen bg-background">
-      <Sidebar tenantId={session.tenantId} role={session.role} features={features} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header email={session.email} />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
+    <SidebarProvider>
+      <div className="flex h-screen bg-background">
+        <Sidebar tenantId={session.tenantId} role={session.role} features={features} />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header email={session.email} />
+          <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
+        </div>
+        {deletionScheduledAt !== null && (
+          <DeletionScheduledModal
+            deletionScheduledAt={deletionScheduledAt.toISOString()}
+            role={session.role}
+          />
+        )}
+        {hasBillingWall && <BillingWallModal billingStatus={billingStatus} role={session.role} />}
       </div>
-      {deletionScheduledAt !== null && (
-        <DeletionScheduledModal
-          deletionScheduledAt={deletionScheduledAt.toISOString()}
-          role={session.role}
-        />
-      )}
-      {hasBillingWall && <BillingWallModal billingStatus={billingStatus} role={session.role} />}
-    </div>
+    </SidebarProvider>
   )
 }

@@ -8,6 +8,8 @@ import { QueueOverviewSection } from "@/app/(super-admin)/super-admin/jobs/queue
 import { JobLogsTable } from "@/app/(super-admin)/super-admin/jobs/job-logs-table"
 import { JobLogsFilters } from "@/app/(super-admin)/super-admin/jobs/job-logs-filters"
 import { Separator } from "@/components/ui/separator"
+import { getOrganizationsByIds } from "@/modules/organizations/organization.service"
+import { extractJobPayloadTenantId } from "@/app/(super-admin)/super-admin/jobs/job-payload-utils"
 
 interface PageProps {
   searchParams: Promise<Record<string, string | undefined>>
@@ -47,6 +49,15 @@ export default async function JobsPage({ searchParams }: PageProps): Promise<Rea
 
   const logsPage = await jobLogService.getJobLogs(filters)
 
+  const tenantIds = [...new Set(
+    logsPage.rows.map((r) => extractJobPayloadTenantId(r.payload)).filter((id): id is string => id !== null)
+  )]
+  const orgs = tenantIds.length > 0 ? await getOrganizationsByIds(tenantIds) : []
+  const orgMap: Record<string, { name: string; slug: string }> = {}
+  for (const org of orgs) {
+    orgMap[org.id] = { name: org.name, slug: org.slug }
+  }
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-card shrink-0">
@@ -77,6 +88,7 @@ export default async function JobsPage({ searchParams }: PageProps): Promise<Rea
             <JobLogsTable
               rows={logsPage.rows}
               total={logsPage.total}
+              orgMap={orgMap}
             />
           </div>
         </section>

@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { NativeSelect } from "@/components/ui/native-select"
 import { submitReportAction } from "@/app/(public)/report/[orgSlug]/actions"
 
 const CATEGORIES = [
@@ -23,7 +24,7 @@ const CATEGORIES = [
 ]
 
 const schema = z.object({
-  content: z.string().min(10).max(5000),
+  content: z.string().min(10, { message: "O relato deve ter no mínimo 10 caracteres." }).max(5000, { message: "O relato deve ter no máximo 5000 caracteres." }),
   category: z.string().optional(),
 })
 
@@ -66,16 +67,14 @@ export function ReportForm({ orgSlug }: Props): React.ReactElement {
           <Label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
             Categoria (opcional)
           </Label>
-          <select
+          <NativeSelect
             {...form.register("category")}
-            style={{ borderRadius: 0 }}
-            className="w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors appearance-none"
           >
             <option value="">Selecione uma categoria...</option>
             {CATEGORIES.map((c) => (
               <option key={c.value} value={c.value}>{c.label}</option>
             ))}
-          </select>
+          </NativeSelect>
         </div>
         <div className="space-y-1.5">
           <Label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">

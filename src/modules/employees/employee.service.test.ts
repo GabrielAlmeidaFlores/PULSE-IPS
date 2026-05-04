@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import {
   createNewEmployee,
   deactivateExistingEmployee,
+  deleteExistingEmployee,
   unpauseAllTenantsDueEmployees,
   getEmployees,
   getEmployee,
@@ -13,6 +14,8 @@ import {
   countEmployees,
   createEmployee,
   deactivateEmployee,
+  hardDeleteEmployee,
+  countEmployeeConsentRecords,
   reactivateAllTenantsDueEmployees,
   findEmployeesByTenant,
   findEmployeeById,
@@ -37,6 +40,8 @@ vi.mock("@/env", () => ({ env: { NEXT_PUBLIC_APP_URL: "http://localhost:3000" } 
 const mockCountEmployees = vi.mocked(countEmployees)
 const mockCreateEmployee = vi.mocked(createEmployee)
 const mockDeactivateEmployee = vi.mocked(deactivateEmployee)
+const mockHardDeleteEmployee = vi.mocked(hardDeleteEmployee)
+const mockCountEmployeeConsentRecords = vi.mocked(countEmployeeConsentRecords)
 const mockReactivateAllTenantsDueEmployees = vi.mocked(reactivateAllTenantsDueEmployees)
 const mockFindEmployeesByTenant = vi.mocked(findEmployeesByTenant)
 const mockFindEmployeeById = vi.mocked(findEmployeeById)
@@ -59,6 +64,8 @@ beforeEach(() => {
   mockCreateEmployee.mockResolvedValue(CREATED_EMPLOYEE as Awaited<ReturnType<typeof createEmployee>>)
   mockCreateAuditLog.mockResolvedValue(undefined)
   mockDeactivateEmployee.mockResolvedValue({ count: 0 })
+  mockHardDeleteEmployee.mockResolvedValue(undefined)
+  mockCountEmployeeConsentRecords.mockResolvedValue(0)
 })
 
 describe("createNewEmployee — employee limit checks", () => {
@@ -268,6 +275,40 @@ describe("getEmployeesForListingPage", () => {
       { consentEmployeeIds: ids },
       0,
       10,
+    )
+  })
+})
+
+describe("deleteExistingEmployee", () => {
+  it("exclui o colaborador e registra log de auditoria quando não há histórico de consentimento", async () => {
+    mockCountEmployeeConsentRecords.mockResolvedValue(0)
+
+    await deleteExistingEmployee(TENANT_ID, "emp-1", "user-1")
+
+    expect(mockCountEmployeeConsentRecords).toHaveBeenCalledWith(TENANT_ID, "emp-1")
+    expect(mockHardDeleteEmployee).toHaveBeenCalledWith(TENANT_ID, "emp-1")
+    expect(mockCreateAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: TENANT_ID, userId: "user-1", action: "employee.deleted" }),
+    )
+  })
+
+  it("lança AppError quando colaborador possui histórico de consentimento", async () => {
+    mockCountEmployeeConsentRecords.mockResolvedValue(2)
+
+    await expect(deleteExistingEmployee(TENANT_ID, "emp-1", "user-1"))
+      .rejects.toMatchObject({ code: "EMPLOYEE_HAS_CONSENT_HISTORY" })
+
+    expect(mockHardDeleteEmployee).not.toHaveBeenCalled()
+    expect(mockCreateAuditLog).not.toHaveBeenCalled()
+  })
+
+  it("não inclui userId no log de auditoria quando actorId não é fornecido", async () => {
+    mockCountEmployeeConsentRecords.mockResolvedValue(0)
+
+    await deleteExistingEmployee(TENANT_ID, "emp-1")
+
+    expect(mockCreateAuditLog).toHaveBeenCalledWith(
+      expect.not.objectContaining({ userId: expect.anything() }),
     )
   })
 })

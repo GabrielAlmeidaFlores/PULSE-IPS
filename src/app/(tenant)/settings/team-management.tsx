@@ -4,6 +4,7 @@ import { useState, useTransition } from "react"
 import { toast } from "sonner"
 import { Dialog, DialogClose, DialogContent, DialogOverlay, DialogPortal, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { NativeSelect } from "@/components/ui/native-select"
 import { inviteUserAction, resendOrgInviteAction, cancelOrgInviteAction } from "@/app/(tenant)/settings/actions"
 import type { SafeOrgUser, PendingOrgInvite } from "@/modules/auth/auth.types"
 
@@ -165,16 +166,14 @@ export function TeamManagement({ users, pendingInvites }: Props): React.ReactEle
               </div>
               <div className="space-y-1">
                 <Label className="text-[10px] font-bold uppercase tracking-widest">Perfil</Label>
-                <select
+                <NativeSelect
                   value={role}
                   onChange={(e) => setRole(e.target.value as "admin" | "rh")}
-                  className="w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors appearance-none"
-                  style={{ borderRadius: 0 }}
                   disabled={isPending}
                 >
                   <option value="rh">RH</option>
                   <option value="admin">Admin</option>
-                </select>
+                </NativeSelect>
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-6">

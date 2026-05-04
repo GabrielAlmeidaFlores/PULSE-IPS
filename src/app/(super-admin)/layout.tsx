@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import { getSuperAdminSession } from "@/modules/auth/session"
 import { SuperAdminSidebar } from "@/libs/design-system/components/layout/SuperAdminSidebar"
 import { SuperAdminHeader } from "@/libs/design-system/components/layout/SuperAdminHeader"
+import { SidebarProvider } from "@/libs/design-system/components/layout/sidebar-context"
 
 export default async function SuperAdminLayout({
   children,
@@ -12,12 +13,14 @@ export default async function SuperAdminLayout({
   if (!session) redirect("/super-admin/login")
 
   return (
-    <div className="flex h-screen bg-background">
-      <SuperAdminSidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <SuperAdminHeader email={session.email} />
-        <main className="flex-1 overflow-y-auto">{children}</main>
+    <SidebarProvider>
+      <div className="flex h-screen bg-background">
+        <SuperAdminSidebar />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <SuperAdminHeader email={session.email} />
+          <main className="flex-1 overflow-y-auto">{children}</main>
+        </div>
       </div>
-    </div>
+    </SidebarProvider>
   )
 }

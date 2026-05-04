@@ -58,7 +58,7 @@ export async function completePlanAction(planId: string): Promise<ActionResult> 
   const parsed = uuidSchema.safeParse(planId)
   if (!parsed.success) return { error: "ID inválido." }
   try {
-    await updatePlan(session.tenantId, parsed.data, { status: "completed" })
+    await updatePlan(session.tenantId, parsed.data, { status: "completed" }, session.userId)
     revalidatePath(`/action-plans/${parsed.data}`)
     revalidatePath("/action-plans")
     return {}

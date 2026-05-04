@@ -1,12 +1,12 @@
 "use client"
 
-import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Menu, X, LayoutDashboard, Building2, CreditCard, FileText, Users, ScrollText, Cpu } from "lucide-react"
+import { X, LayoutDashboard, Building2, CreditCard, FileText, Users, ScrollText, Cpu } from "lucide-react"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { Logo } from "@/libs/design-system/components/logo"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { useSidebar } from "@/libs/design-system/components/layout/sidebar-context"
 import { env } from "@/env"
 
 interface NavItem {
@@ -48,23 +48,15 @@ function NavLinks({ items, onNavigate }: { items: NavItem[]; onNavigate?: () => 
 }
 
 export function SuperAdminSidebar(): React.ReactElement {
-  const [open, setOpen] = useState(false)
+  const { open, setOpen } = useSidebar()
 
   return (
     <>
-      <button
-        className="md:hidden fixed top-4 left-4 z-40 p-2 border border-border bg-card text-foreground hover:bg-muted transition-colors"
-        onClick={() => setOpen(true)}
-        aria-label="Abrir menu"
-      >
-        <Menu className="h-4 w-4" />
-      </button>
-
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="left" className="w-60 p-0 bg-sidebar border-sidebar-border" style={{ borderRadius: 0 }}>
           <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
           <div className="h-14 flex items-center justify-between px-4 border-b border-sidebar-border">
-            <Logo size="sm" />
+            <Logo size="xs" />
             <button onClick={() => setOpen(false)} aria-label="Fechar menu">
               <X className="h-4 w-4 text-muted-foreground" />
             </button>
@@ -73,9 +65,9 @@ export function SuperAdminSidebar(): React.ReactElement {
         </SheetContent>
       </Sheet>
 
-      <aside className="hidden md:flex w-60 flex-col shrink-0 bg-sidebar border-r border-sidebar-border">
+      <aside className="hidden min-[1000px]:flex w-60 flex-col shrink-0 bg-sidebar border-r border-sidebar-border">
         <div className="h-14 flex items-center px-4 border-b border-sidebar-border">
-          <Logo size="sm" />
+          <Logo size="xs" />
         </div>
         <NavLinks items={navItems} />
         <div className="px-4 py-3 border-t border-sidebar-border flex items-center justify-between">

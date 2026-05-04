@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { getSession } from "@/modules/auth/session"
 import { getAlertsPaginated, getAlertStats, type AlertListingQuery } from "@/modules/alerts/alert.service"
+import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
 import { buildPaginationParams } from "@/libs/utils/pagination"
 import { format } from "date-fns"
 import { AlertRowActions } from "@/app/(tenant)/alerts/alert-row-actions"
@@ -49,9 +50,10 @@ export default async function AlertsPage({ searchParams }: Props): Promise<React
   if (severityFilter !== undefined) alertQuery.severity = severityFilter
   if (statusFilter !== undefined) alertQuery.status = statusFilter
 
-  const [{ alerts, total }, stats] = await Promise.all([
+  const [{ alerts, total }, stats, hasMessaging] = await Promise.all([
     getAlertsPaginated(session.tenantId, alertQuery),
     getAlertStats(session.tenantId),
+    hasTenantPlanFeature(session.tenantId, "messaging"),
   ])
 
   const resolutionRate = stats.total > 0 ? Math.round((stats.resolved / stats.total) * 100) : 0
@@ -163,7 +165,7 @@ export default async function AlertsPage({ searchParams }: Props): Promise<React
                     <span className={`${BADGE_BASE} ${TYPE_STYLE[alert.type] ?? BADGE_DEFAULT}`}>
                       {TYPE_LABELS[alert.type] ?? alert.type}
                     </span>
-                    <AlertTypeInfo type={alert.type} />
+                    <AlertTypeInfo type={alert.type} hasMessaging={hasMessaging} />
                   </div>
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap">

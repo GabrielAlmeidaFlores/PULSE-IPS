@@ -4,12 +4,14 @@ import {
   findAllPlansIncludingInactive,
   findAllPlansPaginated,
   findPlanById,
+  findPlanByIdWithAllPrices,
   findPlanPriceById,
   createPlan,
   createPlanPrice,
   updatePlan,
   updatePlanPriceAmount,
   updatePlanPriceRecord,
+  deactivatePlanPrice,
   deletePlan,
   findPlanPriceWithPlan,
   setPlanFeatures,
@@ -45,6 +47,10 @@ export function getPlan(planId: string): Promise<PlanWithPricesAndFeatures | nul
   return findPlanById(planId)
 }
 
+export function getPlanWithAllPrices(planId: string): Promise<PlanWithPricesAndFeatures | null> {
+  return findPlanByIdWithAllPrices(planId)
+}
+
 export function getPlanPriceWithPlan(priceId: string): Promise<(PlanPrice & { plan: Plan }) | null> {
   return findPlanPriceWithPlan(priceId)
 }
@@ -78,6 +84,12 @@ export function updatePlanDetails(planId: string, input: Pick<UpdatePlanInput, "
 
 export function togglePlanActive(planId: string, isActive: boolean): Promise<Plan> {
   return updatePlan(planId, { isActive })
+}
+
+export async function removePlanPriceFromPlan(priceId: string): Promise<PlanPrice> {
+  const existing = await findPlanPriceById(priceId)
+  if (!existing) throw new AppError("PRICE_NOT_FOUND", "Preço não encontrado.")
+  return deactivatePlanPrice(priceId)
 }
 
 export async function updatePlanPriceValue(priceId: string, priceInCents: number): Promise<PlanPrice> {

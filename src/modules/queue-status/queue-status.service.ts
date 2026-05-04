@@ -2,7 +2,7 @@ import { Queue } from "bullmq"
 import { QUEUE_NAME, MESSAGE_QUEUE_NAME, redisConnection } from "@/libs/queue"
 import type { QueueOverview, QueueStatus, LiveJobSummary, RepeatableJobInfo, QueueCounts } from "@/modules/queue-status/queue-status.types"
 
-const LIVE_JOB_LIMIT = 20
+const LIVE_JOB_LIMIT = 100
 
 async function buildQueueStatus(queue: Queue, queueName: string): Promise<QueueStatus> {
   const [counts, activeJobs, waitingJobs, delayedJobs, failedJobs, repeatableJobs] = await Promise.all([

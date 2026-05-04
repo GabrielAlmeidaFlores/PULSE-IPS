@@ -102,6 +102,7 @@ export default async function EmployeesPage({ searchParams }: Props): Promise<Re
           }))}
           total={total}
           departments={departments.map((d) => ({ id: d.id, name: d.name }))}
+          isAdmin={session.role === "admin"}
         />
       </div>
     </div>

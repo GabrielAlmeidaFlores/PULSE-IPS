@@ -9,11 +9,12 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { loginAction } from "@/app/(auth)/login/actions"
 import { storage } from "@/libs/local-storage"
+import { PasswordInput } from "@/components/ui/password-input"
 
 const schema = z.object({
-  orgSlug: z.string().min(1),
-  email: z.string().email(),
-  password: z.string().min(8),
+  orgSlug: z.string().min(1, { message: "Informe o identificador da organização." }),
+  email: z.string().email({ message: "E-mail inválido." }),
+  password: z.string().min(8, { message: "A senha deve ter no mínimo 8 caracteres." }),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -94,12 +95,9 @@ export function LoginForm(): React.ReactElement {
               Esqueci minha senha
             </Link>
           </div>
-          <input
+          <PasswordInput
             id="password"
-            type="password"
             placeholder="••••••••"
-            className="w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
-            style={{ borderRadius: 0 }}
             {...form.register("password")}
           />
           {form.formState.errors.password && (

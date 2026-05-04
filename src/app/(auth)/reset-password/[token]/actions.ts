@@ -7,8 +7,8 @@ import type { ActionResult } from "@/libs/utils/action-result"
 import { resetPassword } from "@/modules/auth/auth.service"
 
 const resetPasswordSchema = z.object({
-  token: z.string().min(1).max(255),
-  newPassword: z.string().min(8).max(128),
+  token: z.string().min(1, { message: "Token inválido." }).max(255),
+  newPassword: z.string().min(8, { message: "A nova senha deve ter no mínimo 8 caracteres." }).max(128, { message: "A nova senha deve ter no máximo 128 caracteres." }),
 })
 
 export async function resetPasswordAction(input: {

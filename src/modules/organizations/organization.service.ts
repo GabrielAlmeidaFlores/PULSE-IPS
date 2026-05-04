@@ -4,6 +4,7 @@ import {
   findOrganizationBySlug,
   findAllOrganizations,
   findAllOrganizationsPaginatedAdmin,
+  findOrganizationsByIds,
   createOrganization,
   updateOrganization,
   updateOrganizationCustomerId,
@@ -11,9 +12,10 @@ import {
   findOrganizationBilling,
   findAllOrganizationsForExport,
   findOrganizationFullDetail,
+  findOrganizationAuditLogsPaginated,
   type OrganizationAdminListingFilters,
 } from "@/modules/organizations/organization.repository"
-import type { CreateOrganizationInput, UpdateOrganizationInput, Organization } from "@/modules/organizations/organization.types"
+import type { CreateOrganizationInput, UpdateOrganizationInput, Organization, OrgAuditEntry } from "@/modules/organizations/organization.types"
 import { AppError } from "@/libs/errors/app-error"
 
 export function getOrganization(tenantId: string): Promise<Organization | null> {
@@ -74,3 +76,15 @@ export function getAllOrganizationsPaginatedAdmin(
   return findAllOrganizationsPaginatedAdmin(filters, skip, query.pageSize)
 }
 
+export function getOrganizationsByIds(ids: string[]): ReturnType<typeof findOrganizationsByIds> {
+  return findOrganizationsByIds(ids)
+}
+
+export function getOrganizationAuditLogs(
+  organizationId: string,
+  page: number,
+  pageSize: number,
+): Promise<{ items: OrgAuditEntry[]; total: number }> {
+  const skip = (page - 1) * pageSize
+  return findOrganizationAuditLogsPaginated(organizationId, skip, pageSize)
+}
