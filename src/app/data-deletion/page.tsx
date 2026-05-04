@@ -72,7 +72,7 @@ export default function DataDeletionPage(): React.ReactElement {
             <ArrowLeft className="h-4 w-4" />
             Voltar ao início
           </Link>
-          <Logo size="sm" />
+          <Logo size="sm" className="w-[96px] md:w-[142px]" />
         </div>
       </header>
 
@@ -377,11 +377,11 @@ export default function DataDeletionPage(): React.ReactElement {
       </main>
 
       <footer className="border-t border-border mt-16 py-8">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-muted-foreground">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground text-center sm:text-left">
             © {new Date().getFullYear()} Pulse Tecnologia em Saúde Ocupacional Ltda. Todos os direitos reservados.
           </p>
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-center sm:justify-end gap-x-4 gap-y-2 text-xs text-muted-foreground">
             <Link href="/" className="hover:text-foreground transition-colors">Início</Link>
             <Link href="/privacy-policy" className="hover:text-foreground transition-colors">Política de Privacidade</Link>
             <Link href="/platform-terms" className="hover:text-foreground transition-colors">Termos de Uso</Link>
