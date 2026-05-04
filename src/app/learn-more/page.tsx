@@ -25,7 +25,7 @@ import { Logo } from "@/libs/design-system/components/logo"
 import { env } from "@/env"
 
 function contactUrl(message: string): string {
-  return `https://wa.me/5511999999999?text=${encodeURIComponent(message)}`
+  return `https://wa.me/${env.NEXT_PUBLIC_CONSULTANT_WHATSAPP}?text=${encodeURIComponent(message)}`
 }
 
 export const metadata = {

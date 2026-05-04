@@ -4,7 +4,7 @@ import { z } from "zod"
 import { revalidatePath } from "next/cache"
 import type { ActionResult } from "@/libs/utils/action-result"
 import { getSuperAdminSession } from "@/modules/auth/session"
-import { updatePlanDetails, togglePlanActive, deletePlanById, updatePlanPriceValue, addDirectPriceToPlan } from "@/modules/plans/plan.service"
+import { updatePlanDetails, togglePlanActive, deletePlanById, updatePlanPriceValue, addDirectPriceToPlan, removePlanPriceFromPlan } from "@/modules/plans/plan.service"
 import type { BillingInterval } from "@/modules/plans/plan.types"
 
 const UNEXPECTED_ERROR = "Erro inesperado. Tente novamente."
@@ -98,6 +98,20 @@ export async function deletePlanAction(planId: string): Promise<ActionResult> {
   if (!idParsed.success) return { error: "ID inválido." }
   try {
     await deletePlanById(idParsed.data)
+    revalidatePath(PLANS_PATH)
+    return {}
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : UNEXPECTED_ERROR }
+  }
+}
+
+export async function deactivatePlanPriceAction(priceId: string): Promise<ActionResult> {
+  const session = await getSuperAdminSession()
+  if (!session) return { error: SESSION_EXPIRED }
+  const idParsed = uuidSchema.safeParse(priceId)
+  if (!idParsed.success) return { error: "ID inválido." }
+  try {
+    await removePlanPriceFromPlan(idParsed.data)
     revalidatePath(PLANS_PATH)
     return {}
   } catch (error) {

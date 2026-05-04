@@ -1,8 +1,9 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import type { ActionResult } from "@/libs/utils/action-result"
-import { addPlanPriceAction, updatePlanPriceAction } from "@/app/(super-admin)/super-admin/plans/actions"
+import { addPlanPriceAction, updatePlanPriceAction, deactivatePlanPriceAction } from "@/app/(super-admin)/super-admin/plans/actions"
 import { NativeSelect } from "@/components/ui/native-select"
 import type { BillingInterval } from "@/modules/plans/plan.types"
 
@@ -25,6 +26,7 @@ function formatBRL(cents: number): string {
 }
 
 function AddPriceForm({ planId }: { planId: string }): React.ReactElement {
+  const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | undefined>()
   const [amount, setAmount] = useState("")
@@ -44,6 +46,7 @@ function AddPriceForm({ planId }: { planId: string }): React.ReactElement {
       } else {
         setError(undefined)
         setAmount("")
+        router.refresh()
       }
     })
   }
@@ -84,6 +87,7 @@ function AddPriceForm({ planId }: { planId: string }): React.ReactElement {
 }
 
 function EditPriceRow({ price }: { price: PlanPrice }): React.ReactElement {
+  const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [editing, setEditing] = useState(false)
   const [value, setValue] = useState(String(price.priceInCents / 100).replace(".", ","))
@@ -102,6 +106,18 @@ function EditPriceRow({ price }: { price: PlanPrice }): React.ReactElement {
       } else {
         setError(undefined)
         setEditing(false)
+        router.refresh()
+      }
+    })
+  }
+
+  function handleDeactivate(): void {
+    startTransition(async () => {
+      const result: ActionResult = await deactivatePlanPriceAction(price.id)
+      if (result.error) {
+        setError(result.error)
+      } else {
+        router.refresh()
       }
     })
   }
@@ -151,13 +167,29 @@ function EditPriceRow({ price }: { price: PlanPrice }): React.ReactElement {
             </button>
           </div>
         ) : (
-          <button
-            onClick={() => setEditing(true)}
-            className="px-3 py-1 text-[10px] font-bold tracking-widest uppercase border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            style={{ borderRadius: 0 }}
-          >
-            Editar
-          </button>
+          <div className="flex items-center justify-end gap-1">
+            {error !== undefined && <span className="text-[11px] text-destructive mr-2">{error}</span>}
+            {price.isActive && (
+              <button
+                onClick={() => setEditing(true)}
+                disabled={pending}
+                className="px-3 py-1 text-[10px] font-bold tracking-widest uppercase border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                style={{ borderRadius: 0 }}
+              >
+                Editar
+              </button>
+            )}
+            {price.isActive && (
+              <button
+                onClick={handleDeactivate}
+                disabled={pending}
+                className="px-3 py-1 text-[10px] font-bold tracking-widest uppercase border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                style={{ borderRadius: 0 }}
+              >
+                {pending ? "..." : "Remover"}
+              </button>
+            )}
+          </div>
         )}
       </td>
     </tr>
@@ -165,8 +197,14 @@ function EditPriceRow({ price }: { price: PlanPrice }): React.ReactElement {
 }
 
 export function PlanPricingManager({ planId, prices }: Props): React.ReactElement {
+  const hasActivePrice = prices.some((p) => p.isActive)
   return (
-    <div>
+    <div className="space-y-3">
+      {!hasActivePrice && (
+        <div className="border border-status-warning-border bg-status-warning-subtle px-4 py-2.5 text-[11px] text-status-warning">
+          Nenhum preço ativo. Os clientes verão o botão <strong>Falar com consultor</strong> ao invés de assinar diretamente.
+        </div>
+      )}
       <div className="border border-border bg-card">
         <table className="w-full text-[12px]">
           <thead>

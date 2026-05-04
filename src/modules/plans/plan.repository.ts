@@ -38,6 +38,13 @@ export function findPlanById(planId: string): Promise<PlanWithPricesAndFeatures 
   }).then((plan) => (plan ? toPlanWithFeatures(plan) : null))
 }
 
+export function findPlanByIdWithAllPrices(planId: string): Promise<PlanWithPricesAndFeatures | null> {
+  return prisma.plan.findUnique({
+    where: { id: planId, deletedAt: null },
+    include: { prices: true, features: true },
+  }).then((plan) => (plan ? toPlanWithFeatures(plan) : null))
+}
+
 export function createPlan(data: CreatePlanInput & { externalProductId?: string | undefined }): Promise<Plan> {
   return prisma.plan.create({
     data: {

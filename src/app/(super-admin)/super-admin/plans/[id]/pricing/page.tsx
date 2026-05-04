@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation"
 import Link from "next/link"
 import { getSuperAdminSession } from "@/modules/auth/session"
-import { getPlan } from "@/modules/plans/plan.service"
+import { getPlanWithAllPrices } from "@/modules/plans/plan.service"
 import { PlanPricingManager } from "@/app/(super-admin)/super-admin/plans/[id]/pricing/pricing-manager"
 
 interface Props {
@@ -13,7 +13,7 @@ export default async function PlanPricingPage({ params }: Props): Promise<React.
   const session = await getSuperAdminSession()
   if (!session) redirect("/super-admin/login")
 
-  const plan = await getPlan(id)
+  const plan = await getPlanWithAllPrices(id)
   if (!plan) notFound()
 
   return (
