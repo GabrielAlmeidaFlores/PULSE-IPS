@@ -89,13 +89,13 @@ export function AlertTypeInfo({ type, hasMessaging }: AlertTypeInfoProps): React
   const detail = ALERT_DETAILS[type]
   if (!detail) return <></>
 
-  function resolveActionText(): string {
-    if (hasMessaging && detail.actionWithMessaging !== undefined) return detail.actionWithMessaging
-    if (!hasMessaging && detail.actionNoMessaging !== undefined) return detail.actionNoMessaging
-    return detail.action
+  function resolveActionText(d: AlertTypeDetail): string {
+    if (hasMessaging && d.actionWithMessaging !== undefined) return d.actionWithMessaging
+    if (!hasMessaging && d.actionNoMessaging !== undefined) return d.actionNoMessaging
+    return d.action
   }
 
-  const actionText = resolveActionText()
+  const actionText = resolveActionText(detail)
 
   function scheduleClose(): void {
     leaveTimer.current = setTimeout(() => setOpen(false), 80)
