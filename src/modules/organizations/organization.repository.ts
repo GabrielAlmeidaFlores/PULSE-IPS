@@ -83,6 +83,13 @@ export function findAllTenantsActiveOrganizationIds(): Promise<{ id: string }[]>
   })
 }
 
+export function findOrganizationsByIds(ids: string[]): Promise<{ id: string; name: string; slug: string }[]> {
+  return prisma.organization.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, name: true, slug: true },
+  })
+}
+
 export function findOrganizationByCustomerId(externalCustomerId: string): Promise<Organization | null> {
   return prisma.organization.findUnique({ where: { externalCustomerId } })
 }

@@ -56,7 +56,16 @@ export function JobLogsTable({ rows, total }: Props): React.ReactElement {
   return (
     <div className="flex flex-col gap-3">
       <div className="overflow-x-auto rounded-md border border-border">
-        <table className="w-full text-sm border-collapse">
+        <table className="w-full text-sm border-collapse table-fixed">
+          <colgroup>
+            <col className="w-36" />
+            <col className="w-44" />
+            <col className="w-24" />
+            <col className="w-24" />
+            <col className="w-20" />
+            <col className="w-20" />
+            <col />
+          </colgroup>
           <thead>
             <tr className="bg-muted/40 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               <th className="px-3 py-2">Data</th>
@@ -83,11 +92,11 @@ export function JobLogsTable({ rows, total }: Props): React.ReactElement {
                   style={{ borderBottom: "1px solid var(--border)" }}
                   onClick={() => { setExpandedId(expandedId === row.id ? null : row.id) }}
                 >
-                  <td className="px-3 py-2 font-mono text-[11px] text-muted-foreground whitespace-nowrap">
+                  <td className="px-3 py-2 font-mono text-[11px] text-muted-foreground truncate">
                     {formatDate(row.createdAt)}
                   </td>
-                  <td className="px-3 py-2 font-medium">{JOB_NAME_LABELS[row.jobName] ?? row.jobName}</td>
-                  <td className="px-3 py-2 text-muted-foreground">{QUEUE_LABELS[row.queueName] ?? row.queueName}</td>
+                  <td className="px-3 py-2 font-medium truncate">{JOB_NAME_LABELS[row.jobName] ?? row.jobName}</td>
+                  <td className="px-3 py-2 text-muted-foreground truncate">{QUEUE_LABELS[row.queueName] ?? row.queueName}</td>
                   <td className="px-3 py-2">
                     <Badge className={`${STATUS_COLORS[row.status] ?? "bg-muted text-muted-foreground border-border"} border text-[10px] font-semibold`}>
                       {STATUS_LABELS[row.status] ?? row.status}
@@ -96,8 +105,8 @@ export function JobLogsTable({ rows, total }: Props): React.ReactElement {
                   <td className="px-3 py-2 text-muted-foreground">
                     {row.attemptNumber}/{row.maxAttempts}
                   </td>
-                  <td className="px-3 py-2 font-mono">{formatDuration(row.durationMs)}</td>
-                  <td className="px-3 py-2 text-status-danger max-w-[220px] truncate" title={row.errorMessage ?? undefined}>
+                  <td className="px-3 py-2 font-mono truncate">{formatDuration(row.durationMs)}</td>
+                  <td className="px-3 py-2 text-status-danger truncate" title={row.errorMessage ?? undefined}>
                     {row.errorMessage ?? "—"}
                   </td>
                 </tr>

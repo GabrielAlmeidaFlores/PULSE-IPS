@@ -4,6 +4,7 @@ import {
   findOrganizationBySlug,
   findAllOrganizations,
   findAllOrganizationsPaginatedAdmin,
+  findOrganizationsByIds,
   createOrganization,
   updateOrganization,
   updateOrganizationCustomerId,
@@ -72,5 +73,9 @@ export function getAllOrganizationsPaginatedAdmin(
   const filters: OrganizationAdminListingFilters = {}
   if (query.q !== undefined) filters.q = query.q
   return findAllOrganizationsPaginatedAdmin(filters, skip, query.pageSize)
+}
+
+export function getOrganizationsByIds(ids: string[]): ReturnType<typeof findOrganizationsByIds> {
+  return findOrganizationsByIds(ids)
 }
 
