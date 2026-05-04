@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import { getSession } from "@/modules/auth/session"
 import { getAlerts } from "@/modules/alerts/alert.service"
 import { getDashboardData } from "@/modules/dashboard/dashboard.service"
+import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
 import { PageHelp } from "@/components/page-help"
 import { ChartCard } from "@/components/chart-card"
 import { ScoreTrendChart } from "@/app/(tenant)/dashboard/components/score-trend-chart"
@@ -27,9 +28,10 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
   const session = await getSession()
   if (!session) redirect("/login")
 
-  const [dashboard, recentAlerts] = await Promise.all([
+  const [dashboard, recentAlerts, hasMessaging] = await Promise.all([
     getDashboardData(session.tenantId),
     getAlerts(session.tenantId),
+    hasTenantPlanFeature(session.tenantId, "messaging"),
   ])
 
   const { kpis, overallTrend, deptMonthlyChart, deptNames, deptComparison, adherenceChart, deptCards } = dashboard
@@ -268,7 +270,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
                           <span className={`${BADGE_BASE} ${TYPE_STYLE[alert.type] ?? BADGE_DEFAULT}`}>
                             {TYPE_LABELS[alert.type] ?? alert.type}
                           </span>
-                          <AlertTypeInfo type={alert.type} />
+                          <AlertTypeInfo type={alert.type} hasMessaging={hasMessaging} />
                         </div>
                       </td>
                       <td className="px-4 py-3">

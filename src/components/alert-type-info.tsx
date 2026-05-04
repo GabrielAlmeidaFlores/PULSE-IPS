@@ -7,6 +7,8 @@ interface AlertTypeDetail {
   label: string
   description: string
   action: string
+  actionWithMessaging?: string
+  actionNoMessaging?: string
   steps?: string[]
 }
 
@@ -41,12 +43,16 @@ const ALERT_DETAILS: Record<string, AlertTypeDetail> = {
   low_adherence: {
     label: "Adesão baixa",
     description: "Menos de 80% dos colaboradores responderam à pesquisa dentro de 48 horas após o disparo.",
-    action: "Reforce junto aos gestores a importância de responder e verifique se todos os colaboradores do setor têm dados de contato cadastrados.",
+    action: "Reforce junto aos gestores a importância de responder à pesquisa.",
+    actionWithMessaging: "Reforce junto aos gestores a importância de responder e verifique se todos os colaboradores do setor têm número de telefone cadastrado.",
+    actionNoMessaging: "Reforce junto aos gestores a importância de responder e confirme que o link da pesquisa foi distribuído para todos os colaboradores do setor.",
   },
   no_response: {
     label: "Sem resposta",
     description: "Nenhuma resposta foi recebida neste ciclo de pesquisa.",
-    action: "Verifique se o disparo foi concluído sem erros nos logs de jobs e se os colaboradores do setor têm dados de contato cadastrados.",
+    action: "Confirme que a pesquisa está configurada e ativa para o setor. Se o problema persistir, entre em contato com o suporte.",
+    actionWithMessaging: "Confirme que os colaboradores do setor têm número de telefone cadastrado e que a pesquisa está configurada e ativa. Se o problema persistir, entre em contato com o suporte.",
+    actionNoMessaging: "Confirme que o link da pesquisa foi distribuído para os colaboradores do setor e que a pesquisa está configurada e ativa. Se o problema persistir, entre em contato com o suporte.",
   },
   consent_expired: {
     label: "Consentimento expirado",
@@ -57,9 +63,10 @@ const ALERT_DETAILS: Record<string, AlertTypeDetail> = {
 
 interface AlertTypeInfoProps {
   type: string
+  hasMessaging: boolean
 }
 
-export function AlertTypeInfo({ type }: AlertTypeInfoProps): React.ReactElement {
+export function AlertTypeInfo({ type, hasMessaging }: AlertTypeInfoProps): React.ReactElement {
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState({ top: 0, left: 0 })
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -81,6 +88,14 @@ export function AlertTypeInfo({ type }: AlertTypeInfoProps): React.ReactElement 
 
   const detail = ALERT_DETAILS[type]
   if (!detail) return <></>
+
+  function resolveActionText(): string {
+    if (hasMessaging && detail.actionWithMessaging !== undefined) return detail.actionWithMessaging
+    if (!hasMessaging && detail.actionNoMessaging !== undefined) return detail.actionNoMessaging
+    return detail.action
+  }
+
+  const actionText = resolveActionText()
 
   function scheduleClose(): void {
     leaveTimer.current = setTimeout(() => setOpen(false), 80)
@@ -135,7 +150,7 @@ export function AlertTypeInfo({ type }: AlertTypeInfoProps): React.ReactElement 
           <p className="text-[11px] text-muted-foreground leading-relaxed mb-2 break-words whitespace-normal">{detail.description}</p>
           <div className="border-t border-border pt-2">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">O que fazer</p>
-            <p className="text-[11px] text-foreground leading-relaxed break-words whitespace-normal">{detail.action}</p>
+            <p className="text-[11px] text-foreground leading-relaxed break-words whitespace-normal">{actionText}</p>
             {detail.steps !== undefined && detail.steps.length > 0 && (
               <ol className="mt-2 space-y-1.5 list-none">
                 {detail.steps.map((step, i) => (
