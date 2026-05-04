@@ -746,21 +746,25 @@ Referência de tudo que o usuário vê na tela para cada alerta (`/alerts`) e su
 | | Mensagem | `Taxa de adesão: {pct}% ({respostas}/{total})` |
 | | Tooltip — label | Adesão baixa |
 | | Tooltip — descrição | Menos de 80% dos colaboradores responderam à pesquisa dentro de 48 horas após o disparo. |
-| | Tooltip — ação | Reforce junto aos gestores a importância de responder e verifique se todos os colaboradores do setor têm dados de contato cadastrados. |
+| | Tooltip — ação (padrão) | Reforce junto aos gestores a importância de responder à pesquisa. |
+| | Tooltip — ação (com mensagens) | Reforce junto aos gestores a importância de responder e verifique se todos os colaboradores do setor têm número de telefone cadastrado. |
+| | Tooltip — ação (sem mensagens) | Reforce junto aos gestores a importância de responder e confirme que o link da pesquisa foi distribuído para todos os colaboradores do setor. |
 | **`no_response`** *(Alerta — gerado automaticamente)* | Condição | Adesão < 50% em dispatch enviado há ≥ 48h |
 | | Job | `health-survey-adherence-checker` · a cada hora |
 | | Severidade | `critical` se adesão < 25% · `warning` se 25–50% |
 | | Mensagem | `Taxa de adesão: {pct}% ({respostas}/{total})` |
 | | Tooltip — label | Sem resposta |
 | | Tooltip — descrição | Nenhuma resposta foi recebida neste ciclo de pesquisa. |
-| | Tooltip — ação | Verifique se o disparo foi concluído sem erros nos logs de jobs e se os colaboradores do setor têm dados de contato cadastrados. |
+| | Tooltip — ação (padrão) | Confirme que a pesquisa está configurada e ativa para o setor. Se o problema persistir, entre em contato com o suporte. |
+| | Tooltip — ação (com mensagens) | Confirme que os colaboradores do setor têm número de telefone cadastrado e que a pesquisa está configurada e ativa. Se o problema persistir, entre em contato com o suporte. |
+| | Tooltip — ação (sem mensagens) | Confirme que o link da pesquisa foi distribuído para os colaboradores do setor e que a pesquisa está configurada e ativa. Se o problema persistir, entre em contato com o suporte. |
 | **`consent_expired`** *(Alerta — gerado automaticamente)* | Condição | Colaborador ativo com último evento `invited` e `tokenExpiresAt < now()`, agrupado por setor (aplica-se a registros do fluxo legado) |
 | | Job | `health-survey-score-alert-detector` · 03:00 diário |
 | | Severidade | `warning` |
 | | Mensagem | `{N} colaborador(es) do setor {X} com convite de consentimento expirado. Reenvie o convite para retomar a participação.` |
 | | Tooltip — label | Consentimento expirado |
 | | Tooltip — descrição | O termo de consentimento (TCLE) de um ou mais colaboradores está expirado ou ainda pendente de aceite. |
-| | Tooltip — ação | Verifique o status de participação dos colaboradores pendentes no painel de funcionários. |
+| | Tooltip — ação | Reenvie o convite de consentimento para os colaboradores pendentes para que possam voltar a participar das pesquisas. |
 | **`pgr_review_due`** *(Alerta — gerado automaticamente)* | Condição | `nextReviewAt` nos próximos 30 dias e sem alerta aberto do mesmo tipo |
 | | Job | `pgr-review-reminder` · 08:00 diário |
 | | Severidade | `warning` |
