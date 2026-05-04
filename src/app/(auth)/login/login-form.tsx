@@ -12,9 +12,9 @@ import { storage } from "@/libs/local-storage"
 import { PasswordInput } from "@/components/ui/password-input"
 
 const schema = z.object({
-  orgSlug: z.string().min(1),
-  email: z.string().email(),
-  password: z.string().min(8),
+  orgSlug: z.string().min(1, { message: "Informe o identificador da organização." }),
+  email: z.string().email({ message: "E-mail inválido." }),
+  password: z.string().min(8, { message: "A senha deve ter no mínimo 8 caracteres." }),
 })
 
 type FormValues = z.infer<typeof schema>

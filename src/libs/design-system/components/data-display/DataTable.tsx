@@ -10,6 +10,7 @@ interface DataTableProps {
   total?: number
   emptyMessage?: string
   pagination?: React.ReactNode
+  minWidth?: number
 }
 
 function alignClass(align: "left" | "center" | "right" | undefined): string {
@@ -24,34 +25,37 @@ export function DataTable({
   total,
   emptyMessage = "Nenhum registro.",
   pagination,
+  minWidth = 600,
 }: DataTableProps): React.ReactElement {
   return (
-    <div className="border border-border bg-card overflow-hidden">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-border bg-muted/40">
-            {columns.map((col, i) => (
-              <th
-                key={i}
-                className={`px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground ${alignClass(col.align)} ${col.className ?? ""}`}
-              >
-                {col.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {total === 0 ? (
-            <tr>
-              <td colSpan={columns.length} className="px-4 py-8 text-center text-xs text-muted-foreground">
-                {emptyMessage}
-              </td>
+    <div className="border border-border bg-card">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm" style={{ minWidth }}>
+          <thead>
+            <tr className="border-b border-border bg-muted/40">
+              {columns.map((col, i) => (
+                <th
+                  key={i}
+                  className={`px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground ${alignClass(col.align)} ${col.className ?? ""}`}
+                >
+                  {col.label}
+                </th>
+              ))}
             </tr>
-          ) : (
-            children
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {total === 0 ? (
+              <tr>
+                <td colSpan={columns.length} className="px-4 py-8 text-center text-xs text-muted-foreground">
+                  {emptyMessage}
+                </td>
+              </tr>
+            ) : (
+              children
+            )}
+          </tbody>
+        </table>
+      </div>
       {pagination !== undefined ? (
         pagination
       ) : (

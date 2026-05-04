@@ -37,7 +37,8 @@ function statusColor(status: number | null): string {
 export function LogsTable({ data }: Props): React.ReactElement {
   return (
     <div className="border border-border bg-card" style={{ borderRadius: 0 }}>
-      <table className="w-full text-[12px] border-collapse">
+      <div className="overflow-x-auto">
+      <table className="w-full text-[12px] border-collapse" style={{ minWidth: 700 }}>
         <thead>
           <tr className="bg-muted" style={{ borderBottom: "1px solid var(--border)" }}>
             <th className="text-left px-4 py-2 font-bold tracking-widest uppercase text-[10px] text-muted-foreground whitespace-nowrap">Horário</th>
@@ -124,6 +125,7 @@ export function LogsTable({ data }: Props): React.ReactElement {
           ))}
         </tbody>
       </table>
+      </div>
 
       <TablePagination
         total={data.total}

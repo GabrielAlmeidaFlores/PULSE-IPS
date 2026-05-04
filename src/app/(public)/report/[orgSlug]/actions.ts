@@ -6,7 +6,7 @@ import { submitReport } from "@/modules/anonymous-reports/anonymous-report.servi
 import { AppError } from "@/libs/errors/app-error"
 
 const submitReportSchema = z.object({
-  content: z.string().min(10).max(5000),
+  content: z.string().min(10, { message: "O relato deve ter no mínimo 10 caracteres." }).max(5000, { message: "O relato deve ter no máximo 5000 caracteres." }),
   category: z.string().max(100).optional(),
 })
 

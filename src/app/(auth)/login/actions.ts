@@ -8,9 +8,9 @@ interface LoginResult {
 }
 
 const loginSchema = z.object({
-  orgSlug: z.string().min(1).max(100),
-  email: z.string().email().max(255),
-  password: z.string().min(1).max(128),
+  orgSlug: z.string().min(1, { message: "Informe o identificador da organização." }).max(100),
+  email: z.string().email({ message: "E-mail inválido." }).max(255),
+  password: z.string().min(1, { message: "Informe a senha." }).max(128),
 })
 
 export async function loginAction(input: {

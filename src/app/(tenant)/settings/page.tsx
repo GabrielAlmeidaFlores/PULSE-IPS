@@ -57,8 +57,32 @@ export default async function SettingsPage(): Promise<React.ReactElement> {
             {[
               { label: "Nome", value: org?.name },
               { label: "Slug", value: org?.slug, mono: true },
-              { label: "Timezone", value: org?.timezone },
-              { label: "Status billing", value: org?.billingStatus },
+              {
+                label: "Fuso horário",
+                value: {
+                  "America/Sao_Paulo": "São Paulo (UTC-3)",
+                  "America/Manaus": "Manaus (UTC-4)",
+                  "America/Rio_Branco": "Rio Branco / Acre (UTC-5)",
+                  "America/Noronha": "Fernando de Noronha (UTC-2)",
+                  "America/Fortaleza": "Fortaleza / Recife / Natal (UTC-3)",
+                  "America/Belem": "Belém / Macapá (UTC-3)",
+                  "America/Boa_Vista": "Boa Vista (UTC-4)",
+                  "America/Porto_Velho": "Porto Velho (UTC-4)",
+                  "America/Cuiaba": "Cuiabá (UTC-4)",
+                  "America/Campo_Grande": "Campo Grande (UTC-4)",
+                }[org?.timezone ?? ""] ?? org?.timezone,
+              },
+              {
+                label: "Assinatura",
+                value: {
+                  active: "Ativa",
+                  trialing: "Em teste",
+                  past_due: "Pagamento atrasado",
+                  suspended: "Suspensa",
+                  cancelled: "Cancelada",
+                  pending: "Pendente",
+                }[org?.billingStatus ?? ""] ?? org?.billingStatus,
+              },
             ].map((row) => (
               <div key={row.label} className="flex items-center justify-between px-4 py-3">
                 <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{row.label}</span>

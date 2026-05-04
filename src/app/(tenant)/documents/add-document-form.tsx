@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { NativeSelect } from "@/components/ui/native-select"
 import { createDocumentAction } from "@/app/(tenant)/documents/actions"
 
 const DOC_TYPES = [
@@ -92,12 +93,10 @@ export function AddDocumentForm(): React.ReactElement {
               </div>
               <div className="space-y-1">
                 <Label className="text-[10px] font-bold uppercase tracking-widest">Tipo</Label>
-                <select
+                <NativeSelect
                   name="type"
                   value={type}
                   onChange={(e) => setType(e.target.value as DocType)}
-                  className="w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors appearance-none"
-                  style={{ borderRadius: 0 }}
                   disabled={isPending}
                 >
                   {DOC_TYPES.map((t) => (
@@ -105,7 +104,7 @@ export function AddDocumentForm(): React.ReactElement {
                       {t.label}
                     </option>
                   ))}
-                </select>
+                </NativeSelect>
               </div>
               <div className="space-y-1">
                 <Label className="text-[10px] font-bold uppercase tracking-widest">Arquivo</Label>

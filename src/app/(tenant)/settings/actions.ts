@@ -28,14 +28,14 @@ const updateOrgSchema = z.object({
 })
 
 const inviteUserSchema = z.object({
-  email: z.string().email().max(255),
+  email: z.string().email({ message: "E-mail inválido." }).max(255),
   role: z.enum(["admin", "rh"]),
 })
 
 const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1).max(128),
-  newPassword: z.string().min(8).max(128),
-  confirmPassword: z.string().min(8).max(128),
+  currentPassword: z.string().min(1, { message: "Informe a senha atual." }).max(128),
+  newPassword: z.string().min(8, { message: "A nova senha deve ter no mínimo 8 caracteres." }).max(128, { message: "A nova senha deve ter no máximo 128 caracteres." }),
+  confirmPassword: z.string().min(8, { message: "A confirmação deve ter no mínimo 8 caracteres." }).max(128, { message: "A confirmação deve ter no máximo 128 caracteres." }),
 }).refine((d) => d.newPassword === d.confirmPassword, { message: "As senhas não coincidem.", path: ["confirmPassword"] })
 
 export async function updateOrganizationAction(input: {

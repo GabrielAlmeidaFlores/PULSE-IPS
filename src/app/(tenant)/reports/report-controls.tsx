@@ -69,7 +69,8 @@ export function ReportControls({ reports, total }: Props): React.ReactElement {
   return (
     <div className="space-y-4">
     <div className="border border-border bg-card overflow-hidden">
-      <table className="w-full text-sm">
+      <div className="overflow-x-auto">
+      <table className="w-full text-sm" style={{ minWidth: 560 }}>
         <thead>
           <tr className="border-b border-border bg-muted/40">
             <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Data</th>
@@ -136,6 +137,7 @@ export function ReportControls({ reports, total }: Props): React.ReactElement {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
     <TablePagination total={total} />
     </div>

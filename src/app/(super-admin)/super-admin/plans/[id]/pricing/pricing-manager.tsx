@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react"
 import type { ActionResult } from "@/libs/utils/action-result"
 import { addPlanPriceAction, updatePlanPriceAction } from "@/app/(super-admin)/super-admin/plans/actions"
+import { NativeSelect } from "@/components/ui/native-select"
 import type { BillingInterval } from "@/modules/plans/plan.types"
 
 interface PlanPrice {
@@ -61,15 +62,13 @@ function AddPriceForm({ planId }: { planId: string }): React.ReactElement {
       </div>
       <div className="flex flex-col gap-1">
         <label className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">Intervalo</label>
-        <select
+        <NativeSelect
           value={interval}
           onChange={(e) => setInterval(e.target.value as BillingInterval)}
-          className="border border-border bg-background px-3 py-1.5 text-[12px] focus:outline-none focus:ring-1 focus:ring-primary"
-          style={{ borderRadius: 0 }}
         >
           <option value="month">Mensal</option>
           <option value="year">Anual</option>
-        </select>
+        </NativeSelect>
       </div>
       <button
         type="submit"

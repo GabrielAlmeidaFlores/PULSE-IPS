@@ -5,10 +5,11 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
 import { updateOrganizationAction } from "@/app/(tenant)/settings/actions"
+import { NativeSelect } from "@/components/ui/native-select"
 
 const schema = z.object({
-  name: z.string().min(1),
-  timezone: z.string().min(1),
+  name: z.string().min(1, { message: "Informe o nome da organização." }),
+  timezone: z.string().min(1, { message: "Selecione o fuso horário." }),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -57,9 +58,7 @@ export function SettingsForm({ name, timezone }: Props): React.ReactElement {
         </div>
         <div className="space-y-1.5">
           <label className={labelCls}>Fuso horário</label>
-          <select
-            className={`${inputCls} appearance-none`}
-            style={{ borderRadius: 0 }}
+          <NativeSelect
             {...form.register("timezone")}
           >
             <option value="America/Sao_Paulo">São Paulo (UTC-3)</option>
@@ -72,7 +71,7 @@ export function SettingsForm({ name, timezone }: Props): React.ReactElement {
             <option value="America/Porto_Velho">Porto Velho (UTC-4)</option>
             <option value="America/Cuiaba">Cuiabá (UTC-4)</option>
             <option value="America/Campo_Grande">Campo Grande (UTC-4)</option>
-          </select>
+          </NativeSelect>
           {form.formState.errors.timezone && (
             <p className="text-xs text-destructive">Fuso horário é obrigatório.</p>
           )}

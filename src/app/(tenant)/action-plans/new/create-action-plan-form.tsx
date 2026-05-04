@@ -6,9 +6,10 @@ import { z } from "zod"
 import { toast } from "sonner"
 import Link from "next/link"
 import { createActionPlanAction } from "@/app/(tenant)/action-plans/new/actions"
+import { NativeSelect } from "@/components/ui/native-select"
 
 const schema = z.object({
-  title: z.string().min(1),
+  title: z.string().min(1, { message: "Informe o título do plano de ação." }),
   description: z.string().optional(),
   priority: z.enum(["low", "medium", "high"]),
 })
@@ -66,15 +67,13 @@ export function CreateActionPlanForm(): React.ReactElement {
         </div>
         <div className="space-y-1.5">
           <label className={labelCls}>Prioridade</label>
-          <select
-            className={inputCls}
-            style={{ borderRadius: 0 }}
+          <NativeSelect
             {...form.register("priority")}
           >
             <option value="low">Baixa</option>
             <option value="medium">Média</option>
             <option value="high">Alta</option>
-          </select>
+          </NativeSelect>
         </div>
         <div className="pt-2 flex items-center gap-3">
           <button

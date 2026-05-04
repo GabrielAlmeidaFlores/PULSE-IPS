@@ -9,10 +9,10 @@ import { resetPasswordAction } from "@/app/(auth)/reset-password/[token]/actions
 import { PasswordInput } from "@/components/ui/password-input"
 
 const schema = z.object({
-  password: z.string().min(8, "A senha deve ter ao menos 8 caracteres"),
-  confirmPassword: z.string().min(8),
+  password: z.string().min(8, { message: "A senha deve ter no mínimo 8 caracteres." }),
+  confirmPassword: z.string().min(8, { message: "A confirmação deve ter no mínimo 8 caracteres." }),
 }).refine((data) => data.password === data.confirmPassword, {
-  message: "As senhas não coincidem",
+  message: "As senhas não coincidem.",
   path: ["confirmPassword"],
 })
 

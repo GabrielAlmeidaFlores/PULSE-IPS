@@ -10,11 +10,11 @@ import { acceptInviteAction } from "@/app/(onboarding)/invite/[token]/actions"
 import { PasswordInput } from "@/components/ui/password-input"
 
 const schema = z.object({
-  name: z.string().min(1),
-  password: z.string().min(8),
-  confirmPassword: z.string().min(8),
+  name: z.string().min(1, { message: "Informe seu nome." }),
+  password: z.string().min(8, { message: "A senha deve ter no mínimo 8 caracteres." }),
+  confirmPassword: z.string().min(8, { message: "A confirmação deve ter no mínimo 8 caracteres." }),
 }).refine((d) => d.password === d.confirmPassword, {
-  message: "As senhas não coincidem",
+  message: "As senhas não coincidem.",
   path: ["confirmPassword"],
 })
 

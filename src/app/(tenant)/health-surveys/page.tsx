@@ -178,7 +178,7 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
           </div>
         )}
 
-        {hasAnyDispatches && (
+        {configs.length > 0 && (
           <HealthSurveyListFilters filters={{
             ...(statusFilter !== undefined ? { status: statusFilter } : {}),
             ...(dateFromStr !== undefined ? { dateFrom: dateFromStr } : {}),
@@ -205,6 +205,7 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
             ]}
             total={total}
             pagination={<TablePagination total={total} />}
+            minWidth={760}
           >
             {dayGroups.map((g, i) => {
               const notResponded = Math.max(0, g.totalRecipients - g.totalResponses)

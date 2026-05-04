@@ -10,19 +10,20 @@ import { ChevronDown, ChevronUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { NativeSelect } from "@/components/ui/native-select"
 import { PhoneInput } from "@/components/phone-input"
 import { createEmployeeAction } from "@/app/(tenant)/employees/new/actions"
 import { normalizePhoneToE164 } from "@/libs/utils/phone"
 
 const schema = z.object({
-  departmentId: z.string().uuid(),
-  name: z.string().min(1),
-  phone: z.string().min(1, "Telefone obrigatório").refine(
+  departmentId: z.string().uuid({ message: "Selecione um setor." }),
+  name: z.string().min(1, { message: "Informe o nome do colaborador." }),
+  phone: z.string().min(1, { message: "Telefone obrigatório." }).refine(
     (val) => normalizePhoneToE164(val) !== null,
     "Telefone inválido",
   ),
   document: z.string().optional().or(z.literal("")),
-  email: z.string().email().optional().or(z.literal("")),
+  email: z.string().email({ message: "E-mail inválido." }).optional().or(z.literal("")),
   workStartTime: z.string().optional(),
   workEndTime: z.string().optional(),
   workDays: z.array(z.number()).optional(),
@@ -110,9 +111,7 @@ export function CreateEmployeeForm({ departments }: Props): React.ReactElement {
       <form onSubmit={form.handleSubmit(onSubmit)} className="p-5 space-y-4">
         <div className="space-y-1.5">
           <Label className={fieldCls}>Departamento</Label>
-          <select
-            style={{ borderRadius: 0 }}
-            className="w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors appearance-none"
+          <NativeSelect
             onChange={(e) => form.setValue("departmentId", e.target.value)}
             defaultValue=""
           >
@@ -120,7 +119,7 @@ export function CreateEmployeeForm({ departments }: Props): React.ReactElement {
             {departments.map((dept) => (
               <option key={dept.id} value={dept.id}>{dept.name}</option>
             ))}
-          </select>
+          </NativeSelect>
           {form.formState.errors.departmentId && (
             <p className="text-xs text-destructive">Selecione um departamento</p>
           )}
@@ -200,11 +199,9 @@ export function CreateEmployeeForm({ departments }: Props): React.ReactElement {
               </div>
               <div className="space-y-1.5">
                 <Label className={fieldCls}>Turno</Label>
-                <select
+                <NativeSelect
                   value={shiftPreset}
                   onChange={(e) => applyPreset(e.target.value as ShiftPreset)}
-                  className="w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors appearance-none"
-                  style={{ borderRadius: 0 }}
                 >
                   <option value="">Selecione um turno...</option>
                   <option value="comercial">Comercial (09:00–18:00)</option>
@@ -212,7 +209,7 @@ export function CreateEmployeeForm({ departments }: Props): React.ReactElement {
                   <option value="afternoon">Tarde (14:00–22:00)</option>
                   <option value="night">Noturno (22:00–06:00)</option>
                   <option value="custom">Personalizado</option>
-                </select>
+                </NativeSelect>
               </div>
               {(shiftPreset === "custom" || shiftPreset !== "") && (
                 <div className="grid grid-cols-2 gap-3">

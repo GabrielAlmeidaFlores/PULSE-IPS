@@ -57,6 +57,10 @@ export async function updateDepartment(
   return prisma.department.updateMany({ where: { id: departmentId, tenantId }, data })
 }
 
+export function countActiveEmployeesByDepartment(tenantId: string, departmentId: string): Promise<number> {
+  return prisma.employee.count({ where: { tenantId, departmentId, status: "active" } })
+}
+
 export function deactivateDepartment(tenantId: string, departmentId: string): Promise<{ count: number }> {
   return prisma.department.updateMany({
     where: { id: departmentId, tenantId },

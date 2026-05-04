@@ -132,6 +132,17 @@ export function deactivateEmployee(tenantId: string, employeeId: string): Promis
   })
 }
 
+export function countEmployeeConsentRecords(tenantId: string, employeeId: string): Promise<number> {
+  return prisma.employeeConsent.count({ where: { tenantId, employeeId } })
+}
+
+export async function hardDeleteEmployee(tenantId: string, employeeId: string): Promise<void> {
+  await prisma.$transaction([
+    prisma.healthSurveyResponseToken.deleteMany({ where: { tenantId, employeeId } }),
+    prisma.employee.delete({ where: { id: employeeId, tenantId } }),
+  ])
+}
+
 export async function reactivateAllTenantsDueEmployees(): Promise<{ reactivated: number }> {
   const today = new Date()
   today.setHours(0, 0, 0, 0)

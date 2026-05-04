@@ -2,6 +2,7 @@ export type AuditAction =
   | "employee.created"
   | "employee.updated"
   | "employee.deactivated"
+  | "employee.deleted"
   | "department.created"
   | "department.updated"
   | "health_survey.configured"

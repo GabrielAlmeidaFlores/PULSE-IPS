@@ -57,7 +57,8 @@ export default async function OrganizationsPage({
           values={{ q: params["q"] }}
         />
         <div className="border border-border bg-card" style={{ borderRadius: 0 }}>
-          <table className="w-full text-[12px]">
+          <div className="overflow-x-auto">
+          <table className="w-full text-[12px]" style={{ minWidth: 640 }}>
             <thead>
               <tr className="border-b border-border bg-muted">
                 <th className="text-left px-4 py-2.5 font-bold tracking-widest uppercase text-[10px] text-muted-foreground">Organização</th>
@@ -99,6 +100,7 @@ export default async function OrganizationsPage({
               ))}
             </tbody>
           </table>
+          </div>
         </div>
         <TablePagination total={total} />
       </div>

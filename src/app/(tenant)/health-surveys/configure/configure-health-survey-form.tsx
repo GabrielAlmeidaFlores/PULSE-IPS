@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import Link from "next/link"
 import { configureHealthSurveyAction } from "@/app/(tenant)/health-surveys/configure/actions"
 import { PageHelp } from "@/components/page-help"
+import { NativeSelect } from "@/components/ui/native-select"
 import type { ScoreDirection, ExistingGlobalHealthSurveyConfig } from "@/modules/health-surveys/health-survey.types"
 
 interface ConfigureHealthSurveyFormProps {
@@ -27,9 +28,6 @@ const DEFAULT_QUESTIONS: QuestionItem[] = [
 
 const inputCls =
   "w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
-
-const selectCls =
-  "w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors appearance-none"
 
 const WEEK_DAYS = [
   { value: 1, label: "Seg" },
@@ -153,18 +151,16 @@ export function ConfigureHealthSurveyForm({ initialConfig }: ConfigureHealthSurv
         <div className="p-4 space-y-4">
           <div>
             <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Frequência de envio</label>
-            <select
+            <NativeSelect
               value={frequency}
               onChange={(e) => setFrequency(e.target.value as typeof frequency)}
-              className={selectCls}
-              style={{ borderRadius: 0 }}
             >
               <option value="daily">Diária</option>
               <option value="twice_weekly">2x por semana</option>
               <option value="weekly">Semanal</option>
               <option value="biweekly">Quinzenal</option>
               <option value="monthly">Mensal</option>
-            </select>
+            </NativeSelect>
           </div>
           <div>
             <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Dias de envio</label>

@@ -6,10 +6,12 @@ import {
   createDepartment,
   updateDepartment,
   deactivateDepartment,
+  countActiveEmployeesByDepartment,
   type DepartmentWithWorkDays,
   type DepartmentListingFilters,
 } from "@/modules/departments/department.repository"
 import type { CreateDepartmentInput, UpdateDepartmentInput } from "@/modules/departments/department.types"
+import { AppError } from "@/libs/errors/app-error"
 
 export function getDepartments(tenantId: string): ReturnType<typeof findDepartmentsByTenant> {
   return findDepartmentsByTenant(tenantId)
@@ -31,7 +33,11 @@ export function updateDept(
   return updateDepartment(tenantId, departmentId, input)
 }
 
-export function removeDept(tenantId: string, departmentId: string): ReturnType<typeof deactivateDepartment> {
+export async function removeDept(tenantId: string, departmentId: string): Promise<{ count: number }> {
+  const activeCount = await countActiveEmployeesByDepartment(tenantId, departmentId)
+  if (activeCount > 0) {
+    throw new AppError("DEPARTMENT_HAS_EMPLOYEES", "Não é possível excluir um departamento com colaboradores ativos.")
+  }
   return deactivateDepartment(tenantId, departmentId)
 }
 
