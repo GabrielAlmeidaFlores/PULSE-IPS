@@ -13,6 +13,7 @@ import {
   createDepartment,
   updateDepartment,
   deactivateDepartment,
+  countActiveEmployeesByDepartment,
   findDepartmentsByTenant,
   findDepartmentById,
   findActiveDepartmentsByTenant,
@@ -29,6 +30,7 @@ const mockFindForListing = vi.mocked(findDepartmentsForListingPage)
 const mockCreate = vi.mocked(createDepartment)
 const mockUpdate = vi.mocked(updateDepartment)
 const mockDeactivate = vi.mocked(deactivateDepartment)
+const mockCountActiveEmployees = vi.mocked(countActiveEmployeesByDepartment)
 const mockFindByTenant = vi.mocked(findDepartmentsByTenant)
 const mockFindById = vi.mocked(findDepartmentById)
 const mockFindActive = vi.mocked(findActiveDepartmentsByTenant)
@@ -41,6 +43,7 @@ const DEPT_RESULT = { items: [], total: 0 }
 beforeEach(() => {
   vi.clearAllMocks()
   mockCreateAuditLog.mockResolvedValue(undefined)
+  mockCountActiveEmployees.mockResolvedValue(0)
   mockFindForListing.mockResolvedValue(DEPT_RESULT)
   mockCreate.mockResolvedValue({
     id: DEPT_ID,
@@ -100,6 +103,16 @@ describe("removeDept", () => {
     expect(mockCreateAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({ tenantId: TENANT_ID, userId: "user-1", action: "department.deleted" }),
     )
+  })
+
+  it("lança AppError quando o setor possui colaboradores ativos", async () => {
+    mockCountActiveEmployees.mockResolvedValue(3)
+
+    await expect(removeDept(TENANT_ID, DEPT_ID, "user-1"))
+      .rejects.toMatchObject({ code: "DEPARTMENT_HAS_EMPLOYEES" })
+
+    expect(mockDeactivate).not.toHaveBeenCalled()
+    expect(mockCreateAuditLog).not.toHaveBeenCalled()
   })
 })
 
