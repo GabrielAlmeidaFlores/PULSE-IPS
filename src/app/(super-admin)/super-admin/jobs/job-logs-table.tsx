@@ -4,10 +4,12 @@ import { Fragment, useState } from "react"
 import type { JobLogRow } from "@/modules/job-logs/job-log.types"
 import { TablePagination } from "@/libs/design-system"
 import { Badge } from "@/components/ui/badge"
+import { extractJobPayloadTenantId } from "@/app/(super-admin)/super-admin/jobs/job-payload-utils"
 
 interface Props {
   rows: JobLogRow[]
   total: number
+  orgMap: Record<string, { name: string; slug: string }>
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -50,7 +52,7 @@ function formatDuration(ms: number | null): string {
   return `${(ms / 1_000).toFixed(1)}s`
 }
 
-export function JobLogsTable({ rows, total }: Props): React.ReactElement {
+export function JobLogsTable({ rows, total, orgMap }: Props): React.ReactElement {
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   return (
@@ -118,6 +120,19 @@ export function JobLogsTable({ rows, total }: Props): React.ReactElement {
                           <span className="font-semibold text-foreground">Job ID:</span>{" "}
                           <span className="font-mono">{row.jobId}</span>
                         </div>
+                        {(() => {
+                          const tenantId = extractJobPayloadTenantId(row.payload)
+                          const org = tenantId !== null ? orgMap[tenantId] : undefined
+                          if (org === undefined) return null
+                          return (
+                            <div>
+                              <span className="font-semibold text-foreground">Organização:</span>{" "}
+                              <span className="font-medium">{org.name}</span>
+                              {" "}
+                              <span className="font-mono text-[10px] bg-muted px-1 py-0.5">{org.slug}</span>
+                            </div>
+                          )
+                        })()}
                         <div>
                           <span className="font-semibold text-foreground">Iniciado em:</span>{" "}
                           {formatDate(row.startedAt)}
@@ -131,7 +146,7 @@ export function JobLogsTable({ rows, total }: Props): React.ReactElement {
                           {formatDate(row.queuedAt)}
                         </div>
                       </div>
-                      {row.payload !== null && row.payload !== undefined && (
+                      {row.payload !== null && row.payload !== undefined && JSON.stringify(row.payload) !== "{}" && (
                         <div>
                           <div className="text-xs font-semibold text-foreground mb-1">Payload:</div>
                           <pre className="text-[11px] bg-muted p-2 rounded overflow-x-auto max-h-40">
@@ -139,7 +154,7 @@ export function JobLogsTable({ rows, total }: Props): React.ReactElement {
                           </pre>
                         </div>
                       )}
-                      {row.result !== null && row.result !== undefined && (
+                      {row.result !== null && row.result !== undefined && JSON.stringify(row.result) !== "{}" && (
                         <div>
                           <div className="text-xs font-semibold text-foreground mb-1">Resultado:</div>
                           <pre className="text-[11px] bg-muted p-2 rounded overflow-x-auto max-h-40">
