@@ -11,11 +11,14 @@ import {
   findActionPlansForListingPage,
   type ActionPlanListingFilters,
 } from "@/modules/action-plans/action-plan.repository"
+import { createAuditLog } from "@/modules/audit/audit.repository"
 import type { CreateActionPlanTaskInput, CreateActionPlanInput } from "@/modules/action-plans/action-plan.types"
 
 vi.mock("@/modules/action-plans/action-plan.repository")
+vi.mock("@/modules/audit/audit.repository")
 vi.mock("@/env", () => ({ env: { NEXT_PUBLIC_APP_URL: "http://localhost:3000" } }))
 
+const mockCreateAuditLog = vi.mocked(createAuditLog)
 const mockUpdateActionPlan = vi.mocked(updateActionPlan)
 const mockCreateActionPlanWithTasks = vi.mocked(createActionPlanWithTasks)
 const mockCompleteActionPlanTask = vi.mocked(completeActionPlanTask)
@@ -30,6 +33,7 @@ const PLAN = { id: "plan-1", tenantId: TENANT_ID, title: "Reduzir estresse", sta
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockCreateAuditLog.mockResolvedValue(undefined)
   mockUpdateActionPlan.mockResolvedValue({ count: 1 })
   mockCreateActionPlanWithTasks.mockResolvedValue(PLAN as Awaited<ReturnType<typeof createActionPlanWithTasks>>)
   mockCompleteActionPlanTask.mockResolvedValue({ id: "task-1" } as Awaited<ReturnType<typeof completeActionPlanTask>>)
@@ -37,9 +41,12 @@ beforeEach(() => {
 
 describe("updatePlan", () => {
   it("passes input to updateActionPlan as-is for non-completed status", async () => {
-    await updatePlan(TENANT_ID, PLAN.id, { status: "in_progress" })
+    await updatePlan(TENANT_ID, PLAN.id, { status: "in_progress" }, "user-1")
 
     expect(mockUpdateActionPlan).toHaveBeenCalledWith(TENANT_ID, PLAN.id, { status: "in_progress" })
+    expect(mockCreateAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: TENANT_ID, userId: "user-1", action: "action_plan.updated" }),
+    )
   })
 
   it("adds completedAt timestamp when status is completed", async () => {
@@ -61,13 +68,16 @@ describe("updatePlan", () => {
 })
 
 describe("createPlanWithTasks", () => {
-  it("creates plan with tasks and returns it", async () => {
+  it("creates plan with tasks and registers audit log", async () => {
     const input = { title: "Plano novo", description: "desc", origin: "metric_alert" as const, departmentId: "dept-1" }
     const tasks = ["Tarefa 1", "Tarefa 2"]
 
-    await createPlanWithTasks(TENANT_ID, input, tasks)
+    await createPlanWithTasks(TENANT_ID, input, tasks, "user-1")
 
     expect(mockCreateActionPlanWithTasks).toHaveBeenCalledWith(TENANT_ID, input, tasks)
+    expect(mockCreateAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: TENANT_ID, userId: "user-1", action: "action_plan.created" }),
+    )
   })
 })
 
@@ -121,13 +131,16 @@ describe("addTask", () => {
 })
 
 describe("createPlan", () => {
-  it("delega criação ao repository", async () => {
+  it("delega criação ao repository e registra log de auditoria", async () => {
     mockCreateActionPlan.mockResolvedValue(PLAN as Awaited<ReturnType<typeof createActionPlan>>)
 
     const input: CreateActionPlanInput = { title: "Reduzir estresse", description: "Ações para reduzir estresse", alertId: "alert-1" }
-    const result = await createPlan(TENANT_ID, input)
+    const result = await createPlan(TENANT_ID, input, "user-1")
 
     expect(mockCreateActionPlan).toHaveBeenCalledWith(TENANT_ID, input)
+    expect(mockCreateAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: TENANT_ID, userId: "user-1", action: "action_plan.created" }),
+    )
     expect(result).toEqual(PLAN)
   })
 })

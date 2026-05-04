@@ -23,7 +23,10 @@ vi.mock("@/modules/alerts/alert.repository")
 vi.mock("@/modules/billing/billing.service")
 vi.mock("@/modules/consent/consent.repository")
 vi.mock("@/libs/queue", () => ({ getMessageQueue: vi.fn(() => ({ addBulk: mockAddBulk })) }))
-vi.mock("@/libs/logger", () => ({ logger: { error: vi.fn(), info: vi.fn() } }))
+vi.mock("@/libs/utils/logger", () => ({
+  createLogger: () => ({ info: vi.fn(), success: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }),
+  logger: { info: vi.fn(), success: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+}))
 vi.mock("@/env", () => ({
   env: {
     NEXT_PUBLIC_APP_URL: "http://localhost:3000",

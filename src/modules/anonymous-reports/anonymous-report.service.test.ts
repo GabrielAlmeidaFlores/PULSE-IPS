@@ -2,11 +2,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { submitReport, updateReportStatus, getReports, getReport, getReportsPaginated } from "@/modules/anonymous-reports/anonymous-report.service"
 import { createReport, updateReport, findReportsByTenant, findReportById, findReportsForListingPage } from "@/modules/anonymous-reports/anonymous-report.repository"
 import { findOrganizationBySlug } from "@/modules/organizations/organization.repository"
+import { createAuditLog } from "@/modules/audit/audit.repository"
 
 vi.mock("@/modules/anonymous-reports/anonymous-report.repository")
 vi.mock("@/modules/organizations/organization.repository")
+vi.mock("@/modules/audit/audit.repository")
 vi.mock("@/env", () => ({ env: { NEXT_PUBLIC_APP_URL: "http://localhost:3000" } }))
 
+const mockCreateAuditLog = vi.mocked(createAuditLog)
 const mockCreateReport = vi.mocked(createReport)
 const mockUpdateReport = vi.mocked(updateReport)
 const mockFindOrgBySlug = vi.mocked(findOrganizationBySlug)
@@ -20,6 +23,7 @@ const CREATED_REPORT = { id: "rep-1", ...REPORT_INPUT, tenantId: "org-1", status
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockCreateAuditLog.mockResolvedValue(undefined)
   mockCreateReport.mockResolvedValue(CREATED_REPORT as Awaited<ReturnType<typeof createReport>>)
   mockUpdateReport.mockResolvedValue({ count: 1 })
 })
@@ -44,10 +48,13 @@ describe("submitReport", () => {
 })
 
 describe("updateReportStatus", () => {
-  it("updates report with provided status", async () => {
-    await updateReportStatus("org-1", "rep-1", { status: "analyzing" })
+  it("updates report with provided status and registers audit log", async () => {
+    await updateReportStatus("org-1", "rep-1", { status: "analyzing" }, "user-1")
 
     expect(mockUpdateReport).toHaveBeenCalledWith("org-1", "rep-1", { status: "analyzing", resolvedAt: null })
+    expect(mockCreateAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: "org-1", userId: "user-1", action: "anonymous_report.status_updated" }),
+    )
   })
 
   it("adds resolvedAt timestamp when status is resolved", async () => {

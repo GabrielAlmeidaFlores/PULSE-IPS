@@ -17,9 +17,12 @@ import {
   createDocument,
   createDocumentVersion,
 } from "@/modules/documents/document.repository"
+import { createAuditLog } from "@/modules/audit/audit.repository"
 
 vi.mock("@/modules/documents/document.repository")
+vi.mock("@/modules/audit/audit.repository")
 
+const mockCreateAuditLog = vi.mocked(createAuditLog)
 const mockFindDocumentById = vi.mocked(findDocumentById)
 const mockFindDocumentsByTenant = vi.mocked(findDocumentsByTenant)
 const mockFindVersionsByDocument = vi.mocked(findVersionsByDocument)
@@ -41,6 +44,7 @@ function makeDoc(latestVersion: number): Awaited<ReturnType<typeof findDocumentB
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockCreateAuditLog.mockResolvedValue(undefined)
   mockFindDocumentById.mockResolvedValue(makeDoc(1))
   mockCreateDocumentVersion.mockResolvedValue({ id: "new-version" } as Awaited<ReturnType<typeof createDocumentVersion>>)
 })
@@ -104,15 +108,18 @@ describe("getDocumentVersionForDownload", () => {
 })
 
 describe("createNewDocument", () => {
-  it("cria documento e o retorna", async () => {
-    const created = { id: "new-doc", tenantId: TENANT_ID } as Awaited<ReturnType<typeof createDocument>>
+  it("cria documento, registra log de auditoria e o retorna", async () => {
+    const created = { id: "new-doc", tenantId: TENANT_ID, title: "Relatório" } as Awaited<ReturnType<typeof createDocument>>
     mockCreateDocument.mockResolvedValue(created)
 
     const input = { title: "Relatório", type: "policy" as const } as Parameters<typeof createNewDocument>[1]
-    const result = await createNewDocument(TENANT_ID, input)
+    const result = await createNewDocument(TENANT_ID, input, "user-1")
 
     expect(result).toEqual(created)
     expect(mockCreateDocument).toHaveBeenCalledWith(TENANT_ID, input)
+    expect(mockCreateAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: TENANT_ID, userId: "user-1", action: "document.created" }),
+    )
   })
 })
 
