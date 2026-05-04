@@ -38,12 +38,15 @@ export async function createNewEmployee(tenantId: string, input: CreateEmployeeI
   return employee
 }
 
-export function updateExistingEmployee(
+export async function updateExistingEmployee(
   tenantId: string,
   employeeId: string,
   input: UpdateEmployeeInput,
+  actorId?: string,
 ): ReturnType<typeof updateEmployee> {
-  return updateEmployee(tenantId, employeeId, input)
+  const result = await updateEmployee(tenantId, employeeId, input)
+  await createAuditLog({ tenantId, ...(actorId !== undefined ? { userId: actorId } : {}), action: "employee.updated", resource: "employees", resourceId: employeeId })
+  return result
 }
 
 export async function deactivateExistingEmployee(tenantId: string, employeeId: string, actorId?: string): Promise<void> {

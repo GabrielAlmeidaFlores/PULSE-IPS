@@ -22,7 +22,7 @@ export async function updateEmployeeAction(
   const parsed = updateEmployeeSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
   try {
-    await updateExistingEmployee(session.tenantId, idParsed.data, parsed.data)
+    await updateExistingEmployee(session.tenantId, idParsed.data, parsed.data, session.userId)
     revalidatePath("/employees")
     revalidatePath(`/employees/${idParsed.data}`)
     return {}

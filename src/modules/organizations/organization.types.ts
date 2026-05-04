@@ -38,8 +38,11 @@ export interface OrgUserSummary {
 export interface OrgAuditEntry {
   id: string
   userId: string | null
+  userName: string | null
   action: string
   resource: string
+  resourceId: string | null
+  metadata: Record<string, string | number | boolean | null> | null
   createdAt: Date
 }
 

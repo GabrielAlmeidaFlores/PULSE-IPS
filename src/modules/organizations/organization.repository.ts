@@ -1,6 +1,6 @@
 import type { Prisma, Organization, Plan, OrganizationSubscription } from "@prisma/client"
 import { prisma } from "@/libs/db"
-import type { CreateOrganizationInput, UpdateOrganizationInput, OrgFullDetail } from "@/modules/organizations/organization.types"
+import type { CreateOrganizationInput, UpdateOrganizationInput, OrgFullDetail, OrgAuditEntry } from "@/modules/organizations/organization.types"
 
 export function findOrganizationById(tenantId: string): Promise<Organization | null> {
   return prisma.organization.findFirst({ where: { id: tenantId } })
@@ -142,7 +142,7 @@ export async function findOrganizationFullDetail(id: string): Promise<OrgFullDet
         },
       },
       auditLogs: {
-        select: { id: true, userId: true, action: true, resource: true, createdAt: true },
+        select: { id: true, userId: true, action: true, resource: true, resourceId: true, metadata: true, createdAt: true },
         orderBy: { createdAt: "desc" },
         take: 8,
       },
@@ -189,7 +189,16 @@ export async function findOrganizationFullDetail(id: string): Promise<OrgFullDet
     plan: org.plan,
     subscription: org.subscription,
     users: org.users,
-    recentAuditLogs: org.auditLogs,
+    recentAuditLogs: org.auditLogs.map((l) => ({
+      id: l.id,
+      userId: l.userId,
+      userName: null,
+      action: l.action,
+      resource: l.resource,
+      resourceId: l.resourceId,
+      metadata: l.metadata as Record<string, string | number | boolean | null> | null,
+      createdAt: l.createdAt,
+    })),
     employeeCounts: { active: activeCount, inactive: inactiveCount, paused: pausedCount },
     departmentCount: org._count.departments,
     dispatchCount: org._count.healthSurveyDispatches,
@@ -230,5 +239,47 @@ export async function findAllOrganizationsPaginatedAdmin(
     }),
     prisma.organization.count({ where }),
   ])
+  return { items, total }
+}
+
+export async function findOrganizationAuditLogsPaginated(
+  organizationId: string,
+  skip: number,
+  take: number,
+): Promise<{ items: OrgAuditEntry[]; total: number }> {
+  const where: Prisma.AuditLogWhereInput = { tenantId: organizationId }
+  const [rawItems, total] = await Promise.all([
+    prisma.auditLog.findMany({
+      where,
+      select: { id: true, userId: true, action: true, resource: true, resourceId: true, metadata: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take,
+    }),
+    prisma.auditLog.count({ where }),
+  ])
+
+  const userIds = [...new Set(rawItems.map((r) => r.userId).filter((id): id is string => id !== null))]
+  const userMap = new Map<string, string>()
+  if (userIds.length > 0) {
+    const users = await prisma.organizationUser.findMany({
+      where: { tenantId: organizationId, id: { in: userIds } },
+      select: { id: true, name: true },
+    })
+    for (const u of users) {
+      userMap.set(u.id, u.name)
+    }
+  }
+
+  const items: OrgAuditEntry[] = rawItems.map((row) => ({
+    id: row.id,
+    userId: row.userId,
+    userName: row.userId !== null ? (userMap.get(row.userId) ?? null) : null,
+    action: row.action,
+    resource: row.resource,
+    resourceId: row.resourceId,
+    metadata: row.metadata as Record<string, string | number | boolean | null> | null,
+    createdAt: row.createdAt,
+  }))
   return { items, total }
 }

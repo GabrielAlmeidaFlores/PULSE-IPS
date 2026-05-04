@@ -10,6 +10,7 @@ import {
   type ActionPlanWithTasks,
   type ActionPlanListingFilters,
 } from "@/modules/action-plans/action-plan.repository"
+import { createAuditLog } from "@/modules/audit/audit.repository"
 import type { CreateActionPlanInput, UpdateActionPlanInput, CreateActionPlanTaskInput, ActionPlan, ActionPlanTask } from "@/modules/action-plans/action-plan.types"
 
 export function getActionPlans(tenantId: string): Promise<ActionPlanWithTasks[]> {
@@ -20,20 +21,25 @@ export function getActionPlan(tenantId: string, planId: string): Promise<ActionP
   return findActionPlanById(tenantId, planId)
 }
 
-export function createPlan(tenantId: string, input: CreateActionPlanInput): Promise<ActionPlan> {
-  return createActionPlan(tenantId, input)
+export async function createPlan(tenantId: string, input: CreateActionPlanInput, actorId?: string): Promise<ActionPlan> {
+  const plan = await createActionPlan(tenantId, input)
+  await createAuditLog({ tenantId, ...(actorId !== undefined ? { userId: actorId } : {}), action: "action_plan.created", resource: "action_plans", resourceId: plan.id, metadata: { title: plan.title } })
+  return plan
 }
 
-export function updatePlan(
+export async function updatePlan(
   tenantId: string,
   planId: string,
   input: UpdateActionPlanInput,
+  actorId?: string,
 ): Promise<{ count: number }> {
   const data: UpdateActionPlanInput = {
     ...input,
     ...(input.status === "completed" ? { completedAt: new Date() } : {}),
   }
-  return updateActionPlan(tenantId, planId, data)
+  const result = await updateActionPlan(tenantId, planId, data)
+  await createAuditLog({ tenantId, ...(actorId !== undefined ? { userId: actorId } : {}), action: "action_plan.updated", resource: "action_plans", resourceId: planId })
+  return result
 }
 
 export function addTask(tenantId: string, actionPlanId: string, input: CreateActionPlanTaskInput): Promise<ActionPlanTask> {
@@ -44,12 +50,15 @@ export function completeTask(tenantId: string, taskId: string): Promise<ActionPl
   return completeActionPlanTask(tenantId, taskId)
 }
 
-export function createPlanWithTasks(
+export async function createPlanWithTasks(
   tenantId: string,
   input: CreateActionPlanInput,
   taskTitles: string[],
+  actorId?: string,
 ): Promise<ActionPlan> {
-  return createActionPlanWithTasks(tenantId, input, taskTitles)
+  const plan = await createActionPlanWithTasks(tenantId, input, taskTitles)
+  await createAuditLog({ tenantId, ...(actorId !== undefined ? { userId: actorId } : {}), action: "action_plan.created", resource: "action_plans", resourceId: plan.id, metadata: { title: plan.title } })
+  return plan
 }
 
 interface ActionPlanListingQuery {

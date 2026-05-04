@@ -29,7 +29,7 @@ export async function createDepartmentAction(data: unknown): Promise<ActionResul
       workStartTime: parsed.data.workStartTime ?? "09:00",
       workEndTime: parsed.data.workEndTime ?? "18:00",
       workDays: parsed.data.workDays ?? [1, 2, 3, 4, 5],
-    })
+    }, session.userId)
     revalidatePath("/departments")
     return {}
   } catch (err) {
@@ -51,7 +51,7 @@ export async function updateDepartmentAction(departmentId: string, data: unknown
       ...(parsed.data.workStartTime ? { workStartTime: parsed.data.workStartTime } : {}),
       ...(parsed.data.workEndTime ? { workEndTime: parsed.data.workEndTime } : {}),
       ...(parsed.data.workDays && parsed.data.workDays.length > 0 ? { workDays: parsed.data.workDays } : {}),
-    })
+    }, session.userId)
     revalidatePath("/departments")
     return {}
   } catch (err) {
@@ -67,7 +67,7 @@ export async function deleteDepartmentAction(departmentId: string): Promise<Acti
   const idParsed = deptIdSchema.safeParse(departmentId)
   if (!idParsed.success) return { error: "ID inválido." }
   try {
-    await removeDept(session.tenantId, idParsed.data)
+    await removeDept(session.tenantId, idParsed.data, session.userId)
     revalidatePath("/departments")
     return {}
   } catch (err) {

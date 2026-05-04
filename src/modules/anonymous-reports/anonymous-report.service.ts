@@ -8,6 +8,7 @@ import {
   type AnonymousReportListingFilters,
 } from "@/modules/anonymous-reports/anonymous-report.repository"
 import { findOrganizationBySlug } from "@/modules/organizations/organization.repository"
+import { createAuditLog } from "@/modules/audit/audit.repository"
 import type { CreateAnonymousReportInput, UpdateAnonymousReportInput } from "@/modules/anonymous-reports/anonymous-report.types"
 
 export function getReports(tenantId: string): ReturnType<typeof findReportsByTenant> {
@@ -24,16 +25,19 @@ export async function submitReport(orgSlug: string, input: CreateAnonymousReport
   return createReport(org.id, { ...input, orgSlug })
 }
 
-export function updateReportStatus(
+export async function updateReportStatus(
   tenantId: string,
   reportId: string,
   input: UpdateAnonymousReportInput,
+  actorId?: string,
 ): ReturnType<typeof updateReport> {
   const data = {
     ...input,
     resolvedAt: input.status === "resolved" ? new Date() : null,
   }
-  return updateReport(tenantId, reportId, data)
+  const result = await updateReport(tenantId, reportId, data)
+  await createAuditLog({ tenantId, ...(actorId !== undefined ? { userId: actorId } : {}), action: "anonymous_report.status_updated", resource: "anonymous_reports", resourceId: reportId, metadata: { status: input.status ?? null } })
+  return result
 }
 
 interface AnonymousReportListingQuery {

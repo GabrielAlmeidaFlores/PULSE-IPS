@@ -46,7 +46,7 @@ export async function createDocumentAction(
 
   try {
     const key = await uploadFile(session.tenantId, file)
-    const doc = await createNewDocument(session.tenantId, { title, type, fileUrl: key })
+    const doc = await createNewDocument(session.tenantId, { title, type, fileUrl: key }, session.userId)
     await addDocumentVersion(session.tenantId, doc.id, key, session.userId)
     revalidatePath("/documents")
     return {}

@@ -21,7 +21,7 @@ export async function updateReportStatusAction(
   const parsed = updateReportSchema.safeParse({ reportId, ...(input as object) })
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
   try {
-    await updateReportStatus(session.tenantId, parsed.data.reportId, parsed.data)
+    await updateReportStatus(session.tenantId, parsed.data.reportId, parsed.data, session.userId)
     revalidatePath("/reports")
     return {}
   } catch (err) {

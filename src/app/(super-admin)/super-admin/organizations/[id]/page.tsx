@@ -1,6 +1,6 @@
-import { getOrganizationFullDetail } from "@/modules/organizations/organization.service";
-import type { OrgFullDetail } from "@/modules/organizations/organization.types";
-import Link from "next/link";
+import { getOrganizationFullDetail, getOrganizationAuditLogs } from "@/modules/organizations/organization.service"
+import type { OrgFullDetail } from "@/modules/organizations/organization.types"
+import Link from "next/link"
 import {
   ArrowLeft,
   Building2,
@@ -12,11 +12,13 @@ import {
   Activity,
   TrendingUp,
   Zap,
-} from "lucide-react";
-import { CancelDeletionBanner } from "@/app/(super-admin)/super-admin/organizations/[id]/cancel-deletion-banner";
+} from "lucide-react"
+import { CancelDeletionBanner } from "@/app/(super-admin)/super-admin/organizations/[id]/cancel-deletion-banner"
+import { OrgAuditLogs } from "@/app/(super-admin)/super-admin/organizations/[id]/org-audit-logs"
 
 interface Props {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string }>
+  searchParams: Promise<Record<string, string | undefined>>
 }
 
 const BILLING_LABELS: Record<string, string> = {
@@ -236,9 +238,17 @@ function SubscriptionCard({
 
 export default async function OrganizationDetailPage({
   params,
+  searchParams,
 }: Props): Promise<React.ReactElement> {
-  const { id } = await params;
-  const org = await getOrganizationFullDetail(id);
+  const { id } = await params
+  const rawParams = await searchParams
+  const page = Math.max(1, parseInt(rawParams["page"] ?? "1", 10))
+  const pageSize = 20
+
+  const [org, auditResult] = await Promise.all([
+    getOrganizationFullDetail(id),
+    getOrganizationAuditLogs(id, page, pageSize),
+  ])
 
   if (!org) {
     return (
@@ -474,37 +484,17 @@ export default async function OrganizationDetailPage({
                 </div>
               </Card>
 
-              {org.recentAuditLogs.length > 0 && (
-                <Card>
-                  <CardHeader
-                    icon={<Zap className="h-4 w-4" />}
-                    title="Atividade recente"
-                  />
-                  <div className="divide-y divide-border">
-                    {org.recentAuditLogs.map((log) => (
-                      <div
-                        key={log.id}
-                        className="px-5 py-3 flex items-center justify-between gap-4"
-                      >
-                        <div className="min-w-0">
-                          <p className="text-[12px] font-semibold text-foreground font-mono truncate">
-                            {log.action}
-                          </p>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">
-                            {log.resource}
-                          </p>
-                        </div>
-                        <p className="text-[11px] text-muted-foreground shrink-0">
-                          {new Date(log.createdAt).toLocaleString("pt-BR", {
-                            dateStyle: "short",
-                            timeStyle: "short",
-                          })}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              )}
+              <Card>
+                <CardHeader
+                  icon={<Zap className="h-4 w-4" />}
+                  title="Atividades"
+                />
+                <OrgAuditLogs
+                  items={auditResult.items}
+                  total={auditResult.total}
+                  timezone={org.timezone}
+                />
+              </Card>
             </div>
 
             <div className="lg:col-span-2 space-y-6">
