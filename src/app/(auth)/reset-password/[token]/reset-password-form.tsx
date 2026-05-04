@@ -6,6 +6,7 @@ import { z } from "zod"
 import { toast } from "sonner"
 import Link from "next/link"
 import { resetPasswordAction } from "@/app/(auth)/reset-password/[token]/actions"
+import { PasswordInput } from "@/components/ui/password-input"
 
 const schema = z.object({
   password: z.string().min(8, "A senha deve ter ao menos 8 caracteres"),
@@ -46,12 +47,9 @@ export function ResetPasswordForm({ token }: Props): React.ReactElement {
           <label htmlFor="password" className="block text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
             Nova senha
           </label>
-          <input
+          <PasswordInput
             id="password"
-            type="password"
             placeholder="••••••••"
-            className="w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
-            style={{ borderRadius: 0 }}
             {...form.register("password")}
           />
           {form.formState.errors.password && (
@@ -63,12 +61,9 @@ export function ResetPasswordForm({ token }: Props): React.ReactElement {
           <label htmlFor="confirmPassword" className="block text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
             Confirmar nova senha
           </label>
-          <input
+          <PasswordInput
             id="confirmPassword"
-            type="password"
             placeholder="••••••••"
-            className="w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
-            style={{ borderRadius: 0 }}
             {...form.register("confirmPassword")}
           />
           {form.formState.errors.confirmPassword && (

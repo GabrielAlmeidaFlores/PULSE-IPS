@@ -6,6 +6,7 @@ import { z } from "zod"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { superAdminLoginAction } from "@/app/(super-admin-public)/super-admin/login/actions"
+import { PasswordInput } from "@/components/ui/password-input"
 
 const schema = z.object({
   email: z.string().email(),
@@ -59,12 +60,9 @@ export function SuperAdminLoginForm(): React.ReactElement {
           <label htmlFor="password" className="block text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
             Senha
           </label>
-          <input
+          <PasswordInput
             id="password"
-            type="password"
             placeholder="••••••••"
-            className="w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
-            style={{ borderRadius: 0 }}
             {...form.register("password")}
           />
           {form.formState.errors.password && (
