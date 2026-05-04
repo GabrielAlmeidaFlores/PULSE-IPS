@@ -11,12 +11,12 @@ const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
     const [visible, setVisible] = useState(false)
 
     return (
-      <div className="relative flex">
+      <div className="relative">
         <input
           ref={ref}
           type={visible ? "text" : "password"}
           className={cn(
-            "w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 pr-10 placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors",
+            "block w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 pr-10 placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors",
             className
           )}
           style={{ borderRadius: 0 }}
