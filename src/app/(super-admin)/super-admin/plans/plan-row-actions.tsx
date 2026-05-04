@@ -10,6 +10,7 @@ import {
   addPlanPriceAction,
   togglePlanActiveAction,
   deletePlanAction,
+  deactivatePlanPriceAction,
 } from "@/app/(super-admin)/super-admin/plans/actions";
 import { setPlanFeaturesAction } from "@/app/(super-admin)/super-admin/plans/new/actions";
 import {
@@ -145,6 +146,35 @@ export function PlanRowActions({ plan }: { plan: Plan }): React.ReactElement {
     );
   }
 
+  async function syncExistingPrices(): Promise<string | null> {
+    for (const price of plan.prices) {
+      const rawValue = priceValues[price.id] ?? ""
+      const newCents = rawValue === "" ? 0 : Math.round(parseFloat(rawValue) * 100)
+      if (newCents === 0) {
+        const r = await deactivatePlanPriceAction(price.id)
+        if (r.error) return r.error
+      } else if (newCents !== price.priceInCents) {
+        const r = await updatePlanPriceAction(price.id, newCents)
+        if (r.error) return r.error
+      }
+    }
+    return null
+  }
+
+  async function addNewPrices(): Promise<string | null> {
+    const monthCents = newMonthly ? Math.round(parseFloat(newMonthly) * 100) : 0
+    const yearCents = newYearly ? Math.round(parseFloat(newYearly) * 100) : 0
+    if (!hasMonth && monthCents > 0) {
+      const r = await addPlanPriceAction(plan.id, monthCents, "month")
+      if (r.error) return r.error
+    }
+    if (!hasYear && yearCents > 0) {
+      const r = await addPlanPriceAction(plan.id, yearCents, "year")
+      if (r.error) return r.error
+    }
+    return null
+  }
+
   function handleSave(): void {
     startTransition(async () => {
       const planResult = await updatePlanAction({
@@ -167,36 +197,16 @@ export function PlanRowActions({ plan }: { plan: Plan }): React.ReactElement {
         return;
       }
 
-      for (const price of plan.prices) {
-        const newCents = Math.round(
-          parseFloat(priceValues[price.id] ?? "0") * 100,
-        );
-        if (newCents > 0 && newCents !== price.priceInCents) {
-          const r = await updatePlanPriceAction(price.id, newCents);
-          if (r.error) {
-            toast.error(r.error);
-            return;
-          }
-        }
+      const syncError = await syncExistingPrices()
+      if (syncError !== null) {
+        toast.error(syncError)
+        return
       }
 
-      const monthCents = newMonthly
-        ? Math.round(parseFloat(newMonthly) * 100)
-        : 0;
-      const yearCents = newYearly ? Math.round(parseFloat(newYearly) * 100) : 0;
-      if (!hasMonth && monthCents > 0) {
-        const r = await addPlanPriceAction(plan.id, monthCents, "month");
-        if (r.error) {
-          toast.error(r.error);
-          return;
-        }
-      }
-      if (!hasYear && yearCents > 0) {
-        const r = await addPlanPriceAction(plan.id, yearCents, "year");
-        if (r.error) {
-          toast.error(r.error);
-          return;
-        }
+      const addError = await addNewPrices()
+      if (addError !== null) {
+        toast.error(addError)
+        return
       }
 
       toast.success("Plano atualizado");
@@ -378,6 +388,9 @@ export function PlanRowActions({ plan }: { plan: Plan }): React.ReactElement {
                     />
                   )}
                 </div>
+                <p className="text-[10px] text-muted-foreground pl-0.5">
+                  Deixe o campo vazio para remover um preço existente.
+                </p>
               </div>
 
               <p className="text-[10px] text-muted-foreground border-l-2 border-status-warning-border pl-2 py-0.5">

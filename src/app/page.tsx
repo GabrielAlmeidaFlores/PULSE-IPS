@@ -216,7 +216,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
                 gridClass = "md:grid-cols-3"
               }
               return (
-            <div className={`grid gap-6 items-start ${gridClass}`}>
+            <div className={`grid gap-6 ${gridClass}`}>
             {plansFromDb.map((plan, index) => {
               const isHighlight = plansFromDb.length >= 2 && index === Math.floor((plansFromDb.length - 1) / 2)
               const monthlyPrice = plan.prices.find((p) => p.interval === "month")
@@ -226,7 +226,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
               const enabledFeatureKeys = new Set<string>(plan.features)
 
               return (
-                <AnimateIn key={plan.id} delay={index * 100} animation="scale-in">
+                <AnimateIn key={plan.id} delay={index * 100} animation="scale-in" className="h-full">
                   <div
                     className={`rounded-2xl border p-8 flex flex-col gap-6 transition-all relative h-full ${
                     isHighlight
@@ -240,24 +240,29 @@ export default async function LandingPage(): Promise<React.ReactElement> {
                     </div>
                   )}
                   <div>
-                    <div className={`text-sm font-semibold mb-1 ${highlightSecondary}`}>
-                      {plan.name}
-                    </div>
                     {primaryPrice ? (
-                      <div className="flex items-end gap-1">
-                        <span className="text-3xl font-extrabold tracking-tight">
-                          {(primaryPrice.priceInCents / 100).toLocaleString("pt-BR", {
-                            style: "currency",
-                            currency: primaryPrice.currency.toUpperCase(),
-                            minimumFractionDigits: 0,
-                          })}
-                        </span>
-                        <span className={`text-sm mb-1 ${highlightSecondary}`}>
-                          /{primaryPrice.interval === "year" ? "ano" : "mês"}
-                        </span>
-                      </div>
+                      <>
+                        <div className={`text-sm font-semibold mb-1 ${highlightSecondary}`}>
+                          {plan.name}
+                        </div>
+                        <div className="flex items-end gap-1">
+                          <span className="text-3xl font-extrabold tracking-tight">
+                            {(primaryPrice.priceInCents / 100).toLocaleString("pt-BR", {
+                              style: "currency",
+                              currency: primaryPrice.currency.toUpperCase(),
+                              minimumFractionDigits: 0,
+                            })}
+                          </span>
+                          <span className={`text-sm mb-1 ${highlightSecondary}`}>
+                            /{primaryPrice.interval === "year" ? "ano" : "mês"}
+                          </span>
+                        </div>
+                      </>
                     ) : (
-                      <div className="text-3xl font-extrabold tracking-tight">Sob consulta</div>
+                      <div className="flex flex-col gap-0.5">
+                        <div className={`text-xs font-medium ${highlightSecondary}`}>Sob encomenda</div>
+                        <div className="text-2xl font-extrabold tracking-tight">{plan.name}</div>
+                      </div>
                     )}
                     <div className={`text-xs mt-1 font-medium ${highlightSecondary}`}>
                       {plan.maxEmployees !== null ? `Até ${plan.maxEmployees} funcionários` : "Colaboradores ilimitados"}
