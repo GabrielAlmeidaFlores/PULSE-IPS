@@ -44,7 +44,7 @@ export function HealthSurveyConsentGate({ token, employeeName, content, onAccept
 
   if (refused) {
     return (
-      <div className="w-full max-w-lg border border-border bg-card p-8 text-center" style={{ borderRadius: 0 }}>
+      <div className="w-full max-w-lg border border-border bg-card p-6 sm:p-8 text-center" style={{ borderRadius: 0 }}>
         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Participação recusada</p>
         <p className="text-sm text-foreground">Tudo bem, {firstName}. Sua escolha foi registrada e você não receberá mais pesquisas.</p>
         <p className="text-xs text-muted-foreground mt-2">Caso mude de ideia, entre em contato com o RH.</p>
@@ -54,7 +54,7 @@ export function HealthSurveyConsentGate({ token, employeeName, content, onAccept
 
   return (
     <div className="w-full max-w-2xl border border-border bg-card" style={{ borderRadius: 0 }}>
-      <div className="border-b border-border px-6 py-5">
+      <div className="border-b border-border px-4 sm:px-6 py-4 sm:py-5">
         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Antes de continuar</p>
         <h1 className="text-base font-bold">Olá, {firstName}! 👋</h1>
         <p className="text-xs text-muted-foreground mt-1">
@@ -62,8 +62,8 @@ export function HealthSurveyConsentGate({ token, employeeName, content, onAccept
         </p>
       </div>
 
-      <div className="p-6 space-y-5">
-        <div className="max-h-72 overflow-y-auto border border-border p-4 bg-muted/20">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
+        <div className="max-h-64 sm:max-h-72 overflow-y-auto border border-border p-3 sm:p-4 bg-muted/20">
           <div
             className="text-xs text-foreground leading-relaxed [&_h1]:text-sm [&_h1]:font-bold [&_h1]:mb-2 [&_h2]:text-sm [&_h2]:font-bold [&_h2]:mb-2 [&_h3]:text-xs [&_h3]:font-semibold [&_h3]:mb-1 [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-4 [&_ul]:mb-2 [&_li]:mb-0.5 [&_strong]:font-semibold"
             dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(content) }}
@@ -81,11 +81,11 @@ export function HealthSurveyConsentGate({ token, employeeName, content, onAccept
           <p className="text-[10px] text-muted-foreground">
             Ao aceitar, você concorda em participar das pesquisas periódicas de forma anônima. Você pode revogar sua participação a qualquer momento.
           </p>
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <Button
               onClick={handleAccept}
               disabled={loading !== null}
-              className="flex-1 h-11"
+              className="w-full h-11"
             >
               {loading === "accept" ? "Processando..." : "Aceitar e responder pesquisa"}
             </Button>
@@ -93,7 +93,7 @@ export function HealthSurveyConsentGate({ token, employeeName, content, onAccept
               onClick={handleRefuse}
               variant="outline"
               disabled={loading !== null}
-              className="flex-1 h-11"
+              className="w-full h-11"
             >
               {loading === "refuse" ? "Processando..." : "Não quero participar"}
             </Button>

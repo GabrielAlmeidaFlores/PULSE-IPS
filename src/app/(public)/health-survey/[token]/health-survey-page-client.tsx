@@ -31,7 +31,7 @@ export function HealthSurveyPageClient({
   if (!showSurvey) {
     if (consentTermContent === null) {
       return (
-        <div className="w-full max-w-sm border border-border bg-card p-8 text-center" style={{ borderRadius: 0 }}>
+        <div className="w-full max-w-sm border border-border bg-card p-6 text-center" style={{ borderRadius: 0 }}>
           <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
             Pesquisa indisponível
           </p>

@@ -11,9 +11,9 @@ export default async function HealthSurveyPage({ params }: Props): Promise<React
 
   if (!validation.valid) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="border border-border bg-card max-w-sm w-full mx-4 border-l-4 border-l-destructive" style={{ borderRadius: 0 }}>
-          <div className="px-6 py-5">
+      <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <div className="border border-border bg-card max-w-sm w-full border-l-4 border-l-destructive" style={{ borderRadius: 0 }}>
+          <div className="px-5 py-5">
             <p className="text-[10px] font-bold uppercase tracking-widest text-destructive mb-1">Pesquisa indisponível</p>
             <p className="text-[12px] text-muted-foreground">{validation.error}</p>
           </div>
@@ -23,7 +23,7 @@ export default async function HealthSurveyPage({ params }: Props): Promise<React
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 py-12">
+    <div className="min-h-screen flex items-center justify-center bg-muted/30 py-8 px-4 sm:py-12">
       <HealthSurveyPageClient
         token={token}
         employeeName={validation.employeeName}
