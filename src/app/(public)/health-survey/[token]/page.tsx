@@ -23,7 +23,7 @@ export default async function HealthSurveyPage({ params }: Props): Promise<React
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 py-8 px-4 sm:py-12">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-muted/30 py-8 px-4 sm:py-12">
       <HealthSurveyPageClient
         token={token}
         employeeName={validation.employeeName}

@@ -13,6 +13,36 @@ interface Question {
   scoreDirection: "higher_is_better" | "lower_is_better"
 }
 
+type ScoreHealthLevel = "good" | "neutral" | "bad"
+
+function getScoreHealthLevel(score: number, scoreDirection: "higher_is_better" | "lower_is_better"): ScoreHealthLevel {
+  const normalized = scoreDirection === "higher_is_better" ? score : 6 - score
+  if (normalized >= 4) return "good"
+  if (normalized === 3) return "neutral"
+  return "bad"
+}
+
+function getScoreButtonClass(score: number, scoreDirection: "higher_is_better" | "lower_is_better", isSelected: boolean): string {
+  const level = getScoreHealthLevel(score, scoreDirection)
+  const base = "flex-1 h-11 rounded-none border-2 font-bold text-sm transition-all"
+
+  if (isSelected) {
+    const selected: Record<ScoreHealthLevel, string> = {
+      good: "bg-status-success border-status-success text-primary-foreground scale-105 shadow-sm",
+      neutral: "bg-status-warning border-status-warning text-white scale-105 shadow-sm",
+      bad: "bg-status-danger border-status-danger text-white scale-105 shadow-sm",
+    }
+    return `${base} ${selected[level]}`
+  }
+
+  const idle: Record<ScoreHealthLevel, string> = {
+    good: "border-border bg-background hover:border-status-success hover:text-status-success",
+    neutral: "border-border bg-background hover:border-status-warning hover:text-status-warning",
+    bad: "border-border bg-background hover:border-status-danger hover:text-status-danger",
+  }
+  return `${base} ${idle[level]}`
+}
+
 interface Props {
   token: string
   employeeName: string
@@ -103,11 +133,7 @@ export function HealthSurveyForm({ token, employeeName, questions }: Props): Rea
                       aria-label={`Nota ${score} de 5`}
                       aria-pressed={scores[q.id] === score}
                       onClick={() => setScores((prev) => ({ ...prev, [q.id]: score }))}
-                      className={`flex-1 h-11 rounded-none border-2 font-bold text-sm transition-all ${
-                        scores[q.id] === score
-                          ? "bg-primary text-primary-foreground border-primary scale-105 shadow-sm"
-                          : "border-border bg-background hover:border-primary hover:text-primary"
-                      }`}
+                      className={getScoreButtonClass(score, q.scoreDirection, scores[q.id] === score)}
                     >
                       {score}
                     </button>
