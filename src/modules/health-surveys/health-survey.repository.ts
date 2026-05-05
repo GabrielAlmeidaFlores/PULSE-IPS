@@ -354,7 +354,7 @@ export function findAllTenantsPendingHealthSurveyDispatches(): Promise<
           department: {
             include: {
               workDays: true,
-              employees: { where: { status: "active" }, include: { workDays: true } },
+              employees: { where: { status: "active", deletedAt: null }, include: { workDays: true } },
             },
           },
         },
@@ -422,6 +422,7 @@ export function findEmployeeByPhoneOrDocument(
     where: {
       tenantId,
       status: "active",
+      deletedAt: null,
       OR: [
         { phone: { endsWith: digitsOnly } },
         { phone: identifier.trim() },
@@ -559,7 +560,7 @@ export async function findAllTenantsActiveHealthSurveyConfigsForAutoDispatch(): 
       department: {
         include: {
           workDays: true,
-          employees: { where: { status: "active" }, include: { workDays: true } },
+          employees: { where: { status: "active", deletedAt: null }, include: { workDays: true } },
         },
       },
       dispatches: {

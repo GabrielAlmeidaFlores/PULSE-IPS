@@ -90,6 +90,7 @@ function makeTokenRecord(overrides?: Partial<TokenRecord>): TokenRecord {
       status: "active",
       pauseStartAt: null,
       pauseEndAt: null,
+      deletedAt: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     },
@@ -474,6 +475,7 @@ function makeEmployee(overrides?: Partial<EmployeeRecord>): EmployeeRecord {
     status: "active",
     pauseStartAt: null,
     pauseEndAt: null,
+    deletedAt: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   }

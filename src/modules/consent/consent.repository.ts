@@ -56,7 +56,7 @@ export function getActiveConsentTermVersion(): Promise<ConsentTermVersion | null
 }
 
 export function findEmployeeForConsent(tenantId: string, employeeId: string): Promise<import("@prisma/client").Employee | null> {
-  return prisma.employee.findFirst({ where: { id: employeeId, tenantId } })
+  return prisma.employee.findFirst({ where: { id: employeeId, tenantId, deletedAt: null } })
 }
 
 export function getAllConsentTermVersions(): Promise<ConsentTermVersion[]> {
@@ -146,7 +146,7 @@ export async function findEmployeeIdsForConsentState(tenantId: string, consentFi
         select: { employeeId: true },
       }),
       prisma.employee.findMany({
-        where: { tenantId },
+        where: { tenantId, deletedAt: null },
         select: { id: true },
       }),
     ])

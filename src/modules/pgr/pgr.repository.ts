@@ -58,7 +58,7 @@ export function findOrgWithDepartmentsForPgr(tenantId: string): Promise<Organiza
     include: {
       departments: {
         where: { isActive: true },
-        include: { employees: { where: { status: "active" } } },
+        include: { employees: { where: { status: "active", deletedAt: null } } },
       },
     },
   })

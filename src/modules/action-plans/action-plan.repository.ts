@@ -159,6 +159,7 @@ export async function findSuggestionContextData(tenantId: string): Promise<Sugge
       where: {
         tenantId,
         status: "active",
+        deletedAt: null,
         consents: { none: { event: "accepted" } },
         NOT: { consents: { some: { event: { in: ["refused", "opted_out"] } } } },
       },

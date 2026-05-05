@@ -43,6 +43,7 @@ export async function validateHealthSurveyToken(token: string): Promise<HealthSu
   if (!tokenRecord) return { valid: false, error: "Link inválido ou expirado." }
   if (tokenRecord.usedAt) return { valid: false, error: "Esta pesquisa já foi respondida." }
   if (tokenRecord.expiresAt < new Date()) return { valid: false, error: "Este link expirou." }
+  if (tokenRecord.employee.deletedAt) return { valid: false, error: "Colaborador não encontrado." }
 
   const timezone = resolveTimezone(tokenRecord)
   const now = toZonedTime(new Date(), timezone)
@@ -92,6 +93,7 @@ export async function submitHealthSurveyResponse(input: SubmitHealthSurveyInput)
   if (!tokenRecord) throw new AppError("TOKEN_INVALID", "Token inválido.")
   if (tokenRecord.usedAt) throw new AppError("SURVEY_ALREADY_ANSWERED", "Esta pesquisa já foi respondida.")
   if (tokenRecord.expiresAt < new Date()) throw new AppError("TOKEN_EXPIRED", "Este link expirou.")
+  if (tokenRecord.employee.deletedAt) throw new AppError("EMPLOYEE_DELETED", "Colaborador não encontrado.")
 
   const timezone = resolveTimezone(tokenRecord)
   const nowInTimezone = toZonedTime(new Date(), timezone)

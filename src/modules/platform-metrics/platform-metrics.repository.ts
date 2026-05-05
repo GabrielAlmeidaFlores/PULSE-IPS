@@ -21,7 +21,7 @@ export async function getPlatformMetrics(): Promise<PlatformMetrics> {
     prisma.organization.count(),
     prisma.organization.count({ where: { isActive: true } }),
     prisma.organization.count({ where: { createdAt: { gte: monthStart } } }),
-    prisma.employee.count({ where: { status: "active" } }),
+    prisma.employee.count({ where: { status: "active", deletedAt: null } }),
     prisma.healthSurveyResponse.count(),
     prisma.organizationSubscription.count({ where: { status: "active" } }),
     prisma.alert.count(),
@@ -33,7 +33,7 @@ export async function getPlatformMetrics(): Promise<PlatformMetrics> {
       include: {
         plan: { select: { name: true } },
         subscription: { select: { status: true, snapshotPriceInCents: true, snapshotInterval: true } },
-        _count: { select: { employees: { where: { status: "active" } } } },
+        _count: { select: { employees: { where: { status: "active", deletedAt: null } } } },
       },
     }),
   ])

@@ -48,7 +48,7 @@ export function findUniqueQuestions(tenantId: string): Promise<UniqueQuestion[]>
 }
 
 export function countActiveEmployees(tenantId: string): Promise<number> {
-  return prisma.employee.count({ where: { tenantId, status: "active" } })
+  return prisma.employee.count({ where: { tenantId, status: "active", deletedAt: null } })
 }
 
 export function countTotalResponses(tenantId: string): Promise<number> {
