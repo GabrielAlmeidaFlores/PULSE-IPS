@@ -1,4 +1,4 @@
-import { countEmployees, createEmployee, findEmployeeById, findEmployeesByTenant, updateEmployee, deactivateEmployee, reactivateAllTenantsDueEmployees, findEmployeesForListingPage, countEmployeeConsentRecords, hardDeleteEmployee, type EmployeeListingFilters } from "@/modules/employees/employee.repository"
+import { countEmployees, createEmployee, findEmployeeById, findEmployeesByTenant, updateEmployee, deactivateEmployee, reactivateAllTenantsDueEmployees, findEmployeesForListingPage, softDeleteEmployee, type EmployeeListingFilters } from "@/modules/employees/employee.repository"
 import { findOrganizationById } from "@/modules/organizations/organization.repository"
 import { findPlanById } from "@/modules/plans/plan.repository"
 import { findActiveSubscription } from "@/modules/billing/billing.repository"
@@ -55,11 +55,7 @@ export async function deactivateExistingEmployee(tenantId: string, employeeId: s
 }
 
 export async function deleteExistingEmployee(tenantId: string, employeeId: string, actorId?: string): Promise<void> {
-  const consentCount = await countEmployeeConsentRecords(tenantId, employeeId)
-  if (consentCount > 0) {
-    throw new AppError("EMPLOYEE_HAS_CONSENT_HISTORY", "Não é possível excluir um colaborador que já possui histórico de consentimento.")
-  }
-  await hardDeleteEmployee(tenantId, employeeId)
+  await softDeleteEmployee(tenantId, employeeId)
   await createAuditLog({ tenantId, ...(actorId !== undefined ? { userId: actorId } : {}), action: "employee.deleted", resource: "employees", resourceId: employeeId })
 }
 

@@ -58,7 +58,7 @@ export async function updateDepartment(
 }
 
 export function countActiveEmployeesByDepartment(tenantId: string, departmentId: string): Promise<number> {
-  return prisma.employee.count({ where: { tenantId, departmentId, status: "active" } })
+  return prisma.employee.count({ where: { tenantId, departmentId, status: "active", deletedAt: null } })
 }
 
 export function deactivateDepartment(tenantId: string, departmentId: string): Promise<{ count: number }> {

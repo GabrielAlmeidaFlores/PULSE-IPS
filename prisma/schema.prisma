@@ -253,6 +253,7 @@ model Employee {
   workEndTime   String?   @map("work_end_time")
   pauseStartAt  DateTime? @map("pause_start_at")
   pauseEndAt    DateTime? @map("pause_end_at")
+  deletedAt     DateTime? @map("deleted_at")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 

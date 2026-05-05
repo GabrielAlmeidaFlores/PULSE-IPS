@@ -69,7 +69,7 @@ export function findAllOrganizationsForExport(): Promise<(Organization & { plan:
       },
       _count: {
         select: {
-          employees: { where: { status: "active" } },
+          employees: { where: { status: "active", deletedAt: null } },
         },
       },
     },
@@ -154,7 +154,7 @@ export async function findOrganizationFullDetail(id: string): Promise<OrgFullDet
   const [employeeCounts, openAlertCount, totalAlertCount, openReportCount, totalReportCount, openActionPlanCount, totalActionPlanCount, messagesThisMonth, lastPgrReview] = await Promise.all([
     prisma.employee.groupBy({
       by: ["status"],
-      where: { tenantId: id },
+      where: { tenantId: id, deletedAt: null },
       _count: { status: true },
     }),
     prisma.alert.count({ where: { tenantId: id, resolvedAt: null } }),

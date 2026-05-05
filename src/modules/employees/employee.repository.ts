@@ -7,7 +7,7 @@ export type EmployeeWithDepartment = EmployeeWithWorkDays & { department: Depart
 
 export function findEmployeeById(tenantId: string, employeeId: string): Promise<EmployeeWithDepartment | null> {
   return prisma.employee.findFirst({
-    where: { id: employeeId, tenantId },
+    where: { id: employeeId, tenantId, deletedAt: null },
     include: { department: true, workDays: true },
   })
 }
@@ -20,27 +20,27 @@ export async function findEmployeesByTenant(
   const skip = (page - 1) * pageSize
   const [employees, total] = await Promise.all([
     prisma.employee.findMany({
-      where: { tenantId, status: "active" },
+      where: { tenantId, status: "active", deletedAt: null },
       include: { department: true, workDays: true },
       orderBy: { name: "asc" },
       skip,
       take: pageSize,
     }),
-    prisma.employee.count({ where: { tenantId, status: "active" } }),
+    prisma.employee.count({ where: { tenantId, status: "active", deletedAt: null } }),
   ])
   return { employees, total, page, pageSize }
 }
 
 export function findEmployeesByDepartment(tenantId: string, departmentId: string): Promise<EmployeeWithWorkDays[]> {
   return prisma.employee.findMany({
-    where: { tenantId, departmentId, status: "active" },
+    where: { tenantId, departmentId, status: "active", deletedAt: null },
     include: { workDays: true },
     orderBy: { name: "asc" },
   })
 }
 
 export function countEmployees(tenantId: string): Promise<number> {
-  return prisma.employee.count({ where: { tenantId, status: "active" } })
+  return prisma.employee.count({ where: { tenantId, status: "active", deletedAt: null } })
 }
 
 export function createEmployee(tenantId: string, data: CreateEmployeeInput): Promise<EmployeeWithWorkDays> {
@@ -81,7 +81,7 @@ async function updateEmployeeWithWorkDays(
   workDays: number[] | null,
   rest: Omit<UpdateEmployeeInput, "workDays">,
 ): Promise<{ count: number }> {
-  const emp = await prisma.employee.findFirst({ where: { id: employeeId, tenantId }, select: { id: true } })
+  const emp = await prisma.employee.findFirst({ where: { id: employeeId, tenantId, deletedAt: null }, select: { id: true } })
   if (!emp) return { count: 0 }
   const updateData = buildEmployeeUpdateData(rest)
   if (workDays === null || workDays.length === 0) {
@@ -111,7 +111,7 @@ export function updateEmployee(
     return updateEmployeeWithWorkDays(employeeId, tenantId, workDays, rest)
   }
   return prisma.employee.updateMany({
-    where: { id: employeeId, tenantId },
+    where: { id: employeeId, tenantId, deletedAt: null },
     data: {
       ...(data.departmentId !== undefined && { departmentId: data.departmentId }),
       ...(data.name !== undefined && { name: data.name }),
@@ -127,13 +127,20 @@ export function updateEmployee(
 
 export function deactivateEmployee(tenantId: string, employeeId: string): Promise<{ count: number }> {
   return prisma.employee.updateMany({
-    where: { id: employeeId, tenantId },
+    where: { id: employeeId, tenantId, deletedAt: null },
     data: { status: "inactive" },
   })
 }
 
 export function countEmployeeConsentRecords(tenantId: string, employeeId: string): Promise<number> {
   return prisma.employeeConsent.count({ where: { tenantId, employeeId } })
+}
+
+export function softDeleteEmployee(tenantId: string, employeeId: string): Promise<{ count: number }> {
+  return prisma.employee.updateMany({
+    where: { id: employeeId, tenantId, deletedAt: null },
+    data: { deletedAt: new Date() },
+  })
 }
 
 export async function hardDeleteEmployee(tenantId: string, employeeId: string): Promise<void> {
@@ -150,6 +157,7 @@ export async function reactivateAllTenantsDueEmployees(): Promise<{ reactivated:
     where: {
       status: "paused",
       pauseEndAt: { lte: today },
+      deletedAt: null,
     },
     data: {
       status: "active",
@@ -173,7 +181,7 @@ export async function findEmployeesForListingPage(
   skip: number,
   take: number,
 ): Promise<{ employees: EmployeeWithDepartment[]; total: number }> {
-  const where: Prisma.EmployeeWhereInput = { tenantId }
+  const where: Prisma.EmployeeWhereInput = { tenantId, deletedAt: null }
 
   if (filters.q !== undefined && filters.q.length > 0) {
     where.name = { contains: filters.q, mode: "insensitive" }

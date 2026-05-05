@@ -354,7 +354,7 @@ export function findAllTenantsPendingHealthSurveyDispatches(): Promise<
           department: {
             include: {
               workDays: true,
-              employees: { where: { status: "active" }, include: { workDays: true } },
+              employees: { where: { status: "active", deletedAt: null }, include: { workDays: true } },
             },
           },
         },
@@ -406,10 +406,10 @@ export function deleteAllTenantsExpiredHealthSurveyTokens(): Promise<{ count: nu
 
 export function findHealthSurveyDispatchBySignedLinkToken(
   signedLinkToken: string,
-): Promise<(HealthSurveyDispatch & { healthSurveyConfiguration: HealthSurveyConfiguration & { organization: Organization } }) | null> {
+): Promise<(HealthSurveyDispatch & { healthSurveyConfiguration: HealthSurveyConfiguration & { organization: Organization; department: Department } }) | null> {
   return prisma.healthSurveyDispatch.findUnique({
     where: { signedLinkToken },
-    include: { healthSurveyConfiguration: { include: { organization: true } } },
+    include: { healthSurveyConfiguration: { include: { organization: true, department: true } } },
   })
 }
 
@@ -422,6 +422,7 @@ export function findEmployeeByPhoneOrDocument(
     where: {
       tenantId,
       status: "active",
+      deletedAt: null,
       OR: [
         { phone: { endsWith: digitsOnly } },
         { phone: identifier.trim() },
@@ -486,6 +487,17 @@ export async function createHealthSurveyTokens(tokens: CreateHealthSurveyTokenIn
   await prisma.healthSurveyResponseToken.createMany({ data: tokens })
 }
 
+export async function refreshHealthSurveyTokenWorkHours(
+  tokenId: string,
+  workStartTime: string,
+  workEndTime: string,
+): Promise<void> {
+  await prisma.healthSurveyResponseToken.update({
+    where: { id: tokenId },
+    data: { workStartTime, workEndTime },
+  })
+}
+
 export async function markHealthSurveyDispatchSent(tenantId: string, dispatchId: string, totalRecipients: number): Promise<void> {
   await prisma.healthSurveyDispatch.updateMany({
     where: { id: dispatchId, tenantId },
@@ -548,7 +560,7 @@ export async function findAllTenantsActiveHealthSurveyConfigsForAutoDispatch(): 
       department: {
         include: {
           workDays: true,
-          employees: { where: { status: "active" }, include: { workDays: true } },
+          employees: { where: { status: "active", deletedAt: null }, include: { workDays: true } },
         },
       },
       dispatches: {

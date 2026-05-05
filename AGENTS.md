@@ -822,7 +822,7 @@ Dias de trabalho do departamento em `department_work_days` (join table — ver a
 | tenant_id | uuid | NOT NULL |
 | employee_id | uuid | NOT NULL, FK → employees.id |
 | consent_term_version_id | uuid | NOT NULL, FK → consent_term_versions.id |
-| event | varchar(20) | `'accepted'` \| `'refused'` \| `'revoked'` \| `'opt_out'` \| `'invited'` (legado — não criado pelo fluxo atual) |
+| event | varchar(20) | `'accepted'` \| `'refused'` \| `'revoked'` \| `'opted_out'` \| `'invited'` (legado — não criado pelo fluxo atual) |
 | source | varchar(20) | `'message_link'` \| `'health_survey_form'` \| `'system'` |
 | document_hash | varchar(255) | SHA-256 do documento (ex: CPF) — apenas no evento `accepted` |
 | token | varchar(255) | UNIQUE |
@@ -2565,7 +2565,7 @@ return (
 | `accepted` | `message_link` | Aceitou inline na Consent Gate — hash do documento salvo |
 | `refused` | `message_link` | Recusou explicitamente na Consent Gate |
 | `revoked` | `message_link` | Revogou aceite anterior |
-| `opt_out` | `health_survey_form` | Pediu não-participação dentro do formulário |
+| `opted_out` | `health_survey_form` | Pediu não-participação dentro do formulário |
 | `invited` | `system` | **Legado** — evento criado pelo fluxo anterior de convite separado. Não gerado pelo fluxo atual. Mantido no tipo para compatibilidade com alertas `consent_expired` existentes. |
 
 ### Estado atual do colaborador
@@ -2582,7 +2582,7 @@ async getCurrentConsent(
   })
 }
 
-// Um colaborador pode ser re-convidado após opt_out ou refused.
+// Um colaborador pode ser re-convidado após opted_out ou refused.
 // Basta que o RH o reative — na próxima pesquisa disparada, receberá o link e verá a Consent Gate novamente.
 ```
 
@@ -2610,7 +2610,7 @@ Colaborador abre formulário
              4. INSERT employee_consents {
                   tenant_id, employee_id,
                   consent_term_version_id,
-                  event: 'opt_out',
+                  event: 'opted_out',
                   source: 'health_survey_form',
                   created_at: now()
                 }
@@ -2618,7 +2618,7 @@ Colaborador abre formulário
              6. Retorna <OptOutConfirmedPage />
 ```
 
-> Após o opt-out, o job `HealthSurveyDispatcherJob` não inclui mais este colaborador em novos disparos — verifica estado atual via `getCurrentConsent`: se último evento = `opt_out` ou `refused` → pula.
+> Após o opt-out, o job `HealthSurveyDispatcherJob` não inclui mais este colaborador em novos disparos — verifica estado atual via `getCurrentConsent`: se último evento = `opted_out` ou `refused` → pula.
 
 ### Evidência em litígio
 
