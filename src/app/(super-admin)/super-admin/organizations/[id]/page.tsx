@@ -1,4 +1,5 @@
 import { getOrganizationFullDetail, getOrganizationAuditLogs } from "@/modules/organizations/organization.service"
+import { buildPaginationParams } from "@/libs/utils/pagination"
 import type { OrgFullDetail } from "@/modules/organizations/organization.types"
 import Link from "next/link"
 import {
@@ -242,8 +243,7 @@ export default async function OrganizationDetailPage({
 }: Props): Promise<React.ReactElement> {
   const { id } = await params
   const rawParams = await searchParams
-  const page = Math.max(1, parseInt(rawParams["page"] ?? "1", 10))
-  const pageSize = 20
+  const { page, pageSize } = buildPaginationParams(rawParams["page"], rawParams["pageSize"])
 
   const [org, auditResult] = await Promise.all([
     getOrganizationFullDetail(id),
