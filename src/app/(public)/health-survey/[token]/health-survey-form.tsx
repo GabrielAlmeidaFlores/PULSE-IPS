@@ -29,8 +29,8 @@ function getScoreButtonClass(score: number, scoreDirection: "higher_is_better" |
   if (isSelected) {
     const selected: Record<ScoreHealthLevel, string> = {
       good: "bg-status-success border-status-success text-primary-foreground scale-105 shadow-sm",
-      neutral: "bg-status-warning border-status-warning text-white scale-105 shadow-sm",
-      bad: "bg-status-danger border-status-danger text-white scale-105 shadow-sm",
+      neutral: "bg-status-warning border-status-warning text-primary-foreground scale-105 shadow-sm",
+      bad: "bg-status-danger border-status-danger text-primary-foreground scale-105 shadow-sm",
     }
     return `${base} ${selected[level]}`
   }
