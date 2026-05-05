@@ -1,19 +1,29 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import { ClipboardList } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { unlockHealthSurveyAction } from "@/app/(public)/health-survey/link/[linkToken]/actions"
+import { HealthSurveyConsentGate } from "@/app/(public)/health-survey/[token]/health-survey-consent-gate"
+
+interface ConsentGateState {
+  token: string
+  employeeName: string
+  consentTermContent: string
+}
 
 interface HealthSurveyUnlockFormProps {
   linkToken: string
 }
 
 export function HealthSurveyUnlockForm({ linkToken }: HealthSurveyUnlockFormProps): React.ReactElement {
+  const router = useRouter()
   const [identifier, setIdentifier] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [consentGateState, setConsentGateState] = useState<ConsentGateState | null>(null)
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>): void {
     e.preventDefault()
@@ -26,8 +36,33 @@ export function HealthSurveyUnlockForm({ linkToken }: HealthSurveyUnlockFormProp
       const result = await unlockHealthSurveyAction(linkToken, identifier.trim())
       if (result?.error !== undefined) {
         setError(result.error)
+        return
+      }
+      if (result?.needsConsent === true && result.consentToken !== undefined && result.employeeName !== undefined) {
+        if (result.consentTermContent === null || result.consentTermContent === undefined) {
+          setError("Os termos de participação ainda não foram configurados. Tente novamente mais tarde.")
+          return
+        }
+        setConsentGateState({
+          token: result.consentToken,
+          employeeName: result.employeeName,
+          consentTermContent: result.consentTermContent,
+        })
       }
     })
+  }
+
+  if (consentGateState !== null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted/30 py-12 px-4">
+        <HealthSurveyConsentGate
+          token={consentGateState.token}
+          employeeName={consentGateState.employeeName}
+          content={consentGateState.consentTermContent}
+          onAccepted={() => { router.push(`/health-survey/${consentGateState.token}`) }}
+        />
+      </div>
+    )
   }
 
   return (

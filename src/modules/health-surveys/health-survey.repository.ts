@@ -406,10 +406,10 @@ export function deleteAllTenantsExpiredHealthSurveyTokens(): Promise<{ count: nu
 
 export function findHealthSurveyDispatchBySignedLinkToken(
   signedLinkToken: string,
-): Promise<(HealthSurveyDispatch & { healthSurveyConfiguration: HealthSurveyConfiguration & { organization: Organization } }) | null> {
+): Promise<(HealthSurveyDispatch & { healthSurveyConfiguration: HealthSurveyConfiguration & { organization: Organization; department: Department } }) | null> {
   return prisma.healthSurveyDispatch.findUnique({
     where: { signedLinkToken },
-    include: { healthSurveyConfiguration: { include: { organization: true } } },
+    include: { healthSurveyConfiguration: { include: { organization: true, department: true } } },
   })
 }
 
@@ -484,6 +484,17 @@ export async function createHealthSurveyResponseWithItems(data: CreateHealthSurv
 
 export async function createHealthSurveyTokens(tokens: CreateHealthSurveyTokenInput[]): Promise<void> {
   await prisma.healthSurveyResponseToken.createMany({ data: tokens })
+}
+
+export async function refreshHealthSurveyTokenWorkHours(
+  tokenId: string,
+  workStartTime: string,
+  workEndTime: string,
+): Promise<void> {
+  await prisma.healthSurveyResponseToken.update({
+    where: { id: tokenId },
+    data: { workStartTime, workEndTime },
+  })
 }
 
 export async function markHealthSurveyDispatchSent(tenantId: string, dispatchId: string, totalRecipients: number): Promise<void> {
