@@ -1133,15 +1133,15 @@ Registro de todas as mensagens enviadas. Fonte dos dados de métricas do Super A
 | Coluna | Tipo | Constraints |
 |---|---|---|
 | id | uuid | PK |
-| tenant_id | uuid | FK → organizations.id — NULL para mensagens da plataforma |
-| recipient_phone | varchar(20) | NOT NULL |
-| type | varchar(30) | `'survey_dispatch'` \| `'survey_resend'` |
-| dispatch_id | uuid | FK → health_survey_dispatches.id |
-| status | varchar(20) | `'sent'` \| `'failed'` |
-| external_id | varchar(255) | — ID retornado pelo provedor |
+| tenant_id | uuid | NOT NULL, FK → organizations.id ON DELETE CASCADE |
+| employee_id | uuid | NULL — ID do colaborador destinatário (sem vínculo obrigatório para preservar o anonimato) |
+| type | varchar(30) | NOT NULL — `'survey_dispatch'` \| `'survey_resend'` |
+| provider | varchar(50) | NOT NULL — nome do provedor utilizado (ex: `'whatsapp_cloud'`, `'twilio_message'`, `'console'`) |
+| external_id | varchar(255) | ID retornado pelo provedor |
+| status | varchar(20) | NOT NULL — `'sent'` \| `'failed'` |
 | sent_at | timestamptz | NOT NULL |
 
-**Índices:** `(tenant_id, sent_at DESC)`, `(sent_at DESC)` — para contagem global no Super Admin
+**Índices:** `(tenant_id, sent_at DESC)` — para contagem global no Super Admin
 
 #### `job_logs`
 

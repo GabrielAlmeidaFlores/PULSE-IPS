@@ -20,6 +20,27 @@ export interface UniqueQuestion {
   text: string
 }
 
+export interface ActiveDepartment {
+  id: string
+  name: string
+}
+
+export async function findOrganizationTimezone(tenantId: string): Promise<string> {
+  const org = await prisma.organization.findFirst({
+    where: { id: tenantId },
+    select: { timezone: true },
+  })
+  return org?.timezone ?? "America/Sao_Paulo"
+}
+
+export function findActiveDepartments(tenantId: string): Promise<ActiveDepartment[]> {
+  return prisma.department.findMany({
+    where: { tenantId, isActive: true },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  })
+}
+
 export function findDispatchesWithData(tenantId: string, since: Date): Promise<DispatchWithData[]> {
   return prisma.healthSurveyDispatch.findMany({
     where: {
