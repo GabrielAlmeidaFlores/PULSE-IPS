@@ -43,7 +43,7 @@ interface TickProps {
 
 function XTickLabel({ x, y, payload }: TickProps): React.ReactElement {
   return (
-    <text x={x} y={y} dy={12} textAnchor="middle" style={{ fill: CHART_TICK_FILL, fontSize: 10 }}>
+    <text x={x} y={y} dy={4} textAnchor="end" transform={`rotate(-35, ${x}, ${y})`} style={{ fill: CHART_TICK_FILL, fontSize: 10 }}>
       {String(payload?.value ?? "")}
     </text>
   )
@@ -205,7 +205,7 @@ export function DeptMultiLineChart({ data, deptNames }: MultiLineProps): React.R
     <ResponsiveContainer width="100%" height={260}>
       <LineChart data={data} margin={{ top: 8, right: 16, left: -16, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-        <XAxis dataKey="month" tick={<XTickLabel />} axisLine={false} tickLine={false} />
+        <XAxis dataKey="month" tick={<XTickLabel />} axisLine={false} tickLine={false} height={60} />
         <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tick={<YTickPct />} axisLine={false} tickLine={false} />
         <Tooltip content={<LineTooltip />} />
         <Legend wrapperStyle={{ fontSize: 11, paddingTop: 12 }} />
