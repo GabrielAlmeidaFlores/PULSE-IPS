@@ -81,7 +81,7 @@ export function HealthSurveyConsentGate({ token, employeeName, content, onAccept
           <p className="text-[10px] text-muted-foreground">
             Ao aceitar, você concorda em participar das pesquisas periódicas de forma anônima. Você pode revogar sua participação a qualquer momento.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col gap-3">
             <Button
               onClick={handleAccept}
               disabled={loading !== null}
@@ -91,9 +91,9 @@ export function HealthSurveyConsentGate({ token, employeeName, content, onAccept
             </Button>
             <Button
               onClick={handleRefuse}
-              variant="outline"
+              variant="ghost"
               disabled={loading !== null}
-              className="w-full h-11"
+              className="w-full h-10 text-muted-foreground hover:text-foreground"
             >
               {loading === "refuse" ? "Processando..." : "Não quero participar"}
             </Button>
