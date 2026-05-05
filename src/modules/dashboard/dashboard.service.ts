@@ -233,7 +233,7 @@ export async function getDashboardData(tenantId: string, selectedOrders: number[
 
   const deptNames = [...deptInfo.keys()].sort()
 
-  const deptMonthlyChart: ChartMonthPoint[] = sortedMonths.map(({ monthDate: _monthDate, monthKey }) => {
+  const deptMonthlyChart: ChartMonthPoint[] = sortedMonths.map(({ monthKey }) => {
     const point: ChartMonthPoint = { month: monthKey }
     for (const dept of deptNames) {
       const data = deptInfo.get(dept)?.monthMap.get(monthKey)
