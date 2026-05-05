@@ -8,10 +8,12 @@ import { formatInTimeZone, fromZonedTime } from "date-fns-tz"
 import { ScheduleHealthSurveyDispatchButton } from "@/app/(tenant)/health-surveys/schedule-health-survey-dispatch-button"
 import { getOrganization } from "@/modules/organizations/organization.service"
 import { HealthSurveyListFilters } from "@/app/(tenant)/health-surveys/health-survey-list-filters"
+import { CopyDispatchLinkButton } from "@/app/(tenant)/health-surveys/components/copy-dispatch-link-button"
 import { adherenceRateBarClass } from "@/libs/utils/health-index"
 import { DataTable, TablePagination } from "@/libs/design-system"
 import { PageHelp } from "@/components/page-help"
 import { CheckCircle2, XCircle, ChevronRight } from "lucide-react"
+import { env } from "@/env"
 
 interface HealthSurveysListPageProps {
   searchParams: Promise<Record<string, string | undefined>>
@@ -42,6 +44,7 @@ interface DayGroup {
   dayKey: string
   scheduledAt: Date
   anchorId: string
+  signedLinkToken: string | null
   totalRecipients: number
   totalResponses: number
   status: string
@@ -69,6 +72,7 @@ function groupDispatchesByDay(dispatches: HealthSurveyDispatchWithConfig[], time
         dayKey,
         scheduledAt: new Date(d.scheduledAt),
         anchorId: d.id,
+        signedLinkToken: d.signedLinkToken,
         totalRecipients: d.totalRecipients,
         totalResponses: d.totalResponses,
         status: d.status,
@@ -201,6 +205,7 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
               { label: "Status" },
               { label: "Respostas" },
               { label: "Adesão" },
+              { label: "Link de acesso", className: "text-center" },
               { label: "", className: "w-8" },
             ]}
             total={total}
@@ -269,6 +274,13 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
                     </Link>
+                  </td>
+                  <td className="px-3 py-3 text-center">
+                    {g.signedLinkToken !== null && (
+                      <CopyDispatchLinkButton
+                        signedLink={`${env.NEXT_PUBLIC_APP_URL}/health-survey/link/${g.signedLinkToken}`}
+                      />
+                    )}
                   </td>
                   <td className="px-3 py-3 text-right">
                     <Link href={`/health-surveys/${g.anchorId}`} className="block">
