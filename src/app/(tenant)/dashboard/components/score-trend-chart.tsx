@@ -49,7 +49,7 @@ interface TickProps {
 
 function XTick({ x, y, payload }: TickProps): React.ReactElement {
   return (
-    <text x={x} y={y} dy={12} textAnchor="middle" style={{ fill: "var(--muted-foreground)", fontSize: 11 }}>
+    <text x={x} y={y} dy={4} textAnchor="end" transform={`rotate(-35, ${x}, ${y})`} style={{ fill: "var(--muted-foreground)", fontSize: 11 }}>
       {String(payload?.value ?? "")}
     </text>
   )
@@ -77,7 +77,7 @@ export function ScoreTrendChart({ data }: Props): React.ReactElement {
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-        <XAxis dataKey="month" tick={<XTick />} axisLine={false} tickLine={false} />
+        <XAxis dataKey="month" tick={<XTick />} axisLine={false} tickLine={false} height={60} />
         <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tick={<YTick />} axisLine={false} tickLine={false} />
         <ReferenceLine y={37} stroke="var(--status-warning)" strokeDasharray="4 4" strokeOpacity={0.6} />
         <ReferenceLine y={62} stroke="var(--status-success)" strokeDasharray="4 4" strokeOpacity={0.4} />

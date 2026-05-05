@@ -74,7 +74,7 @@ function normalizeScore(score: number, scoreDirection: string): number {
 
 function monthLabel(date: Date, timezone: string): string {
   const zonedDate = toZonedTime(date, timezone)
-  return format(startOfMonth(zonedDate), "MMM/yy", { locale: ptBR })
+  return format(startOfMonth(zonedDate), "MMMM 'de' yyyy", { locale: ptBR })
 }
 
 interface MonthAgg {
