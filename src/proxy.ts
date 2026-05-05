@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { jwtVerify } from "jose"
 import { env } from "@/env"
+import { extractClientIp } from "@/libs/utils/client-ip"
 
 const SUPER_ADMIN_LOGIN_PATH = "/super-admin/login"
 
@@ -65,11 +66,7 @@ function sanitizeHeaders(headers: Headers): Record<string, string> {
 }
 
 function getClientIp(request: NextRequest): string | undefined {
-  return (
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    request.headers.get("x-real-ip") ??
-    undefined
-  )
+  return extractClientIp(request.headers)
 }
 
 function shouldSkipLog(pathname: string): boolean {

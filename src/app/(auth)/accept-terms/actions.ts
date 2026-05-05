@@ -8,6 +8,7 @@ import type { ActionResult } from "@/libs/utils/action-result"
 import { getSession, destroySession } from "@/modules/auth/session"
 import { acceptTerms } from "@/modules/terms/terms.service"
 import { getOrgUserById } from "@/modules/auth/auth.service"
+import { extractClientIp } from "@/libs/utils/client-ip"
 
 const termsVersionIdSchema = z.string().uuid()
 
@@ -26,10 +27,7 @@ export async function acceptTermsAction(termsVersionId: string): Promise<ActionR
     }
 
     const headersList = await headers()
-    const ip =
-      headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-      headersList.get("x-real-ip") ??
-      "unknown"
+    const ip = extractClientIp(headersList) ?? "unknown"
     const userAgent = headersList.get("user-agent") ?? "unknown"
 
     await acceptTerms({
