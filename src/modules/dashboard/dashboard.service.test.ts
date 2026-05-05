@@ -12,6 +12,8 @@ import {
   countActiveEmployees,
   countTotalResponses,
   countActiveAlerts,
+  findActiveDepartments,
+  findOrganizationTimezone,
   type DispatchWithData,
 } from "@/modules/dashboard/dashboard.repository"
 
@@ -24,31 +26,77 @@ const mockFindUniqueQuestions = vi.mocked(findUniqueQuestions)
 const mockCountActiveEmployees = vi.mocked(countActiveEmployees)
 const mockCountTotalResponses = vi.mocked(countTotalResponses)
 const mockCountActiveAlerts = vi.mocked(countActiveAlerts)
+const mockFindActiveDepartments = vi.mocked(findActiveDepartments)
+const mockFindOrganizationTimezone = vi.mocked(findOrganizationTimezone)
 
 const TENANT_ID = "tenant-1"
 const DEPT_ID = "dept-1"
 const DEPT_NAME = "Engenharia"
 
+const BASE_DATE = new Date("2026-01-01T12:00:00Z")
+
+const DEPT_FIXTURE = {
+  id: DEPT_ID,
+  tenantId: TENANT_ID,
+  name: DEPT_NAME,
+  isActive: true,
+  workStartTime: "09:00",
+  workEndTime: "18:00",
+  createdAt: BASE_DATE,
+  updatedAt: BASE_DATE,
+}
+
+const CONFIG_FIXTURE = {
+  id: "config-1",
+  tenantId: TENANT_ID,
+  departmentId: DEPT_ID,
+  frequency: "weekly",
+  workStartTime: "09:00",
+  workEndTime: "18:00",
+  isActive: true,
+  createdAt: BASE_DATE,
+  updatedAt: BASE_DATE,
+  department: DEPT_FIXTURE,
+}
+
+function makeResponse(dispatchId: string, index: number): DispatchWithData["responses"][number] {
+  return {
+    id: `response-${index}`,
+    tenantId: TENANT_ID,
+    dispatchId,
+    createdAt: BASE_DATE,
+    items: [
+      {
+        id: `item-${index}`,
+        healthSurveyResponseId: `response-${index}`,
+        questionId: "q-1",
+        score: 4,
+        question: { text: "Estresse", order: 1, scoreDirection: "lower_is_better" },
+      },
+    ],
+  }
+}
+
 function makeDispatch(daysAgo: number, responseCount: number): DispatchWithData {
   const dispatchedAt = new Date()
   dispatchedAt.setDate(dispatchedAt.getDate() - daysAgo)
-
-  const responses = Array.from({ length: responseCount }, () => ({
-    items: [
-      { questionId: "q-1", score: 4, question: { text: "Estresse", order: 1, scoreDirection: "lower_is_better" } },
-    ],
-  }))
+  const dispatchId = `dispatch-${daysAgo}`
 
   return {
-    id: `dispatch-${daysAgo}`,
+    id: dispatchId,
+    tenantId: TENANT_ID,
+    healthSurveyConfigurationId: "config-1",
+    scheduledAt: dispatchedAt,
     dispatchedAt,
+    adherenceCheckedAt: null,
+    status: "sent",
     totalRecipients: 10,
-    responses,
-    healthSurveyConfiguration: {
-      department: { id: DEPT_ID, name: DEPT_NAME },
-      questions: [{ id: "q-1", text: "Estresse", order: 1, scoreDirection: "lower_is_better" }],
-    },
-  } as unknown as DispatchWithData
+    totalResponses: responseCount,
+    signedLinkToken: null,
+    createdAt: dispatchedAt,
+    healthSurveyConfiguration: CONFIG_FIXTURE,
+    responses: Array.from({ length: responseCount }, (_, i) => makeResponse(dispatchId, i)),
+  }
 }
 
 beforeEach(() => {
@@ -60,6 +108,8 @@ beforeEach(() => {
   mockCountActiveEmployees.mockResolvedValue(0)
   mockCountTotalResponses.mockResolvedValue(0)
   mockCountActiveAlerts.mockResolvedValue(0)
+  mockFindActiveDepartments.mockResolvedValue([])
+  mockFindOrganizationTimezone.mockResolvedValue("America/Sao_Paulo")
 })
 
 describe("getDashboardData — KPIs", () => {
@@ -114,6 +164,7 @@ describe("getDashboardData — gráficos", () => {
 
   it("constrói deptCards para cada setor presente nos dispatches", async () => {
     mockFindDispatchesWithData.mockResolvedValue([makeDispatch(5, 6)])
+    mockFindActiveDepartments.mockResolvedValue([{ id: DEPT_ID, name: DEPT_NAME }])
 
     const result = await getDashboardData(TENANT_ID)
 
@@ -123,6 +174,7 @@ describe("getDashboardData — gráficos", () => {
 
   it("retorna trend stable quando só há um mês de dados", async () => {
     mockFindDispatchesWithData.mockResolvedValue([makeDispatch(10, 6)])
+    mockFindActiveDepartments.mockResolvedValue([{ id: DEPT_ID, name: DEPT_NAME }])
 
     const result = await getDashboardData(TENANT_ID)
 
@@ -201,27 +253,68 @@ describe("getAvailableQuestions", () => {
 
 describe("getDashboardData — trend down", () => {
   it("retorna trend 'down' quando avg do mês atual é menor que avg do mês anterior", async () => {
+    const prevDispatchedAt = new Date()
+    prevDispatchedAt.setDate(prevDispatchedAt.getDate() - 35)
+
     const prevMonthDispatch: DispatchWithData = {
       id: "prev-month",
-      dispatchedAt: (() => { const d = new Date(); d.setDate(d.getDate() - 35); return d })(),
+      tenantId: TENANT_ID,
+      healthSurveyConfigurationId: "config-1",
+      scheduledAt: prevDispatchedAt,
+      dispatchedAt: prevDispatchedAt,
+      adherenceCheckedAt: null,
+      status: "sent",
       totalRecipients: 10,
-      responses: Array.from({ length: 6 }, () => ({
+      totalResponses: 6,
+      signedLinkToken: null,
+      createdAt: prevDispatchedAt,
+      healthSurveyConfiguration: CONFIG_FIXTURE,
+      responses: Array.from({ length: 6 }, (_, i) => ({
+        id: `prev-response-${i}`,
+        tenantId: TENANT_ID,
+        dispatchId: "prev-month",
+        createdAt: prevDispatchedAt,
         items: [
-          { questionId: "q-1", score: 1, question: { text: "Estresse", order: 1, scoreDirection: "lower_is_better" } },
+          {
+            id: `prev-item-${i}`,
+            healthSurveyResponseId: `prev-response-${i}`,
+            questionId: "q-1",
+            score: 1,
+            question: { text: "Estresse", order: 1, scoreDirection: "lower_is_better" },
+          },
         ],
       })),
-      healthSurveyConfiguration: {
-        department: { id: DEPT_ID, name: DEPT_NAME },
-        questions: [{ id: "q-1", text: "Estresse", order: 1, scoreDirection: "lower_is_better" }],
-      },
-    } as unknown as DispatchWithData
+    }
 
     mockFindDispatchesWithData.mockResolvedValue([makeDispatch(5, 6), prevMonthDispatch])
+    mockFindActiveDepartments.mockResolvedValue([{ id: DEPT_ID, name: DEPT_NAME }])
 
     const result = await getDashboardData(TENANT_ID)
 
     expect(result.deptCards[0]?.trend).toBe("down")
     expect(result.deptCards[0]?.prevAvg).not.toBeNull()
     expect(result.deptCards[0]?.trendDelta).not.toBe(0)
+  })
+})
+
+describe("getDashboardData — reconciliação de departamentos", () => {
+  it("inclui departamento ativo sem dispatches com hasData=false", async () => {
+    mockFindDispatchesWithData.mockResolvedValue([])
+    mockFindActiveDepartments.mockResolvedValue([{ id: "dept-novo", name: "Laboratório de Teste" }])
+
+    const result = await getDashboardData(TENANT_ID)
+
+    expect(result.deptCards).toHaveLength(1)
+    expect(result.deptCards[0]?.deptId).toBe("dept-novo")
+    expect(result.deptCards[0]?.hasData).toBe(false)
+  })
+
+  it("exclui departamento inativo que possui dispatches históricos", async () => {
+    mockFindDispatchesWithData.mockResolvedValue([makeDispatch(5, 6)])
+    mockFindActiveDepartments.mockResolvedValue([])
+
+    const result = await getDashboardData(TENANT_ID)
+
+    expect(result.deptCards).toHaveLength(0)
   })
 })

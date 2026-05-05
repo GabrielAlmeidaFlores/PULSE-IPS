@@ -1,4 +1,6 @@
 import { format, subMonths, subDays, startOfMonth } from "date-fns"
+import { ptBR } from "date-fns/locale"
+import { toZonedTime } from "date-fns-tz"
 import { MINIMUM_RESPONDENTS_FOR_DISPLAY } from "@/libs/utils/anonymity"
 import {
   findDispatchesWithData,
@@ -8,6 +10,8 @@ import {
   countActiveEmployees,
   countTotalResponses,
   countActiveAlerts,
+  findActiveDepartments,
+  findOrganizationTimezone,
   type DispatchWithData,
   type UniqueQuestion,
   type DeptActiveAlert,
@@ -34,6 +38,7 @@ export interface DeptCard {
   prevAvg: number | null
   trend: "up" | "down" | "stable"
   trendDelta: number
+  hasData: boolean
 }
 
 export interface TrendPoint {
@@ -67,8 +72,9 @@ function normalizeScore(score: number, scoreDirection: string): number {
   return scoreDirection === "lower_is_better" ? 6 - score : score
 }
 
-function monthLabel(date: Date): string {
-  return format(startOfMonth(date), "MMM/yy")
+function monthLabel(date: Date, timezone: string): string {
+  const zonedDate = toZonedTime(date, timezone)
+  return format(startOfMonth(zonedDate), "MMM/yy", { locale: ptBR })
 }
 
 interface MonthAgg {
@@ -76,6 +82,7 @@ interface MonthAgg {
   scoreCount: number
   responseCount: number
   monthDate: Date
+  monthKey: string
 }
 
 interface DeptMonthAgg {
@@ -133,6 +140,7 @@ function processDispatches(
   dispatches: DispatchWithData[],
   thirtyDaysAgo: Date,
   selectedOrders: number[],
+  timezone: string,
 ): DispatchProcessResult {
   const filterActive = selectedOrders.length > 0
   const orderSet = new Set(selectedOrders)
@@ -147,8 +155,8 @@ function processDispatches(
 
     const dept = dispatch.healthSurveyConfiguration.department.name
     const deptId = dispatch.healthSurveyConfiguration.department.id
-    const key = monthLabel(dispatch.dispatchedAt)
-    const monthDate = startOfMonth(dispatch.dispatchedAt)
+    const key = monthLabel(dispatch.dispatchedAt, timezone)
+    const monthDate = startOfMonth(toZonedTime(dispatch.dispatchedAt, timezone))
     const isRecent = dispatch.dispatchedAt >= thirtyDaysAgo
 
     const info = deptInfo.get(dept) ?? { deptId, monthMap: new Map<string, DeptMonthAgg>(), adherenceResponses: 0, adherenceRecipients: 0 }
@@ -156,7 +164,7 @@ function processDispatches(
     info.adherenceRecipients += dispatch.totalRecipients
     deptInfo.set(dept, info)
 
-    const overall = overallByMonth.get(key) ?? { totalScore: 0, scoreCount: 0, responseCount: 0, monthDate }
+    const overall = overallByMonth.get(key) ?? { totalScore: 0, scoreCount: 0, responseCount: 0, monthDate, monthKey: key }
     overall.responseCount += dispatch.responses.length
 
     for (const response of dispatch.responses) {
@@ -178,14 +186,31 @@ export async function getDashboardData(tenantId: string, selectedOrders: number[
   const sixMonthsAgo = subMonths(new Date(), 6)
   const thirtyDaysAgo = subDays(new Date(), 30)
 
-  const [dispatches, totalEmployees, totalResponses, activeAlerts] = await Promise.all([
+  const [dispatches, totalEmployees, totalResponses, activeAlerts, activeDepts, timezone] = await Promise.all([
     findDispatchesWithData(tenantId, sixMonthsAgo),
     countActiveEmployees(tenantId),
     countTotalResponses(tenantId),
     countActiveAlerts(tenantId),
+    findActiveDepartments(tenantId),
+    findOrganizationTimezone(tenantId),
   ])
 
-  const { overallByMonth, deptInfo, recentScores, recentResponseCount } = processDispatches(dispatches, thirtyDaysAgo, selectedOrders)
+  const { overallByMonth, deptInfo, recentScores, recentResponseCount } = processDispatches(dispatches, thirtyDaysAgo, selectedOrders, timezone)
+
+  const activeDeptIds = new Set(activeDepts.map((d) => d.id))
+
+  for (const [name, info] of deptInfo.entries()) {
+    if (!activeDeptIds.has(info.deptId)) {
+      deptInfo.delete(name)
+    }
+  }
+
+  for (const dept of activeDepts) {
+    const alreadyPresent = [...deptInfo.values()].some((info) => info.deptId === dept.id)
+    if (!alreadyPresent) {
+      deptInfo.set(dept.name, { deptId: dept.id, monthMap: new Map(), adherenceResponses: 0, adherenceRecipients: 0 })
+    }
+  }
 
   const rawAvg =
     recentResponseCount >= MINIMUM_RESPONDENTS_FOR_DISPLAY
@@ -201,18 +226,17 @@ export async function getDashboardData(tenantId: string, selectedOrders: number[
   )
 
   const overallTrend: TrendPoint[] = sortedMonths.map((m) => ({
-    month: monthLabel(m.monthDate),
+    month: m.monthKey,
     avg: m.responseCount >= MINIMUM_RESPONDENTS_FOR_DISPLAY ? toHealthIndex(roundTwo(m.totalScore / m.scoreCount)) : 0,
     responses: m.responseCount,
   }))
 
   const deptNames = [...deptInfo.keys()].sort()
 
-  const deptMonthlyChart: ChartMonthPoint[] = sortedMonths.map(({ monthDate }) => {
-    const key = monthLabel(monthDate)
-    const point: ChartMonthPoint = { month: key }
+  const deptMonthlyChart: ChartMonthPoint[] = sortedMonths.map(({ monthKey }) => {
+    const point: ChartMonthPoint = { month: monthKey }
     for (const dept of deptNames) {
-      const data = deptInfo.get(dept)?.monthMap.get(key)
+      const data = deptInfo.get(dept)?.monthMap.get(monthKey)
       if (data && data.responseCount >= MINIMUM_RESPONDENTS_FOR_DISPLAY && data.scoreCount > 0) {
         point[dept] = toHealthIndex(roundTwo(data.totalScore / data.scoreCount))
       }
@@ -221,7 +245,7 @@ export async function getDashboardData(tenantId: string, selectedOrders: number[
   })
 
   const lastMonth = sortedMonths[sortedMonths.length - 1]
-  const latestMonthKey = lastMonth ? monthLabel(lastMonth.monthDate) : null
+  const latestMonthKey = lastMonth ? lastMonth.monthKey : null
 
   const deptComparison: BarPoint[] = latestMonthKey
     ? [...deptInfo.entries()]
@@ -279,6 +303,7 @@ export async function getDashboardData(tenantId: string, selectedOrders: number[
         prevAvg,
         trend,
         trendDelta: prevAvg !== null ? roundTwo(avg - prevAvg) : 0,
+        hasData: info.monthMap.size > 0,
       }
     })
     .sort((a, b) => b.avg - a.avg)
