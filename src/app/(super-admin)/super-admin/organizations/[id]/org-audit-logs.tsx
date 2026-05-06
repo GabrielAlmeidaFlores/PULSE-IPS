@@ -28,7 +28,7 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
   "department.updated": "Setor atualizado",
   "department.deleted": "Setor excluído",
   "health_survey.configured": "Pesquisa configurada",
-  "health_survey.dispatched": "Pesquisa disparada",
+  "health_survey.available": "Pesquisa disparada",
   "document.uploaded": "Documento enviado",
   "document.created": "Documento criado",
   "document.updated": "Documento atualizado",

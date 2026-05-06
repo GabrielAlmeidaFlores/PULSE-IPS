@@ -12,7 +12,7 @@ interface HealthSurveyListFiltersProps {
 
 const SURVEY_STATUS_OPTIONS = [
   { value: "scheduled", label: "Agendado" },
-  { value: "sent", label: "Enviado" },
+  { value: "available", label: "Disponível" },
   { value: "failed", label: "Falhou" },
   { value: "cancelled", label: "Cancelado" },
 ]

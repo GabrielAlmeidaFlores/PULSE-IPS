@@ -790,7 +790,7 @@ function DeptPage({ dept, orgName, periodLabel }: DeptPageProps): React.ReactEle
             <View style={styles.deptMetaCell}>
               <Text style={styles.deptMetaLabel}>Respostas</Text>
               <Text style={styles.deptMetaValue}>{dept.responseCount}</Text>
-              <Text style={styles.deptMetaSubValue}>de {dept.totalRecipients} enviados</Text>
+              <Text style={styles.deptMetaSubValue}>de {dept.totalRecipients} destinatários</Text>
             </View>
             <View style={styles.deptMetaCell}>
               <Text style={styles.deptMetaLabel}>Adesão</Text>

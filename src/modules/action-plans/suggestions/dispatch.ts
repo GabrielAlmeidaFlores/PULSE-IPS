@@ -15,7 +15,7 @@ export function buildDispatchSuggestion(
   const missingCount = topDispatch.totalRecipients - topDispatch.totalResponses
   const dateLabel =
     topDispatch.dispatchedAt !== null
-      ? `enviada em ${formatDateAsBrazilian(topDispatch.dispatchedAt)}`
+      ? `disponibilizada em ${formatDateAsBrazilian(topDispatch.dispatchedAt)}`
       : "pesquisa recente"
 
   return {

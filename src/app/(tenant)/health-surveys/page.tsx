@@ -22,20 +22,20 @@ interface HealthSurveysListPageProps {
 const STATUS_PRIORITY: Record<string, number> = {
   failed: 0,
   scheduled: 1,
-  sent: 2,
+  available: 2,
   cancelled: 3,
 }
 
 const STATUS_STYLE: Record<string, string> = {
   scheduled: "bg-muted text-muted-foreground border-border",
-  sent: "bg-primary/10 text-primary border-primary/20",
+  available: "bg-primary/10 text-primary border-primary/20",
   cancelled: "badge-warning",
   failed: "bg-destructive/10 text-destructive border-destructive/20",
 }
 
 const STATUS_LABELS: Record<string, string> = {
   scheduled: "Agendado",
-  sent: "Enviado",
+  available: "Disponível",
   cancelled: "Cancelado",
   failed: "Falhou",
 }
@@ -135,7 +135,7 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
                   <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Status de um disparo</p>
                   <ul className="text-[12px] text-foreground leading-relaxed space-y-1 list-none">
                     <li>🕐 <strong>Agendado</strong> — aguardando o horário de envio</li>
-                    <li>✅ <strong>Enviado</strong> — mensagens disparadas; respostas sendo coletadas</li>
+                    <li>✅ <strong>Disponível</strong> — pesquisa liberada; respostas sendo coletadas</li>
                     <li>❌ <strong>Falhou</strong> — erro no envio; verifique os alertas</li>
                   </ul>
                 </div>

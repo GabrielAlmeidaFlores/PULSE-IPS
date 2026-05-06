@@ -51,7 +51,7 @@ const validTokenRecord = {
   createdAt: new Date(),
   dispatch: {
     id: DISPATCH_ID,
-    status: "sent",
+    status: "available",
     healthSurveyConfiguration: {
       organization: { timezone: "America/Sao_Paulo" },
       questions: [

@@ -553,7 +553,7 @@ async function main(): Promise<void> {
         scheduledAt: dispatchDate,
         dispatchedAt: dispatchDate,
         adherenceCheckedAt: addDays(dispatchDate, 2),
-        status: "sent",
+        status: "available",
         totalRecipients: empIds.length,
         totalResponses: respondents.length,
       })

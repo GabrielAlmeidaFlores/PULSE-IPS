@@ -7,7 +7,7 @@
 > 📝 **MANUTENÇÃO ATIVA DESTE DOCUMENTO — Obrigatório:** Sempre que um agente de IA implementar um padrão novo, uma boa prática que não estava documentada, uma decisão arquitetural, ou qualquer convenção que surgiu organicamente do código, **ele deve atualizar este AGENTS.md imediatamente**, na mesma sessão de trabalho, sem precisar de instrução explícita do desenvolvedor. Este documento deve sempre refletir o estado real do código. Se você implementou algo e não está descrito aqui — adicione. Se uma regra existente ficou desatualizada — corrija. O AGENTS.md é um documento vivo.
 
 **Versão da stack implementada:** Next.js 16 (App Router) + PostgreSQL + Prisma v7 + TypeScript strict  
-**Última revisão:** Abril de 2026
+**Última revisão:** Maio de 2026
 
 ---
 
@@ -234,6 +234,15 @@ Todo o projeto usa `"strict": true` mais flags adicionais (ver seção 9). `any`
 | `twilio` | SDK Twilio (mensagem) |
 | `bullmq` + `ioredis` | Fila de jobs com Redis |
 | `@base-ui/react` | Componentes primitivos de UI (Select usa Base UI, não Radix) |
+| `pino` + `pino-pretty` | Logger estruturado para a aplicação principal (`src/libs/logger.ts`) |
+| `@aws-sdk/client-s3` + `@aws-sdk/s3-request-presigner` | Storage S3 (adapter `src/libs/integrations/storage/s3.adapter.ts`) |
+| `@tiptap/react` + extensões | Editor de rich text (starter-kit, placeholder, underline) |
+| `@tanstack/react-table` | Tabelas com ordenação, filtros e paginação no lado cliente |
+| `recharts` | Gráficos e visualização de dados (usado no dashboard) |
+| `sanitize-html` | Sanitização HTML segura (complementa `src/libs/utils/sanitize.ts`) |
+| `imask` + `react-imask` | Máscaras de input (telefone, CNPJ, etc.) |
+| `exceljs` | Geração de arquivos Excel (exportação de dados) |
+| `cmdk` | Componente de command menu (palette de comandos) |
 
 ---
 
@@ -247,10 +256,13 @@ src/
 │   │   └── report/[orgSlug]/page.tsx       # Canal de relato anônimo
 │   ├── platform-terms/page.tsx             # Termos de Uso — página pública standalone (linked no footer)
 │   ├── privacy-policy/page.tsx             # Política de Privacidade — página pública standalone
-│   └── consent-terms/page.tsx             # TCLE dos Colaboradores — página pública standalone
+│   ├── consent-terms/page.tsx             # TCLE dos Colaboradores — página pública standalone
+│   ├── learn-more/page.tsx                 # Landing page de apresentação do produto
+│   └── data-deletion/page.tsx             # Instruções de exclusão de dados (exigência de plataformas de mensagem)
 │   │
 │   ├── (auth)/                             # Rotas de autenticação
 │   │   ├── login/page.tsx
+│   │   ├── logout/actions.ts               # Server Action de logout do tenant
 │   │   ├── forgot-password/
 │   │   │   ├── page.tsx
 │   │   │   ├── forgot-password-form.tsx    # Client Component
@@ -259,6 +271,11 @@ src/
 │   │   │   ├── page.tsx
 │   │   │   ├── reset-password-form.tsx     # Client Component
 │   │   │   └── actions.ts                  # Server Action
+│   │   ├── checkout/
+│   │   │   ├── page.tsx                    # Checkout pós-convite (novo admin escolhe plano)
+│   │   │   ├── checkout-form.tsx           # Client Component
+│   │   │   ├── actions.ts                  # Server Action
+│   │   │   └── success/page.tsx            # Confirmação de checkout concluído
 │   │   ├── accept-terms/
 │   │   │   ├── page.tsx                    # Guard: redireciona se não há termos pendentes
 │   │   │   ├── accept-terms-form.tsx       # Client Component
@@ -324,7 +341,13 @@ src/
 │   └── api/
 │       ├── webhooks/stripe/route.ts        # POST — recebe eventos Stripe (assinado)
 │       ├── webhooks/meta-cloud/route.ts    # GET (verificação) + POST (eventos) Meta Cloud API
-│       └── jobs/[job-name]/route.ts        # Manual trigger de jobs (x-cron-secret)
+│       ├── jobs/[job-name]/route.ts        # Manual trigger de jobs (x-cron-secret)
+│       ├── auth/logout/route.ts            # GET/POST — logout via rota de API
+│       ├── health/route.ts                 # GET — health check do banco de dados
+│       ├── documents/[id]/route.ts         # GET — download/acesso a documentos
+│       ├── pgr/[id]/pdf/route.ts           # GET — geração de PDF do relatório PGR
+│       ├── internal/request-log/route.ts   # POST — recebe logs de request do instrumentation.ts
+│       └── super-admin/export/route.ts     # GET — exportação de dados (autenticado como super_admin)
 │
 ├── modules/                                # Módulos de domínio (feature-first)
 │   ├── organizations/
@@ -411,6 +434,7 @@ src/
 │
 ├── libs/
 │   ├── db/index.ts                         # Prisma client singleton (com PG adapter)
+│   ├── logger.ts                           # Logger estruturado (pino) — usado pela app principal
 │   ├── local-storage.ts                    # Utilitário SSR-safe para localStorage (ver seção 23)
 │   ├── design-system/
 │   │   ├── index.ts
@@ -429,7 +453,9 @@ src/
 │   │   │   ├── resend.adapter.ts           # ✅ Implementação atual
 │   │   │   └── console-email.adapter.ts    # Desenvolvimento local (imprime HTML completo)
 │   │   ├── storage/
-│   │   │   └── storage.interface.ts        # IStorageService
+│   │   │   ├── storage.interface.ts        # IStorageService
+│   │   │   ├── s3.adapter.ts               # ✅ Implementação S3 (AWS)
+│   │   │   └── console-storage.adapter.ts  # Desenvolvimento local
 │   │   ├── pdf/
 │   │   │   ├── pdf.interface.ts            # IPDFService — interface genérica (não usada pelo PGR)
 │   │   │   ├── pgr-pdf.adapter.tsx         # ✅ Implementação @react-pdf/renderer — gera PDF PGR
@@ -463,7 +489,10 @@ src/
 │   └── animate-in.tsx                      # Wrapper de animação de entrada via IntersectionObserver
 ├── proxy.ts                                # Next.js 16 proxy (auth + tenant resolution)
 │                                           # ⚠️ Não é middleware.ts — Next.js 16 usa proxy.ts
+├── instrumentation.ts                      # Next.js instrumentation hook — captura erros e envia para /api/internal/request-log
 ├── env.ts                                  # Variáveis de ambiente tipadas (@t3-oss/env-nextjs + Zod)
+├── lib/
+│   └── utils.ts                            # Utilitário `cn()` do shadcn/ui (classnames + tailwind-merge)
 └── workers/
     ├── job-worker.ts                       # Worker BullMQ — consome e executa todos os jobs
     └── register-schedules.ts              # Script de setup — registra schedules recorrentes no Redis
@@ -595,7 +624,9 @@ if (!canSeePgr) return
 **Regra para jobs com alerts de feature específica:**  
 Antes de criar alertas relacionados a uma funcionalidade (ex: `pgr_review_due`), o job deve verificar `hasTenantPlanFeature(tenantId, feature)`. Se o tenant não tem a feature → pular.
 
-#### `super_admin_users`
+#### `super_admins`
+
+Mapeado em banco como `super_admins`. Modelo Prisma: `SuperAdmin`.
 
 | Coluna | Tipo | Constraints |
 |---|---|---|
@@ -603,7 +634,6 @@ Antes de criar alertas relacionados a uma funcionalidade (ex: `pgr_review_due`),
 | email | varchar(255) | NOT NULL, UNIQUE |
 | password_hash | varchar(255) | NOT NULL |
 | name | varchar(255) | NOT NULL |
-| is_active | boolean | NOT NULL, default true |
 | created_at | timestamptz | NOT NULL |
 | updated_at | timestamptz | NOT NULL |
 
@@ -642,13 +672,9 @@ Registro imutável de cada aceite de termos por usuário admin de organização.
 | id | uuid | PK |
 | version | varchar(20) | NOT NULL, UNIQUE |
 | content | text | NOT NULL |
-| is_current | boolean | NOT NULL, default false |
-| published_at | timestamptz | NOT NULL |
+| content_hash | varchar(255) | NOT NULL — SHA-256 do conteúdo (prova de qual texto foi aceito) |
+| is_active | boolean | NOT NULL, default false — apenas uma versão com `is_active = true` por vez |
 | created_at | timestamptz | NOT NULL |
-
-#### `report_categories`
-
-Valores iniciais: `harassment`, `overload`, `conflict`, `physical_environment`, `other`.
 
 #### `privacy_policy_versions`
 
@@ -683,7 +709,7 @@ O tenant. `id` é o `tenant_id` de todas as demais tabelas.
 | name | varchar(255) | NOT NULL |
 | cnpj | varchar(18) | |
 | timezone | varchar(50) | NOT NULL, default `'America/Sao_Paulo'` |
-| stripe_customer_id | varchar(255) | UNIQUE |
+| external_customer_id | varchar(255) | UNIQUE — ID do customer no provedor de billing |
 | billing_status | varchar(20) | `'pending'` \| `'active'` \| `'past_due'` \| `'suspended'` \| `'cancelled'` |
 | max_employees_override | integer | NULL = usa limite do plano |
 | deletion_scheduled_at | timestamptz | NULL = sem exclusão agendada; NOT NULL = exclusão permanente pendente |
@@ -717,12 +743,12 @@ Snapshot imutável das condições do plano no momento da contratação. Altera�
 |---|---|---|
 | id | uuid | PK |
 | tenant_id | uuid | NOT NULL, FK → organizations.id |
-| plan_price_id | uuid | NOT NULL, FK → plan_prices.id |
-| stripe_subscription_id | varchar(255) | NOT NULL, UNIQUE |
+| plan_id | uuid | NOT NULL, FK → plans.id |
+| external_subscription_id | varchar(255) | NOT NULL, UNIQUE — ID da assinatura no provedor de billing |
 | status | varchar(20) | `'trialing'` \| `'active'` \| `'past_due'` \| `'unpaid'` \| `'cancelled'` |
 | current_period_start | timestamptz | NOT NULL |
 | current_period_end | timestamptz | NOT NULL |
-| cancelled_at | timestamptz | |
+| cancel_at_period_end | boolean | NOT NULL, default false — assinatura encerra ao fim do período atual |
 | snapshot_plan_name | varchar(100) | NOT NULL |
 | snapshot_max_employees | integer | NULL = ilimitado |
 | snapshot_price_in_cents | integer | NOT NULL |
@@ -738,24 +764,23 @@ Garante processamento idempotente. Antes de processar qualquer evento, verifica 
 | Coluna | Tipo | Constraints |
 |---|---|---|
 | id | uuid | PK |
+| tenant_id | uuid | FK → organizations.id — NULL para eventos não vinculados a tenant específico |
 | external_event_id | varchar(255) | NOT NULL, UNIQUE — ID do evento no provedor de billing |
 | type | varchar(100) | NOT NULL |
-| processed | boolean | NOT NULL, default false |
-| processed_at | timestamptz | |
+| processed_at | timestamptz | NULL = ainda não processado |
 | error | text | |
 | payload | jsonb | NOT NULL |
 | created_at | timestamptz | NOT NULL |
 
 #### `auth_tokens`
 
-Tokens de uso único para reset de senha e fluxos de autenticação stateless.
+Tokens de uso único para reset de senha e fluxos de autenticação stateless. Suporta apenas usuários de organização (`organization_users`).
 
 | Coluna | Tipo | Constraints |
 |---|---|---|
 | id | uuid | PK |
-| user_id | uuid | NOT NULL |
-| user_type | varchar(20) | `'org_user'` \| `'super_admin'` |
-| type | varchar(30) | `'password_reset'` \| `'email_verification'` |
+| user_id | uuid | NOT NULL, FK → organization_users.id |
+| type | varchar(30) | `'password_reset'` \| `'email_verification'` \| `'account_deletion'` |
 | token | varchar(255) | NOT NULL, UNIQUE |
 | used_at | timestamptz | |
 | expires_at | timestamptz | NOT NULL |
@@ -768,6 +793,7 @@ Tokens de uso único para reset de senha e fluxos de autenticação stateless.
 | id | uuid | PK |
 | tenant_id | uuid | NOT NULL, FK → organizations.id |
 | email | varchar(255) | NOT NULL |
+| role | varchar(20) | NOT NULL — `'admin'` \| `'rh'` |
 | token | varchar(255) | NOT NULL, UNIQUE |
 | expires_at | timestamptz | NOT NULL |
 | accepted_at | timestamptz | |
@@ -876,9 +902,9 @@ Dias de trabalho configurados para uma pesquisa. Define em quais dias o schedule
 
 | Coluna | Tipo | Constraints |
 |---|---|---|
-| health_survey_configuration_id | uuid | NOT NULL, FK → health_survey_configurations.id ON DELETE CASCADE |
+| config_id | uuid | NOT NULL, FK → health_survey_configurations.id ON DELETE CASCADE |
 | day_of_week | integer | NOT NULL — 0=Dom … 6=Sáb |
-| PK | (health_survey_configuration_id, day_of_week) | |
+| PK | (config_id, day_of_week) | |
 
 #### `health_survey_questions`
 
@@ -886,12 +912,11 @@ Dias de trabalho configurados para uma pesquisa. Define em quais dias o schedule
 |---|---|---|
 | id | uuid | PK |
 | tenant_id | uuid | NOT NULL |
-| department_id | uuid | FK → departments.id — NULL = padrão da organização |
-| factor | varchar(100) | NOT NULL |
-| question_text | text | NOT NULL |
-| sort_order | integer | NOT NULL, default 0 |
+| health_survey_configuration_id | uuid | NOT NULL, FK → health_survey_configurations.id ON DELETE CASCADE |
+| text | text | NOT NULL |
+| order | integer | NOT NULL, default 0 |
+| score_direction | varchar(10) | NOT NULL — `'higher_better'` \| `'lower_better'` (afeta cálculo de score) |
 | is_active | boolean | NOT NULL, default true |
-| created_at | timestamptz | NOT NULL |
 
 #### `health_survey_dispatches`
 
@@ -899,16 +924,17 @@ Dias de trabalho configurados para uma pesquisa. Define em quais dias o schedule
 |---|---|---|
 | id | uuid | PK |
 | tenant_id | uuid | NOT NULL |
-| department_id | uuid | NOT NULL, FK → departments.id |
+| health_survey_configuration_id | uuid | NOT NULL, FK → health_survey_configurations.id |
 | scheduled_at | timestamptz | NOT NULL |
-| sent_at | timestamptz | |
-| status | varchar(20) | `'scheduled'` \| `'sent'` \| `'failed'` \| `'cancelled'` |
+| dispatched_at | timestamptz | NULL = ainda não disparado |
+| adherence_checked_at | timestamptz | NULL = ainda não verificado |
+| status | varchar(20) | `'scheduled'` \| `'available'` \| `'failed'` \| `'cancelled'` |
 | total_recipients | integer | |
 | total_responses | integer | NOT NULL, default 0 |
 | signed_link_token | varchar(255) | NOT NULL, UNIQUE — token do link assinado público (`/health-survey/link/[token]`) |
 | created_at | timestamptz | NOT NULL |
 
-**Índice:** `(tenant_id, department_id, scheduled_at DESC)`
+**Índice:** `(tenant_id, health_survey_configuration_id, scheduled_at DESC)`
 
 #### `health_survey_response_tokens`
 
@@ -939,9 +965,7 @@ Após o uso, `used_at` é preenchido, mas **nenhum vínculo** é criado entre to
 |---|---|---|
 | id | uuid | PK |
 | tenant_id | uuid | NOT NULL |
-| dispatch_id | uuid | NOT NULL |
-| department_id | uuid | NOT NULL |
-| responded_at | date | NOT NULL — apenas data, sem hora (segunda camada de proteção ao anonimato) |
+| dispatch_id | uuid | NOT NULL, FK → health_survey_dispatches.id |
 | created_at | timestamptz | NOT NULL |
 
 #### `health_survey_response_items`
@@ -949,28 +973,27 @@ Após o uso, `used_at` é preenchido, mas **nenhum vínculo** é criado entre to
 | Coluna | Tipo | Constraints |
 |---|---|---|
 | id | uuid | PK |
-| tenant_id | uuid | NOT NULL |
-| response_id | uuid | NOT NULL, FK → health_survey_responses.id ON DELETE CASCADE |
+| health_survey_response_id | uuid | NOT NULL, FK → health_survey_responses.id ON DELETE CASCADE |
 | question_id | uuid | NOT NULL, FK → health_survey_questions.id |
 | score | smallint | NOT NULL, CHECK (score BETWEEN 1 AND 5) |
 
 #### `anonymous_reports`
 
+Relatos anônimos enviados pelo canal público. O campo `category` é texto livre (não FK), não existe tabela `report_categories`.
+
 | Coluna | Tipo | Constraints |
 |---|---|---|
 | id | uuid | PK |
 | tenant_id | uuid | NOT NULL |
-| department_id | uuid | NOT NULL |
-| category_id | uuid | NOT NULL, FK → report_categories.id |
-| description | text | NOT NULL |
-| is_crisis | boolean | NOT NULL, default false |
-| status | varchar(20) | `'open'` \| `'analyzing'` \| `'resolved'` \| `'archived'` |
-| linked_document_id | uuid | FK → documents.id — vínculo manual com documento |
-| deleted_at | timestamptz | |
+| org_slug | varchar(100) | NOT NULL — slug da organização no momento do relato |
+| content | text | NOT NULL |
+| category | varchar(100) | NULL — categoria livre informada pelo colaborador |
+| status | varchar(20) | NOT NULL, default `'open'` — `'open'` \| `'resolved'` |
+| resolved_at | timestamptz | |
 | created_at | timestamptz | NOT NULL |
 | updated_at | timestamptz | NOT NULL |
 
-**Índice:** `(tenant_id, is_crisis, status)` — para consulta de alertas de crise ativos
+**Índice:** `(tenant_id, status)`
 
 #### `action_plans`
 
@@ -978,14 +1001,14 @@ Após o uso, `used_at` é preenchido, mas **nenhum vínculo** é criado entre to
 |---|---|---|
 | id | uuid | PK |
 | tenant_id | uuid | NOT NULL |
-| department_id | uuid | NOT NULL |
 | title | varchar(255) | NOT NULL |
-| origin | varchar(30) | NOT NULL — `'metric_alert'` \| `'anonymous_report'` \| `'periodic_review'` |
 | description | text | NOT NULL |
 | status | varchar(20) | `'open'` \| `'in_progress'` \| `'completed'` |
+| priority | varchar(20) | NOT NULL, default `'medium'` — `'low'` \| `'medium'` \| `'high'` |
 | alert_id | uuid | FK → alerts.id |
 | report_id | uuid | FK → anonymous_reports.id |
-| deleted_at | timestamptz | |
+| due_date | timestamptz | |
+| completed_at | timestamptz | |
 | created_at | timestamptz | NOT NULL |
 | updated_at | timestamptz | NOT NULL |
 
@@ -996,12 +1019,11 @@ Após o uso, `used_at` é preenchido, mas **nenhum vínculo** é criado entre to
 | id | uuid | PK |
 | tenant_id | uuid | NOT NULL |
 | plan_id | uuid | NOT NULL, FK → action_plans.id ON DELETE CASCADE |
-| description | text | NOT NULL |
-| responsible | varchar(255) | NOT NULL |
-| due_date | date | NOT NULL |
-| status | varchar(20) | `'pending'` \| `'in_progress'` \| `'completed'` |
+| title | varchar(255) | NOT NULL |
+| assignee_id | uuid | FK → organization_users.id — responsável pela tarefa |
+| due_date | timestamptz | |
+| completed_at | timestamptz | |
 | created_at | timestamptz | NOT NULL |
-| updated_at | timestamptz | NOT NULL |
 
 #### `action_plan_suggestions`
 
@@ -1042,30 +1064,24 @@ Tarefas sugeridas vinculadas a uma `action_plan_suggestion`. Copiadas para `acti
 |---|---|---|
 | id | uuid | PK |
 | tenant_id | uuid | NOT NULL |
-| department_id | uuid | NOT NULL |
 | title | varchar(255) | NOT NULL |
-| description | text | NOT NULL |
-| storage_key | varchar(500) | NOT NULL — chave no bucket de storage |
-| reference_date | date | NOT NULL |
-| created_by | uuid | NOT NULL, FK → organization_users.id |
-| deleted_at | timestamptz | |
+| type | varchar(50) | NOT NULL — categoria do documento (ex: `'pgr'`, `'pcmso'`, `'laudo'`) |
+| file_url | varchar(500) | NOT NULL — URL pública ou assinada do arquivo |
+| is_active | boolean | NOT NULL, default true |
 | created_at | timestamptz | NOT NULL |
 | updated_at | timestamptz | NOT NULL |
 
 #### `document_versions`
 
-Preservação de versões anteriores de documentos editados pelo Admin. Toda edição cria um registro aqui antes de aplicar as mudanças. O `audit_log` referencia `document_versions.id` para ações `'document.edited'`.
+Preservação de versões anteriores de documentos. Cada upload cria uma versão nova.
 
 | Coluna | Tipo | Constraints |
 |---|---|---|
 | id | uuid | PK |
-| tenant_id | uuid | NOT NULL |
 | document_id | uuid | NOT NULL, FK → documents.id ON DELETE CASCADE |
-| version_number | integer | NOT NULL |
-| title | varchar(255) | NOT NULL |
-| description | text | NOT NULL |
-| storage_key | varchar(500) | NOT NULL |
-| edited_by | uuid | NOT NULL, FK → organization_users.id |
+| version | integer | NOT NULL |
+| file_url | varchar(500) | NOT NULL |
+| uploaded_by_id | uuid | NOT NULL, FK → organization_users.id |
 | created_at | timestamptz | NOT NULL |
 
 #### `pgr_reviews`
@@ -1074,11 +1090,13 @@ Preservação de versões anteriores de documentos editados pelo Admin. Toda edi
 |---|---|---|
 | id | uuid | PK |
 | tenant_id | uuid | NOT NULL |
-| reviewed_at | date | NOT NULL |
-| next_review_at | date | NOT NULL |
-| notes | text | |
-| registered_by | uuid | NOT NULL, FK → organization_users.id |
+| period | varchar(20) | NOT NULL — período de referência da revisão (ex: `'2024-Q1'`) |
+| file_url | varchar(500) | — URL do documento PGR gerado |
+| status | varchar(20) | NOT NULL, default `'pending'` — `'pending'` \| `'completed'` |
+| reviewed_at | timestamptz | NULL = não revisado ainda |
+| next_review_at | timestamptz | NULL = não agendado |
 | created_at | timestamptz | NOT NULL |
+| updated_at | timestamptz | NOT NULL |
 
 #### `alerts`
 
@@ -1086,19 +1104,16 @@ Preservação de versões anteriores de documentos editados pelo Admin. Toda edi
 |---|---|---|
 | id | uuid | PK |
 | tenant_id | uuid | NOT NULL |
-| department_id | uuid | NOT NULL |
+| department_id | uuid | NULL, FK → departments.id |
 | type | varchar(30) | `'score_drop'` \| `'negative_trend'` \| `'low_adherence'` \| `'crisis_report'` \| `'pgr_review_due'` |
 | severity | varchar(10) | `'high'` \| `'medium'` \| `'low'` |
 | message | text | NOT NULL |
-| is_resolved | boolean | NOT NULL, default false |
+| is_read | boolean | NOT NULL, default false |
 | resolved_at | timestamptz | |
 | resolved_by | uuid | FK → organization_users.id |
-| linked_document_id | uuid | FK → documents.id — segunda forma de fechar o alerta |
-| dispatch_id | uuid | FK → health_survey_dispatches.id |
-| report_id | uuid | FK → anonymous_reports.id |
 | created_at | timestamptz | NOT NULL |
 
-**Índice:** `(tenant_id, is_resolved, severity)`
+**Índice:** `(tenant_id, is_read, severity)`
 
 | Tipo | Quando dispara |
 |---|---|
@@ -1115,16 +1130,15 @@ Preservação de versões anteriores de documentos editados pelo Admin. Toda edi
 | Coluna | Tipo | Constraints |
 |---|---|---|
 | id | uuid | PK |
-| tenant_id | uuid | FK → organizations.id — NULL para ações do super admin |
-| actor_id | uuid | NOT NULL |
-| actor_type | varchar(20) | `'org_user'` \| `'super_admin'` |
+| tenant_id | uuid | NOT NULL, FK → organizations.id |
+| user_id | uuid | NOT NULL, FK → organization_users.id |
 | action | varchar(100) | NOT NULL — ex: `'document.deleted'`, `'report.exported'` |
-| entity_type | varchar(100) | NOT NULL |
-| entity_id | uuid | |
+| resource | varchar(100) | NOT NULL — tipo da entidade afetada (ex: `'document'`, `'employee'`) |
+| resource_id | uuid | — ID da entidade afetada |
 | metadata | jsonb | — valores anterior/posterior, contexto adicional |
 | created_at | timestamptz | NOT NULL |
 
-**Índices:** `(tenant_id, created_at DESC)`, `(actor_id, created_at DESC)`
+**Índices:** `(tenant_id, created_at DESC)`, `(user_id, created_at DESC)`
 
 #### `message_logs`
 
@@ -1150,20 +1164,22 @@ Registro persistido de todas as execuções de jobs (completed/failed). **Append
 | Coluna | Tipo | Constraints |
 |---|---|---|
 | id | uuid | PK |
-| queue | varchar(50) | NOT NULL — `'jobs'` \| `'messages'` |
+| queue_name | varchar(50) | NOT NULL — ex: `'jobs'`, `'messages'` |
 | job_name | varchar(100) | NOT NULL — ex: `'health-survey-dispatcher'`, `'send-message'` |
 | job_id | varchar(255) | NOT NULL — ID do job no BullMQ |
 | status | varchar(20) | NOT NULL — `'completed'` \| `'failed'` |
 | duration_ms | integer | Duração da execução em ms |
 | payload | jsonb | Payload do job (input) |
 | result | jsonb | Resultado do job (output) |
-| error | text | Mensagem de erro (apenas `status = 'failed'`) |
-| attempts | integer | NOT NULL, default 1 |
-| started_at | timestamptz | NOT NULL |
-| finished_at | timestamptz | NOT NULL |
-| created_at | timestamptz | NOT NULL |
+| error_message | text | Mensagem de erro (apenas `status = 'failed'`) |
+| error_stack | text | Stack trace do erro (apenas `status = 'failed'`) |
+| attempt_number | integer | NOT NULL, default 1 |
+| max_attempts | integer | NOT NULL, default 1 |
+| queued_at | timestamptz | Momento em que o job entrou na fila |
+| started_at | timestamptz | Início da execução |
+| finished_at | timestamptz | Fim da execução |
 
-**Índices:** `(queue, job_name, started_at DESC)`, `(status, started_at DESC)`
+**Índices:** `(queue_name, job_name, started_at DESC)`, `(status, started_at DESC)`
 
 #### `request_logs`
 
@@ -1192,12 +1208,13 @@ Resultado por departamento gerado na revisão PGR. Normalizado para permitir que
 | Coluna | Tipo | Constraints |
 |---|---|---|
 | id | uuid | PK |
-| tenant_id | uuid | NOT NULL, FK → organizations.id |
 | pgr_review_id | uuid | NOT NULL, FK → pgr_reviews.id ON DELETE CASCADE |
 | department_id | uuid | NOT NULL, FK → departments.id |
+| department_name | varchar(255) | NOT NULL — snapshot do nome do setor no momento da revisão |
+| employee_count | integer | NOT NULL |
 | avg_score | float | NOT NULL |
 | response_count | integer | NOT NULL |
-| alert_count | integer | NOT NULL, default 0 |
+| total_recipients | integer | NOT NULL |
 | created_at | timestamptz | NOT NULL |
 
 #### `pgr_question_results`
@@ -1207,10 +1224,12 @@ Resultado por pergunta gerado na revisão PGR. Permite análise de tendência po
 | Coluna | Tipo | Constraints |
 |---|---|---|
 | id | uuid | PK |
-| tenant_id | uuid | NOT NULL, FK → organizations.id |
 | pgr_review_id | uuid | NOT NULL, FK → pgr_reviews.id ON DELETE CASCADE |
 | department_id | uuid | NOT NULL, FK → departments.id |
 | question_id | uuid | NOT NULL, FK → health_survey_questions.id |
+| question_text | text | NOT NULL — snapshot do texto da pergunta no momento da revisão |
+| question_order | integer | NOT NULL |
+| score_direction | varchar(10) | NOT NULL — `'higher_better'` \| `'lower_better'` |
 | avg_score | float | NOT NULL |
 | response_count | integer | NOT NULL |
 | created_at | timestamptz | NOT NULL |
@@ -1221,7 +1240,7 @@ Resultado por pergunta gerado na revisão PGR. Permite análise de tendência po
 
 | Grupo | Tabelas |
 |---|---|
-| **Sistêmicas** (sem tenant_id) | `plans`, `plan_prices`, `plan_features`, `super_admin_users`, `consent_term_versions`, `report_categories`, `platform_terms_versions`, `privacy_policy_versions` |
+| **Sistêmicas** (sem tenant_id) | `plans`, `plan_prices`, `plan_features`, `super_admins`, `consent_term_versions`, `platform_terms_versions`, `privacy_policy_versions` |
 | **Auth / Onboarding** | `organization_invitations`, `auth_tokens` |
 | **Billing** | `billing_webhook_events`, `subscription_features` |
 | **Termos da plataforma** | `platform_terms_versions`, `platform_terms_acceptances` |
@@ -1618,7 +1637,7 @@ O comando `yarn lint` executa o ESLint sobre todos os arquivos `**/*.ts` e `**/*
 
 | Regra | Nível | Significado prático |
 |---|---|---|
-| `no-console` | error | Proibido `console.*` — use o logger centralizado (`src/libs/utils/logger.ts`) |
+| `no-console` | error | Proibido `console.*` — use o logger centralizado (`src/libs/logger.ts` para app, `src/libs/utils/logger.ts` para workers) |
 | `no-debugger` | error | Proibido `debugger` |
 | `no-alert` | error | Proibido `alert/confirm/prompt` |
 | `no-var` | error | Use `const` ou `let` |
@@ -1692,7 +1711,7 @@ O comando `yarn lint` executa o ESLint sobre todos os arquivos `**/*.ts` e `**/*
 | Padrão de arquivo | Regras desativadas |
 |---|---|
 | `src/components/ui/**` | `explicit-function-return-type`, `no-unsafe-*`, `consistent-type-definitions` |
-| `src/workers/**`, `src/libs/integrations/**`, `src/libs/utils/logger.ts` | `no-console`, `require-await`, `explicit-function-return-type` |
+| `src/workers/**`, `src/libs/integrations/**`, `src/libs/utils/logger.ts`, `src/libs/logger.ts` | `no-console`, `require-await`, `explicit-function-return-type` |
 | `src/lib/**`, `src/libs/db/**` | `explicit-function-return-type` |
 | `**/*.test.ts`, `**/*.spec.ts` | `no-explicit-any`, `no-unsafe-*` |
 | Arquivos de config/rota/action/page/layout | `import/no-default-export` desativado |
@@ -1701,9 +1720,31 @@ O comando `yarn lint` executa o ESLint sobre todos os arquivos `**/*.ts` e `**/*
 
 ### Logger centralizado — regra obrigatória
 
-**`console.*` é proibido em todo o projeto.** O único local onde `console.log/warn/error` aparecem é dentro de `src/libs/utils/logger.ts` — que é a implementação do logger.
+**`console.*` é proibido em todo o projeto.** O único local onde `console.log/warn/error` aparecem é dentro de `src/libs/utils/logger.ts` — que é a implementação do logger de workers.
 
-#### Uso obrigatório
+#### Dois loggers, dois contextos
+
+O projeto tem **dois loggers** com responsabilidades distintas:
+
+| Logger | Arquivo | Biblioteca | Contexto de uso |
+|---|---|---|---|
+| App logger | `src/libs/logger.ts` | `pino` (JSON estruturado) | Toda a aplicação Next.js (pages, Server Actions, services) |
+| Worker logger | `src/libs/utils/logger.ts` | Custom (ANSI colorido) | Workers BullMQ, scripts CLI, processos de background |
+
+**`src/libs/logger.ts` (pino) — uso na aplicação:**
+
+```typescript
+import { logger } from "@/libs/logger"
+
+logger.info("iniciando processo")
+logger.warn("tentativa falhou, retentando...")
+logger.error({ err }, "falha crítica")
+logger.debug({ data }, "payload recebido")
+```
+
+O nível de log é controlado pela variável de ambiente `LOG_LEVEL` (padrão: `"info"`).
+
+**`src/libs/utils/logger.ts` (colorido) — uso nos workers:**
 
 ```typescript
 // Opção 1 — singleton genérico (origin: "app")
@@ -1715,14 +1756,14 @@ logger.warn("tentativa falhou, retentando...")
 logger.error("falha crítica", err.message)
 logger.debug("payload recebido", data)
 
-// Opção 2 — logger nomeado (recomendado para módulos e workers)
+// Opção 2 — logger nomeado (recomendado para workers e scripts)
 import { createLogger } from "@/libs/utils/logger"
 const logger = createLogger("health-survey-dispatcher")
 
 logger.info("verificando dispatches pendentes")
 ```
 
-#### Quando usar cada nível
+#### Quando usar cada nível (worker logger)
 
 | Nível | Método | Cor | Quando usar |
 |---|---|---|---|
@@ -1731,16 +1772,6 @@ logger.info("verificando dispatches pendentes")
 | `warn` | `logger.warn` | 🟡 Amarelo | Situação incomum mas não crítica |
 | `error` | `logger.error` | 🔴 Vermelho | Falha que precisa de atenção |
 | `debug` | `logger.debug` | ⚫ Cinza | Dados de depuração (dev only) |
-
-#### Localização
-
-```
-src/libs/utils/logger.ts
-```
-
-Exporta:
-- `createLogger(origin: string): Logger` — cria instância com origem nomeada
-- `logger` — singleton com `origin = "app"` para uso geral
 
 #### Regra de naming para `createLogger`
 
@@ -2433,7 +2464,7 @@ Admin da org → /billing → escolhe plano
   └─→ billingService.startCheckout(tenantId, planPriceId)
         ├─ Busca plan_prices.external_price_id
         ├─ Guard: se external_price_id for null → erro amigável (admin deve recriar o preço)
-        ├─ Busca/cria stripe_customer_id para a org
+        ├─ Busca/cria external_customer_id para a org
         ├─ billing.createCheckoutSession({ ... }) → Stripe hosted checkout
         └─ Webhook checkout.session.completed → cria organization_subscriptions com SNAPSHOT
 ```
@@ -2927,7 +2958,7 @@ Job health-survey-dispatcher (a cada 15min)
     → [GATE] hasTenantPlanFeature(tenantId, "messaging")
         ├─ SEM feature: tokens criados, nenhuma mensagem enviada → RH usa link assinado
         └─ COM feature: messagingService.sendBulk → Registra em message_logs
-    → Atualiza dispatch: status='sent', sent_at, total_recipients
+    → Atualiza dispatch: status='available', dispatched_at, total_recipients
 ```
 
 ### 20.4 Resposta ao formulário (anonimato garantido)
@@ -2991,7 +3022,7 @@ RH aciona "Reenviar" em setor com adesão crítica (<60%)
         ├─ Para cada token não usado: gera novo token (expires_at = +48h), invalida o anterior
         ├─ Chama messagingService.sendBulk
         ├─ Registra em message_logs com type='survey_resend'
-        └─ Cria novo dispatch com status='sent' vinculado ao original
+        └─ Cria novo dispatch com status='available' vinculado ao original
 ```
 
 ### 20.9 Acesso via Link Assinado (sem mensagem)
@@ -3125,22 +3156,38 @@ TWILIO_ACCOUNT_SID=AC...
 TWILIO_AUTH_TOKEN=...
 TWILIO_FROM_NUMBER=+55...
 
-# Mensagem de pesquisa de saúde (template com {name} e {link})
-SURVEY_MESSAGE_TEMPLATE="Olá {name}, sua pesquisa de saúde ocupacional está disponível: {link}"
+# Mensagem de pesquisa de saúde (template com {nome} e {link})
+SURVEY_MESSAGE_TEMPLATE="Olá {nome}, sua pesquisa de saúde ocupacional está disponível: {link}"
 
 # WhatsApp Cloud API (quando MESSAGING_PROVIDER=whatsapp_cloud)
 WHATSAPP_PHONE_NUMBER_ID=...
 WHATSAPP_ACCESS_TOKEN=...
 WHATSAPP_API_VERSION=v20.0
 WHATSAPP_API_BASE_URL=https://graph.facebook.com
+WHATSAPP_WEBHOOK_VERIFY_TOKEN=...         # token de verificação do webhook Meta
+WHATSAPP_APP_SECRET=...                   # segredo do app Meta (validação de assinatura do webhook)
+WHATSAPP_TEMPLATE_LANGUAGE=pt_BR         # idioma do template (default: pt_BR)
+WHATSAPP_SURVEY_TEMPLATE_NAME=pulse_survey_dispatch  # nome do template aprovado no Meta
+
+# Storage
+STORAGE_PROVIDER=s3                       # "s3" | "console" (default: "console")
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+AWS_REGION=us-east-1
+AWS_S3_BUCKET=pulse-documents
+AWS_ENDPOINT_URL=...                      # endpoint customizado (ex: MinIO, Cloudflare R2) — opcional
 
 # Jobs
 REDIS_HOST=localhost
 REDIS_PORT=6379
+REDIS_PASSWORD=...                        # opcional — autenticação Redis em produção
 CRON_SECRET=...                           # proteção dos endpoints /api/jobs/*
 
 # URL pública
 NEXT_PUBLIC_APP_URL=https://app.pulse.com
+
+# Versão da aplicação (opcional — exibida na UI)
+NEXT_PUBLIC_APP_VERSION=1.0.0
 
 # Número do consultor — usado no botão "Falar com consultor" quando o plano não tem preço
 NEXT_PUBLIC_CONSULTANT_WHATSAPP=5511999999999  # substituir pelo número real em produção
@@ -3150,6 +3197,17 @@ NEXT_PUBLIC_EMAIL_SUPPORT=suporte@pulseips.com.br
 NEXT_PUBLIC_EMAIL_PRIVACY=privacidade@pulseips.com.br
 NEXT_PUBLIC_EMAIL_CONTACT=contato@pulseips.com.br
 NEXT_PUBLIC_EMAIL_LEGAL=legal@pulseips.com.br
+```
+
+### Opcionais / diagnóstico
+
+```bash
+# Logging
+LOG_LEVEL=info                            # nível pino: trace | debug | info | warn | error | fatal | silent (default: "info")
+NODE_ENV=production                       # development | test | production
+
+# Segurança (use apenas em ambientes controlados)
+DISABLE_SECURITY_HEADERS=true            # desabilita headers HTTP de segurança (ex: para proxy reverso)
 ```
 
 ### Desenvolvimento (valores padrão)
@@ -3262,7 +3320,7 @@ localStorage.setItem("pulse:last-org-slug", slug)
 
 ---
 
-*Pulse — AGENTS.md | Documento interno | Abril de 2026*
+*Pulse — AGENTS.md | Documento interno | Maio de 2026*
 
 ## 24. Labels e Badges — Valores de Enum na UI
 
@@ -3580,7 +3638,7 @@ Execute `grep` para confirmar cada item:
 | 4 | Nenhum `$queryRaw` / `$executeRaw` em qualquer arquivo | `grep -r "\$queryRaw\|\$executeRaw" src/` |
 | 5 | Todas as queries em tabelas com `tenant_id` incluem `tenantId` no `where` | Revisar manualmente qualquer novo repository |
 | 6 | Mensagens de erro em pt-BR | `grep -rn '"[A-Z].*[a-z]"' src/modules/ \| grep "throw\|AppError"` |
-| 7 | Nenhum `console.*` em nenhum arquivo (exceto `src/libs/utils/logger.ts`) | `grep -rn "console\." src/ --include="*.ts" --include="*.tsx" \| grep -v "src/libs/utils/logger.ts"` |
+| 7 | Nenhum `console.*` em nenhum arquivo (exceto `src/libs/utils/logger.ts` e `src/libs/logger.ts`) | `grep -rn "console\." src/ --include="*.ts" --include="*.tsx" \| grep -v "src/libs/utils/logger.ts" \| grep -v "src/libs/logger.ts"` |
 | 8 | Queries cross-tenant de jobs nomeadas com `findAllTenants*` | Revisar `src/workers/` e jobs que chamam repositories sem `tenantId` |
 | 9 | Nenhum `enum` TypeScript (use union types ou const maps) | `grep -rn "^enum \|  enum " src/` |
 | 10 | `JsonValue` de `@/libs/utils/json` — nunca `Prisma.InputJsonValue` fora de repository | `grep -rn "Prisma\.InputJsonValue\|Prisma\.JsonValue" src/modules/ src/app/` |
@@ -3609,7 +3667,7 @@ Execute `grep` para confirmar cada item:
 - Todos os itens manuais acima verificados
 - Sem `TODO`, `FIXME` ou `@ts-ignore` introduzidos
 
-*Pulse — AGENTS.md | Documento interno | Abril de 2026*
+*Pulse — AGENTS.md | Documento interno | Maio de 2026*
 
 ---
 
@@ -4226,7 +4284,7 @@ href="mailto:privacidade@pulseips.com.br"
 4. Documente na tabela acima
 5. Use **sempre** via `env.NEXT_PUBLIC_EMAIL_*` — nunca como string literal
 
-*Pulse — AGENTS.md | Documento interno | Abril de 2026*
+*Pulse — AGENTS.md | Documento interno | Maio de 2026*
 
 ---
 
@@ -4285,4 +4343,4 @@ grep -rn "process\.env\." \
 # Resultado esperado: nenhuma linha
 ```
 
-*Pulse — AGENTS.md | Documento interno | Abril de 2026*
+*Pulse — AGENTS.md | Documento interno | Maio de 2026*

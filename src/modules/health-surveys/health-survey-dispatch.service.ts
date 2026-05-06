@@ -8,7 +8,7 @@ import {
   findAllTenantsPendingHealthSurveyDispatches,
   findAllTenantsActiveHealthSurveyConfigsForAutoDispatch,
   createHealthSurveyTokens,
-  markHealthSurveyDispatchSent,
+  markHealthSurveyDispatchDispatched,
   createHealthSurveyDispatch,
   findAllTenantsHealthSurveyDispatches48hAgo,
   countHealthSurveyResponsesForDispatch,
@@ -101,7 +101,7 @@ async function sendDispatchTokensAndMessages(
   if (newTokenInputs.length > 0) {
     await createHealthSurveyTokens(newTokenInputs)
   }
-  await markHealthSurveyDispatchSent(tenantId, dispatchId, dispatchTargetEmployees.length)
+  await markHealthSurveyDispatchDispatched(tenantId, dispatchId, dispatchTargetEmployees.length)
 
   const hasMessaging = await hasTenantPlanFeature(tenantId, "messaging")
   if (!hasMessaging) return
