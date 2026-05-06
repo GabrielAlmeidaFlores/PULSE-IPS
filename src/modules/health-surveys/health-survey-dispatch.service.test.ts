@@ -534,7 +534,7 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
 
     mockFindPendingDispatches.mockResolvedValue([makePendingDispatch()])
     mockFindExistingTokensForDispatch.mockResolvedValue([
-      { employeeId: "emp-1", token: "existing-token", usedAt: new Date() },
+      { employeeId: "emp-1", token: "existing-token", usedAt: new Date(), expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000) },
     ])
 
     await runHealthSurveyDispatcher()
@@ -553,7 +553,7 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
     const PREEXISTING_TOKEN = "preexisting-token-from-signed-link"
     mockFindPendingDispatches.mockResolvedValue([makePendingDispatch()])
     mockFindExistingTokensForDispatch.mockResolvedValue([
-      { employeeId: "emp-1", token: PREEXISTING_TOKEN, usedAt: null },
+      { employeeId: "emp-1", token: PREEXISTING_TOKEN, usedAt: null, expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000) },
     ])
 
     await runHealthSurveyDispatcher()
@@ -563,6 +563,26 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
     expect(mockAddBulk).toHaveBeenCalledOnce()
     const [jobs] = mockAddBulk.mock.calls[0] as [{ data: { body: string } }[]]
     expect(jobs[0]?.data.body).toContain(PREEXISTING_TOKEN)
+
+    vi.useRealTimers()
+  })
+
+  it("ignora token pré-existente expirado e cria token novo ao fazer o disparo", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
+
+    mockFindPendingDispatches.mockResolvedValue([makePendingDispatch()])
+    mockFindExistingTokensForDispatch.mockResolvedValue([
+      { employeeId: "emp-1", token: "expired-old-token", usedAt: null, expiresAt: new Date(Date.now() - 1000) },
+    ])
+
+    await runHealthSurveyDispatcher()
+
+    expect(mockCreateHealthSurveyTokens).toHaveBeenCalledOnce()
+    expect(mockMarkDispatchSent).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID, 1)
+    expect(mockAddBulk).toHaveBeenCalledOnce()
+    const [jobs] = mockAddBulk.mock.calls[0] as [{ data: { body: string } }[]]
+    expect(jobs[0]?.data.body).not.toContain("expired-old-token")
 
     vi.useRealTimers()
   })
