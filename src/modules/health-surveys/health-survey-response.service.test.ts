@@ -224,7 +224,7 @@ describe("validateHealthSurveyToken — guards de entrada", () => {
     })
   })
 
-  it("retorna inválido quando o dispatch não está com status 'sent'", async () => {
+  it("retorna válido quando o dispatch está com status 'scheduled' (resposta antecipada via link assinado)", async () => {
     const base = makeTokenRecord()
     mockFindToken.mockResolvedValue(
       makeTokenRecord({
@@ -234,7 +234,7 @@ describe("validateHealthSurveyToken — guards de entrada", () => {
 
     const result = await validateHealthSurveyToken(TOKEN_VALUE)
 
-    expect(result).toEqual({ valid: false, error: "Esta pesquisa não está ativa." })
+    expect(result.valid).toBe(true)
   })
 })
 

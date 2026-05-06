@@ -52,10 +52,6 @@ export async function validateHealthSurveyToken(token: string): Promise<HealthSu
     return { valid: false, error: "Pesquisa disponível apenas no horário de trabalho." }
   }
 
-  if (tokenRecord.dispatch.status !== "sent") {
-    return { valid: false, error: "Esta pesquisa não está ativa." }
-  }
-
   const [currentConsent, activeTermVersion] = await Promise.all([
     getCurrentConsent(tokenRecord.tenantId, tokenRecord.employeeId),
     getActiveConsentTermVersion(),

@@ -182,7 +182,7 @@ describe("validateHealthSurveyToken", () => {
     if (!result.valid) expect(result.error).toContain("expirou")
   })
 
-  it("returns invalid when dispatch is not in sent status", async () => {
+  it("returns valid when dispatch is in scheduled status (early response via signed link)", async () => {
     mockFindTokenByValue.mockResolvedValue({
       ...validTokenRecord,
       dispatch: { ...validTokenRecord.dispatch, status: "scheduled" },
@@ -193,8 +193,7 @@ describe("validateHealthSurveyToken", () => {
     vi.mocked(getActiveConsentTermVersion).mockResolvedValue(null)
 
     const result = await validateHealthSurveyToken(HEALTH_SURVEY_TOKEN)
-    expect(result.valid).toBe(false)
-    if (!result.valid) expect(result.error).toContain("ativa")
+    expect(result.valid).toBe(true)
   })
 
   it("returns valid with consentStatus needs_consent when employee has no consent", async () => {
