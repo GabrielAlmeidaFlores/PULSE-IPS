@@ -7,12 +7,14 @@ import { createLogger } from "@/libs/utils/logger"
 import {
   findAllTenantsPendingHealthSurveyDispatches,
   findAllTenantsActiveHealthSurveyConfigsForAutoDispatch,
-  createHealthSurveyTokensAndMarkSent,
+  createHealthSurveyTokens,
+  markHealthSurveyDispatchSent,
   createHealthSurveyDispatch,
   findAllTenantsHealthSurveyDispatches48hAgo,
   countHealthSurveyResponsesForDispatch,
   createHealthSurveyAdherenceAlert,
   markHealthSurveyDispatchAdherenceChecked,
+  findExistingTokensForDispatch,
   type HealthSurveyDispatchEmployee,
 } from "@/modules/health-surveys/health-survey.repository"
 import { hasOpenAlertOfType } from "@/modules/alerts/alert.repository"
@@ -69,49 +71,65 @@ async function sendDispatchTokensAndMessages(
   const eligibleForDispatchIds = new Set(await findEmployeeIdsEligibleForDispatch(tenantId, allEmployeeIds))
   const dispatchTargetEmployees = eligibleEmployees.filter((e) => eligibleForDispatchIds.has(e.id))
 
-  const tokens = dispatchTargetEmployees.map((emp) => ({
+  const existingTokens = await findExistingTokensForDispatch(
     tenantId,
     dispatchId,
-    employeeId: emp.id,
-    token: randomUUID(),
-    expiresAt: addHours(new Date(), 48),
-    workStartTime: emp.workStartTime ?? department.workStartTime ?? configWorkStartTime,
-    workEndTime: emp.workEndTime ?? department.workEndTime ?? configWorkEndTime,
-  }))
+    dispatchTargetEmployees.map((e) => e.id),
+  )
+  const respondedEmployeeIds = new Set(existingTokens.filter((t) => t.usedAt !== null).map((t) => t.employeeId))
+  const existingUnusedTokenMap = new Map(
+    existingTokens.filter((t) => t.usedAt === null).map((t) => [t.employeeId, t.token]),
+  )
 
-  if (tokens.length === 0) {
-    await createHealthSurveyTokensAndMarkSent(tenantId, dispatchId, [])
-    return
+  const toSendEmployees = dispatchTargetEmployees.filter((e) => !respondedEmployeeIds.has(e.id))
+
+  const newTokenInputs = toSendEmployees
+    .filter((e) => !existingUnusedTokenMap.has(e.id))
+    .map((emp) => ({
+      tenantId,
+      dispatchId,
+      employeeId: emp.id,
+      token: randomUUID(),
+      expiresAt: addHours(new Date(), 48),
+      workStartTime: emp.workStartTime ?? department.workStartTime ?? configWorkStartTime,
+      workEndTime: emp.workEndTime ?? department.workEndTime ?? configWorkEndTime,
+    }))
+
+  const newTokenMap = new Map(newTokenInputs.map((t) => [t.employeeId, t.token]))
+
+  if (newTokenInputs.length > 0) {
+    await createHealthSurveyTokens(newTokenInputs)
   }
-
-  await createHealthSurveyTokensAndMarkSent(tenantId, dispatchId, tokens)
+  await markHealthSurveyDispatchSent(tenantId, dispatchId, dispatchTargetEmployees.length)
 
   const hasMessaging = await hasTenantPlanFeature(tenantId, "messaging")
   if (!hasMessaging) return
 
   const messageQueue = getMessageQueue()
-  const bulkJobs = tokens
-    .map((empToken) => {
-      const employee = dispatchTargetEmployees.find((e) => e.id === empToken.employeeId)
-      if (!employee) return null
-      const healthSurveyUrl = `${env.NEXT_PUBLIC_APP_URL}/health-survey/${empToken.token}`
+  const bulkJobs = toSendEmployees
+    .map((emp) => {
+      const tokenValue = existingUnusedTokenMap.get(emp.id) ?? newTokenMap.get(emp.id)
+      if (!tokenValue) return null
+      const healthSurveyUrl = `${env.NEXT_PUBLIC_APP_URL}/health-survey/${tokenValue}`
       return {
         name: "send-message" as const,
         data: {
-          to: employee.phone,
-          body: buildMessageFromTemplate(env.SURVEY_MESSAGE_TEMPLATE, employee.name, healthSurveyUrl),
+          to: emp.phone,
+          body: buildMessageFromTemplate(env.SURVEY_MESSAGE_TEMPLATE, emp.name, healthSurveyUrl),
           tenantId,
-          employeeId: employee.id,
+          employeeId: emp.id,
           provider: env.MESSAGING_PROVIDER,
           type: "survey_dispatch" as const,
           templateName: env.WHATSAPP_SURVEY_TEMPLATE_NAME,
-          templateVariables: [employee.name, healthSurveyUrl],
+          templateVariables: [emp.name, healthSurveyUrl],
         },
       }
     })
     .filter((job): job is NonNullable<typeof job> => job !== null)
 
-  await messageQueue.addBulk(bulkJobs)
+  if (bulkJobs.length > 0) {
+    await messageQueue.addBulk(bulkJobs)
+  }
 }
 
 async function fireDispatch(

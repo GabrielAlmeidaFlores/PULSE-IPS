@@ -432,6 +432,24 @@ export function findEmployeeByPhoneOrDocument(
   })
 }
 
+export interface ExistingDispatchToken {
+  employeeId: string
+  token: string
+  usedAt: Date | null
+}
+
+export function findExistingTokensForDispatch(
+  tenantId: string,
+  dispatchId: string,
+  employeeIds: string[],
+): Promise<ExistingDispatchToken[]> {
+  if (employeeIds.length === 0) return Promise.resolve([])
+  return prisma.healthSurveyResponseToken.findMany({
+    where: { tenantId, dispatchId, employeeId: { in: employeeIds } },
+    select: { employeeId: true, token: true, usedAt: true },
+  })
+}
+
 export function findUnusedHealthSurveyTokenForEmployee(
   tenantId: string,
   dispatchId: string,

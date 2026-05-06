@@ -3,12 +3,14 @@ import { runHealthSurveyDispatcher, runHealthSurveyAutoDispatchScheduler, checkH
 import {
   findAllTenantsPendingHealthSurveyDispatches,
   findAllTenantsActiveHealthSurveyConfigsForAutoDispatch,
-  createHealthSurveyTokensAndMarkSent,
+  createHealthSurveyTokens,
+  markHealthSurveyDispatchSent,
   createHealthSurveyDispatch,
   findAllTenantsHealthSurveyDispatches48hAgo,
   countHealthSurveyResponsesForDispatch,
   createHealthSurveyAdherenceAlert,
   markHealthSurveyDispatchAdherenceChecked,
+  findExistingTokensForDispatch,
   type ActiveHealthSurveyConfigForDispatch,
 } from "@/modules/health-surveys/health-survey.repository"
 import { hasOpenAlertOfType } from "@/modules/alerts/alert.repository"
@@ -37,7 +39,8 @@ vi.mock("@/env", () => ({
 
 const mockFindPendingDispatches = vi.mocked(findAllTenantsPendingHealthSurveyDispatches)
 const mockFindActiveConfigs = vi.mocked(findAllTenantsActiveHealthSurveyConfigsForAutoDispatch)
-const mockCreateSurveyTokensAndMarkSent = vi.mocked(createHealthSurveyTokensAndMarkSent)
+const mockCreateHealthSurveyTokens = vi.mocked(createHealthSurveyTokens)
+const mockMarkDispatchSent = vi.mocked(markHealthSurveyDispatchSent)
 const mockCreateDispatch = vi.mocked(createHealthSurveyDispatch)
 const mockFindDispatches48hAgo = vi.mocked(findAllTenantsHealthSurveyDispatches48hAgo)
 const mockCountResponses = vi.mocked(countHealthSurveyResponsesForDispatch)
@@ -46,6 +49,7 @@ const mockMarkDispatchAdherenceChecked = vi.mocked(markHealthSurveyDispatchAdher
 const mockHasOpenAlertOfType = vi.mocked(hasOpenAlertOfType)
 const mockHasTenantPlanFeature = vi.mocked(hasTenantPlanFeature)
 const mockFindEmployeeIdsEligibleForDispatch = vi.mocked(findEmployeeIdsEligibleForDispatch)
+const mockFindExistingTokensForDispatch = vi.mocked(findExistingTokensForDispatch)
 
 const TENANT_ID = "tenant-1"
 const DISPATCH_ID = "dispatch-1"
@@ -113,12 +117,14 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockAddBulk.mockResolvedValue([])
   mockCreateDispatch.mockResolvedValue({ id: "new-dispatch-1" } as Awaited<ReturnType<typeof createHealthSurveyDispatch>>)
-  mockCreateSurveyTokensAndMarkSent.mockResolvedValue(undefined)
+  mockCreateHealthSurveyTokens.mockResolvedValue(undefined)
+  mockMarkDispatchSent.mockResolvedValue(undefined)
   mockCreateAdherenceAlert.mockResolvedValue(undefined)
   mockMarkDispatchAdherenceChecked.mockResolvedValue(undefined)
   mockHasOpenAlertOfType.mockResolvedValue(false)
   mockHasTenantPlanFeature.mockResolvedValue(true)
   mockFindEmployeeIdsEligibleForDispatch.mockResolvedValue(["emp-1"])
+  mockFindExistingTokensForDispatch.mockResolvedValue([])
 })
 
 describe("runHealthSurveyDispatcher", () => {
@@ -151,7 +157,7 @@ describe("runHealthSurveyDispatcher", () => {
     const result = await runHealthSurveyDispatcher()
     expect(result).toEqual({ dispatched: 1, errors: 0 })
     expect(mockCreateDispatch).not.toHaveBeenCalled()
-    expect(mockCreateSurveyTokensAndMarkSent).toHaveBeenCalledOnce()
+    expect(mockMarkDispatchSent).toHaveBeenCalledOnce()
     expect(mockAddBulk).toHaveBeenCalledOnce()
 
     vi.useRealTimers()
@@ -178,7 +184,7 @@ describe("runHealthSurveyDispatcher", () => {
     vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
 
     mockFindPendingDispatches.mockResolvedValue([makePendingDispatch()])
-    mockCreateSurveyTokensAndMarkSent.mockRejectedValue(new Error("DB error"))
+    mockMarkDispatchSent.mockRejectedValue(new Error("DB error"))
 
     const result = await runHealthSurveyDispatcher()
     expect(result).toEqual({ dispatched: 0, errors: 1 })
@@ -359,9 +365,7 @@ describe("runHealthSurveyDispatcher — token work hours fallback chain", () => 
 
     await runHealthSurveyDispatcher()
 
-    expect(mockCreateSurveyTokensAndMarkSent).toHaveBeenCalledWith(
-      TENANT_ID,
-      DISPATCH_ID,
+    expect(mockCreateHealthSurveyTokens).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({ workStartTime: "07:00", workEndTime: "16:00" }),
       ]),
@@ -391,9 +395,7 @@ describe("runHealthSurveyDispatcher — token work hours fallback chain", () => 
 
     await runHealthSurveyDispatcher()
 
-    expect(mockCreateSurveyTokensAndMarkSent).toHaveBeenCalledWith(
-      TENANT_ID,
-      DISPATCH_ID,
+    expect(mockCreateHealthSurveyTokens).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({ workStartTime: "08:00", workEndTime: "17:00" }),
       ]),
@@ -459,7 +461,8 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
     const result = await runHealthSurveyDispatcher()
 
     expect(result).toEqual({ dispatched: 1, errors: 0 })
-    expect(mockCreateSurveyTokensAndMarkSent).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID, [])
+    expect(mockCreateHealthSurveyTokens).not.toHaveBeenCalled()
+    expect(mockMarkDispatchSent).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID, 0)
     expect(mockAddBulk).not.toHaveBeenCalled()
 
     vi.useRealTimers()
@@ -486,12 +489,10 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
 
     await runHealthSurveyDispatcher()
 
-    expect(mockCreateSurveyTokensAndMarkSent).toHaveBeenCalledWith(
-      TENANT_ID,
-      DISPATCH_ID,
+    expect(mockCreateHealthSurveyTokens).toHaveBeenCalledWith(
       expect.arrayContaining([expect.objectContaining({ employeeId: "emp-1" })]),
     )
-    const tokensArg = mockCreateSurveyTokensAndMarkSent.mock.calls[0]?.[2]
+    const tokensArg = mockCreateHealthSurveyTokens.mock.calls[0]?.[0]
     expect(tokensArg?.some((t) => t.employeeId === "emp-2")).toBe(false)
 
     vi.useRealTimers()
@@ -506,7 +507,7 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
 
     await runHealthSurveyDispatcher()
 
-    const tokensArg = mockCreateSurveyTokensAndMarkSent.mock.calls[0]?.[2]
+    const tokensArg = mockCreateHealthSurveyTokens.mock.calls[0]?.[0]
     expect(tokensArg).toHaveLength(1)
 
     vi.useRealTimers()
@@ -521,8 +522,47 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
 
     await runHealthSurveyDispatcher()
 
-    expect(mockCreateSurveyTokensAndMarkSent).toHaveBeenCalledOnce()
+    expect(mockMarkDispatchSent).toHaveBeenCalledOnce()
     expect(mockAddBulk).not.toHaveBeenCalled()
+
+    vi.useRealTimers()
+  })
+
+  it("pula funcionário que já respondeu via link assinado antes do disparo (usedAt preenchido)", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
+
+    mockFindPendingDispatches.mockResolvedValue([makePendingDispatch()])
+    mockFindExistingTokensForDispatch.mockResolvedValue([
+      { employeeId: "emp-1", token: "existing-token", usedAt: new Date() },
+    ])
+
+    await runHealthSurveyDispatcher()
+
+    expect(mockCreateHealthSurveyTokens).not.toHaveBeenCalled()
+    expect(mockMarkDispatchSent).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID, 1)
+    expect(mockAddBulk).not.toHaveBeenCalled()
+
+    vi.useRealTimers()
+  })
+
+  it("reutiliza token pré-existente não-usado (criado via link assinado) em vez de criar novo", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
+
+    const PREEXISTING_TOKEN = "preexisting-token-from-signed-link"
+    mockFindPendingDispatches.mockResolvedValue([makePendingDispatch()])
+    mockFindExistingTokensForDispatch.mockResolvedValue([
+      { employeeId: "emp-1", token: PREEXISTING_TOKEN, usedAt: null },
+    ])
+
+    await runHealthSurveyDispatcher()
+
+    expect(mockCreateHealthSurveyTokens).not.toHaveBeenCalled()
+    expect(mockMarkDispatchSent).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID, 1)
+    expect(mockAddBulk).toHaveBeenCalledOnce()
+    const [jobs] = mockAddBulk.mock.calls[0] as [{ data: { body: string } }[]]
+    expect(jobs[0]?.data.body).toContain(PREEXISTING_TOKEN)
 
     vi.useRealTimers()
   })
