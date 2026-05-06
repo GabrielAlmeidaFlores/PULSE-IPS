@@ -928,7 +928,7 @@ Dias de trabalho configurados para uma pesquisa. Define em quais dias o schedule
 | scheduled_at | timestamptz | NOT NULL |
 | dispatched_at | timestamptz | NULL = ainda não disparado |
 | adherence_checked_at | timestamptz | NULL = ainda não verificado |
-| status | varchar(20) | `'scheduled'` \| `'sent'` \| `'failed'` \| `'cancelled'` |
+| status | varchar(20) | `'scheduled'` \| `'available'` \| `'failed'` \| `'cancelled'` |
 | total_recipients | integer | |
 | total_responses | integer | NOT NULL, default 0 |
 | signed_link_token | varchar(255) | NOT NULL, UNIQUE — token do link assinado público (`/health-survey/link/[token]`) |
@@ -2958,7 +2958,7 @@ Job health-survey-dispatcher (a cada 15min)
     → [GATE] hasTenantPlanFeature(tenantId, "messaging")
         ├─ SEM feature: tokens criados, nenhuma mensagem enviada → RH usa link assinado
         └─ COM feature: messagingService.sendBulk → Registra em message_logs
-    → Atualiza dispatch: status='sent', sent_at, total_recipients
+    → Atualiza dispatch: status='available', dispatched_at, total_recipients
 ```
 
 ### 20.4 Resposta ao formulário (anonimato garantido)
@@ -3022,7 +3022,7 @@ RH aciona "Reenviar" em setor com adesão crítica (<60%)
         ├─ Para cada token não usado: gera novo token (expires_at = +48h), invalida o anterior
         ├─ Chama messagingService.sendBulk
         ├─ Registra em message_logs com type='survey_resend'
-        └─ Cria novo dispatch com status='sent' vinculado ao original
+        └─ Cria novo dispatch com status='available' vinculado ao original
 ```
 
 ### 20.9 Acesso via Link Assinado (sem mensagem)
