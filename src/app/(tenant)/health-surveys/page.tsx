@@ -23,12 +23,14 @@ const STATUS_PRIORITY: Record<string, number> = {
   failed: 0,
   scheduled: 1,
   available: 2,
+  sent: 2,
   cancelled: 3,
 }
 
 const STATUS_STYLE: Record<string, string> = {
   scheduled: "bg-muted text-muted-foreground border-border",
   available: "bg-primary/10 text-primary border-primary/20",
+  sent: "bg-primary/10 text-primary border-primary/20",
   cancelled: "badge-warning",
   failed: "bg-destructive/10 text-destructive border-destructive/20",
 }
@@ -36,6 +38,7 @@ const STATUS_STYLE: Record<string, string> = {
 const STATUS_LABELS: Record<string, string> = {
   scheduled: "Agendado",
   available: "Disponível",
+  sent: "Disponível",
   cancelled: "Cancelado",
   failed: "Falhou",
 }
@@ -50,6 +53,7 @@ interface DayGroup {
   status: string
   statusCounts: Record<string, number>
   deptIds: Set<string>
+  configNames: Set<string>
 }
 
 function groupDispatchesByDay(dispatches: HealthSurveyDispatchWithConfig[], timezone: string): DayGroup[] {
@@ -63,6 +67,7 @@ function groupDispatchesByDay(dispatches: HealthSurveyDispatchWithConfig[], time
       existing.totalRecipients += d.totalRecipients
       existing.totalResponses += d.totalResponses
       existing.deptIds.add(d.healthSurveyConfiguration.department.id)
+      existing.configNames.add(d.healthSurveyConfiguration.name)
       existing.statusCounts[d.status] = (existing.statusCounts[d.status] ?? 0) + 1
       const currentPriority = STATUS_PRIORITY[existing.status] ?? 3
       const newPriority = STATUS_PRIORITY[d.status] ?? 3
@@ -78,6 +83,7 @@ function groupDispatchesByDay(dispatches: HealthSurveyDispatchWithConfig[], time
         status: d.status,
         statusCounts: { [d.status]: 1 },
         deptIds: new Set([d.healthSurveyConfiguration.department.id]),
+        configNames: new Set([d.healthSurveyConfiguration.name]),
       })
     }
   }
@@ -161,7 +167,10 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
           >
             Configurar
           </Link>
-          <ScheduleHealthSurveyDispatchButton hasConfigs={configs.length > 0} />
+          <ScheduleHealthSurveyDispatchButton
+            hasConfigs={configs.length > 0}
+            configs={configs.map((c) => ({ id: c.id, name: c.name, departmentName: c.department.name }))}
+          />
         </div>
       </div>
 
@@ -228,8 +237,19 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
                     </Link>
                   </td>
                   <td className="px-4 py-3">
-                    <Link href={`/health-surveys/${g.anchorId}`} className="block text-xs text-muted-foreground">
-                      {g.deptIds.size} {g.deptIds.size === 1 ? "setor" : "setores"}
+                    <Link href={`/health-surveys/${g.anchorId}`} className="block">
+                      <span className="text-xs text-muted-foreground">
+                        {g.deptIds.size} {g.deptIds.size === 1 ? "setor" : "setores"}
+                      </span>
+                      {g.configNames.size > 0 && (
+                        <div className="flex flex-wrap gap-0.5 mt-0.5">
+                          {Array.from(g.configNames).map((name) => (
+                            <span key={name} className="text-[9px] font-medium text-muted-foreground/70 truncate max-w-[120px]">
+                              {name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </Link>
                   </td>
                   <td className="px-4 py-3">

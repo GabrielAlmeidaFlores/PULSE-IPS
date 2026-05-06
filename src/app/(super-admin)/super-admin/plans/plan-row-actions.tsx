@@ -265,7 +265,7 @@ export function PlanRowActions({ plan }: { plan: Plan }): React.ReactElement {
           onClick={() => setDeleteOpen(true)}
           disabled={isPending}
           title="Excluir plano"
-          className="px-2.5 py-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 border border-border border-l-0 transition-colors disabled:opacity-50"
+          className="px-2.5 py-1.5 text-status-danger hover:bg-status-danger-subtle border border-status-danger-border border-l-0 transition-colors disabled:opacity-50"
           style={{ borderRadius: 0 }}
         >
           <Trash2 className="h-3.5 w-3.5" />

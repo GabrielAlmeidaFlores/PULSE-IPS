@@ -11,7 +11,6 @@ import { getOrganization } from "@/modules/organizations/organization.service";
 import { formatInTimeZone } from "date-fns-tz"
 import { ptBR } from "date-fns/locale";
 import {
-  ArrowLeft,
   Users,
   CheckCircle2,
   XCircle,
@@ -613,15 +612,9 @@ export default async function HealthSurveyDispatchDetailPage({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="border-b border-border bg-card px-6 py-4 shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/health-surveys"
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
+        <div className="border-b border-border bg-card px-6 py-4 shrink-0">
+          <Link href="/health-surveys" className="text-xs text-muted-foreground hover:text-foreground transition-colors">← Pesquisas</Link>
+          <div className="flex items-center justify-between mt-2">
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-sm font-bold uppercase tracking-widest">
@@ -647,12 +640,11 @@ export default async function HealthSurveyDispatchDetailPage({
                   anchorStats.frequency}
               </p>
             </div>
+            {allDeptOptions.length > 1 && (
+              <HealthSurveyDispatchDeptFilter departments={allDeptOptions} />
+            )}
           </div>
-          {allDeptOptions.length > 1 && (
-            <HealthSurveyDispatchDeptFilter departments={allDeptOptions} />
-          )}
         </div>
-      </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         <div className={`grid gap-0 border border-border bg-card ${mergedStats.avgScore !== null ? "grid-cols-2 md:grid-cols-5" : "grid-cols-2 md:grid-cols-4"}`}>

@@ -102,6 +102,7 @@ function makeAutoDispatchConfig(overrides?: Partial<ActiveHealthSurveyConfigForD
     id: "config-1",
     tenantId: TENANT_ID,
     frequency: "daily",
+    scheduledDayOfMonth: null,
     workStartTime: "09:00",
     workEndTime: "18:00",
     workDays: [1, 2, 3, 4, 5],

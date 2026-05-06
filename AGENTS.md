@@ -859,20 +859,27 @@ Dias de trabalho do departamento em `department_work_days` (join table — ver a
 
 #### `health_survey_configurations`
 
+Múltiplas configurações por tenant/setor são permitidas (sem unicidade em `(tenant_id, department_id)`). Cada configuração é identificada por nome e descrição opcionais.
+
 | Coluna | Tipo | Constraints |
 |---|---|---|
 | id | uuid | PK |
 | tenant_id | uuid | NOT NULL |
 | department_id | uuid | NOT NULL, FK → departments.id |
+| name | varchar(255) | NOT NULL, default `'Pesquisa de Saúde'` — nome de identificação da configuração |
+| description | text | NULL — descrição opcional |
 | frequency | varchar(20) | `'daily'` \| `'twice_weekly'` \| `'weekly'` \| `'biweekly'` \| `'monthly'` |
+| scheduled_day_of_month | integer | NULL — dia do mês (1–28) para frequência `'monthly'`; quando NULL e frequência mensal, usa intervalo de 28 dias |
 | work_start_time | varchar(5) | `"HH:MM"` — início do expediente configurado para esta pesquisa (ex: `"09:00"`) |
 | work_end_time | varchar(5) | `"HH:MM"` — fim do expediente configurado para esta pesquisa (ex: `"18:00"`) |
 | is_active | boolean | NOT NULL |
-| UNIQUE | (tenant_id, department_id) | |
+| INDEX | (tenant_id, department_id) | |
 
 Dias de trabalho da pesquisa em `health_survey_config_work_days` (join table — ver abaixo). Armazenados como `day_of_week INT` (0=Dom … 6=Sáb).
 
 > `work_start_time`, `work_end_time` e `work_days` (via join table) definem a janela de disparo da pesquisa. **Cadeia de herança no disparo:** `employee.workStartTime/workEndTime → department.workStartTime/workEndTime → healthSurveyConfig.workStartTime/workEndTime`. Para dias de trabalho por funcionário: `employee_work_days` (se não vazio) → `department_work_days`. Todos avaliados no `organizations.timezone`.
+
+> **Frequência mensal com `scheduled_day_of_month`:** quando preenchido, o scheduler dispara apenas no dia exato do mês (avaliado no fuso da organização) e impede reenvio se o último disparo foi há menos de 25 dias. Dias 29–31 são excluídos da UI — o valor máximo é 28 para garantir compatibilidade com fevereiro.
 
 > Não existe mais `send_days` (jsonb) nem `send_time` (time) separados — o disparo ocorre automaticamente pelo scheduler ao detectar que estamos dentro do expediente configurado.
 
@@ -915,7 +922,7 @@ Dias de trabalho configurados para uma pesquisa. Define em quais dias o schedule
 | health_survey_configuration_id | uuid | NOT NULL, FK → health_survey_configurations.id ON DELETE CASCADE |
 | text | text | NOT NULL |
 | order | integer | NOT NULL, default 0 |
-| score_direction | varchar(10) | NOT NULL — `'higher_better'` \| `'lower_better'` (afeta cálculo de score) |
+| score_direction | varchar(30) | NOT NULL — `'higher_is_better'` \| `'lower_is_better'` (afeta cálculo de score) |
 | is_active | boolean | NOT NULL, default true |
 
 #### `health_survey_dispatches`
@@ -3400,7 +3407,51 @@ As classes `badge-*` são utilitárias definidas em `@layer utilities` em `globa
 
 ## 25. Padrão de Navegação em Listagens
 
-### Botão de seta (ChevronRight) — obrigatório
+### Link de voltar em páginas de detalhe — padrão obrigatório
+
+**Toda página de detalhe (subpágina de uma seção) deve ter um link de voltar no topo do cabeçalho.** O padrão é um `Link` com seta unicode `←` seguida do nome da seção pai.
+
+#### Implementação obrigatória
+
+```tsx
+<div className="border-b border-border bg-card px-6 py-4 shrink-0">
+  <Link href="/secao" className="text-xs text-muted-foreground hover:text-foreground transition-colors">← Nome da Seção</Link>
+  <div className="mt-2">
+    <h1 className="text-sm font-bold uppercase tracking-widest">Título da Página</h1>
+    <p className="text-xs text-muted-foreground mt-0.5">Subtítulo opcional</p>
+  </div>
+</div>
+```
+
+Quando o header contém ações (botões, badges) ao lado do título, use `flex items-start justify-between` no `div` interno:
+
+```tsx
+<div className="border-b border-border bg-card px-6 py-4 shrink-0">
+  <Link href="/secao" className="text-xs text-muted-foreground hover:text-foreground transition-colors">← Nome da Seção</Link>
+  <div className="flex items-start justify-between mt-2">
+    <div>
+      <h1 className="text-sm font-bold uppercase tracking-widest">Título</h1>
+      <p className="text-xs text-muted-foreground mt-0.5">Subtítulo</p>
+    </div>
+    <div className="flex items-center gap-2">
+      {/* ações: botões, badges */}
+    </div>
+  </div>
+</div>
+```
+
+#### Regras
+
+| Regra | Detalhe |
+|---|---|
+| Sempre `← Nome da Seção` | Use seta unicode `←`, não ícone (`ChevronLeft`, `ArrowLeft`) |
+| `text-xs text-muted-foreground hover:text-foreground transition-colors` | Classe CSS exata — não varie |
+| Link acima do título | O link fica na linha de cima; o título vem abaixo com `mt-2` |
+| Sem separador `/` ou breadcrumb multilevel | Use apenas um nível de volta — nunca encadeie "Seção / Subseção" |
+| Sem botão "Voltar" com ícone inline | Nunca use `ChevronLeft`/`ArrowLeft` + texto "Voltar" lado a lado com divisor |
+| Sem `flex items-center gap-3` com separador `div w-px` | Padrão antigo proibido |
+
+### Botão de seta (ChevronRight) — obrigatório em listagens
 
 **Toda tabela de listagem que possui página de detalhe deve usar um `ChevronRight` como ação de navegação na última coluna da linha.** Nunca use texto "Visualizar", links no título/nome, ou qualquer outro padrão.
 
@@ -3437,6 +3488,92 @@ import Link from "next/link"
 #### Exceções — tabelas com ações inline mas SEM página de detalhe
 
 Tabelas como `documents`, `alerts` e `reports` gerenciam tudo inline (upload, status, resolução). **Não** adicionam coluna de seta.
+
+### Botões de ação inline (Editar / Excluir) — padrão obrigatório
+
+**Nenhum botão de ação destrutiva usa classes hardcoded `destructive/*` ou `hover:text-destructive`.** Todo botão de excluir/cancelar/desativar usa as CSS vars centralizadas `status-danger-*` definidas em `globals.css` (ver §32). Isso garante consistência visual automática entre temas dark/light.
+
+#### Padrão: icon-only (dentro de tabelas)
+
+```tsx
+import { Pencil, Trash2 } from "lucide-react"
+
+// Editar — icon-only
+<button
+  onClick={() => openEdit(item)}
+  style={{ borderRadius: 0 }}
+  className="flex items-center gap-1 px-2 py-1 border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+  title="Editar"
+>
+  <Pencil size={12} />
+</button>
+
+// Excluir — icon-only
+<button
+  onClick={() => setDeleteTarget(item)}
+  style={{ borderRadius: 0 }}
+  className="flex items-center gap-1 px-2 py-1 border border-status-danger-border text-status-danger hover:bg-status-danger-subtle transition-colors"
+  title="Excluir"
+>
+  <Trash2 size={12} />
+</button>
+```
+
+Quando o botão de editar é um `Link` de navegação (não um `onClick`), use o mesmo padrão mas com `<Link>`:
+
+```tsx
+<Link
+  href={`/rota/${item.id}`}
+  className="flex items-center gap-1 px-2 py-1 border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+  style={{ borderRadius: 0 }}
+  title="Editar"
+>
+  <Pencil size={12} />
+</Link>
+```
+
+#### Padrão: hover-only (ícone destrutivo sem borda permanente)
+
+Para ícones de remoção discretos (ex: remover item de lista dentro de form):
+
+```tsx
+<button
+  className="shrink-0 p-1 text-muted-foreground hover:text-status-danger transition-colors"
+  style={{ borderRadius: 0 }}
+  type="button"
+>
+  <Trash2 className="h-3.5 w-3.5" />
+</button>
+```
+
+#### Padrão: botão de confirmação destrutiva em modal (único caso com `bg-destructive` sólido)
+
+O botão final de confirmação dentro de um modal de exclusão usa background sólido. **Esta é a única exceção** — é intencional para comunicar o peso da ação:
+
+```tsx
+<button
+  className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50 transition-colors"
+  style={{ borderRadius: 0 }}
+>
+  Excluir
+</button>
+```
+
+#### Regras
+
+| Regra | Detalhe |
+|---|---|
+| **Sempre icon-only** | Nunca use texto "Editar" ou "Excluir" como label visível em botões de ação de tabela/listagem |
+| `Pencil` para editar | Sempre o ícone de lápis do lucide-react |
+| `Trash2` para excluir/remover | Sempre o ícone de lixeira do lucide-react |
+| `title="Editar"` / `title="Excluir"` | Sempre adicionar `title` para acessibilidade |
+| Nunca `border-destructive/40 text-destructive hover:bg-destructive/10` | Padrão antigo proibido — usa hardcoded Tailwind |
+| Nunca `hover:text-destructive` | Substituir por `hover:text-status-danger` |
+| `border-status-danger-border text-status-danger hover:bg-status-danger-subtle` | Padrão correto para botões de ação destrutiva com borda |
+| `bg-destructive text-destructive-foreground` | Permitido apenas no botão final de confirmação dentro de modal |
+| `transition-colors` obrigatório | Todo botão de ação deve ter `transition-colors` |
+| `disabled:opacity-50 disabled:cursor-not-allowed` | Obrigatório quando o botão pode ser desabilitado |
+| `style={{ borderRadius: 0 }}` | Sempre nos botões de ação inline (sem border-radius) |
 
 ---
 

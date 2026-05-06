@@ -2,7 +2,7 @@ import type { HealthSurveyConfiguration, HealthSurveyQuestion, Department, Healt
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz"
 import { prisma } from "@/libs/db"
 import { AppError } from "@/libs/errors/app-error"
-import type { CreateHealthSurveyConfigInput, CreateHealthSurveyResponseInput, CreateHealthSurveyTokenInput, CreateHealthSurveyAdherenceAlertInput } from "@/modules/health-surveys/health-survey.types"
+import type { CreateHealthSurveyConfigInput, UpdateHealthSurveyConfigInput, CreateHealthSurveyResponseInput, CreateHealthSurveyTokenInput, CreateHealthSurveyAdherenceAlertInput } from "@/modules/health-surveys/health-survey.types"
 
 type HealthSurveyConfigWithWorkDays = Prisma.HealthSurveyConfigurationGetPayload<{ include: { workDays: true } }>
 export type HealthSurveyConfigWithDetails = HealthSurveyConfigWithWorkDays & { department: Department; questions: HealthSurveyQuestion[] }
@@ -22,6 +22,40 @@ export function findHealthSurveyConfigsByTenant(tenantId: string): Promise<Healt
   })
 }
 
+export interface HealthSurveyConfigListingFilters {
+  q?: string
+  frequency?: string
+  departmentId?: string
+}
+
+export async function findHealthSurveyConfigsByTenantPaginated(
+  tenantId: string,
+  filters: HealthSurveyConfigListingFilters,
+  skip: number,
+  take: number,
+): Promise<{ items: HealthSurveyConfigWithDetails[]; total: number }> {
+  const where: Prisma.HealthSurveyConfigurationWhereInput = { tenantId, isActive: true }
+  if (filters.q !== undefined && filters.q !== "") {
+    where.name = { contains: filters.q, mode: "insensitive" }
+  }
+  if (filters.frequency !== undefined && filters.frequency !== "") {
+    where.frequency = filters.frequency
+  }
+  if (filters.departmentId !== undefined && filters.departmentId !== "") {
+    where.departmentId = filters.departmentId
+  }
+  const include = {
+    department: true,
+    questions: { where: { isActive: true }, orderBy: { order: "asc" as const } },
+    workDays: true,
+  }
+  const [items, total] = await prisma.$transaction([
+    prisma.healthSurveyConfiguration.findMany({ where, include, orderBy: { createdAt: "desc" }, skip, take }),
+    prisma.healthSurveyConfiguration.count({ where }),
+  ])
+  return { items: items as HealthSurveyConfigWithDetails[], total }
+}
+
 export function findHealthSurveyConfigById(tenantId: string, configId: string): Promise<HealthSurveyConfigWithDetails | null> {
   return prisma.healthSurveyConfiguration.findFirst({
     where: { id: configId, tenantId },
@@ -29,61 +63,15 @@ export function findHealthSurveyConfigById(tenantId: string, configId: string): 
   })
 }
 
-export function findFirstHealthSurveyConfigByTenant(tenantId: string): Promise<HealthSurveyConfigWithDetails | null> {
-  return prisma.healthSurveyConfiguration.findFirst({
-    where: { tenantId, isActive: true },
-    include: { department: true, questions: { where: { isActive: true }, orderBy: { order: "asc" } }, workDays: true },
-    orderBy: { createdAt: "asc" },
-  })
-}
-
-export async function upsertHealthSurveyConfig(tenantId: string, input: CreateHealthSurveyConfigInput): Promise<HealthSurveyConfiguration & { questions: HealthSurveyQuestion[] }> {
-  const existing = await prisma.healthSurveyConfiguration.findFirst({
-    where: { tenantId, departmentId: input.departmentId },
-  })
-
-  if (existing) {
-    const usedItems = await prisma.healthSurveyResponseItem.findMany({
-      where: { question: { tenantId, healthSurveyConfigurationId: existing.id } },
-      select: { questionId: true },
-      distinct: ["questionId"],
-    })
-    const usedQuestionIds = new Set(usedItems.map((r) => r.questionId))
-
-    if (usedQuestionIds.size > 0) {
-      await prisma.healthSurveyQuestion.updateMany({
-        where: { tenantId, healthSurveyConfigurationId: existing.id, id: { in: [...usedQuestionIds] } },
-        data: { isActive: false },
-      })
-    }
-
-    await prisma.healthSurveyQuestion.deleteMany({
-      where: { tenantId, healthSurveyConfigurationId: existing.id, id: { notIn: [...usedQuestionIds] } },
-    })
-
-    return prisma.healthSurveyConfiguration.update({
-      where: { id: existing.id },
-      data: {
-        frequency: input.frequency,
-        workStartTime: input.workStartTime,
-        workEndTime: input.workEndTime,
-        workDays: {
-          deleteMany: {},
-          createMany: { data: input.workDays.map((d) => ({ dayOfWeek: d })) },
-        },
-        questions: {
-          create: input.questions.map((q) => ({ ...q, tenantId })),
-        },
-      },
-      include: { questions: { where: { isActive: true }, orderBy: { order: "asc" } } },
-    })
-  }
-
+export function createNewHealthSurveyConfigEntry(tenantId: string, input: CreateHealthSurveyConfigInput): Promise<HealthSurveyConfiguration & { questions: HealthSurveyQuestion[] }> {
   return prisma.healthSurveyConfiguration.create({
     data: {
       tenantId,
       departmentId: input.departmentId,
+      name: input.name,
+      description: input.description ?? null,
       frequency: input.frequency,
+      scheduledDayOfMonth: input.scheduledDayOfMonth ?? null,
       workStartTime: input.workStartTime,
       workEndTime: input.workEndTime,
       workDays: {
@@ -94,6 +82,58 @@ export async function upsertHealthSurveyConfig(tenantId: string, input: CreateHe
       },
     },
     include: { questions: { orderBy: { order: "asc" } } },
+  })
+}
+
+export async function updateExistingHealthSurveyConfigEntry(tenantId: string, configId: string, input: UpdateHealthSurveyConfigInput): Promise<HealthSurveyConfiguration & { questions: HealthSurveyQuestion[] }> {
+  const existing = await prisma.healthSurveyConfiguration.findFirst({ where: { id: configId, tenantId } })
+  if (!existing) throw new AppError("CONFIG_NOT_FOUND", "Configuração não encontrada.")
+
+  const usedItems = await prisma.healthSurveyResponseItem.findMany({
+    where: { question: { tenantId, healthSurveyConfigurationId: configId } },
+    select: { questionId: true },
+    distinct: ["questionId"],
+  })
+  const usedQuestionIds = new Set(usedItems.map((r) => r.questionId))
+
+  if (usedQuestionIds.size > 0) {
+    await prisma.healthSurveyQuestion.updateMany({
+      where: { tenantId, healthSurveyConfigurationId: configId, id: { in: [...usedQuestionIds] } },
+      data: { isActive: false },
+    })
+  }
+
+  await prisma.healthSurveyQuestion.deleteMany({
+    where: { tenantId, healthSurveyConfigurationId: configId, id: { notIn: [...usedQuestionIds] } },
+  })
+
+  return prisma.healthSurveyConfiguration.update({
+    where: { id: configId },
+    data: {
+      name: input.name,
+      description: input.description ?? null,
+      frequency: input.frequency,
+      scheduledDayOfMonth: input.scheduledDayOfMonth ?? null,
+      workStartTime: input.workStartTime,
+      workEndTime: input.workEndTime,
+      workDays: {
+        deleteMany: {},
+        createMany: { data: input.workDays.map((d) => ({ dayOfWeek: d })) },
+      },
+      questions: {
+        create: input.questions.map((q) => ({ ...q, tenantId })),
+      },
+    },
+    include: { questions: { where: { isActive: true }, orderBy: { order: "asc" } } },
+  })
+}
+
+export async function deactivateHealthSurveyConfigEntry(tenantId: string, configId: string): Promise<void> {
+  const existing = await prisma.healthSurveyConfiguration.findFirst({ where: { id: configId, tenantId } })
+  if (!existing) throw new AppError("CONFIG_NOT_FOUND", "Configuração não encontrada.")
+  await prisma.healthSurveyConfiguration.update({
+    where: { id: configId },
+    data: { isActive: false },
   })
 }
 
@@ -558,6 +598,7 @@ export interface ActiveHealthSurveyConfigForDispatch {
   id: string
   tenantId: string
   frequency: string
+  scheduledDayOfMonth: number | null
   workStartTime: string
   workEndTime: string
   workDays: number[]
@@ -583,7 +624,7 @@ export async function findAllTenantsActiveHealthSurveyConfigsForAutoDispatch(): 
         },
       },
       dispatches: {
-        where: { status: "available" },
+        where: { status: { in: ["available", "sent"] } },
         orderBy: { dispatchedAt: "desc" },
         take: 1,
         select: { dispatchedAt: true },
@@ -596,6 +637,7 @@ export async function findAllTenantsActiveHealthSurveyConfigsForAutoDispatch(): 
       id: c.id,
       tenantId: c.tenantId,
       frequency: c.frequency,
+      scheduledDayOfMonth: c.scheduledDayOfMonth,
       workStartTime: c.workStartTime,
       workEndTime: c.workEndTime,
       workDays: c.workDays.map((w) => w.dayOfWeek),
@@ -628,7 +670,7 @@ export interface PendingHealthSurveyAdherenceDispatch {
 export function findAllTenantsHealthSurveyDispatches48hAgo(): Promise<PendingHealthSurveyAdherenceDispatch[]> {
   const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000)
   return prisma.healthSurveyDispatch.findMany({
-    where: { status: "available", dispatchedAt: { lte: cutoff }, adherenceCheckedAt: null },
+    where: { status: { in: ["available", "sent"] }, dispatchedAt: { lte: cutoff }, adherenceCheckedAt: null },
     include: { healthSurveyConfiguration: true },
   })
 }

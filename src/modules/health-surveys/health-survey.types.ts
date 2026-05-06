@@ -28,7 +28,10 @@ export interface HealthSurveyConfigurationType {
   id: string
   tenantId: string
   departmentId: string
+  name: string
+  description: string | null
   frequency: string
+  scheduledDayOfMonth: number | null
   workStartTime: string
   workEndTime: string
   workDays: number[]
@@ -74,27 +77,25 @@ export type HealthSurveyTokenValidation =
 
 export interface CreateHealthSurveyConfigInput {
   departmentId: string
+  name: string
+  description: string | undefined
   frequency: "daily" | "twice_weekly" | "weekly" | "biweekly" | "monthly"
+  scheduledDayOfMonth: number | null
   workStartTime: string
   workEndTime: string
   workDays: number[]
   questions: { text: string; order: number; scoreDirection: ScoreDirection }[]
 }
 
-export interface GlobalHealthSurveyConfigInput {
+export interface UpdateHealthSurveyConfigInput {
+  name: string
+  description: string | undefined
   frequency: "daily" | "twice_weekly" | "weekly" | "biweekly" | "monthly"
+  scheduledDayOfMonth: number | null
   workStartTime: string
   workEndTime: string
   workDays: number[]
   questions: { text: string; order: number; scoreDirection: ScoreDirection }[]
-}
-
-export interface ExistingGlobalHealthSurveyConfig {
-  frequency: "daily" | "twice_weekly" | "weekly" | "biweekly" | "monthly"
-  workStartTime: string
-  workEndTime: string
-  workDays: number[]
-  questions: { id: string; text: string; order: number; scoreDirection: ScoreDirection }[]
 }
 
 export interface SubmitHealthSurveyInput {

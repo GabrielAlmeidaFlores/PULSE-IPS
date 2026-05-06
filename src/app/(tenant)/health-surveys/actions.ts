@@ -27,3 +27,20 @@ export async function scheduleAllHealthSurveyDispatchesAction(scheduledAt: strin
     throw err
   }
 }
+
+export async function scheduleHealthSurveyDispatchAction(configId: string, scheduledAt: string): Promise<ActionResult> {
+  const session = await getSession()
+  if (!session) return { error: "Sessão expirada." }
+  const parsedConfigId = z.string().uuid().safeParse(configId)
+  if (!parsedConfigId.success) return { error: "Pesquisa inválida." }
+  const parsedDate = scheduledAtSchema.safeParse(scheduledAt)
+  if (!parsedDate.success) return { error: "Data/hora inválida." }
+  try {
+    await scheduleHealthSurveyDispatch(session.tenantId, parsedConfigId.data, new Date(parsedDate.data))
+    revalidatePath("/health-surveys")
+    return {}
+  } catch (err) {
+    if (err instanceof AppError) return { error: err.message }
+    throw err
+  }
+}

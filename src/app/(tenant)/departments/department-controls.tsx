@@ -286,7 +286,7 @@ export function DepartmentControls({ departments, total }: Props): React.ReactEl
                   <button
                     onClick={() => openEdit(dept)}
                     style={{ borderRadius: 0 }}
-                    className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider border border-border text-muted-foreground hover:bg-muted"
+                    className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                     title="Editar"
                   >
                     <Pencil size={12} />
@@ -294,7 +294,7 @@ export function DepartmentControls({ departments, total }: Props): React.ReactEl
                   <button
                     onClick={() => setDeleteTarget(dept)}
                     style={{ borderRadius: 0 }}
-                    className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider border border-destructive/40 text-destructive hover:bg-destructive/10"
+                    className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider border border-status-danger-border text-status-danger hover:bg-status-danger-subtle transition-colors"
                     title="Excluir"
                   >
                     <Trash2 size={12} />

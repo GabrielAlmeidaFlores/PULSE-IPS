@@ -316,24 +316,27 @@ model EmployeeConsent {
 }
 
 model HealthSurveyConfiguration {
-  id            String                @id @default(uuid())
-  tenantId      String                @map("tenant_id")
-  departmentId  String                @map("department_id")
-  frequency     String
-  workStartTime String                @map("work_start_time")
-  workEndTime   String                @map("work_end_time")
-  workDays      HealthSurveyConfigWorkDay[]
-  isActive      Boolean               @default(true) @map("is_active")
-  createdAt     DateTime              @default(now()) @map("created_at")
-  updatedAt     DateTime              @updatedAt @map("updated_at")
+  id                   String                @id @default(uuid())
+  tenantId             String                @map("tenant_id")
+  departmentId         String                @map("department_id")
+  name                 String                @default("Pesquisa de Saúde")
+  description          String?
+  frequency            String
+  scheduledDayOfMonth  Int?                  @map("scheduled_day_of_month")
+  workStartTime        String                @map("work_start_time")
+  workEndTime          String                @map("work_end_time")
+  workDays             HealthSurveyConfigWorkDay[]
+  isActive             Boolean               @default(true) @map("is_active")
+  createdAt            DateTime              @default(now()) @map("created_at")
+  updatedAt            DateTime              @updatedAt @map("updated_at")
 
   organization Organization     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   department   Department       @relation(fields: [departmentId], references: [id])
   questions    HealthSurveyQuestion[]
   dispatches   HealthSurveyDispatch[]
 
-  @@unique([tenantId, departmentId])
   @@index([tenantId])
+  @@index([tenantId, departmentId])
   @@map("health_survey_configurations")
 }
 

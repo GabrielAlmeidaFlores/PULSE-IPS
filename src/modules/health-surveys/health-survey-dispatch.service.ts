@@ -41,9 +41,42 @@ function getDayOfWeekInTimezone(timezone: string): number {
   return dayMap[dayName] ?? 0
 }
 
+function getDayOfMonthInTimezone(timezone: string): number {
+  return parseInt(new Intl.DateTimeFormat("en-US", { timeZone: timezone, day: "numeric" }).format(new Date()), 10)
+}
+
 function isWorkDay(workDays: number[], timezone: string): boolean {
   const today = getDayOfWeekInTimezone(timezone)
   return workDays.includes(today)
+}
+
+function isScheduledDayOfMonth(scheduledDay: number, timezone: string): boolean {
+  return getDayOfMonthInTimezone(timezone) === scheduledDay
+}
+
+interface SchedulingCheckConfig {
+  frequency: string
+  scheduledDayOfMonth: number | null
+  workDays: number[]
+  lastDispatchedAt: Date | null
+}
+
+function shouldSkipDispatch(config: SchedulingCheckConfig, timezone: string): boolean {
+  if (config.frequency === "monthly" && config.scheduledDayOfMonth !== null) {
+    if (!isScheduledDayOfMonth(config.scheduledDayOfMonth, timezone)) return true
+    if (config.lastDispatchedAt !== null) {
+      const daysSinceLast = (Date.now() - config.lastDispatchedAt.getTime()) / (1000 * 60 * 60 * 24)
+      if (daysSinceLast < 25) return true
+    }
+    return false
+  }
+  if (!isWorkDay(config.workDays, timezone)) return true
+  const intervalDays = FREQUENCY_INTERVAL_DAYS[config.frequency] ?? 7
+  if (config.lastDispatchedAt !== null) {
+    const daysSinceLast = (Date.now() - config.lastDispatchedAt.getTime()) / (1000 * 60 * 60 * 24)
+    if (daysSinceLast < intervalDays) return true
+  }
+  return false
 }
 
 function isWithinWorkHours(workStartTime: string, workEndTime: string, timezone: string): boolean {
@@ -231,23 +264,14 @@ export async function runHealthSurveyAutoDispatchScheduler(): Promise<{ triggere
     try {
       const timezone = config.organization.timezone
 
-      if (!isWorkDay(config.workDays, timezone)) {
-        skipped++
-        continue
-      }
-
       if (!isWithinWorkHours(config.workStartTime, config.workEndTime, timezone)) {
         skipped++
         continue
       }
 
-      const intervalDays = FREQUENCY_INTERVAL_DAYS[config.frequency] ?? 7
-      if (config.lastDispatchedAt !== null) {
-        const daysSinceLast = (Date.now() - config.lastDispatchedAt.getTime()) / (1000 * 60 * 60 * 24)
-        if (daysSinceLast < intervalDays) {
-          skipped++
-          continue
-        }
+      if (shouldSkipDispatch(config, timezone)) {
+        skipped++
+        continue
       }
 
       const fired = await fireDispatch(
