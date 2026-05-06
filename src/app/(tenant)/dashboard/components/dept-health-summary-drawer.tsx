@@ -172,7 +172,7 @@ export function DeptHealthSummaryDrawer({ card, onClose }: DeptHealthSummaryDraw
                     ) : (
                       <div>
                         <div className="flex items-end justify-between mb-1.5">
-                          <p className="text-xs text-muted-foreground">{summary.responseCount} respostas de {summary.totalRecipients} enviados</p>
+                          <p className="text-xs text-muted-foreground">{summary.responseCount} respostas de {summary.totalRecipients} destinatários</p>
                           <span className={`text-lg font-black ${adherenceRateTextColor(summary.adherenceRate)}`}>
                             {summary.adherenceRate}%
                           </span>

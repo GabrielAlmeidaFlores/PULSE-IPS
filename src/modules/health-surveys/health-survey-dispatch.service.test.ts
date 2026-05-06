@@ -4,7 +4,7 @@ import {
   findAllTenantsPendingHealthSurveyDispatches,
   findAllTenantsActiveHealthSurveyConfigsForAutoDispatch,
   createHealthSurveyTokens,
-  markHealthSurveyDispatchSent,
+  markHealthSurveyDispatchDispatched,
   createHealthSurveyDispatch,
   findAllTenantsHealthSurveyDispatches48hAgo,
   countHealthSurveyResponsesForDispatch,
@@ -40,7 +40,7 @@ vi.mock("@/env", () => ({
 const mockFindPendingDispatches = vi.mocked(findAllTenantsPendingHealthSurveyDispatches)
 const mockFindActiveConfigs = vi.mocked(findAllTenantsActiveHealthSurveyConfigsForAutoDispatch)
 const mockCreateHealthSurveyTokens = vi.mocked(createHealthSurveyTokens)
-const mockMarkDispatchSent = vi.mocked(markHealthSurveyDispatchSent)
+const mockMarkDispatchDispatched = vi.mocked(markHealthSurveyDispatchDispatched)
 const mockCreateDispatch = vi.mocked(createHealthSurveyDispatch)
 const mockFindDispatches48hAgo = vi.mocked(findAllTenantsHealthSurveyDispatches48hAgo)
 const mockCountResponses = vi.mocked(countHealthSurveyResponsesForDispatch)
@@ -118,7 +118,7 @@ beforeEach(() => {
   mockAddBulk.mockResolvedValue([])
   mockCreateDispatch.mockResolvedValue({ id: "new-dispatch-1" } as Awaited<ReturnType<typeof createHealthSurveyDispatch>>)
   mockCreateHealthSurveyTokens.mockResolvedValue(undefined)
-  mockMarkDispatchSent.mockResolvedValue(undefined)
+  mockMarkDispatchDispatched.mockResolvedValue(undefined)
   mockCreateAdherenceAlert.mockResolvedValue(undefined)
   mockMarkDispatchAdherenceChecked.mockResolvedValue(undefined)
   mockHasOpenAlertOfType.mockResolvedValue(false)
@@ -157,7 +157,7 @@ describe("runHealthSurveyDispatcher", () => {
     const result = await runHealthSurveyDispatcher()
     expect(result).toEqual({ dispatched: 1, errors: 0 })
     expect(mockCreateDispatch).not.toHaveBeenCalled()
-    expect(mockMarkDispatchSent).toHaveBeenCalledOnce()
+    expect(mockMarkDispatchDispatched).toHaveBeenCalledOnce()
     expect(mockAddBulk).toHaveBeenCalledOnce()
 
     vi.useRealTimers()
@@ -184,7 +184,7 @@ describe("runHealthSurveyDispatcher", () => {
     vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
 
     mockFindPendingDispatches.mockResolvedValue([makePendingDispatch()])
-    mockMarkDispatchSent.mockRejectedValue(new Error("DB error"))
+    mockMarkDispatchDispatched.mockRejectedValue(new Error("DB error"))
 
     const result = await runHealthSurveyDispatcher()
     expect(result).toEqual({ dispatched: 0, errors: 1 })
@@ -462,7 +462,7 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
 
     expect(result).toEqual({ dispatched: 1, errors: 0 })
     expect(mockCreateHealthSurveyTokens).not.toHaveBeenCalled()
-    expect(mockMarkDispatchSent).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID, 0)
+    expect(mockMarkDispatchDispatched).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID, 0)
     expect(mockAddBulk).not.toHaveBeenCalled()
 
     vi.useRealTimers()
@@ -522,7 +522,7 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
 
     await runHealthSurveyDispatcher()
 
-    expect(mockMarkDispatchSent).toHaveBeenCalledOnce()
+    expect(mockMarkDispatchDispatched).toHaveBeenCalledOnce()
     expect(mockAddBulk).not.toHaveBeenCalled()
 
     vi.useRealTimers()
@@ -540,7 +540,7 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
     await runHealthSurveyDispatcher()
 
     expect(mockCreateHealthSurveyTokens).not.toHaveBeenCalled()
-    expect(mockMarkDispatchSent).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID, 1)
+    expect(mockMarkDispatchDispatched).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID, 1)
     expect(mockAddBulk).not.toHaveBeenCalled()
 
     vi.useRealTimers()
@@ -559,7 +559,7 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
     await runHealthSurveyDispatcher()
 
     expect(mockCreateHealthSurveyTokens).not.toHaveBeenCalled()
-    expect(mockMarkDispatchSent).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID, 1)
+    expect(mockMarkDispatchDispatched).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID, 1)
     expect(mockAddBulk).toHaveBeenCalledOnce()
     const [jobs] = mockAddBulk.mock.calls[0] as [{ data: { body: string } }[]]
     expect(jobs[0]?.data.body).toContain(PREEXISTING_TOKEN)
@@ -579,7 +579,7 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
     await runHealthSurveyDispatcher()
 
     expect(mockCreateHealthSurveyTokens).toHaveBeenCalledOnce()
-    expect(mockMarkDispatchSent).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID, 1)
+    expect(mockMarkDispatchDispatched).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID, 1)
     expect(mockAddBulk).toHaveBeenCalledOnce()
     const [jobs] = mockAddBulk.mock.calls[0] as [{ data: { body: string } }[]]
     expect(jobs[0]?.data.body).not.toContain("expired-old-token")

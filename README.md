@@ -55,7 +55,7 @@ Plataforma SaaS multi-tenant de gestão de saúde e bem-estar ocupacional voltad
 | Formulários | React Hook Form + Zod |
 | Sessão | JWT via `jose` (cookie `HttpOnly`) |
 | E-mail | Resend + React Email (templates) |
-| SMS/WhatsApp | Twilio SMS / WhatsApp Cloud API |
+| Mensagens | Twilio / WhatsApp Cloud API |
 | Pagamentos | Stripe (webhooks + Checkout) |
 | PDF | `@react-pdf/renderer` |
 | Deploy | Docker multi-stage |
@@ -597,7 +597,7 @@ const color = healthIndexAccent(hi)          // → classe CSS de cor
 2. Define:
    - **Frequência**: `daily`, `twice_weekly`, `weekly`, `biweekly`, `monthly`
    - **Horário de expediente**: `workStartTime` e `workEndTime` (formato `HH:mm`)
-   - **Dias de trabalho**: seleção de dias da semana (0=Dom … 6=Sáb), armazenados na tabela relacional `health_health_survey_config_work_days` — nunca como string separada por vírgula
+   - **Dias de trabalho**: seleção de dias da semana (0=Dom … 6=Sáb), armazenados na tabela relacional `health_survey_config_work_days` — nunca como string separada por vírgula
    - **Perguntas**: lista de questões com score de 1 a 5, cada uma com `scoreDirection` (`higher_is_better` ou `lower_is_better`). Perguntas de estresse e carga de trabalho usam `lower_is_better` (1 = ótimo). O sistema normaliza automaticamente antes de calcular métricas e gerar alertas.
 3. A action salva a `HealthSurveyConfiguration` com `@@unique([tenantId, departmentId])` — só existe uma configuração ativa por departamento.
 
@@ -648,7 +648,7 @@ sendDispatchTokensAndMessages(dispatch)
 Fila pulse:messages
   └── Worker processMessageJob()
         ├── Chama getMessagingService().send({ to, body })
-        │     ├── TwilioSMS: POST Twilio API
+        │     ├── Twilio: POST Twilio API
         │     ├── WhatsApp: POST Meta API
         │     └── Console: console.log (dev)
         └── Registra MessageLog (status: sent | failed)
@@ -888,7 +888,7 @@ Referência de tudo que o usuário vê na tela para cada alerta (`/alerts`) e su
 O fluxo de consentimento garante que a coleta de dados de saúde dos funcionários seja juridicamente válida. O consentimento é coletado **inline na primeira pesquisa** — não há envio separado de link de consentimento:
 
 1. O funcionário é cadastrado no sistema (sem convite de consentimento separado).
-2. Quando a primeira pesquisa é disparada, o funcionário recebe o link `/health-survey/[token]` por SMS/WhatsApp.
+2. Quando a primeira pesquisa é disparada, o funcionário recebe o link `/health-survey/[token]` por mensagem automatizada.
 3. Ao acessar o link, a página exibe a **Consent Gate** — o texto dos Termos de Consentimento (versão ativa de `consent_term_versions`) antes do formulário da pesquisa.
 4. O funcionário pode aceitar ou recusar:
    - **Aceitar**: cria um `EmployeeConsent` com `event = "accepted"`. A página exibe o formulário da pesquisa.
@@ -951,7 +951,7 @@ Checkout → Stripe Checkout Session
 | `invoice.payment_succeeded` | Atualiza período atual |
 
 **Idempotência dos webhooks:**
-- Cada evento é salvo em `stripe_webhook_events` pelo `stripe_event_id`.
+- Cada evento é salvo em `billing_webhook_events` pelo `external_event_id`.
 - Ao processar, verifica se o evento já foi processado. Se sim, ignora.
 - O job `stripe-webhook-retry` (a cada hora) reprocessa eventos com `error != null` e `processedAt = null`.
 
@@ -1009,7 +1009,7 @@ O super admin acessa `/super-admin` com credenciais separadas e tem controle tot
 
 **Horário de expediente:**
 - Configurado em 3 níveis com herança:
-  1. `HealthSurveyConfiguration` — janela de disparo da pesquisa (`workStartTime`, `workEndTime`, `health_health_survey_config_work_days`)
+  1. `HealthSurveyConfiguration` — janela de disparo da pesquisa (`workStartTime`, `workEndTime`, `health_survey_config_work_days`)
   2. `Department` — expediente padrão do setor (`workStartTime`, `workEndTime`, `department_work_days`) — fallback do colaborador
   3. `Employee` — override individual (`workStartTime`, `workEndTime`, `employee_work_days`) — tem **precedência** sobre o departamento
 - **Cadeia de herança para horários**: `employee → department → healthSurveyConfig`
@@ -1017,7 +1017,7 @@ O super admin acessa `/super-admin` com credenciais separadas e tem controle tot
 - O horário do colaborador tem precedência sobre o departamento; o departamento tem precedência sobre a config da pesquisa.
 
 **No disparo de pesquisas:**
-1. O worker verifica se o dia atual (no timezone da organização) está nos dias configurados em `health_health_survey_config_work_days`.
+1. O worker verifica se o dia atual (no timezone da organização) está nos dias configurados em `health_survey_config_work_days`.
 2. Verifica se a hora atual (no timezone da organização) está dentro do expediente (`workStartTime` ≤ agora ≤ `workEndTime`).
 3. Se fora do expediente, o disparo é adiado para a próxima execução do job (a cada 15 min).
 

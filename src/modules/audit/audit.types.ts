@@ -7,7 +7,7 @@ export type AuditAction =
   | "department.updated"
   | "department.deleted"
   | "health_survey.configured"
-  | "health_survey.dispatched"
+  | "health_survey.available"
   | "document.uploaded"
   | "document.created"
   | "document.updated"

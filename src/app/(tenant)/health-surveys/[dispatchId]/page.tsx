@@ -61,14 +61,14 @@ const FREQUENCY_LABELS: Record<string, string> = {
 
 const STATUS_STYLE: Record<string, string> = {
   scheduled: "bg-muted text-muted-foreground border-border",
-  sent: "bg-primary/10 text-primary border-primary/20",
+  available: "bg-primary/10 text-primary border-primary/20",
   cancelled: "badge-warning",
   failed: "bg-destructive/10 text-destructive border-destructive/20",
 };
 
 const STATUS_LABELS: Record<string, string> = {
   scheduled: "Agendado",
-  sent: "Enviado",
+  available: "Disponível",
   cancelled: "Cancelado",
   failed: "Falhou",
 };
@@ -440,7 +440,7 @@ async function buildDispatchComparisonData(
       const base: MergedStatsBase = {
         id: ids[0] ?? "",
         departmentId: firstStat.departmentId,
-        status: "sent",
+        status: "available",
         scheduledAt: firstDispatch ? new Date(firstDispatch.scheduledAt) : new Date(),
         dispatchedAt: null,
         frequency: firstStat.frequency,
@@ -675,7 +675,7 @@ export default async function HealthSurveyDispatchDetailPage({
             <div className="flex items-center gap-2 mb-1">
               <Users className="w-3.5 h-3.5 text-muted-foreground" />
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Enviados
+                Destinatários
               </p>
             </div>
             <p className="text-3xl font-black text-primary">

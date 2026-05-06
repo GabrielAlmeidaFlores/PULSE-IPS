@@ -163,7 +163,7 @@ export async function findAllTenantsDeptRecentDispatchAvgs(departmentId: string,
     include: {
       department: { select: { id: true, name: true, tenantId: true } },
       dispatches: {
-        where: { status: "sent" },
+        where: { status: "available" },
         orderBy: { createdAt: "desc" },
         take: limitPerDept,
         include: {

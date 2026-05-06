@@ -544,7 +544,7 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                     <th className="px-4 py-2.5 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Funcionários</th>
                     <th className="px-4 py-2.5 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap">
                       Responderam
-                      <span className="block text-[8px] font-normal normal-case tracking-normal text-muted-foreground/70">de enviados</span>
+                      <span className="block text-[8px] font-normal normal-case tracking-normal text-muted-foreground/70">de destinatários</span>
                     </th>
                     <th className="px-4 py-2.5 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Adesão</th>
                     <th className="px-4 py-2.5 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap">
@@ -613,7 +613,7 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
               </table>
               <div className="px-5 py-3 border-t border-border bg-muted/20 flex flex-wrap gap-x-6 gap-y-1">
                 <p className="text-[10px] text-muted-foreground">
-                  <span className="font-bold">Responderam de enviados:</span> quantidade de colaboradores que responderam a pesquisa em relação ao total que recebeu o link. Participação é voluntária, por isso o número pode ser menor.
+                  <span className="font-bold">Responderam de destinatários:</span> quantidade de colaboradores que responderam a pesquisa em relação ao total que recebeu o link. Participação é voluntária, por isso o número pode ser menor.
                 </p>
                 <p className="text-[10px] text-muted-foreground">
                   <span className="font-bold">Perguntas</span> (<span className="text-status-success font-bold">saudável</span> · <span className="text-status-warning font-bold">atenção</span> · <span className="text-status-danger font-bold">crítico</span>): quantas perguntas do questionário deste setor estão em cada nível de saúde.

@@ -172,7 +172,7 @@ export async function findSuggestionContextData(tenantId: string): Promise<Sugge
       orderBy: { createdAt: "desc" },
     }),
     prisma.healthSurveyDispatch.findMany({
-      where: { tenantId, status: "sent", dispatchedAt: { gte: thirtyDaysAgo }, totalRecipients: { gt: 0 } },
+      where: { tenantId, status: "available", dispatchedAt: { gte: thirtyDaysAgo }, totalRecipients: { gt: 0 } },
       select: {
         id: true,
         totalRecipients: true,

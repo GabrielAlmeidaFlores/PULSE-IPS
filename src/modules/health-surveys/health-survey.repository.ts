@@ -517,14 +517,14 @@ export async function refreshHealthSurveyTokenWorkHours(
   })
 }
 
-export async function markHealthSurveyDispatchSent(tenantId: string, dispatchId: string, totalRecipients: number): Promise<void> {
+export async function markHealthSurveyDispatchDispatched(tenantId: string, dispatchId: string, totalRecipients: number): Promise<void> {
   await prisma.healthSurveyDispatch.updateMany({
     where: { id: dispatchId, tenantId },
-    data: { status: "sent", dispatchedAt: new Date(), totalRecipients },
+    data: { status: "available", dispatchedAt: new Date(), totalRecipients },
   })
 }
 
-export async function createHealthSurveyTokensAndMarkSent(
+export async function createHealthSurveyTokensAndMarkDispatched(
   tenantId: string,
   dispatchId: string,
   tokens: CreateHealthSurveyTokenInput[],
@@ -533,7 +533,7 @@ export async function createHealthSurveyTokensAndMarkSent(
     prisma.healthSurveyResponseToken.createMany({ data: tokens }),
     prisma.healthSurveyDispatch.updateMany({
       where: { id: dispatchId, tenantId },
-      data: { status: "sent", dispatchedAt: new Date(), totalRecipients: tokens.length },
+      data: { status: "available", dispatchedAt: new Date(), totalRecipients: tokens.length },
     }),
   ])
 }
@@ -583,7 +583,7 @@ export async function findAllTenantsActiveHealthSurveyConfigsForAutoDispatch(): 
         },
       },
       dispatches: {
-        where: { status: "sent" },
+        where: { status: "available" },
         orderBy: { dispatchedAt: "desc" },
         take: 1,
         select: { dispatchedAt: true },
@@ -628,7 +628,7 @@ export interface PendingHealthSurveyAdherenceDispatch {
 export function findAllTenantsHealthSurveyDispatches48hAgo(): Promise<PendingHealthSurveyAdherenceDispatch[]> {
   const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000)
   return prisma.healthSurveyDispatch.findMany({
-    where: { status: "sent", dispatchedAt: { lte: cutoff }, adherenceCheckedAt: null },
+    where: { status: "available", dispatchedAt: { lte: cutoff }, adherenceCheckedAt: null },
     include: { healthSurveyConfiguration: true },
   })
 }

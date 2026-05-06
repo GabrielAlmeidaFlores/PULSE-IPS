@@ -322,7 +322,7 @@ export default async function OrganizationDetailPage({
             />
             <TopStat
               icon={<BarChart2 className="h-5 w-5" />}
-              label="Pesquisas enviadas"
+              label="Pesquisas realizadas"
               value={org.dispatchCount}
               note={`${org.responseCount} respostas recebidas`}
               color="green"

@@ -51,7 +51,7 @@ export interface HealthSurveyDispatchType {
   healthSurveyConfigurationId: string
   scheduledAt: Date
   dispatchedAt: Date | null
-  status: "scheduled" | "sent" | "failed" | "cancelled"
+  status: "scheduled" | "available" | "failed" | "cancelled"
   totalRecipients: number
   totalResponses: number
   createdAt: Date

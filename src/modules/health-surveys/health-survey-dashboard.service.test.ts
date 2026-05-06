@@ -48,7 +48,7 @@ const DISPATCH_DATA = {
   id: "d-1",
   tenantId: TENANT_ID,
   departmentId: "dept-1",
-  status: "sent",
+  status: "available",
   scheduledAt: new Date("2024-01-15"),
   dispatchedAt: new Date("2024-01-15T10:00:00"),
   departmentName: "Vendas",
@@ -190,9 +190,9 @@ describe("getHealthSurveyDispatchesFiltered", () => {
   it("repassa filtro status quando definido", async () => {
     mockFindDispatchesByTenantFiltered.mockResolvedValue([])
 
-    await getHealthSurveyDispatchesFiltered(TENANT_ID, { status: "sent" })
+    await getHealthSurveyDispatchesFiltered(TENANT_ID, { status: "available" })
 
-    expect(mockFindDispatchesByTenantFiltered).toHaveBeenCalledWith(TENANT_ID, { status: "sent" })
+    expect(mockFindDispatchesByTenantFiltered).toHaveBeenCalledWith(TENANT_ID, { status: "available" })
   })
 
   it("repassa filtros de data quando definidos", async () => {
@@ -240,11 +240,11 @@ describe("getHealthSurveyDispatchesPaginatedByDay", () => {
     await getHealthSurveyDispatchesPaginatedByDay(TENANT_ID, {
       page: 1,
       pageSize: 10,
-      status: "sent",
+      status: "available",
       dateFrom,
     })
 
-    expect(mockFindDispatchDaysPaginated).toHaveBeenCalledWith(TENANT_ID, { status: "sent", dateFrom }, 0, 10, DEFAULT_TIMEZONE)
-    expect(mockFindDispatchesForDates).toHaveBeenCalledWith(TENANT_ID, [DATE_FROM_ISO], { status: "sent", dateFrom }, DEFAULT_TIMEZONE)
+    expect(mockFindDispatchDaysPaginated).toHaveBeenCalledWith(TENANT_ID, { status: "available", dateFrom }, 0, 10, DEFAULT_TIMEZONE)
+    expect(mockFindDispatchesForDates).toHaveBeenCalledWith(TENANT_ID, [DATE_FROM_ISO], { status: "available", dateFrom }, DEFAULT_TIMEZONE)
   })
 })
