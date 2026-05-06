@@ -7,12 +7,14 @@ import { AppError } from "@/libs/errors/app-error"
 import {
   type PgrReviewWithResults,
   type PgrReviewListItem,
+  type PgrReviewListFilters,
   findPgrReviewsByTenant,
   findPgrReviewsByTenantPaginated,
   findPgrReviewById,
   findOrgWithDepartmentsForPgr,
   findDispatchesForPgr,
   findPgrReviewByTenantAndPeriod,
+  deletePgrReview,
   createPgrReviewAtomic,
   findAllTenantsUpcomingPgrReviews,
   findExistingPgrAlert,
@@ -47,6 +49,8 @@ export function getPgrReviews(tenantId: string): Promise<PgrReviewSummary[]> {
 export interface PgrReviewPageQuery {
   page: number
   pageSize: number
+  year?: string
+  status?: string
 }
 
 export async function getPgrReviewsPaginated(
@@ -54,7 +58,10 @@ export async function getPgrReviewsPaginated(
   query: PgrReviewPageQuery,
 ): Promise<{ items: PgrReviewSummary[]; total: number }> {
   const skip = (query.page - 1) * query.pageSize
-  const { items, total } = await findPgrReviewsByTenantPaginated(tenantId, skip, query.pageSize)
+  const filters: PgrReviewListFilters = {}
+  if (query.year !== undefined) filters.year = query.year
+  if (query.status !== undefined) filters.status = query.status
+  const { items, total } = await findPgrReviewsByTenantPaginated(tenantId, filters, skip, query.pageSize)
   return { items: items.map(toSummary), total }
 }
 
@@ -124,7 +131,7 @@ function buildDeptQuestionResults(
   return results
 }
 
-export async function generatePgrReport(tenantId: string, period: string): Promise<void> {
+export async function generatePgrReport(tenantId: string, period: string, forceRegenerate = false): Promise<void> {
   const org = await findOrgWithDepartmentsForPgr(tenantId)
   const dispatches = await findDispatchesForPgr(tenantId)
 
@@ -141,7 +148,10 @@ export async function generatePgrReport(tenantId: string, period: string): Promi
 
   const existingReview = await findPgrReviewByTenantAndPeriod(tenantId, period)
   if (existingReview) {
-    throw new AppError("DUPLICATE_PGR_PERIOD", `Já existe um relatório gerado para o período ${period}.`)
+    if (!forceRegenerate) {
+      throw new AppError("DUPLICATE_PGR_PERIOD", `Já existe um relatório gerado para o período ${period}.`)
+    }
+    await deletePgrReview(tenantId, existingReview.id)
   }
 
   const deptResults: CreatePgrDeptResultInput[] = org.departments.map((dept) => {

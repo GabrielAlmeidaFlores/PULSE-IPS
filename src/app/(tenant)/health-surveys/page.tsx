@@ -53,7 +53,7 @@ interface DayGroup {
   status: string
   statusCounts: Record<string, number>
   deptIds: Set<string>
-  configNames: Set<string>
+  deptNames: Set<string>
 }
 
 function groupDispatchesByDay(dispatches: HealthSurveyDispatchWithConfig[], timezone: string): DayGroup[] {
@@ -67,7 +67,7 @@ function groupDispatchesByDay(dispatches: HealthSurveyDispatchWithConfig[], time
       existing.totalRecipients += d.totalRecipients
       existing.totalResponses += d.totalResponses
       existing.deptIds.add(d.healthSurveyConfiguration.department.id)
-      existing.configNames.add(d.healthSurveyConfiguration.name)
+      existing.deptNames.add(d.healthSurveyConfiguration.department.name)
       existing.statusCounts[d.status] = (existing.statusCounts[d.status] ?? 0) + 1
       const currentPriority = STATUS_PRIORITY[existing.status] ?? 3
       const newPriority = STATUS_PRIORITY[d.status] ?? 3
@@ -83,7 +83,7 @@ function groupDispatchesByDay(dispatches: HealthSurveyDispatchWithConfig[], time
         status: d.status,
         statusCounts: { [d.status]: 1 },
         deptIds: new Set([d.healthSurveyConfiguration.department.id]),
-        configNames: new Set([d.healthSurveyConfiguration.name]),
+        deptNames: new Set([d.healthSurveyConfiguration.department.name]),
       })
     }
   }
@@ -209,12 +209,12 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
         {dayGroups.length > 0 && (
           <DataTable
             columns={[
-              { label: "Data" },
-              { label: "Setores" },
-              { label: "Status" },
-              { label: "Respostas" },
-              { label: "Adesão" },
-              { label: "Link de acesso", className: "text-center" },
+              { label: "Data", className: "w-28" },
+              { label: "Setores", className: "w-36" },
+              { label: "Status", className: "w-44" },
+              { label: "Respostas", className: "w-28" },
+              { label: "Adesão", className: "w-32" },
+              { label: "Link de acesso", className: "w-32 text-center" },
               { label: "", className: "w-8" },
             ]}
             total={total}
@@ -236,18 +236,16 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
                       {formatInTimeZone(g.scheduledAt, timezone, "dd/MM/yyyy")}
                     </Link>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 w-36">
                     <Link href={`/health-surveys/${g.anchorId}`} className="block">
                       <span className="text-xs text-muted-foreground">
                         {g.deptIds.size} {g.deptIds.size === 1 ? "setor" : "setores"}
                       </span>
-                      {g.configNames.size > 0 && (
-                        <div className="flex flex-wrap gap-0.5 mt-0.5">
-                          {Array.from(g.configNames).map((name) => (
-                            <span key={name} className="text-[9px] font-medium text-muted-foreground/70 truncate max-w-[120px]">
-                              {name}
-                            </span>
-                          ))}
+                      {g.deptNames.size > 0 && (
+                        <div className="mt-0.5">
+                          <span className="text-[9px] font-medium text-muted-foreground/70">
+                            {Array.from(g.deptNames).join(", ")}
+                          </span>
                         </div>
                       )}
                     </Link>

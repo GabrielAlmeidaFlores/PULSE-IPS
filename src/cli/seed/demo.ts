@@ -403,7 +403,7 @@ async function main(): Promise<void> {
   })
   if (!professionalPlanPrice) throw new Error("Plano Professional não encontrado. Execute yarn seed primeiro.")
 
-  await prisma.organizationSubscription.create({
+  const subscription = await prisma.organizationSubscription.create({
     data: {
       id: randomUUID(),
       tenantId,
@@ -419,6 +419,11 @@ async function main(): Promise<void> {
       snapshotInterval: "monthly",
       snapshotExternalPriceId: "price_professional_monthly",
     },
+  })
+
+  const PROFESSIONAL_FEATURES = ["action_plans", "documents", "anonymous_reports", "pgr", "messaging"] as const
+  await prisma.subscriptionFeature.createMany({
+    data: PROFESSIONAL_FEATURES.map((feature) => ({ subscriptionId: subscription.id, feature })),
   })
   logger.info("✅ Assinatura Professional criada.")
 

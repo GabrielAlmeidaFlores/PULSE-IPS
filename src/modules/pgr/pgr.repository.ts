@@ -1,5 +1,5 @@
 import { prisma } from "@/libs/db"
-import type { PgrReview, PgrDeptResult, PgrQuestionResult, Organization, Department, Employee, HealthSurveyDispatch, HealthSurveyResponse, HealthSurveyResponseItem, HealthSurveyConfiguration, HealthSurveyQuestion, Alert } from "@prisma/client"
+import type { Prisma, PgrReview, PgrDeptResult, PgrQuestionResult, Organization, Department, Employee, HealthSurveyDispatch, HealthSurveyResponse, HealthSurveyResponseItem, HealthSurveyConfiguration, HealthSurveyQuestion, Alert } from "@prisma/client"
 import type { CreatePgrReviewInput, CreatePgrDeptResultInput, CreatePgrQuestionResultInput, CreatePgrAlertInput } from "@/modules/pgr/pgr.types"
 
 export type PgrReviewListItem = PgrReview & {
@@ -21,12 +21,21 @@ export function findPgrReviewsByTenant(tenantId: string): Promise<PgrReviewListI
   })
 }
 
+export interface PgrReviewListFilters {
+  year?: string
+  status?: string
+}
+
 export async function findPgrReviewsByTenantPaginated(
   tenantId: string,
+  filters: PgrReviewListFilters,
   skip: number,
   take: number,
 ): Promise<{ items: PgrReviewListItem[]; total: number }> {
-  const where = { tenantId }
+  const where: Prisma.PgrReviewWhereInput = { tenantId }
+  if (filters.year !== undefined) where.period = { startsWith: filters.year }
+  if (filters.status !== undefined) where.status = filters.status
+
   const [items, total] = await prisma.$transaction([
     prisma.pgrReview.findMany({
       where,
@@ -124,6 +133,10 @@ export function updatePgrReviewStatus(tenantId: string, id: string, status: "rev
 
 export function findPgrReviewByTenantAndPeriod(tenantId: string, period: string): Promise<PgrReview | null> {
   return prisma.pgrReview.findFirst({ where: { tenantId, period } })
+}
+
+export function deletePgrReview(tenantId: string, id: string): Promise<PgrReview> {
+  return prisma.pgrReview.delete({ where: { id, tenantId } })
 }
 
 export function createPgrReviewAtomic(
