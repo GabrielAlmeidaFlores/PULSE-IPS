@@ -436,6 +436,7 @@ export interface ExistingDispatchToken {
   employeeId: string
   token: string
   usedAt: Date | null
+  expiresAt: Date
 }
 
 export function findExistingTokensForDispatch(
@@ -446,7 +447,7 @@ export function findExistingTokensForDispatch(
   if (employeeIds.length === 0) return Promise.resolve([])
   return prisma.healthSurveyResponseToken.findMany({
     where: { tenantId, dispatchId, employeeId: { in: employeeIds } },
-    select: { employeeId: true, token: true, usedAt: true },
+    select: { employeeId: true, token: true, usedAt: true, expiresAt: true },
   })
 }
 
@@ -456,7 +457,7 @@ export function findUnusedHealthSurveyTokenForEmployee(
   employeeId: string,
 ): Promise<HealthSurveyResponseToken | null> {
   return prisma.healthSurveyResponseToken.findFirst({
-    where: { tenantId, dispatchId, employeeId, usedAt: null },
+    where: { tenantId, dispatchId, employeeId, usedAt: null, expiresAt: { gt: new Date() } },
   })
 }
 

@@ -77,8 +77,9 @@ async function sendDispatchTokensAndMessages(
     dispatchTargetEmployees.map((e) => e.id),
   )
   const respondedEmployeeIds = new Set(existingTokens.filter((t) => t.usedAt !== null).map((t) => t.employeeId))
+  const now = new Date()
   const existingUnusedTokenMap = new Map(
-    existingTokens.filter((t) => t.usedAt === null).map((t) => [t.employeeId, t.token]),
+    existingTokens.filter((t) => t.usedAt === null && t.expiresAt > now).map((t) => [t.employeeId, t.token]),
   )
 
   const toSendEmployees = dispatchTargetEmployees.filter((e) => !respondedEmployeeIds.has(e.id))

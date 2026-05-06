@@ -304,7 +304,7 @@ REDIS_PORT="6379"
 CRON_SECRET="coloque-aqui-um-segredo-para-os-crons"
 
 # ─── Provedor de mensagens ─────────────────────────────────────────
-# Opções: console | twilio_sms | whatsapp_cloud
+# Opções: console | twilio_message | whatsapp_cloud
 MESSAGING_PROVIDER="console"
 TWILIO_ACCOUNT_SID="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 TWILIO_AUTH_TOKEN="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
@@ -312,7 +312,7 @@ TWILIO_FROM_NUMBER="+5511999999999"
 
 # Template da mensagem enviada ao funcionário com o link da pesquisa
 # {nome} é substituído pelo primeiro nome do colaborador; {link} pelo link único da pesquisa
-HEALTH_SURVEY_MESSAGE_TEMPLATE="Oi, {nome}! 👋 Tudo bem por aí? Sua opinião faz a diferença para a gente 🌱 Quando tiver um momento, aqui está o seu formulário de bem-estar: {link}"
+SURVEY_MESSAGE_TEMPLATE="Oi, {nome}! 👋 Tudo bem por aí? Sua opinião faz a diferença para a gente 🌱 Quando tiver um momento, aqui está o seu formulário de bem-estar: {link}"
 
 # ─── Provedor de e-mail ────────────────────────────────────────────
 # Opções: console | resend
@@ -354,7 +354,7 @@ NEXT_PUBLIC_EMAIL_LEGAL="legal@pulseips.com.br"
 | `MESSAGING_PROVIDER` | Descrição |
 |---|---|
 | `console` | Imprime no terminal (dev) |
-| `twilio_sms` | Envia SMS via Twilio |
+| `twilio_message` | Envia mensagem via Twilio |
 | `whatsapp_cloud` | Envia via WhatsApp Cloud API |
 
 ### E-mail
@@ -616,13 +616,25 @@ A cada 15 min → job health-survey-dispatcher
   │     ├── Verifica se hoje é dia de trabalho (timezone da org)
   │     ├── Verifica intervalo desde o último disparo
   │     └── Para cada config elegível:
-  │           ├── Cria HealthSurveyDispatch (status: sent)
-  │           ├── Cria HealthSurveyResponseToken por funcionário (expira em 48h)
-  │           └── Enfileira mensagem na fila pulse:messages
+  │           ├── Cria HealthSurveyDispatch (status: scheduled)
+  │           └── Chama sendDispatchTokensAndMessages()
   │
   └── runHealthSurveyDispatcher()
-        ├── Busca dispatches agendados manualmente (status: scheduled)
-        └── Mesmo fluxo acima para cada dispatch pendente
+        ├── Busca dispatches com status: scheduled e scheduledAt <= now()
+        └── Chama sendDispatchTokensAndMessages() para cada um
+```
+
+**`sendDispatchTokensAndMessages` — lógica de envio inteligente:**
+
+```
+sendDispatchTokensAndMessages(dispatch)
+  ├── Filtra colaboradores elegíveis por consentimento (aceito ou sem registro)
+  ├── Busca tokens existentes para o dispatch (via link assinado ou reenvio anterior)
+  ├── respondedEmployeeIds — colaboradores que já responderam antes do disparo → pula mensagem
+  ├── existingUnusedTokenMap — tokens válidos não usados → reutiliza o token
+  ├── newTokenInputs — demais colaboradores → cria novo token (expira em 48h)
+  ├── total_recipients = todos os elegíveis (inclui pré-respondentes para cálculo correto de aderência)
+  └── Marca dispatch como status: sent
 ```
 
 **Disparo manual:**
@@ -644,7 +656,7 @@ Fila pulse:messages
 
 **Conteúdo da mensagem:**
 
-O texto da mensagem é configurado via `HEALTH_SURVEY_MESSAGE_TEMPLATE` no `.env`. Os placeholders `{nome}` e `{link}` são substituídos automaticamente antes do envio:
+O texto da mensagem é configurado via `SURVEY_MESSAGE_TEMPLATE` no `.env`. Os placeholders `{nome}` e `{link}` são substituídos automaticamente antes do envio:
 
 ```
 Oi, {nome}! 👋 Tudo bem por aí? Sua opinião faz a diferença para a gente 🌱 Quando tiver um momento, aqui está o seu formulário de bem-estar: {link}
@@ -656,13 +668,19 @@ O link aponta para `/health-survey/[token]`, que também serve como ponto de ent
 
 ### 6. Resposta à pesquisa (funcionário)
 
-1. Funcionário recebe o link `/health-survey/[token]` por SMS/WhatsApp.
+O funcionário pode acessar o formulário de duas formas:
+
+**Via mensagem individual (padrão):** o link `/health-survey/[token]` é enviado por mensagem após o disparo. Cada link é de uso único e expira em 48h.
+
+**Via link assinado (sem mensagem):** o RH distribui manualmente o link `/health-survey/link/[signedLinkToken]` para o setor (e-mail, intranet, grupo). Ao acessar, o colaborador informa seu telefone ou documento para identificação. O sistema cria ou reutiliza um token individual e redireciona para `/health-survey/[token]`. Esta modalidade também permite **responder antes do disparo ser processado** — o dispatcher identificará os pré-respondentes e os ignorará no envio de mensagens.
+
+1. Funcionário acessa `/health-survey/[token]`.
 2. A página valida o token: verifica existência, `usedAt = null`, `expiresAt > now()`.
 3. Verifica se o funcionário está dentro do horário de expediente configurado (usando `workStartTime`/`workEndTime` salvos no token no momento do disparo).
 4. **Consent gate:** se o funcionário ainda não aceitou os termos de consentimento (TCLE), exibe o texto dos termos inline para aceite antes de mostrar o formulário. Ao aceitar, cria um `EmployeeConsent` com `event = "accepted"`. Ao recusar, cria `event = "refused"` e encerra o fluxo.
 5. Exibe as perguntas da pesquisa (scores de 1 a 5).
 6. O funcionário pode clicar em **"Não quero mais participar"** (opt-out) a qualquer momento antes de submeter. Isso:
-   - Cria um `EmployeeConsent` com `event = "opt_out"` e `source = "health_health_survey_form"`.
+   - Cria um `EmployeeConsent` com `event = "opted_out"` e `source = "health_survey_form"`.
    - Marca o token como usado.
    - O job `health-survey-dispatcher` passa a excluir este funcionário de novos disparos até que seja re-convidado.
 7. Ao submeter, a action:
