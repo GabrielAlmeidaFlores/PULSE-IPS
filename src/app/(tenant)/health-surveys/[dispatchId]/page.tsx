@@ -535,8 +535,15 @@ export default async function HealthSurveyDispatchDetailPage({
 
   const historyDeptIds =
     selectedIds.length > 0 ? selectedIds : Array.from(sameDayPerDept.keys());
+
+  const relevantConfigIds = new Set<string>(
+    Array.from(sameDayPerDept.entries())
+      .filter(([deptId]) => historyDeptIds.includes(deptId))
+      .map(([, d]) => d.healthSurveyConfiguration.id),
+  )
+
   const relevantDispatches = allDispatches.filter((d: HealthSurveyDispatchWithConfig) =>
-    historyDeptIds.includes(d.healthSurveyConfiguration.departmentId),
+    relevantConfigIds.has(d.healthSurveyConfiguration.id),
   );
 
   const historyBucketMap = buildHistoryBucketMap(relevantDispatches, timezone);

@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache"
 import { AppError } from "@/libs/errors/app-error"
 import type { ActionResult } from "@/libs/utils/action-result"
 import { getSession } from "@/modules/auth/session"
-import { updateHealthSurveyConfig } from "@/modules/health-surveys/health-survey-config.service"
+import { updateHealthSurveyConfig, createHealthSurveyForDepartments, deactivateHealthSurveyConfig, getHealthSurveyConfig } from "@/modules/health-surveys/health-survey-config.service"
 
 const questionSchema = z.object({
   text: z.string().min(1).max(500),
@@ -26,6 +26,7 @@ const updateHealthSurveyConfigSchema = z.object({
   workEndTime: z.string().regex(TIME_REGEX),
   workDays: z.array(z.number().int().min(0).max(6)).min(1).max(7),
   questions: z.array(questionSchema).min(1, "Adicione ao menos uma pergunta").max(20),
+  departmentIds: z.union([z.array(z.string().uuid()), z.literal("all")]),
 })
 
 export async function updateHealthSurveyConfigAction(configId: string, input: unknown): Promise<ActionResult> {
@@ -35,23 +36,45 @@ export async function updateHealthSurveyConfigAction(configId: string, input: un
   const parsed = updateHealthSurveyConfigSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
 
-  const { name, description, frequency, scheduledDayOfMonth, workStartTime, workEndTime, workDays, questions } = parsed.data
+  const { name, description, frequency, scheduledDayOfMonth, workStartTime, workEndTime, workDays, questions, departmentIds } = parsed.data
 
   if (frequency === "monthly" && scheduledDayOfMonth === null) {
     return { error: "Selecione o dia do mês para o envio mensal." }
   }
 
+  const selectedDeptIds = departmentIds === "all" ? [] : departmentIds
+  if (selectedDeptIds.length === 0 && departmentIds !== "all") {
+    return { error: "Selecione ao menos um setor." }
+  }
+
   try {
-    await updateHealthSurveyConfig(session.tenantId, configId, {
-      name,
-      description,
-      frequency,
-      scheduledDayOfMonth,
-      workStartTime,
-      workEndTime,
-      workDays,
-      questions,
-    })
+    const currentConfig = await getHealthSurveyConfig(session.tenantId, configId)
+    if (!currentConfig) return { error: "Pesquisa não encontrada." }
+
+    const currentDeptId = currentConfig.department.id
+    const configUpdate = { name, description, frequency, scheduledDayOfMonth, workStartTime, workEndTime, workDays, questions }
+
+    if (departmentIds === "all" || selectedDeptIds.includes(currentDeptId)) {
+      await updateHealthSurveyConfig(session.tenantId, configId, configUpdate)
+    } else {
+      await deactivateHealthSurveyConfig(session.tenantId, configId)
+    }
+
+    const newDeptIds = departmentIds === "all" ? [] : selectedDeptIds.filter((id) => id !== currentDeptId)
+    if (newDeptIds.length > 0) {
+      await createHealthSurveyForDepartments(session.tenantId, {
+        departmentIds: newDeptIds,
+        name,
+        description,
+        frequency,
+        scheduledDayOfMonth,
+        workStartTime,
+        workEndTime,
+        workDays,
+        questions,
+      })
+    }
+
     revalidatePath("/health-surveys/configure")
     redirect("/health-surveys/configure")
   } catch (err) {

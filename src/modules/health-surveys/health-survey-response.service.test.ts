@@ -528,6 +528,13 @@ describe("unlockHealthSurveyViaIdentifier — guards", () => {
       .rejects.toMatchObject({ code: "EMPLOYEE_NOT_FOUND" })
   })
 
+  it("lança EMPLOYEE_NOT_IN_DEPARTMENT quando o colaborador pertence a outro setor", async () => {
+    mockFindEmployeeByPhoneOrDocument.mockResolvedValue(makeEmployee({ departmentId: "dept-outro" }))
+
+    await expect(unlockHealthSurveyViaIdentifier(SIGNED_LINK_TOKEN, EMPLOYEE_PHONE))
+      .rejects.toMatchObject({ code: "EMPLOYEE_NOT_IN_DEPARTMENT" })
+  })
+
   it("lança OUTSIDE_WORK_WINDOW quando fora do horário de trabalho e colaborador não aceitou o TCLE", async () => {
     mockFormatFn.mockReturnValue("22:00")
     mockGetCurrentConsent.mockResolvedValue(null)

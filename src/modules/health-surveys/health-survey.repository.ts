@@ -96,35 +96,37 @@ export async function updateExistingHealthSurveyConfigEntry(tenantId: string, co
   })
   const usedQuestionIds = new Set(usedItems.map((r) => r.questionId))
 
-  if (usedQuestionIds.size > 0) {
-    await prisma.healthSurveyQuestion.updateMany({
-      where: { tenantId, healthSurveyConfigurationId: configId, id: { in: [...usedQuestionIds] } },
-      data: { isActive: false },
+  return prisma.$transaction(async (tx) => {
+    if (usedQuestionIds.size > 0) {
+      await tx.healthSurveyQuestion.updateMany({
+        where: { tenantId, healthSurveyConfigurationId: configId, id: { in: [...usedQuestionIds] } },
+        data: { isActive: false },
+      })
+    }
+
+    await tx.healthSurveyQuestion.deleteMany({
+      where: { tenantId, healthSurveyConfigurationId: configId, id: { notIn: [...usedQuestionIds] } },
     })
-  }
 
-  await prisma.healthSurveyQuestion.deleteMany({
-    where: { tenantId, healthSurveyConfigurationId: configId, id: { notIn: [...usedQuestionIds] } },
-  })
-
-  return prisma.healthSurveyConfiguration.update({
-    where: { id: configId },
-    data: {
-      name: input.name,
-      description: input.description ?? null,
-      frequency: input.frequency,
-      scheduledDayOfMonth: input.scheduledDayOfMonth ?? null,
-      workStartTime: input.workStartTime,
-      workEndTime: input.workEndTime,
-      workDays: {
-        deleteMany: {},
-        createMany: { data: input.workDays.map((d) => ({ dayOfWeek: d })) },
+    return tx.healthSurveyConfiguration.update({
+      where: { id: configId },
+      data: {
+        name: input.name,
+        description: input.description ?? null,
+        frequency: input.frequency,
+        scheduledDayOfMonth: input.scheduledDayOfMonth ?? null,
+        workStartTime: input.workStartTime,
+        workEndTime: input.workEndTime,
+        workDays: {
+          deleteMany: {},
+          createMany: { data: input.workDays.map((d) => ({ dayOfWeek: d })) },
+        },
+        questions: {
+          create: input.questions.map((q) => ({ ...q, tenantId })),
+        },
       },
-      questions: {
-        create: input.questions.map((q) => ({ ...q, tenantId })),
-      },
-    },
-    include: { questions: { where: { isActive: true }, orderBy: { order: "asc" } } },
+      include: { questions: { where: { isActive: true }, orderBy: { order: "asc" } } },
+    })
   })
 }
 
@@ -150,11 +152,13 @@ export interface HealthSurveyDispatchListingFilters {
   status?: string
   dateFrom?: Date
   dateTo?: Date
+  configId?: string
 }
 
 function buildDispatchWhereInput(tenantId: string, filters: HealthSurveyDispatchListingFilters): Prisma.HealthSurveyDispatchWhereInput {
   const where: Prisma.HealthSurveyDispatchWhereInput = { tenantId }
   if (filters.status !== undefined) where.status = filters.status
+  if (filters.configId !== undefined) where.healthSurveyConfigurationId = filters.configId
   if (filters.dateFrom !== undefined || filters.dateTo !== undefined) {
     where.scheduledAt = {
       ...(filters.dateFrom !== undefined ? { gte: filters.dateFrom } : {}),

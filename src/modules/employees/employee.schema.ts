@@ -21,6 +21,8 @@ export const createEmployeeSchema = z.object({
   document: z.string().min(1).max(50).optional(),
 })
 
+const TIME_REGEX = /^\d{2}:\d{2}$/
+
 export const updateEmployeeSchema = z.object({
   departmentId: z.string().uuid({ message: "Setor inválido." }).optional(),
   name: z.string().min(1, { message: "Informe o nome do colaborador." }).max(200).optional(),
@@ -28,6 +30,9 @@ export const updateEmployeeSchema = z.object({
   email: z.string().email({ message: "E-mail inválido." }).nullable().optional(),
   document: z.string().min(1).max(50).nullable().optional(),
   status: z.enum(["active", "inactive"]).optional(),
+  workStartTime: z.string().nullable().optional().transform((v) => (v === null || v === undefined || v === "") ? null : v).refine((v) => v === null || TIME_REGEX.test(v), "Formato de horário inválido (HH:MM)."),
+  workEndTime: z.string().nullable().optional().transform((v) => (v === null || v === undefined || v === "") ? null : v).refine((v) => v === null || TIME_REGEX.test(v), "Formato de horário inválido (HH:MM)."),
+  workDays: z.array(z.number().int().min(0).max(6)).nullable().optional(),
 })
 
 export const importRowSchema = z.object({

@@ -3779,22 +3779,23 @@ Execute `grep` para confirmar cada item:
 | 8 | Queries cross-tenant de jobs nomeadas com `findAllTenants*` | Revisar `src/workers/` e jobs que chamam repositories sem `tenantId` |
 | 9 | Nenhum `enum` TypeScript (use union types ou const maps) | `grep -rn "^enum \|  enum " src/` |
 | 10 | `JsonValue` de `@/libs/utils/json` — nunca `Prisma.InputJsonValue` fora de repository | `grep -rn "Prisma\.InputJsonValue\|Prisma\.JsonValue" src/modules/ src/app/` |
+| 11 | Nenhum `<select>` nativo fora de `native-select.tsx` — usar sempre `NativeSelect` (§35) | `grep -rn "<select" src --include="*.tsx" \| grep -v "native-select.tsx"` |
 
 ### Verificações de domínio (obrigatórias para funcionalidades novas)
 
 | # | Verificação |
 |---|---|
-| 11 | Nova tabela com `tenant_id`? Todos os repositórios recebem `tenantId` como 1º parâmetro |
-| 12 | Nova integração externa? Existe interface em `libs/integrations/*/interface.ts` e adapter separado |
-| 13 | Novos tipos JSON? Usam `JsonValue` de `@/libs/utils/json`, não tipos do ORM |
-| 14 | Novo evento de billing? Mapeado em `webhook.handler.ts` e na tabela de eventos da §15 |
-| 15 | Novos valores de enum no banco? Mapeados em `LABELS` Record antes de renderizar na UI (§24) |
-| 16 | Nova rota com dados sensíveis? Tenant guard ativo no `proxy.ts` ou no layout |
-| 17 | Novo módulo? Segue estrutura `repository + service + schema + types` (§10) |
-| 18 | Novos erros de negócio? Usam `AppError` com mensagem em pt-BR |
-| 19 | Server Action nova? Chama `getSession()`, valida com Zod, chama `revalidatePath` após mutação |
-| 20 | `employee_consents` modificado? `ConsentRepository` ainda é append-only (sem `update`/`delete`) |
-| 21 | **Todo identificador novo passa na pergunta de validação de nomenclatura?** Função, tipo, componente, job, constante, arquivo — o nome carrega domínio + entidade + ação sem precisar abrir o arquivo? (§9) |
+| 12 | Nova tabela com `tenant_id`? Todos os repositórios recebem `tenantId` como 1º parâmetro |
+| 13 | Nova integração externa? Existe interface em `libs/integrations/*/interface.ts` e adapter separado |
+| 14 | Novos tipos JSON? Usam `JsonValue` de `@/libs/utils/json`, não tipos do ORM |
+| 15 | Novo evento de billing? Mapeado em `webhook.handler.ts` e na tabela de eventos da §15 |
+| 16 | Novos valores de enum no banco? Mapeados em `LABELS` Record antes de renderizar na UI (§24) |
+| 17 | Nova rota com dados sensíveis? Tenant guard ativo no `proxy.ts` ou no layout |
+| 18 | Novo módulo? Segue estrutura `repository + service + schema + types` (§10) |
+| 19 | Novos erros de negócio? Usam `AppError` com mensagem em pt-BR |
+| 20 | Server Action nova? Chama `getSession()`, valida com Zod, chama `revalidatePath` após mutação |
+| 21 | `employee_consents` modificado? `ConsentRepository` ainda é append-only (sem `update`/`delete`) |
+| 22 | **Todo identificador novo passa na pergunta de validação de nomenclatura?** Função, tipo, componente, job, constante, arquivo — o nome carrega domínio + entidade + ação sem precisar abrir o arquivo? (§9) |
 
 ### Quando o PR pode ser considerado pronto
 
@@ -4481,3 +4482,59 @@ grep -rn "process\.env\." \
 ```
 
 *Pulse — AGENTS.md | Documento interno | Maio de 2026*
+
+---
+
+## 35. Selects — Componente Padrão Obrigatório
+
+**`<select>` nativo é proibido em toda a aplicação.** Todo campo de seleção deve usar `NativeSelect` de `@/components/ui/native-select`.
+
+### Razão
+
+O `<select>` nativo do HTML não aplica o design system — borda, fundo, cor, chevron e focus ring precisariam ser replicados manualmente em cada uso, criando inconsistência visual e risco de divergência ao alterar o tema.
+
+### Padrão obrigatório
+
+```tsx
+// ❌ PROIBIDO — select HTML nativo com classes manuais
+<select
+  value={value}
+  onChange={(e) => setValue(e.target.value)}
+  className="w-full bg-input border border-input-border text-foreground ..."
+  style={{ borderRadius: 0 }}
+>
+  <option value="a">Opção A</option>
+</select>
+
+// ✅ CORRETO — NativeSelect do design system
+import { NativeSelect } from "@/components/ui/native-select"
+
+<NativeSelect value={value} onChange={(e) => setValue(e.target.value)}>
+  <option value="a">Opção A</option>
+</NativeSelect>
+```
+
+### O que `NativeSelect` aplica automaticamente
+
+- `bg-input` + `border border-border` — borda e fundo consistentes com o tema
+- `text-foreground` — cor de texto correta em light/dark
+- `focus:border-primary focus:ring-1 focus:ring-primary` — focus ring padronizado
+- `appearance-none` + `ChevronDown` posicionado — ícone de seta sempre visível
+- `border-radius: 0` — sem borda arredondada (padrão visual do produto)
+
+### Quando usar `NativeSelect` vs `Select` (shadcn/Base UI)
+
+| Situação | Componente |
+|---|---|
+| Filtros de listagem, selects em modais, campos de formulário simples | `NativeSelect` |
+| Selects com opções customizadas (ícones, grupos, busca) — casos raros | `Select` (shadcn/Base UI) |
+
+### Checklist do full-scan — adicionar ao item 29
+
+Antes de qualquer PR, verificar que não há `<select>` nativo fora de `native-select.tsx`:
+
+```bash
+grep -rn "<select" src --include="*.tsx" | grep -v "native-select.tsx"
+# Resultado esperado: nenhuma linha
+```
+

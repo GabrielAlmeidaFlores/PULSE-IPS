@@ -45,8 +45,10 @@ interface QuestionItem {
 
 const DEFAULT_QUESTIONS: QuestionItem[] = [
   { text: "Como você se sente em relação ao seu bem-estar no trabalho hoje?", order: 1, scoreDirection: "higher_is_better" },
-  { text: "Você se sente sobrecarregado com as demandas do trabalho?", order: 2, scoreDirection: "lower_is_better" },
-  { text: "Você tem recebido suporte adequado da sua liderança?", order: 3, scoreDirection: "higher_is_better" },
+  { text: "Você consegue gerenciar bem as demandas e a carga de trabalho?", order: 2, scoreDirection: "higher_is_better" },
+  { text: "Você tem recebido suporte e orientação adequados da sua liderança?", order: 3, scoreDirection: "higher_is_better" },
+  { text: "Como você avalia o clima de relacionamento com seus colegas de equipe?", order: 4, scoreDirection: "higher_is_better" },
+  { text: "Você se sente reconhecido e valorizado pelo seu trabalho?", order: 5, scoreDirection: "higher_is_better" },
 ]
 
 const inputCls =
@@ -75,8 +77,16 @@ const MAX_DAYS_BY_FREQUENCY: Record<string, number> = {
   monthly: 7,
 }
 
+const DEFAULT_WORK_DAYS_BY_FREQUENCY: Record<string, number[]> = {
+  daily: [1, 2, 3, 4, 5],
+  twice_weekly: [1, 3],
+  weekly: [1],
+  biweekly: [1],
+  monthly: [1, 2, 3, 4, 5],
+}
+
 const FREQUENCY_DAY_HINT: Record<string, string | null> = {
-  daily: null,
+  daily: "A pesquisa será enviada uma vez por dia nos dias marcados.",
   twice_weekly: "Selecione exatamente 2 dias",
   weekly: "Selecione exatamente 1 dia",
   biweekly: "Selecione exatamente 1 dia",
@@ -86,8 +96,7 @@ const FREQUENCY_DAY_HINT: Record<string, string | null> = {
 const DAY_OF_MONTH_OPTIONS = Array.from({ length: 28 }, (_, i) => i + 1)
 
 function buildDepartmentIds(mode: FormMode, allDepts: boolean, selectedDeptIds: Set<string>): string[] | "all" {
-  if (mode !== "create") return "all"
-  if (allDepts) return "all"
+  if (mode === "create" && allDepts) return "all"
   return Array.from(selectedDeptIds)
 }
 
@@ -102,17 +111,22 @@ export function HealthSurveyConfigForm({ mode, departments, initialConfig, onSub
 
   const [name, setName] = useState(initialConfig?.name ?? "Pesquisa de Saúde")
   const [description, setDescription] = useState(initialConfig?.description ?? "")
-  const [selectedDeptIds, setSelectedDeptIds] = useState<Set<string>>(new Set())
+  const [selectedDeptIds, setSelectedDeptIds] = useState<Set<string>>(() => {
+    if (initialConfig !== null && initialConfig !== undefined) return new Set([initialConfig.department.id])
+    return new Set()
+  })
   const [allDepts, setAllDepts] = useState(false)
-  const [frequency, setFrequency] = useState<"daily" | "twice_weekly" | "weekly" | "biweekly" | "monthly">(
-    (initialConfig?.frequency as "daily" | "twice_weekly" | "weekly" | "biweekly" | "monthly") ?? "weekly",
-  )
+  const initialFreq = (initialConfig?.frequency as "daily" | "twice_weekly" | "weekly" | "biweekly" | "monthly") ?? "weekly"
+  const [frequency, setFrequency] = useState<"daily" | "twice_weekly" | "weekly" | "biweekly" | "monthly">(initialFreq)
   const [scheduledDayOfMonth, setScheduledDayOfMonth] = useState<number | null>(initialConfig?.scheduledDayOfMonth ?? null)
   const [workStartTime, setWorkStartTime] = useState(initialConfig?.workStartTime ?? "09:00")
   const [workEndTime, setWorkEndTime] = useState(initialConfig?.workEndTime ?? "18:00")
-  const [workDays, setWorkDays] = useState(
-    new Set(initialConfig?.workDays.map((w) => w.dayOfWeek) ?? [1, 2, 3, 4, 5]),
-  )
+  const [workDays, setWorkDays] = useState(() => {
+    if (initialConfig !== null && initialConfig !== undefined) {
+      return new Set(initialConfig.workDays.map((w) => w.dayOfWeek))
+    }
+    return new Set(DEFAULT_WORK_DAYS_BY_FREQUENCY[initialFreq] ?? [1])
+  })
   const [questions, setQuestions] = useState<QuestionItem[]>(
     initialConfig?.questions.map((q) => ({ text: q.text, order: q.order, scoreDirection: q.scoreDirection as ScoreDirection })) ?? DEFAULT_QUESTIONS,
   )
@@ -184,7 +198,7 @@ export function HealthSurveyConfigForm({ mode, departments, initialConfig, onSub
 
   function handleSubmit(): void {
     if (!name.trim()) { toast.error("Informe o nome da pesquisa"); return }
-    if (mode === "create" && !allDepts && selectedDeptIds.size === 0) { toast.error("Selecione ao menos um setor"); return }
+    if (!allDepts && selectedDeptIds.size === 0) { toast.error("Selecione ao menos um setor"); return }
     if (frequency === "monthly" && scheduledDayOfMonth === null) { toast.error("Selecione o dia do mês para o envio mensal"); return }
     const maxDays = MAX_DAYS_BY_FREQUENCY[frequency] ?? 7
     if (frequency !== "monthly" && workDays.size !== maxDays && maxDays < 7) {
@@ -247,21 +261,23 @@ export function HealthSurveyConfigForm({ mode, departments, initialConfig, onSub
         </div>
       </div>
 
-      {mode === "create" && departments !== undefined && (
+      {departments !== undefined && (
         <div className="border border-border bg-card" style={{ borderRadius: 0 }}>
           <div className="border-b border-border px-4 py-2.5 bg-muted">
             <span className="text-[10px] font-black tracking-widest uppercase text-foreground">Setores</span>
           </div>
           <div className="p-4 space-y-2">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={allDepts}
-                onChange={toggleAllDepts}
-                className="accent-primary"
-              />
-              <span className="text-[12px] font-semibold text-foreground">Todos os setores</span>
-            </label>
+            {mode === "create" && (
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={allDepts}
+                  onChange={toggleAllDepts}
+                  className="accent-primary"
+                />
+                <span className="text-[12px] font-semibold text-foreground">Todos os setores</span>
+              </label>
+            )}
             {!allDepts && (
               <div className="space-y-1 mt-2">
                 {departments.map((dept) => (
@@ -281,13 +297,6 @@ export function HealthSurveyConfigForm({ mode, departments, initialConfig, onSub
               </div>
             )}
           </div>
-        </div>
-      )}
-
-      {mode === "edit" && initialConfig !== undefined && initialConfig !== null && (
-        <div className="border border-border bg-muted/30 px-4 py-2.5" style={{ borderRadius: 0 }}>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Setor: </span>
-          <span className="text-[12px] text-foreground">{initialConfig.department.name}</span>
         </div>
       )}
 
@@ -323,8 +332,7 @@ export function HealthSurveyConfigForm({ mode, departments, initialConfig, onSub
                 const maxDays = MAX_DAYS_BY_FREQUENCY[newFreq] ?? 7
                 setWorkDays((prev) => {
                   if (prev.size <= maxDays) return prev
-                  const trimmed = Array.from(prev).slice(0, maxDays)
-                  return new Set(trimmed)
+                  return new Set(DEFAULT_WORK_DAYS_BY_FREQUENCY[newFreq] ?? [1])
                 })
               }}
             >
@@ -364,7 +372,7 @@ export function HealthSurveyConfigForm({ mode, departments, initialConfig, onSub
             <div>
               <div className="flex items-baseline justify-between mb-2">
                 <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Dias de envio</label>
-                {FREQUENCY_DAY_HINT[frequency] !== null && (
+                {(MAX_DAYS_BY_FREQUENCY[frequency] ?? 7) < 7 && (
                   <span className={`text-[10px] font-medium ${
                     workDays.size === (MAX_DAYS_BY_FREQUENCY[frequency] ?? 7)
                       ? "text-primary"

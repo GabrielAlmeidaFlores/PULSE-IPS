@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { useCallback } from "react"
 import { Search } from "lucide-react"
+import { NativeSelect } from "@/components/ui/native-select"
 
 interface Department {
   id: string
@@ -59,29 +60,27 @@ export function HealthSurveyConfigListFilters({ departments }: HealthSurveyConfi
         />
       </div>
 
-      <select
+      <NativeSelect
         value={frequency}
         onChange={(e) => updateParam("frequency", e.target.value)}
-        className="py-1.5 px-2 text-[12px] bg-input border border-input-border text-foreground focus:outline-none focus:border-primary transition-colors"
-        style={{ borderRadius: 0 }}
+        className="py-1.5 text-[12px]"
       >
         {FREQUENCY_OPTIONS.map((opt) => (
           <option key={opt.value} value={opt.value}>{opt.label}</option>
         ))}
-      </select>
+      </NativeSelect>
 
       {departments.length > 0 && (
-        <select
+        <NativeSelect
           value={departmentId}
           onChange={(e) => updateParam("departmentId", e.target.value)}
-          className="py-1.5 px-2 text-[12px] bg-input border border-input-border text-foreground focus:outline-none focus:border-primary transition-colors"
-          style={{ borderRadius: 0 }}
+          className="py-1.5 text-[12px]"
         >
           <option value="">Todos os setores</option>
           {departments.map((d) => (
             <option key={d.id} value={d.id}>{d.name}</option>
           ))}
-        </select>
+        </NativeSelect>
       )}
     </div>
   )

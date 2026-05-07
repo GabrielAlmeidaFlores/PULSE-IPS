@@ -2,6 +2,7 @@ import { redirect, notFound } from "next/navigation"
 import Link from "next/link"
 import { getSession } from "@/modules/auth/session"
 import { getHealthSurveyConfig } from "@/modules/health-surveys/health-survey-config.service"
+import { getActiveDepartments } from "@/modules/departments/department.service"
 import { EditHealthSurveyConfigForm } from "@/app/(tenant)/health-surveys/configure/[configId]/edit-health-survey-config-form"
 
 interface Props {
@@ -13,7 +14,10 @@ export default async function EditHealthSurveyConfigPage({ params }: Props): Pro
   if (!session) redirect("/login")
 
   const { configId } = await params
-  const config = await getHealthSurveyConfig(session.tenantId, configId)
+  const [config, departments] = await Promise.all([
+    getHealthSurveyConfig(session.tenantId, configId),
+    getActiveDepartments(session.tenantId),
+  ])
   if (!config) notFound()
 
   return (
@@ -26,7 +30,11 @@ export default async function EditHealthSurveyConfigPage({ params }: Props): Pro
         </div>
       </div>
       <div className="flex-1 overflow-y-auto p-6">
-        <EditHealthSurveyConfigForm configId={configId} initialConfig={config} />
+        <EditHealthSurveyConfigForm
+          configId={configId}
+          initialConfig={config}
+          departments={departments.map((d) => ({ id: d.id, name: d.name }))}
+        />
       </div>
     </div>
   )

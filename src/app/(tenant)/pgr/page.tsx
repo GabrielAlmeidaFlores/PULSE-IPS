@@ -38,9 +38,9 @@ export default async function PgrPage({ searchParams }: Props): Promise<React.Re
   const params = await searchParams
   const { page, pageSize } = buildPaginationParams(params["page"], params["pageSize"])
 
-  const query = { page, pageSize }
-  if (params["year"] !== undefined) Object.assign(query, { year: params["year"] })
-  if (params["status"] !== undefined) Object.assign(query, { status: params["status"] })
+  const query: Parameters<typeof getPgrReviewsPaginated>[1] = { page, pageSize }
+  if (params["year"] !== undefined) query.year = params["year"]
+  if (params["status"] !== undefined) query.status = params["status"]
 
   const { items: reviews, total } = await getPgrReviewsPaginated(session.tenantId, query)
 

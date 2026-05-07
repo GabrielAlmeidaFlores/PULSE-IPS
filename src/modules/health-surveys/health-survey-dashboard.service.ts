@@ -96,6 +96,7 @@ export interface HealthSurveyDispatchListingQuery {
   status?: string
   dateFrom?: Date
   dateTo?: Date
+  configId?: string
 }
 
 export interface HealthSurveyDispatchDayPageQuery extends HealthSurveyDispatchListingQuery {
@@ -116,6 +117,7 @@ export function getHealthSurveyDispatchesFiltered(
   if (query.status !== undefined) filters.status = query.status
   if (query.dateFrom !== undefined) filters.dateFrom = query.dateFrom
   if (query.dateTo !== undefined) filters.dateTo = query.dateTo
+  if (query.configId !== undefined) filters.configId = query.configId
   return findHealthSurveyDispatchesByTenantFiltered(tenantId, filters)
 }
 
@@ -130,6 +132,7 @@ export async function getHealthSurveyDispatchesPaginatedByDay(
   if (query.status !== undefined) filters.status = query.status
   if (query.dateFrom !== undefined) filters.dateFrom = query.dateFrom
   if (query.dateTo !== undefined) filters.dateTo = query.dateTo
+  if (query.configId !== undefined) filters.configId = query.configId
   const { dates, total } = await findHealthSurveyDispatchDaysPaginated(tenantId, filters, skip, query.pageSize, timezone)
   if (dates.length === 0) return { items: [], total }
   const items = await findHealthSurveyDispatchesForDates(tenantId, dates, filters, timezone)

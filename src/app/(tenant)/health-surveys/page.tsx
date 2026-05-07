@@ -101,6 +101,7 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
   const statusFilter = params["status"]
   const dateFromStr = params["dateFrom"]
   const dateToStr = params["dateTo"]
+  const configIdFilter = params["configId"]
   const pageParams = buildPaginationParams(params["page"], params["pageSize"])
 
   const org = await getOrganization(session.tenantId)
@@ -109,13 +110,14 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
   const dateFrom = dateFromStr !== undefined ? fromZonedTime(new Date(`${dateFromStr}T00:00:00`), timezone) : undefined
   const dateTo = dateToStr !== undefined ? fromZonedTime(new Date(`${dateToStr}T23:59:59`), timezone) : undefined
 
-  const dispatchQuery: { page: number; pageSize: number; status?: string; dateFrom?: Date; dateTo?: Date } = {
+  const dispatchQuery: { page: number; pageSize: number; status?: string; dateFrom?: Date; dateTo?: Date; configId?: string } = {
     page: pageParams.page,
     pageSize: pageParams.pageSize,
   }
   if (statusFilter !== undefined && statusFilter !== "all") dispatchQuery.status = statusFilter
   if (dateFrom !== undefined) dispatchQuery.dateFrom = dateFrom
   if (dateTo !== undefined) dispatchQuery.dateTo = dateTo
+  if (configIdFilter !== undefined && configIdFilter !== "all") dispatchQuery.configId = configIdFilter
 
   const [{ items: pageDispatches, total }, configs] = await Promise.all([
     getHealthSurveyDispatchesPaginatedByDay(session.tenantId, dispatchQuery),
@@ -192,11 +194,15 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
         )}
 
         {configs.length > 0 && (
-          <HealthSurveyListFilters filters={{
-            ...(statusFilter !== undefined ? { status: statusFilter } : {}),
-            ...(dateFromStr !== undefined ? { dateFrom: dateFromStr } : {}),
-            ...(dateToStr !== undefined ? { dateTo: dateToStr } : {}),
-          }} />
+          <HealthSurveyListFilters
+            filters={{
+              ...(configIdFilter !== undefined ? { configId: configIdFilter } : {}),
+              ...(statusFilter !== undefined ? { status: statusFilter } : {}),
+              ...(dateFromStr !== undefined ? { dateFrom: dateFromStr } : {}),
+              ...(dateToStr !== undefined ? { dateTo: dateToStr } : {}),
+            }}
+            configs={configs.map((c) => ({ id: c.id, name: c.name, departmentName: c.department.name }))}
+          />
         )}
 
         {!hasAnyDispatches && configs.length > 0 && (

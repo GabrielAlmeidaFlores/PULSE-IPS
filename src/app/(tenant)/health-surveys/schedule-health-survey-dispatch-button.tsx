@@ -4,6 +4,7 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { CalendarClock } from "lucide-react"
 import { toast } from "sonner"
+import { NativeSelect } from "@/components/ui/native-select"
 import { scheduleHealthSurveyDispatchAction } from "@/app/(tenant)/health-surveys/actions"
 
 interface HealthSurveyConfigOption {
@@ -83,18 +84,16 @@ export function ScheduleHealthSurveyDispatchButton({ hasConfigs, configs }: Sche
                 <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">
                   Pesquisa
                 </label>
-                <select
+                <NativeSelect
                   value={configId}
                   onChange={(e) => setConfigId(e.target.value)}
-                  className="w-full bg-input border border-input-border text-foreground text-[13px] px-3 py-2.5 focus:outline-none focus:border-primary transition-colors"
-                  style={{ borderRadius: 0 }}
                 >
                   {configs.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name} — {c.departmentName}
                     </option>
                   ))}
-                </select>
+                </NativeSelect>
               </div>
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">

@@ -5,12 +5,18 @@ import { HealthSurveyConfigForm, type HealthSurveyConfigFormData } from "@/app/(
 import { updateHealthSurveyConfigAction } from "@/app/(tenant)/health-surveys/configure/[configId]/actions"
 import type { HealthSurveyConfigWithDetails } from "@/modules/health-surveys/health-survey-config.service"
 
+interface DepartmentOption {
+  id: string
+  name: string
+}
+
 interface EditHealthSurveyConfigFormProps {
   configId: string
   initialConfig: HealthSurveyConfigWithDetails
+  departments: DepartmentOption[]
 }
 
-export function EditHealthSurveyConfigForm({ configId, initialConfig }: EditHealthSurveyConfigFormProps): React.ReactElement {
+export function EditHealthSurveyConfigForm({ configId, initialConfig, departments }: EditHealthSurveyConfigFormProps): React.ReactElement {
   const handleSubmit = useCallback(
     (data: HealthSurveyConfigFormData) => updateHealthSurveyConfigAction(configId, data),
     [configId],
@@ -20,6 +26,7 @@ export function EditHealthSurveyConfigForm({ configId, initialConfig }: EditHeal
     <HealthSurveyConfigForm
       mode="edit"
       initialConfig={initialConfig}
+      departments={departments}
       onSubmit={handleSubmit}
       cancelHref="/health-surveys/configure"
     />
