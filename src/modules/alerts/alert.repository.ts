@@ -251,6 +251,14 @@ export function hasOpenAlertOfType(tenantId: string, type: AlertType, department
   }).then((result) => result !== null)
 }
 
+export async function findAllTenantsOpenAlertDepartmentIdsByType(type: AlertType): Promise<Set<string>> {
+  const alerts = await prisma.alert.findMany({
+    where: { type, resolvedAt: null, departmentId: { not: null } },
+    select: { departmentId: true },
+  })
+  return new Set(alerts.map((a) => a.departmentId).filter((id): id is string => id !== null))
+}
+
 export interface EmployeeWithExpiredConsentToken {
   tenantId: string
   departmentId: string

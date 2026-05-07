@@ -175,9 +175,7 @@ describe("generatePgrReport", () => {
   })
 
   it("ignora dispatches de outros meses ao gerar o relatório", async () => {
-    mockFindDispatches.mockResolvedValue([
-      makeDispatch(3, 6),
-    ])
+    mockFindDispatches.mockResolvedValue([])
 
     await expect(generatePgrReport(TENANT_ID, "2026-04")).rejects.toMatchObject({
       code: "NO_DATA_FOR_PERIOD",
@@ -212,7 +210,7 @@ describe("sendPgrReviewReminders", () => {
 
   it("cria alerta para revisão próxima sem alerta existente e com feature pgr", async () => {
     mockFindUpcomingReviews.mockResolvedValue([
-      { tenantId: TENANT_ID, nextReviewAt: new Date("2026-05-28") },
+      { tenantId: TENANT_ID, nextReviewAt: new Date("2026-05-28"), organization: { timezone: "America/Sao_Paulo" } },
     ] as Awaited<ReturnType<typeof findAllTenantsUpcomingPgrReviews>>)
     mockHasTenantPlanFeature.mockResolvedValue(true)
     mockFindExistingPgrAlert.mockResolvedValue(null)

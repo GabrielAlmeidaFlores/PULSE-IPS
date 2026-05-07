@@ -73,9 +73,9 @@ export function findOrgWithDepartmentsForPgr(tenantId: string): Promise<Organiza
   })
 }
 
-export function findDispatchesForPgr(tenantId: string): Promise<(HealthSurveyDispatch & { responses: (HealthSurveyResponse & { items: HealthSurveyResponseItem[] })[]; healthSurveyConfiguration: HealthSurveyConfiguration & { department: Department; departmentId: string; questions: HealthSurveyQuestion[] } })[]> {
+export function findDispatchesForPgr(tenantId: string, startDate: Date, endDate: Date): Promise<(HealthSurveyDispatch & { responses: (HealthSurveyResponse & { items: HealthSurveyResponseItem[] })[]; healthSurveyConfiguration: HealthSurveyConfiguration & { department: Department; departmentId: string; questions: HealthSurveyQuestion[] } })[]> {
   return prisma.healthSurveyDispatch.findMany({
-    where: { tenantId, status: "available" },
+    where: { tenantId, status: "available", dispatchedAt: { gte: startDate, lt: endDate } },
     include: {
       responses: { include: { items: true } },
       healthSurveyConfiguration: {

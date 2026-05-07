@@ -165,13 +165,13 @@ describe("getDashboardData — KPIs", () => {
 })
 
 describe("getDashboardData — gráficos", () => {
-  it("gera overallTrend com 0 avg quando mês tem menos de 5 respondentes", async () => {
+  it("gera overallTrend com null avg quando mês tem menos de 5 respondentes", async () => {
     mockFindDispatchesWithData.mockResolvedValue([makeDispatch(5, 3)])
 
     const result = await getDashboardData(TENANT_ID)
 
-    const hasZeroAvg = result.overallTrend.some((p) => p.avg === 0)
-    expect(hasZeroAvg).toBe(true)
+    const hasNullAvg = result.overallTrend.some((p) => p.avg === null)
+    expect(hasNullAvg).toBe(true)
   })
 
   it("constrói deptCards para cada setor presente nos dispatches", async () => {

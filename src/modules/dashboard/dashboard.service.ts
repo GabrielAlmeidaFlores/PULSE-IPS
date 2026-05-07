@@ -1,6 +1,6 @@
 import { format, subMonths, subDays, startOfMonth } from "date-fns"
 import { ptBR } from "date-fns/locale"
-import { toZonedTime } from "date-fns-tz"
+import { toZonedTime, fromZonedTime } from "date-fns-tz"
 import { MINIMUM_RESPONDENTS_FOR_DISPLAY } from "@/libs/utils/anonymity"
 import {
   findDispatchesWithData,
@@ -43,7 +43,7 @@ export interface DeptCard {
 
 export interface TrendPoint {
   month: string
-  avg: number
+  avg: number | null
   responses: number
 }
 
@@ -243,7 +243,7 @@ export async function getDashboardData(tenantId: string, selectedOrders: number[
 
   const overallTrend: TrendPoint[] = sortedMonths.map((m) => ({
     month: m.monthKey,
-    avg: m.responseCount >= MINIMUM_RESPONDENTS_FOR_DISPLAY && m.scoreCount > 0 ? toHealthIndex(roundTwo(m.totalScore / m.scoreCount)) : 0,
+    avg: m.responseCount >= MINIMUM_RESPONDENTS_FOR_DISPLAY && m.scoreCount > 0 ? toHealthIndex(roundTwo(m.totalScore / m.scoreCount)) : null,
     responses: m.responseCount,
   }))
 
@@ -381,7 +381,9 @@ function aggregateDeptQuestionScores(dispatches: DispatchWithData[]): DeptQuesti
 }
 
 export async function getDeptHealthSummary(tenantId: string, deptId: string): Promise<DeptHealthSummary> {
-  const thirtyDaysAgo = subDays(new Date(), 30)
+  const orgTimezone = await findOrganizationTimezone(tenantId)
+  const nowInOrgTz = toZonedTime(new Date(), orgTimezone)
+  const thirtyDaysAgo = fromZonedTime(subDays(nowInOrgTz, 30), orgTimezone)
 
   const [dispatches, activeAlerts] = await Promise.all([
     findDeptDispatchesWithData(tenantId, deptId, thirtyDaysAgo),

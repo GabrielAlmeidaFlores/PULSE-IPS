@@ -4,6 +4,7 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { CalendarClock } from "lucide-react"
 import { toast } from "sonner"
+import { fromZonedTime } from "date-fns-tz"
 import { NativeSelect } from "@/components/ui/native-select"
 import { scheduleHealthSurveyDispatchAction } from "@/app/(tenant)/health-surveys/actions"
 
@@ -16,23 +17,37 @@ interface HealthSurveyConfigOption {
 interface ScheduleHealthSurveyDispatchButtonProps {
   hasConfigs: boolean
   configs: HealthSurveyConfigOption[]
+  orgTimezone: string
 }
 
-export function ScheduleHealthSurveyDispatchButton({ hasConfigs, configs }: ScheduleHealthSurveyDispatchButtonProps): React.ReactElement {
+function getOrgLocalDatetimeString(timezone: string): string {
+  const now = new Date()
+  now.setMinutes(0, 0, 0)
+  now.setTime(now.getTime() + 60 * 60 * 1000)
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(now)
+  const get = (type: string): string => parts.find((p) => p.type === type)?.value ?? "00"
+  const hour = get("hour")
+  return `${get("year")}-${get("month")}-${get("day")}T${hour === "24" ? "00" : hour}:${get("minute")}`
+}
+
+export function ScheduleHealthSurveyDispatchButton({ hasConfigs, configs, orgTimezone }: ScheduleHealthSurveyDispatchButtonProps): React.ReactElement {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [open, setOpen] = useState(false)
   const [configId, setConfigId] = useState<string>(() => configs[0]?.id ?? "")
-  const [scheduledAt, setScheduledAt] = useState(() => {
-    const now = new Date()
-    now.setMinutes(0, 0, 0)
-    now.setHours(now.getHours() + 1)
-    const pad = (n: number): string => n.toString().padStart(2, "0")
-    return `${now.getFullYear().toString()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`
-  })
+  const [scheduledAt, setScheduledAt] = useState(() => getOrgLocalDatetimeString(orgTimezone))
 
   function handleOpen(): void {
     setConfigId(configs[0]?.id ?? "")
+    setScheduledAt(getOrgLocalDatetimeString(orgTimezone))
     setOpen(true)
   }
 
@@ -42,7 +57,8 @@ export function ScheduleHealthSurveyDispatchButton({ hasConfigs, configs }: Sche
       return
     }
     startTransition(async () => {
-      const result = await scheduleHealthSurveyDispatchAction(configId, new Date(scheduledAt).toISOString())
+      const utcDate = fromZonedTime(scheduledAt, orgTimezone)
+      const result = await scheduleHealthSurveyDispatchAction(configId, utcDate.toISOString())
       if (result?.error) {
         toast.error(result.error)
       } else {

@@ -134,36 +134,37 @@ async function sendDispatchTokensAndMessages(
   if (newTokenInputs.length > 0) {
     await createHealthSurveyTokens(newTokenInputs)
   }
-  await markHealthSurveyDispatchDispatched(tenantId, dispatchId, dispatchTargetEmployees.length)
 
   const hasMessaging = await hasTenantPlanFeature(tenantId, "messaging")
-  if (!hasMessaging) return
+  if (hasMessaging) {
+    const messageQueue = getMessageQueue()
+    const bulkJobs = toSendEmployees
+      .map((emp) => {
+        const tokenValue = existingUnusedTokenMap.get(emp.id) ?? newTokenMap.get(emp.id)
+        if (!tokenValue) return null
+        const healthSurveyUrl = `${env.NEXT_PUBLIC_APP_URL}/health-survey/${tokenValue}`
+        return {
+          name: "send-message" as const,
+          data: {
+            to: emp.phone,
+            body: buildMessageFromTemplate(env.SURVEY_MESSAGE_TEMPLATE, emp.name, healthSurveyUrl),
+            tenantId,
+            employeeId: emp.id,
+            provider: env.MESSAGING_PROVIDER,
+            type: "survey_dispatch" as const,
+            templateName: env.WHATSAPP_SURVEY_TEMPLATE_NAME,
+            templateVariables: [emp.name, healthSurveyUrl],
+          },
+        }
+      })
+      .filter((job): job is NonNullable<typeof job> => job !== null)
 
-  const messageQueue = getMessageQueue()
-  const bulkJobs = toSendEmployees
-    .map((emp) => {
-      const tokenValue = existingUnusedTokenMap.get(emp.id) ?? newTokenMap.get(emp.id)
-      if (!tokenValue) return null
-      const healthSurveyUrl = `${env.NEXT_PUBLIC_APP_URL}/health-survey/${tokenValue}`
-      return {
-        name: "send-message" as const,
-        data: {
-          to: emp.phone,
-          body: buildMessageFromTemplate(env.SURVEY_MESSAGE_TEMPLATE, emp.name, healthSurveyUrl),
-          tenantId,
-          employeeId: emp.id,
-          provider: env.MESSAGING_PROVIDER,
-          type: "survey_dispatch" as const,
-          templateName: env.WHATSAPP_SURVEY_TEMPLATE_NAME,
-          templateVariables: [emp.name, healthSurveyUrl],
-        },
-      }
-    })
-    .filter((job): job is NonNullable<typeof job> => job !== null)
-
-  if (bulkJobs.length > 0) {
-    await messageQueue.addBulk(bulkJobs)
+    if (bulkJobs.length > 0) {
+      await messageQueue.addBulk(bulkJobs)
+    }
   }
+
+  await markHealthSurveyDispatchDispatched(tenantId, dispatchId, dispatchTargetEmployees.length)
 }
 
 async function fireDispatch(
@@ -304,31 +305,35 @@ export async function checkHealthSurveyDispatchAdherence(): Promise<{ processed:
   let alertsCreated = 0
 
   for (const dispatch of dispatches) {
-    if (dispatch.totalRecipients === 0) {
-      await markHealthSurveyDispatchAdherenceChecked(dispatch.tenantId, dispatch.id, 0)
-      continue
-    }
-
-    const responseCount = await countHealthSurveyResponsesForDispatch(dispatch.tenantId, dispatch.id)
-    const adherenceRate = Math.min(1.0, responseCount / dispatch.totalRecipients)
-
-    if (adherenceRate < ALERT_ADHERENCE_THRESHOLD) {
-      const departmentId = dispatch.healthSurveyConfiguration.departmentId
-      const alertType = adherenceRate < 0.5 ? "no_response" : "low_adherence"
-      const alreadyOpen = await hasOpenAlertOfType(dispatch.tenantId, alertType, departmentId)
-      if (!alreadyOpen) {
-        await createHealthSurveyAdherenceAlert({
-          tenantId: dispatch.tenantId,
-          departmentId,
-          adherenceRate,
-          responseCount,
-          totalRecipients: dispatch.totalRecipients,
-        })
-        alertsCreated++
+    try {
+      if (dispatch.totalRecipients === 0) {
+        await markHealthSurveyDispatchAdherenceChecked(dispatch.tenantId, dispatch.id, 0)
+        continue
       }
-    }
 
-    await markHealthSurveyDispatchAdherenceChecked(dispatch.tenantId, dispatch.id, responseCount)
+      const responseCount = await countHealthSurveyResponsesForDispatch(dispatch.tenantId, dispatch.id)
+      const adherenceRate = Math.min(1.0, responseCount / dispatch.totalRecipients)
+
+      if (adherenceRate < ALERT_ADHERENCE_THRESHOLD) {
+        const departmentId = dispatch.healthSurveyConfiguration.departmentId
+        const alreadyOpenNoResponse = await hasOpenAlertOfType(dispatch.tenantId, "no_response", departmentId)
+        const alreadyOpenLowAdherence = await hasOpenAlertOfType(dispatch.tenantId, "low_adherence", departmentId)
+        if (!alreadyOpenNoResponse && !alreadyOpenLowAdherence) {
+          await createHealthSurveyAdherenceAlert({
+            tenantId: dispatch.tenantId,
+            departmentId,
+            adherenceRate,
+            responseCount,
+            totalRecipients: dispatch.totalRecipients,
+          })
+          alertsCreated++
+        }
+      }
+
+      await markHealthSurveyDispatchAdherenceChecked(dispatch.tenantId, dispatch.id, responseCount)
+    } catch (err) {
+      logger.error("adherence-checker: error processing dispatch", { err, dispatchId: dispatch.id, tenantId: dispatch.tenantId })
+    }
   }
 
   return { processed: dispatches.length, alertsCreated }

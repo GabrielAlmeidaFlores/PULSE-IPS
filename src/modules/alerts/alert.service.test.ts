@@ -8,6 +8,7 @@ import {
   findAllTenantsEmployeesWithExpiredConsentTokens,
   createAlert,
   hasOpenAlertOfType,
+  findAllTenantsOpenAlertDepartmentIdsByType,
   findAlertsByTenant,
   findAlertsByTenantPaginated,
   findAlertStatsByTenant,
@@ -25,6 +26,7 @@ const mockFindDeptDispatchAvgs = vi.mocked(findAllTenantsDeptRecentDispatchAvgs)
 const mockFindExpiredConsent = vi.mocked(findAllTenantsEmployeesWithExpiredConsentTokens)
 const mockCreateAlert = vi.mocked(createAlert)
 const mockHasOpenAlert = vi.mocked(hasOpenAlertOfType)
+const mockFindOpenNegativeTrendDeptIds = vi.mocked(findAllTenantsOpenAlertDepartmentIdsByType)
 const mockFindAlertsByTenant = vi.mocked(findAlertsByTenant)
 const mockFindAlertsByTenantPaginated = vi.mocked(findAlertsByTenantPaginated)
 const mockFindAlertStatsByTenant = vi.mocked(findAlertStatsByTenant)
@@ -49,6 +51,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockCreateAlert.mockResolvedValue(undefined)
   mockHasOpenAlert.mockResolvedValue(false)
+  mockFindOpenNegativeTrendDeptIds.mockResolvedValue(new Set())
 })
 
 describe("normalizeItemScore", () => {

@@ -591,7 +591,7 @@ export async function refreshHealthSurveyTokenWorkHours(
 
 export async function markHealthSurveyDispatchDispatched(tenantId: string, dispatchId: string, totalRecipients: number): Promise<void> {
   await prisma.healthSurveyDispatch.updateMany({
-    where: { id: dispatchId, tenantId },
+    where: { id: dispatchId, tenantId, dispatchedAt: null },
     data: { status: "available", dispatchedAt: new Date(), totalRecipients },
   })
 }

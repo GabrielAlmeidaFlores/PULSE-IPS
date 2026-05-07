@@ -1,5 +1,5 @@
 import { addDays } from "date-fns"
-import { toZonedTime, fromZonedTime } from "date-fns-tz"
+import { fromZonedTime, formatInTimeZone } from "date-fns-tz"
 import { MINIMUM_RESPONDENTS_FOR_DISPLAY } from "@/libs/utils/anonymity"
 import type { PgrReview, PgrQuestionResult, PgrDeptResultWithoutReviewId, PgrQuestionResultWithoutReviewId, PgrScoreDistribution } from "@/modules/pgr/pgr.types"
 import type { ScoreDirection } from "@/modules/health-surveys/health-survey.types"
@@ -131,16 +131,27 @@ function buildDeptQuestionResults(
 }
 
 export async function generatePgrReport(tenantId: string, period: string, forceRegenerate = false): Promise<void> {
-  const org = await findOrgWithDepartmentsForPgr(tenantId)
-  const dispatches = await findDispatchesForPgr(tenantId)
+  const PERIOD_RE = /^\d{4}-\d{2}$/
+  if (!PERIOD_RE.test(period)) {
+    throw new AppError("INVALID_PERIOD", `Período inválido: ${period}. Use o formato AAAA-MM.`)
+  }
 
-  const [periodYear, periodMonth] = period.split("-").map(Number)
+  const org = await findOrgWithDepartmentsForPgr(tenantId)
   const orgTimezone = org.timezone ?? "America/Sao_Paulo"
-  const periodDispatches = dispatches.filter((d) => {
-    if (!d.dispatchedAt) return false
-    const dt = toZonedTime(new Date(d.dispatchedAt), orgTimezone)
-    return dt.getFullYear() === periodYear && dt.getMonth() + 1 === periodMonth
-  })
+
+  const [periodYear, periodMonth] = period.split("-").map(Number) as [number, number]
+  const nextMonth = periodMonth === 12 ? 1 : periodMonth + 1
+  const nextYear = periodMonth === 12 ? periodYear + 1 : periodYear
+  const periodStart = fromZonedTime(
+    `${String(periodYear)}-${String(periodMonth).padStart(2, "0")}-01T00:00:00`,
+    orgTimezone,
+  )
+  const periodEnd = fromZonedTime(
+    `${String(nextYear)}-${String(nextMonth).padStart(2, "0")}-01T00:00:00`,
+    orgTimezone,
+  )
+
+  const periodDispatches = await findDispatchesForPgr(tenantId, periodStart, periodEnd)
 
   if (periodDispatches.length === 0) {
     throw new AppError("NO_DATA_FOR_PERIOD", `Nenhum dado encontrado para o período ${period}.`)
@@ -223,7 +234,7 @@ export async function sendPgrReviewReminders(): Promise<{ remindersCreated: numb
         tenantId: review.tenantId,
         type: "pgr_review_due",
         severity: "warning",
-        message: `Revisão PGR prevista para ${review.nextReviewAt?.toLocaleDateString("pt-BR") ?? "em breve"}.`,
+        message: `Revisão PGR prevista para ${review.nextReviewAt !== null && review.nextReviewAt !== undefined ? formatInTimeZone(review.nextReviewAt, review.organization.timezone ?? "America/Sao_Paulo", "dd/MM/yyyy") : "em breve"}.`,
       })
       remindersCreated++
     }
