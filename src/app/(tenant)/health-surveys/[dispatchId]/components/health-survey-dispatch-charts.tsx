@@ -71,6 +71,7 @@ export function HealthSurveyQuestionScoreChart({ stats }: HealthSurveyQuestionSc
       const normalizedAvg = q.avgScore ?? 0
       const hi = toHealthIndex(normalizedAvg)
       return {
+        questionId: q.id,
         name: `P${q.order}`,
         text: q.text,
         avg: hi,
@@ -92,7 +93,7 @@ export function HealthSurveyQuestionScoreChart({ stats }: HealthSurveyQuestionSc
         <Tooltip content={<QuestionTooltip />} />
         <Bar dataKey="avg" radius={0} maxBarSize={20} label={{ position: "right", fontSize: 10, fontWeight: 700, formatter: (v: unknown) => (typeof v === "number" ? `${v}%` : "") }}>
           {data.map((entry) => (
-            <Cell key={entry.name} fill={healthIndexChartColor(entry.healthIndex)} />
+            <Cell key={entry.questionId} fill={healthIndexChartColor(entry.healthIndex)} />
           ))}
         </Bar>
       </BarChart>

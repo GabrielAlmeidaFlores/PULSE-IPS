@@ -1,18 +1,20 @@
 import { addDays } from "date-fns"
 import { MINIMUM_RESPONDENTS_FOR_DISPLAY } from "@/libs/utils/anonymity"
-import type { PgrReview, PgrQuestionResult, CreatePgrDeptResultInput, CreatePgrQuestionResultInput, PgrScoreDistribution } from "@/modules/pgr/pgr.types"
+import type { PgrReview, PgrQuestionResult, PgrDeptResultWithoutReviewId, PgrQuestionResultWithoutReviewId, PgrScoreDistribution } from "@/modules/pgr/pgr.types"
 import type { ScoreDirection } from "@/modules/health-surveys/health-survey.types"
 import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
 import { AppError } from "@/libs/errors/app-error"
 import {
   type PgrReviewWithResults,
   type PgrReviewListItem,
+  type PgrReviewListFilters,
   findPgrReviewsByTenant,
   findPgrReviewsByTenantPaginated,
   findPgrReviewById,
   findOrgWithDepartmentsForPgr,
   findDispatchesForPgr,
   findPgrReviewByTenantAndPeriod,
+  replacePgrReviewAtomic,
   createPgrReviewAtomic,
   findAllTenantsUpcomingPgrReviews,
   findExistingPgrAlert,
@@ -47,6 +49,8 @@ export function getPgrReviews(tenantId: string): Promise<PgrReviewSummary[]> {
 export interface PgrReviewPageQuery {
   page: number
   pageSize: number
+  year?: string
+  status?: string
 }
 
 export async function getPgrReviewsPaginated(
@@ -54,7 +58,10 @@ export async function getPgrReviewsPaginated(
   query: PgrReviewPageQuery,
 ): Promise<{ items: PgrReviewSummary[]; total: number }> {
   const skip = (query.page - 1) * query.pageSize
-  const { items, total } = await findPgrReviewsByTenantPaginated(tenantId, skip, query.pageSize)
+  const filters: PgrReviewListFilters = {}
+  if (query.year !== undefined) filters.year = query.year
+  if (query.status !== undefined) filters.status = query.status
+  const { items, total } = await findPgrReviewsByTenantPaginated(tenantId, filters, skip, query.pageSize)
   return { items: items.map(toSummary), total }
 }
 
@@ -97,20 +104,18 @@ function collectResponseScores(qMap: Map<string, QuestionMapEntry>, responses: D
 }
 
 function buildDeptQuestionResults(
-  reviewId: string,
   deptId: string,
   deptDispatches: DispatchLike[],
-): CreatePgrQuestionResultInput[] {
+): PgrQuestionResultWithoutReviewId[] {
   const qMap: Map<string, QuestionMapEntry> = new Map()
   for (const dispatch of deptDispatches) {
     registerQuestionsInMap(qMap, dispatch.healthSurveyConfiguration.questions ?? [])
     collectResponseScores(qMap, dispatch.responses)
   }
-  const results: CreatePgrQuestionResultInput[] = []
+  const results: PgrQuestionResultWithoutReviewId[] = []
   for (const [questionId, v] of qMap.entries()) {
     if (v.scores.length >= MINIMUM_RESPONDENTS_FOR_DISPLAY) {
       results.push({
-        pgrReviewId: reviewId,
         departmentId: deptId,
         questionId,
         questionText: v.text,
@@ -124,7 +129,7 @@ function buildDeptQuestionResults(
   return results
 }
 
-export async function generatePgrReport(tenantId: string, period: string): Promise<void> {
+export async function generatePgrReport(tenantId: string, period: string, forceRegenerate = false): Promise<void> {
   const org = await findOrgWithDepartmentsForPgr(tenantId)
   const dispatches = await findDispatchesForPgr(tenantId)
 
@@ -141,10 +146,12 @@ export async function generatePgrReport(tenantId: string, period: string): Promi
 
   const existingReview = await findPgrReviewByTenantAndPeriod(tenantId, period)
   if (existingReview) {
-    throw new AppError("DUPLICATE_PGR_PERIOD", `Já existe um relatório gerado para o período ${period}.`)
+    if (!forceRegenerate) {
+      throw new AppError("DUPLICATE_PGR_PERIOD", `Já existe um relatório gerado para o período ${period}.`)
+    }
   }
 
-  const deptResults: CreatePgrDeptResultInput[] = org.departments.map((dept) => {
+  const deptResults: PgrDeptResultWithoutReviewId[] = org.departments.map((dept) => {
     const deptDispatches = periodDispatches.filter(
       (d) => d.healthSurveyConfiguration.departmentId === dept.id,
     )
@@ -163,7 +170,6 @@ export async function generatePgrReport(tenantId: string, period: string): Promi
     const totalRecipients = deptDispatches.reduce((sum, d) => sum + d.totalRecipients, 0)
 
     return {
-      pgrReviewId: "",
       departmentId: dept.id,
       departmentName: dept.name,
       employeeCount: dept.employees.length,
@@ -175,17 +181,25 @@ export async function generatePgrReport(tenantId: string, period: string): Promi
 
   const questionResults = org.departments.flatMap((dept) =>
     buildDeptQuestionResults(
-      "",
       dept.id,
       periodDispatches.filter((d) => d.healthSurveyConfiguration.departmentId === dept.id),
     ),
   )
 
-  await createPgrReviewAtomic(
-    { tenantId, period, status: "generated", reviewedAt: new Date() },
-    deptResults,
-    questionResults,
-  )
+  if (existingReview) {
+    await replacePgrReviewAtomic(
+      existingReview.id,
+      { tenantId, period, status: "generated", reviewedAt: new Date() },
+      deptResults,
+      questionResults,
+    )
+  } else {
+    await createPgrReviewAtomic(
+      { tenantId, period, status: "generated", reviewedAt: new Date() },
+      deptResults,
+      questionResults,
+    )
+  }
 }
 
 export async function sendPgrReviewReminders(): Promise<{ remindersCreated: number }> {

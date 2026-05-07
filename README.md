@@ -593,13 +593,15 @@ const color = healthIndexAccent(hi)          // → classe CSS de cor
 
 ### 4. Configuração de pesquisa
 
-1. Usuário acessa `/health-health-surveys/configure` e seleciona um departamento.
+1. Usuário acessa `/health-surveys/configure` e escolhe um ou mais departamentos (ou todos os departamentos do tenant).
 2. Define:
+   - **Nome e descrição** (opcional): para identificar a configuração facilmente
    - **Frequência**: `daily`, `twice_weekly`, `weekly`, `biweekly`, `monthly`
+   - **Dia do mês** (apenas para `monthly`): seleciona o dia exato (1–28) em que o disparo deve ocorrer; quando omitido, o sistema usa intervalo de 28 dias
+   - **Dias da semana**: seleção dos dias em que o Pulse deve disparar (0=Dom … 6=Sáb), armazenados na tabela relacional `health_survey_config_work_days` — nunca como string separada por vírgula
    - **Horário de expediente**: `workStartTime` e `workEndTime` (formato `HH:mm`)
-   - **Dias de trabalho**: seleção de dias da semana (0=Dom … 6=Sáb), armazenados na tabela relacional `health_survey_config_work_days` — nunca como string separada por vírgula
    - **Perguntas**: lista de questões com score de 1 a 5, cada uma com `scoreDirection` (`higher_is_better` ou `lower_is_better`). Perguntas de estresse e carga de trabalho usam `lower_is_better` (1 = ótimo). O sistema normaliza automaticamente antes de calcular métricas e gerar alertas.
-3. A action salva a `HealthSurveyConfiguration` com `@@unique([tenantId, departmentId])` — só existe uma configuração ativa por departamento.
+3. Múltiplas configurações são permitidas para o mesmo departamento — a constraint `@@unique([tenantId, departmentId])` foi removida; cada configuração tem nome próprio para diferenciação. Um `@@index([tenantId, departmentId])` substitui para performance de consulta.
 
 ---
 
@@ -634,7 +636,7 @@ sendDispatchTokensAndMessages(dispatch)
   ├── existingUnusedTokenMap — tokens válidos não usados → reutiliza o token
   ├── newTokenInputs — demais colaboradores → cria novo token (expira em 48h)
   ├── total_recipients = todos os elegíveis (inclui pré-respondentes para cálculo correto de aderência)
-  └── Marca dispatch como status: sent
+  └── Marca dispatch como status: available
 ```
 
 **Disparo manual:**

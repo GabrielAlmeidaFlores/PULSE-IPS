@@ -52,6 +52,8 @@ export interface CreatePgrDeptResultInput {
   totalRecipients: number
 }
 
+export type PgrDeptResultWithoutReviewId = Omit<CreatePgrDeptResultInput, "pgrReviewId">
+
 export interface CreatePgrQuestionResultInput {
   pgrReviewId: string
   departmentId: string
@@ -62,6 +64,8 @@ export interface CreatePgrQuestionResultInput {
   avgScore: number
   responseCount: number
 }
+
+export type PgrQuestionResultWithoutReviewId = Omit<CreatePgrQuestionResultInput, "pgrReviewId">
 
 export interface CreatePgrAlertInput {
   tenantId: string

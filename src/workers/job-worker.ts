@@ -86,7 +86,7 @@ async function processMessageJob(data: SendMessageJobData): Promise<void> {
     type: data.type,
     provider: data.provider,
     status: result.status === "failed" ? "failed" : "sent",
-    externalId: result.externalId,
+    ...(result.externalId !== null ? { externalId: result.externalId } : {}),
   })
 }
 
@@ -96,13 +96,14 @@ function buildJobLogInput(
   status: "completed" | "failed",
   result?: unknown,
   error?: Error,
-): InsertJobLogInput {
+): InsertJobLogInput | null {
+  if (!job.id) return null
   const finishedAt = new Date()
   const startedAt = job.processedOn !== null && job.processedOn !== undefined ? new Date(job.processedOn) : undefined
   const durationMs = startedAt !== undefined ? finishedAt.getTime() - startedAt.getTime() : undefined
 
   return {
-    jobId: job.id ?? "",
+    jobId: job.id,
     jobName: job.name,
     queueName,
     status,
@@ -124,17 +125,23 @@ const messageWorker = createMessageWorker(processMessageJob)
 
 jobWorker.on("completed", (job, result) => {
   jobLogger.success(`completed: ${job.name} (id: ${job.id})`, result)
-  jobLogService.insertJobLog(buildJobLogInput(job, QUEUE_NAME, "completed", result)).catch((err: Error) => {
-    jobLogger.error(`failed to write job log: ${err.message}`)
-  })
+  const logInput = buildJobLogInput(job, QUEUE_NAME, "completed", result)
+  if (logInput !== null) {
+    jobLogService.insertJobLog(logInput).catch((err: Error) => {
+      jobLogger.error(`failed to write job log: ${err.message}`)
+    })
+  }
 })
 
 jobWorker.on("failed", (job, err) => {
   jobLogger.error(`failed: ${job?.name} (id: ${job?.id}) — ${err.message}`)
   if (job !== undefined) {
-    jobLogService.insertJobLog(buildJobLogInput(job, QUEUE_NAME, "failed", undefined, err)).catch((logErr: Error) => {
-      jobLogger.error(`failed to write job log: ${logErr.message}`)
-    })
+    const logInput = buildJobLogInput(job, QUEUE_NAME, "failed", undefined, err)
+    if (logInput !== null) {
+      jobLogService.insertJobLog(logInput).catch((logErr: Error) => {
+        jobLogger.error(`failed to write job log: ${logErr.message}`)
+      })
+    }
   }
 })
 
@@ -145,18 +152,24 @@ jobWorker.on("error", (err) => {
 messageWorker.on("completed", (job) => {
   const maskedPhone = `***${String(job.data.to).slice(-4)}`
   msgLogger.success(`sent to ${maskedPhone} (id: ${job.id})`)
-  jobLogService.insertJobLog(buildJobLogInput(job, MESSAGE_QUEUE_NAME, "completed", { to: maskedPhone, type: job.data.type })).catch((err: Error) => {
-    msgLogger.error(`failed to write job log: ${err.message}`)
-  })
+  const logInput = buildJobLogInput(job, MESSAGE_QUEUE_NAME, "completed", { to: maskedPhone, type: job.data.type })
+  if (logInput !== null) {
+    jobLogService.insertJobLog(logInput).catch((err: Error) => {
+      msgLogger.error(`failed to write job log: ${err.message}`)
+    })
+  }
 })
 
 messageWorker.on("failed", (job, err) => {
   const maskedPhone = `***${String(job?.data.to).slice(-4)}`
   msgLogger.error(`failed to ${maskedPhone} (attempt ${job?.attemptsMade ?? 0}) — ${err.message}`)
   if (job !== undefined) {
-    jobLogService.insertJobLog(buildJobLogInput(job, MESSAGE_QUEUE_NAME, "failed", undefined, err)).catch((logErr: Error) => {
-      msgLogger.error(`failed to write job log: ${logErr.message}`)
-    })
+    const logInput = buildJobLogInput(job, MESSAGE_QUEUE_NAME, "failed", undefined, err)
+    if (logInput !== null) {
+      jobLogService.insertJobLog(logInput).catch((logErr: Error) => {
+        msgLogger.error(`failed to write job log: ${logErr.message}`)
+      })
+    }
   }
 })
 

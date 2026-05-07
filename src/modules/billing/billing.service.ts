@@ -40,6 +40,10 @@ async function provisionSubscription(tenantId: string, externalPriceId: string):
   const planPrice = await findPlanPriceForProvisioning(externalPriceId)
   if (!planPrice) return
 
+  if (!planPrice.externalPriceId) {
+    throw new AppError("PLAN_PRICE_NOT_CONFIGURED", "Preço do plano sem ID externo configurado.")
+  }
+
   const now = new Date()
   const sub = await upsertSubscription({
     tenantId,
@@ -53,7 +57,7 @@ async function provisionSubscription(tenantId: string, externalPriceId: string):
     snapshotMaxEmployees: planPrice.plan.maxEmployees,
     snapshotPriceInCents: planPrice.priceInCents,
     snapshotInterval: planPrice.interval,
-    snapshotExternalPriceId: planPrice.externalPriceId ?? "",
+    snapshotExternalPriceId: planPrice.externalPriceId,
   })
 
   const existingFeatures = await findTenantSubscriptionFeatures(tenantId)

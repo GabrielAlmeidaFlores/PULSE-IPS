@@ -127,6 +127,11 @@ export async function unlockHealthSurveyViaIdentifier(
   const employee = await findEmployeeByPhoneOrDocument(tenantId, identifier.trim())
   if (!employee) throw new AppError("EMPLOYEE_NOT_FOUND", "Colaborador não encontrado. Verifique o número de telefone ou documento.")
 
+  const dispatchDepartmentId = dispatch.healthSurveyConfiguration.departmentId
+  if (employee.departmentId !== dispatchDepartmentId) {
+    throw new AppError("EMPLOYEE_NOT_IN_DEPARTMENT", "Esta pesquisa não está disponível para o seu setor.")
+  }
+
   const currentConsent = await getCurrentConsent(tenantId, employee.id)
   const activeTermVersion = await getActiveConsentTermVersion()
   const hasAcceptedCurrentVersion =

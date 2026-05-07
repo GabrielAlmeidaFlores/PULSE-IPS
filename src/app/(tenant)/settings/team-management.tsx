@@ -133,7 +133,7 @@ export function TeamManagement({ users, pendingInvites }: Props): React.ReactEle
                     onClick={() => handleCancel(invite.id, invite.email)}
                     disabled={isResending || isCancelling}
                     style={{ borderRadius: 0 }}
-                    className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider border border-status-danger-border text-status-danger hover:bg-status-danger-subtle transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Cancelar
                   </button>

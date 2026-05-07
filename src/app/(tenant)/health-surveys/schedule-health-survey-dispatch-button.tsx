@@ -4,16 +4,25 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { CalendarClock } from "lucide-react"
 import { toast } from "sonner"
-import { scheduleAllHealthSurveyDispatchesAction } from "@/app/(tenant)/health-surveys/actions"
+import { NativeSelect } from "@/components/ui/native-select"
+import { scheduleHealthSurveyDispatchAction } from "@/app/(tenant)/health-surveys/actions"
+
+interface HealthSurveyConfigOption {
+  id: string
+  name: string
+  departmentName: string
+}
 
 interface ScheduleHealthSurveyDispatchButtonProps {
   hasConfigs: boolean
+  configs: HealthSurveyConfigOption[]
 }
 
-export function ScheduleHealthSurveyDispatchButton({ hasConfigs }: ScheduleHealthSurveyDispatchButtonProps): React.ReactElement {
+export function ScheduleHealthSurveyDispatchButton({ hasConfigs, configs }: ScheduleHealthSurveyDispatchButtonProps): React.ReactElement {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [open, setOpen] = useState(false)
+  const [configId, setConfigId] = useState<string>(() => configs[0]?.id ?? "")
   const [scheduledAt, setScheduledAt] = useState(() => {
     const now = new Date()
     now.setMinutes(0, 0, 0)
@@ -22,13 +31,22 @@ export function ScheduleHealthSurveyDispatchButton({ hasConfigs }: ScheduleHealt
     return `${now.getFullYear().toString()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`
   })
 
+  function handleOpen(): void {
+    setConfigId(configs[0]?.id ?? "")
+    setOpen(true)
+  }
+
   function handleSubmit(): void {
+    if (configId === "") {
+      toast.error("Selecione uma pesquisa.")
+      return
+    }
     startTransition(async () => {
-      const result = await scheduleAllHealthSurveyDispatchesAction(new Date(scheduledAt).toISOString())
+      const result = await scheduleHealthSurveyDispatchAction(configId, new Date(scheduledAt).toISOString())
       if (result?.error) {
         toast.error(result.error)
       } else {
-        toast.success("Disparo agendado para todos os departamentos")
+        toast.success("Disparo agendado com sucesso")
         setOpen(false)
         router.refresh()
       }
@@ -38,7 +56,7 @@ export function ScheduleHealthSurveyDispatchButton({ hasConfigs }: ScheduleHealt
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
+        onClick={handleOpen}
         disabled={!hasConfigs}
         title={!hasConfigs ? "Configure uma pesquisa antes de agendar" : undefined}
         className="flex items-center gap-1.5 px-4 py-2 text-[11px] font-bold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors border border-primary"
@@ -62,9 +80,21 @@ export function ScheduleHealthSurveyDispatchButton({ hasConfigs }: ScheduleHealt
               </button>
             </div>
             <div className="p-4 space-y-3">
-              <p className="text-xs text-muted-foreground">
-                O disparo será enviado para todos os departamentos com pesquisa configurada.
-              </p>
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">
+                  Pesquisa
+                </label>
+                <NativeSelect
+                  value={configId}
+                  onChange={(e) => setConfigId(e.target.value)}
+                >
+                  {configs.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} — {c.departmentName}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </div>
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">
                   Data e hora
@@ -73,7 +103,7 @@ export function ScheduleHealthSurveyDispatchButton({ hasConfigs }: ScheduleHealt
                   type="datetime-local"
                   value={scheduledAt}
                   onChange={(e) => setScheduledAt(e.target.value)}
-                  className="w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 focus:outline-none focus:border-primary transition-colors"
+                  className="w-full bg-input border border-input-border text-foreground text-[13px] px-3 py-2.5 focus:outline-none focus:border-primary transition-colors"
                   style={{ borderRadius: 0 }}
                 />
               </div>
@@ -88,7 +118,7 @@ export function ScheduleHealthSurveyDispatchButton({ hasConfigs }: ScheduleHealt
               </button>
               <button
                 onClick={handleSubmit}
-                disabled={isPending}
+                disabled={isPending || configId === ""}
                 className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
                 style={{ borderRadius: 0 }}
               >

@@ -23,7 +23,7 @@ export class TwilioMessageAdapter implements IMessagingService {
       const message = await this.client.messages.create(messageParams)
       return { externalId: message.sid, status: "queued" }
     } catch (error) {
-      return { externalId: "", status: "failed", error: String(error) }
+      return { externalId: null, status: "failed", error: String(error) }
     }
   }
 
@@ -32,7 +32,7 @@ export class TwilioMessageAdapter implements IMessagingService {
     const resolved = results.map((r) =>
       r.status === "fulfilled"
         ? r.value
-        : ({ externalId: "", status: "failed" as const, error: "rejected" } satisfies SendMessageResult),
+        : ({ externalId: null, status: "failed" as const, error: "rejected" } satisfies SendMessageResult),
     )
     return {
       sent: resolved.filter((r) => r.status !== "failed").length,
