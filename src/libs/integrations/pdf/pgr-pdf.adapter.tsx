@@ -1,6 +1,7 @@
 import React from "react"
 import { Document, Page, View, Text, StyleSheet, renderToBuffer, type DocumentProps } from "@react-pdf/renderer"
 import type { PgrPdfInput, PgrPdfDept } from "@/libs/integrations/pdf/pgr-pdf.types"
+import { toHealthIndex } from "@/libs/utils/health-index"
 
 const FONT_BOLD = "Helvetica-Bold"
 const BRAND = "#3DB98A"
@@ -518,11 +519,6 @@ function scoreColor(n: number): string {
   return SCORE_5
 }
 
-function toHealthIndex(avgScore: number): number {
-  if (avgScore <= 0) return 0
-  return Math.round(((avgScore - 1) / 4) * 100)
-}
-
 function formatDate(d: Date): string {
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })
 }
@@ -610,7 +606,7 @@ function CoverPage({ data }: CoverPageProps): React.ReactElement {
               Índice de Saúde Organizacional · {healthLabel(data.globalHealthIndex)}
             </Text>
             <Text style={styles.coverHeroSub}>
-              Média ponderada dos índices de saúde de todos os setores com dados suficientes para análise.
+              Média dos índices de saúde de todos os setores com dados suficientes para análise.
               {"\n"}
               Fórmula: Índice = ((nota média – 1) / 4) × 100 · Escala: 0–100%
             </Text>

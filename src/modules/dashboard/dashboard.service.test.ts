@@ -153,6 +153,15 @@ describe("getDashboardData — KPIs", () => {
     expect(result.kpis.healthIndex).toBeGreaterThan(0)
     expect(result.kpis.healthIndex).toBeLessThanOrEqual(100)
   })
+
+  it("retorna healthIndex null quando filtro de questão não corresponde a nenhum item (sem NaN)", async () => {
+    mockFindDispatchesWithData.mockResolvedValue([makeDispatch(5, 6)])
+
+    const result = await getDashboardData(TENANT_ID, [999])
+
+    expect(result.kpis.healthIndex).toBeNull()
+    expect(Number.isNaN(result.kpis.healthIndex)).toBe(false)
+  })
 })
 
 describe("getDashboardData — gráficos", () => {

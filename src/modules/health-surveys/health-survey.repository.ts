@@ -747,11 +747,3 @@ export async function markHealthSurveyDispatchAdherenceChecked(tenantId: string,
     data: { adherenceCheckedAt: new Date(), totalResponses },
   })
 }
-
-export async function findDepartmentIdsWithActiveHealthSurveyConfigs(tenantId: string, departmentIds: string[]): Promise<string[]> {
-  const configs = await prisma.healthSurveyConfiguration.findMany({
-    where: { tenantId, isActive: true, departmentId: { in: departmentIds } },
-    select: { departmentId: true },
-  })
-  return configs.map((c) => c.departmentId)
-}

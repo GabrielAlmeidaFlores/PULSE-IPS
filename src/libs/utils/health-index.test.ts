@@ -23,6 +23,14 @@ describe("toHealthIndex", () => {
     expect(toHealthIndex(5)).toBe(100)
   })
 
+  it("retorna 0 para score 0 (evita resultado negativo)", () => {
+    expect(toHealthIndex(0)).toBe(0)
+  })
+
+  it("retorna 0 para score negativo (evita resultado negativo)", () => {
+    expect(toHealthIndex(-1)).toBe(0)
+  })
+
   it("maps score 3 (midpoint) to 50%", () => {
     expect(toHealthIndex(3)).toBe(50)
   })
