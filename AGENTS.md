@@ -47,6 +47,8 @@
 32. [Centralização de Cores — CSS Variables](#32-centralização-de-cores--css-variables)
 33. [Endereços de E-mail — Variáveis de Ambiente](#33-endereços-de-e-mail--variáveis-de-ambiente)
 34. [Variáveis de Ambiente — Acesso Centralizado](#34-variáveis-de-ambiente--acesso-centralizado)
+35. [Selects — Componente Padrão Obrigatório](#35-selects--componente-padrão-obrigatório)
+36. [Confirmações Destrutivas — Modal Obrigatório](#36-confirmações-destrutivas--modal-obrigatório)
 
 ---
 
@@ -4691,3 +4693,119 @@ grep -rn "<select" src --include="*.tsx" | grep -v "native-select.tsx"
 # Resultado esperado: nenhuma linha
 ```
 
+---
+
+## 36. Confirmações Destrutivas — Modal Obrigatório
+
+**Toda ação destrutiva ou irreversível deve sempre exibir um modal de confirmação.** É absolutamente proibido usar qualquer outro padrão de confirmação (inline toggle de botões na linha, `window.confirm`, toast com undo, etc.).
+
+### Regra
+
+> **Toda ação que exclui, desativa, remove ou altera permanentemente um dado deve obrigatoriamente abrir um `ConfirmActionModal` antes de executar a ação.** O usuário deve confirmar explicitamente em um modal separado.
+
+### Padrão obrigatório
+
+```tsx
+// ✅ CORRETO — modal de confirmação
+import { ConfirmActionModal } from "@/components/confirm-action-modal"
+
+const [showModal, setShowModal] = useState(false)
+
+function handleConfirm(): void {
+  startTransition(async () => {
+    const result = await someDestructiveAction(id)
+    if (result.error) {
+      toast.error(result.error)
+    } else {
+      setShowModal(false)
+      toast.success("Operação concluída.")
+      router.refresh()
+    }
+  })
+}
+
+return (
+  <>
+    <button onClick={() => setShowModal(true)}>Excluir</button>
+
+    <ConfirmActionModal
+      open={showModal}
+      onClose={() => setShowModal(false)}
+      onConfirm={handleConfirm}
+      loading={isPending}
+      title="Excluir item"
+      description={`Tem certeza que deseja excluir "${name}"? Esta ação não pode ser desfeita.`}
+      confirmLabel="Excluir"
+      variant="destructive"
+    />
+  </>
+)
+```
+
+```tsx
+// ❌ PROIBIDO — confirmação inline na linha da tabela
+if (showConfirm) {
+  return (
+    <div>
+      <span>Tem certeza?</span>
+      <button onClick={handleAction}>Confirmar</button>
+      <button onClick={() => setShowConfirm(false)}>Cancelar</button>
+    </div>
+  )
+}
+
+// ❌ PROIBIDO — ação destrutiva sem confirmação alguma
+<button onClick={handleDeactivate}>Desativar</button>
+
+// ❌ PROIBIDO — window.confirm
+if (window.confirm("Tem certeza?")) handleDelete()
+```
+
+### Componente `ConfirmActionModal`
+
+**Localização:** `src/components/confirm-action-modal.tsx`
+
+```typescript
+interface Props {
+  open: boolean
+  onClose: () => void
+  onConfirm: () => void
+  loading?: boolean
+  title: string
+  description: string
+  confirmLabel?: string          // padrão: "Confirmar"
+  variant?: "destructive" | "warning"  // padrão: "destructive"
+}
+```
+
+| `variant` | Quando usar |
+|---|---|
+| `"destructive"` | Excluir, desativar, remover permanentemente |
+| `"warning"` | Ativar, reativar, ações reversíveis mas com impacto |
+
+### `ConfirmDeleteModal` — wrapper para exclusões
+
+Para exclusões simples, o `ConfirmDeleteModal` (`src/components/confirm-delete-modal.tsx`) é um wrapper de `ConfirmActionModal` com defaults para "Excluir". Aceita os mesmos props sem `confirmLabel` e `variant`.
+
+### Ações que sempre exigem modal
+
+| Ação | Descrição |
+|---|---|
+| Excluir qualquer registro | Departamento, colaborador, plano, documento, relato, etc. |
+| Desativar colaborador | Zona de perigo em `/employees/[id]` |
+| Desativar pesquisa de saúde | Botão em `/health-surveys/configure` |
+| Desativar/ativar plano | Botão Power em `/super-admin/plans` |
+| Remover preço de plano | Botão Trash em `/super-admin/plans/[id]/pricing` |
+| Excluir conta da organização | `/settings` — fluxo com código de confirmação por e-mail |
+
+### Checklist ao implementar ação destrutiva
+
+| # | Item |
+|---|---|
+| 1 | Há um estado `useState<boolean>(false)` para controlar abertura do modal |
+| 2 | O botão de ação abre o modal (`onClick={() => setShowModal(true)}`) — nunca executa diretamente |
+| 3 | `ConfirmActionModal` está renderizado no JSX com `open`, `onClose`, `onConfirm`, `title`, `description`, `confirmLabel` |
+| 4 | O `onConfirm` fecha o modal (`setShowModal(false)`) **após** a ação concluir com sucesso |
+| 5 | O `loading` é passado corretamente para desabilitar o botão durante a execução |
+
+*Pulse — AGENTS.md | Documento interno | Maio de 2026*

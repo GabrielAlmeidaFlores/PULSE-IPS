@@ -2,7 +2,7 @@ import { headers } from "next/headers"
 import { NextResponse } from "next/server"
 import { env } from "@/env"
 import { verifyCronSecret } from "@/libs/utils/cron-auth"
-import { detectLowScoreAlerts } from "@/modules/alerts/alert.service"
+import { detectConsentExpiredAlerts, detectLowScoreAlerts, detectNegativeTrendAlerts, detectScoreDropAlerts } from "@/modules/alerts/alert.service"
 
 export async function POST(_request: Request): Promise<NextResponse> {
   const headersList = await headers()
@@ -14,6 +14,9 @@ export async function POST(_request: Request): Promise<NextResponse> {
 
   try {
     await detectLowScoreAlerts()
+    await detectScoreDropAlerts()
+    await detectNegativeTrendAlerts()
+    await detectConsentExpiredAlerts()
     return NextResponse.json({ success: true })
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 })

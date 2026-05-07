@@ -153,7 +153,7 @@ export interface DeptDispatchAvg {
   departmentId: string
   departmentName: string
   avgScore: number
-  createdAt: Date
+  effectiveDate: Date
 }
 
 interface DispatchWithResponses {
@@ -163,12 +163,12 @@ interface DispatchWithResponses {
 }
 
 function accumulateDayScores(
-  dayMap: Map<string, { scores: number[]; responseCount: number; createdAt: Date }>,
+  dayMap: Map<string, { scores: number[]; responseCount: number; effectiveDate: Date }>,
   dispatch: DispatchWithResponses,
 ): void {
   const effectiveDate = dispatch.dispatchedAt ?? dispatch.createdAt
   const dayKey = effectiveDate.toISOString().slice(0, 10)
-  const existing = dayMap.get(dayKey) ?? { scores: [], responseCount: 0, createdAt: dispatch.createdAt }
+  const existing = dayMap.get(dayKey) ?? { scores: [], responseCount: 0, effectiveDate }
   for (const r of dispatch.responses) {
     for (const item of r.items) {
       existing.scores.push(item.question.scoreDirection === "lower_is_better" ? 6 - item.score : item.score)
@@ -204,7 +204,7 @@ export async function findAllTenantsDeptRecentDispatchAvgs(departmentId: string,
   const dept = configs[0]?.department
   if (!dept) return []
 
-  const dayMap = new Map<string, { scores: number[]; responseCount: number; createdAt: Date }>()
+  const dayMap = new Map<string, { scores: number[]; responseCount: number; effectiveDate: Date }>()
 
   for (const config of configs) {
     for (const dispatch of config.dispatches) {
@@ -222,10 +222,10 @@ export async function findAllTenantsDeptRecentDispatchAvgs(departmentId: string,
       departmentId: dept.id,
       departmentName: dept.name,
       avgScore,
-      createdAt: data.createdAt,
+      effectiveDate: data.effectiveDate,
     })
   }
-  return results.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, limitPerDept)
+  return results.sort((a, b) => b.effectiveDate.getTime() - a.effectiveDate.getTime()).slice(0, limitPerDept)
 }
 
 export function findAllTenantsActiveDepartments(): Promise<{ id: string; tenantId: string; name: string }[]> {

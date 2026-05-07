@@ -1,4 +1,5 @@
 export function toHealthIndex(normalizedAvg: number): number {
+  if (normalizedAvg <= 0) return 0
   return Math.round(((normalizedAvg - 1) / 4) * 100)
 }
 

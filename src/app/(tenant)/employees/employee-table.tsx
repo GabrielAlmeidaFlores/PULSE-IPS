@@ -9,6 +9,7 @@ import { TablePagination } from "@/libs/design-system/components/data-display/Ta
 import { BADGE_BASE, BADGE_DEFAULT, BADGE_GREEN, BADGE_RED, BADGE_AMBER } from "@/libs/design-system/alert-labels"
 import { EditEmployeeModal, type EmployeeEditData, type EmployeeFormValues } from "@/app/(tenant)/employees/edit-employee-modal"
 import { updateEmployeeAction, deleteEmployeeAction } from "@/app/(tenant)/employees/[id]/actions"
+import { ConfirmActionModal } from "@/components/confirm-action-modal"
 
 interface Department {
   id: string
@@ -172,41 +173,16 @@ export function EmployeeTable({ employees, total, departments, isAdmin }: Employ
         ))}
       </DataTable>
 
-      {deleteTargetId !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-background border border-border w-full max-w-sm shadow-lg" style={{ borderRadius: 0 }}>
-            <div className="px-5 py-4 border-b border-border">
-              <p className="text-sm font-bold text-foreground">Excluir colaborador</p>
-            </div>
-            <div className="px-5 py-4">
-              <p className="text-xs text-muted-foreground">
-                Esta ação é irreversível. O colaborador e todos os seus dados serão permanentemente excluídos.
-              </p>
-              <p className="text-xs text-muted-foreground mt-2">
-                Colaboradores com histórico de consentimento não podem ser excluídos.
-              </p>
-            </div>
-            <div className="px-5 py-3 border-t border-border flex justify-end gap-2">
-              <button
-                onClick={() => setDeleteTargetId(null)}
-                disabled={pending}
-                style={{ borderRadius: 0 }}
-                className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider border border-border text-muted-foreground hover:bg-muted disabled:opacity-50 transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleConfirmDelete}
-                disabled={pending}
-                style={{ borderRadius: 0 }}
-                className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider bg-status-danger text-white hover:opacity-90 disabled:opacity-50 transition-colors"
-              >
-                {pending ? "Excluindo..." : "Excluir"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmActionModal
+        open={deleteTargetId !== null}
+        onClose={() => setDeleteTargetId(null)}
+        onConfirm={handleConfirmDelete}
+        loading={pending}
+        title="Excluir colaborador"
+        description="Esta ação é irreversível. O colaborador e todos os seus dados serão permanentemente excluídos. Colaboradores com histórico de consentimento não podem ser excluídos."
+        confirmLabel="Excluir"
+        variant="destructive"
+      />
 
       <EditEmployeeModal
         key={editTarget?.id ?? "closed"}

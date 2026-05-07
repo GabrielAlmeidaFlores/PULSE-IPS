@@ -14,7 +14,6 @@ import {
   createManyHealthSurveyConfigEntries,
   updateExistingHealthSurveyConfigEntry,
   deactivateHealthSurveyConfigEntry,
-  findDepartmentIdsWithActiveHealthSurveyConfigs,
 } from "@/modules/health-surveys/health-survey.repository"
 import { findActiveDepartmentsByTenant } from "@/modules/departments/department.repository"
 
@@ -29,7 +28,6 @@ const mockCreateManyConfigs = vi.mocked(createManyHealthSurveyConfigEntries)
 const mockUpdateConfig = vi.mocked(updateExistingHealthSurveyConfigEntry)
 const mockDeactivateConfig = vi.mocked(deactivateHealthSurveyConfigEntry)
 const mockFindActiveDepts = vi.mocked(findActiveDepartmentsByTenant)
-const mockFindDeptsWithConfig = vi.mocked(findDepartmentIdsWithActiveHealthSurveyConfigs)
 
 const SCORE_DIRECTION_HIGHER = "higher_is_better" as const
 const QUESTION_TEXT_1 = "Pergunta 1"
@@ -50,7 +48,6 @@ const BASE_UPDATE_INPUT = {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockFindDeptsWithConfig.mockResolvedValue([])
 })
 
 describe("getHealthSurveyConfigs", () => {
@@ -212,8 +209,7 @@ describe("createHealthSurveyForDepartments", () => {
     ).rejects.toMatchObject({ code: "NO_DEPARTMENTS" })
   })
 
-  it("não cria configs para setores que já possuem configuração ativa", async () => {
-    mockFindDeptsWithConfig.mockResolvedValue(["dept-1"])
+  it("cria config mesmo para setores que já possuem outra configuração ativa", async () => {
     mockCreateManyConfigs.mockResolvedValue(undefined)
 
     await createHealthSurveyForDepartments("tenant-1", {
@@ -222,20 +218,9 @@ describe("createHealthSurveyForDepartments", () => {
     })
 
     expect(mockCreateManyConfigs).toHaveBeenCalledWith("tenant-1", [
+      { ...BASE_CONFIG_INPUT, departmentId: "dept-1" },
       { ...BASE_CONFIG_INPUT, departmentId: "dept-2" },
     ])
-  })
-
-  it("não chama createManyHealthSurveyConfigEntries quando todos os setores já têm configuração ativa", async () => {
-    mockFindDeptsWithConfig.mockResolvedValue(["dept-1", "dept-2"])
-    mockCreateManyConfigs.mockResolvedValue(undefined)
-
-    await createHealthSurveyForDepartments("tenant-1", {
-      ...BASE_CONFIG_INPUT,
-      departmentIds: ["dept-1", "dept-2"],
-    })
-
-    expect(mockCreateManyConfigs).not.toHaveBeenCalled()
   })
 })
 

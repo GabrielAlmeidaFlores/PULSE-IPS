@@ -94,7 +94,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams): Promise<N
     const scoredQs = deptQuestions.filter((q) => q.avgScore > 0)
     const healthyQs = scoredQs.filter((q) => q.healthIndex >= 62).length
     const warningQs = scoredQs.filter((q) => q.healthIndex >= 37 && q.healthIndex < 62).length
-    const criticalQs = scoredQs.filter((q) => q.healthIndex > 0 && q.healthIndex < 37).length
+    const criticalQs = scoredQs.filter((q) => q.healthIndex < 37).length
 
     const sortedByScore = [...scoredQs].sort((a, b) => a.healthIndex - b.healthIndex)
     const worstQ = sortedByScore[0] ?? null

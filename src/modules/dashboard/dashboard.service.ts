@@ -213,7 +213,7 @@ export async function getDashboardData(tenantId: string, selectedOrders: number[
   }
 
   const rawAvg =
-    recentResponseCount >= MINIMUM_RESPONDENTS_FOR_DISPLAY
+    recentResponseCount >= MINIMUM_RESPONDENTS_FOR_DISPLAY && recentScores.length > 0
       ? roundTwo(recentScores.reduce((a, b) => a + b, 0) / recentScores.length)
       : null
 
@@ -227,7 +227,7 @@ export async function getDashboardData(tenantId: string, selectedOrders: number[
 
   const overallTrend: TrendPoint[] = sortedMonths.map((m) => ({
     month: m.monthKey,
-    avg: m.responseCount >= MINIMUM_RESPONDENTS_FOR_DISPLAY ? toHealthIndex(roundTwo(m.totalScore / m.scoreCount)) : 0,
+    avg: m.responseCount >= MINIMUM_RESPONDENTS_FOR_DISPLAY && m.scoreCount > 0 ? toHealthIndex(roundTwo(m.totalScore / m.scoreCount)) : 0,
     responses: m.responseCount,
   }))
 
