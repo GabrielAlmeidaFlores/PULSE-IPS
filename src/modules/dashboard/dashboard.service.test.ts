@@ -74,7 +74,7 @@ function makeResponse(dispatchId: string, index: number): DispatchWithData["resp
         healthSurveyResponseId: `response-${index}`,
         questionId: "q-1",
         score: 4,
-        question: { text: "Estresse", order: 1, scoreDirection: "lower_is_better" },
+        question: { id: "q-1", text: "Estresse", order: 1, scoreDirection: "lower_is_better" },
       },
     ],
   }
@@ -153,16 +153,25 @@ describe("getDashboardData — KPIs", () => {
     expect(result.kpis.healthIndex).toBeGreaterThan(0)
     expect(result.kpis.healthIndex).toBeLessThanOrEqual(100)
   })
+
+  it("retorna healthIndex null quando filtro de questão não corresponde a nenhum item (sem NaN)", async () => {
+    mockFindDispatchesWithData.mockResolvedValue([makeDispatch(5, 6)])
+
+    const result = await getDashboardData(TENANT_ID, [999])
+
+    expect(result.kpis.healthIndex).toBeNull()
+    expect(Number.isNaN(result.kpis.healthIndex)).toBe(false)
+  })
 })
 
 describe("getDashboardData — gráficos", () => {
-  it("gera overallTrend com 0 avg quando mês tem menos de 5 respondentes", async () => {
+  it("gera overallTrend com null avg quando mês tem menos de 5 respondentes", async () => {
     mockFindDispatchesWithData.mockResolvedValue([makeDispatch(5, 3)])
 
     const result = await getDashboardData(TENANT_ID)
 
-    const hasZeroAvg = result.overallTrend.some((p) => p.avg === 0)
-    expect(hasZeroAvg).toBe(true)
+    const hasNullAvg = result.overallTrend.some((p) => p.avg === null)
+    expect(hasNullAvg).toBe(true)
   })
 
   it("constrói deptCards para cada setor presente nos dispatches", async () => {
@@ -283,7 +292,7 @@ describe("getDashboardData — trend down", () => {
             healthSurveyResponseId: `prev-response-${i}`,
             questionId: "q-1",
             score: 1,
-            question: { text: "Estresse", order: 1, scoreDirection: "lower_is_better" },
+            question: { id: "q-1", text: "Estresse", order: 1, scoreDirection: "lower_is_better" },
           },
         ],
       })),

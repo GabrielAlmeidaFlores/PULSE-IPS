@@ -9,6 +9,7 @@ import {
   findAllTenantsDeptRecentDispatchAvgs,
   findAllTenantsEmployeesWithExpiredConsentTokens,
   hasOpenAlertOfType,
+  findAllTenantsOpenAlertDepartmentIdsByType,
   findAlertsByTenantPaginated,
   findAlertStatsByTenant,
   type AlertListingFilters,
@@ -107,6 +108,7 @@ function dropSeverity(drop: number): "critical" | "warning" {
 }
 
 function averageOf(values: { avgScore: number }[]): number {
+  if (values.length === 0) return 0
   return values.reduce((a, b) => a + b.avgScore, 0) / values.length
 }
 
@@ -201,7 +203,11 @@ export async function detectNegativeTrendAlerts(): Promise<void> {
   const PERIODS_TO_CHECK = 3
   const departments = await findAllTenantsActiveDepartments()
 
+  const openNegativeTrendDeptIds = await findAllTenantsOpenAlertDepartmentIdsByType("negative_trend")
+
   for (const dept of departments) {
+    if (openNegativeTrendDeptIds.has(dept.id)) continue
+
     const recent = await findAllTenantsDeptRecentDispatchAvgs(dept.id, PERIODS_TO_CHECK + 6)
     if (recent.length < PERIODS_TO_CHECK) continue
 
@@ -209,9 +215,6 @@ export async function detectNegativeTrendAlerts(): Promise<void> {
     const historical = recent.slice(PERIODS_TO_CHECK)
 
     if (!isTrendNegative(lastThree, historical)) continue
-
-    const alreadyOpen = await hasOpenAlertOfType(dept.tenantId, "negative_trend", dept.id)
-    if (alreadyOpen) continue
 
     const latestHi = toHealthIndex(lastThree[0]?.avgScore ?? 0)
     await createAlert({

@@ -441,7 +441,7 @@ export function findHealthSurveyTokenByValue(token: string): Promise<HealthSurve
     where: { token },
     include: {
       employee: true,
-      dispatch: { include: { healthSurveyConfiguration: { include: { questions: { orderBy: { order: "asc" } }, organization: true } } } },
+      dispatch: { include: { healthSurveyConfiguration: { include: { questions: { where: { isActive: true }, orderBy: { order: "asc" } }, organization: true } } } },
     },
   })
 }
@@ -546,7 +546,7 @@ export function findUsedHealthSurveyTokenForEmployee(
 export async function createHealthSurveyResponseWithItems(data: CreateHealthSurveyResponseInput): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const claimed = await tx.healthSurveyResponseToken.updateMany({
-      where: { id: data.tokenId, usedAt: null },
+      where: { id: data.tokenId, tenantId: data.tenantId, usedAt: null },
       data: { usedAt: new Date() },
     })
 
@@ -591,7 +591,7 @@ export async function refreshHealthSurveyTokenWorkHours(
 
 export async function markHealthSurveyDispatchDispatched(tenantId: string, dispatchId: string, totalRecipients: number): Promise<void> {
   await prisma.healthSurveyDispatch.updateMany({
-    where: { id: dispatchId, tenantId },
+    where: { id: dispatchId, tenantId, dispatchedAt: null },
     data: { status: "available", dispatchedAt: new Date(), totalRecipients },
   })
 }
@@ -746,12 +746,4 @@ export async function markHealthSurveyDispatchAdherenceChecked(tenantId: string,
     where: { id: dispatchId, tenantId },
     data: { adherenceCheckedAt: new Date(), totalResponses },
   })
-}
-
-export async function findDepartmentIdsWithActiveHealthSurveyConfigs(tenantId: string, departmentIds: string[]): Promise<string[]> {
-  const configs = await prisma.healthSurveyConfiguration.findMany({
-    where: { tenantId, isActive: true, departmentId: { in: departmentIds } },
-    select: { departmentId: true },
-  })
-  return configs.map((c) => c.departmentId)
 }

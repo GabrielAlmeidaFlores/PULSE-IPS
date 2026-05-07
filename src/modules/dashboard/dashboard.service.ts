@@ -1,6 +1,6 @@
 import { format, subMonths, subDays, startOfMonth } from "date-fns"
 import { ptBR } from "date-fns/locale"
-import { toZonedTime } from "date-fns-tz"
+import { toZonedTime, fromZonedTime } from "date-fns-tz"
 import { MINIMUM_RESPONDENTS_FOR_DISPLAY } from "@/libs/utils/anonymity"
 import {
   findDispatchesWithData,
@@ -43,7 +43,7 @@ export interface DeptCard {
 
 export interface TrendPoint {
   month: string
-  avg: number
+  avg: number | null
   responses: number
 }
 
@@ -94,6 +94,7 @@ interface DeptMonthAgg {
 
 interface DeptInfo {
   deptId: string
+  deptName: string
   monthMap: Map<string, DeptMonthAgg>
   adherenceResponses: number
   adherenceRecipients: number
@@ -115,15 +116,22 @@ interface ItemProcessParams {
   monthDate: Date
   isRecent: boolean
   recentScores: number[]
+  recentResponseCountRef: { value: number }
 }
 
 function processResponseItems(response: DispatchWithData["responses"][number], params: ItemProcessParams): void {
   let responseCountedForDept = false
+  let recentCountedForResponse = false
+  let overallCountedForResponse = false
   for (const item of response.items) {
     if (params.filterActive && !params.orderSet.has(item.question.order)) continue
     const normalizedScore = normalizeScore(item.score, item.question.scoreDirection)
     params.overall.totalScore += normalizedScore
     params.overall.scoreCount++
+    if (!overallCountedForResponse) {
+      params.overall.responseCount++
+      overallCountedForResponse = true
+    }
     const deptMonthData = params.info.monthMap.get(params.key) ?? { totalScore: 0, scoreCount: 0, responseCount: 0, monthDate: params.monthDate }
     deptMonthData.totalScore += normalizedScore
     deptMonthData.scoreCount++
@@ -132,7 +140,13 @@ function processResponseItems(response: DispatchWithData["responses"][number], p
       responseCountedForDept = true
     }
     params.info.monthMap.set(params.key, deptMonthData)
-    if (params.isRecent) params.recentScores.push(normalizedScore)
+    if (params.isRecent) {
+      params.recentScores.push(normalizedScore)
+      if (!recentCountedForResponse) {
+        params.recentResponseCountRef.value++
+        recentCountedForResponse = true
+      }
+    }
   }
 }
 
@@ -148,34 +162,36 @@ function processDispatches(
   const overallByMonth = new Map<string, MonthAgg>()
   const deptInfo = new Map<string, DeptInfo>()
   const recentScores: number[] = []
-  let recentResponseCount = 0
+  const recentResponseCountRef = { value: 0 }
 
   for (const dispatch of dispatches) {
     if (!dispatch.dispatchedAt) continue
 
-    const dept = dispatch.healthSurveyConfiguration.department.name
+    const deptName = dispatch.healthSurveyConfiguration.department.name
     const deptId = dispatch.healthSurveyConfiguration.department.id
     const key = monthLabel(dispatch.dispatchedAt, timezone)
     const monthDate = startOfMonth(toZonedTime(dispatch.dispatchedAt, timezone))
     const isRecent = dispatch.dispatchedAt >= thirtyDaysAgo
 
-    const info = deptInfo.get(dept) ?? { deptId, monthMap: new Map<string, DeptMonthAgg>(), adherenceResponses: 0, adherenceRecipients: 0 }
+    const info = deptInfo.get(deptId) ?? { deptId, deptName, monthMap: new Map<string, DeptMonthAgg>(), adherenceResponses: 0, adherenceRecipients: 0 }
     info.adherenceResponses += dispatch.responses.length
     info.adherenceRecipients += dispatch.totalRecipients
-    deptInfo.set(dept, info)
+    deptInfo.set(deptId, info)
 
-    const overall = overallByMonth.get(key) ?? { totalScore: 0, scoreCount: 0, responseCount: 0, monthDate, monthKey: key }
-    overall.responseCount += dispatch.responses.length
+    const existingOverall = overallByMonth.get(key)
+    const overall = existingOverall ?? { totalScore: 0, scoreCount: 0, responseCount: 0, monthDate, monthKey: key }
+    const scoreCountBefore = overall.scoreCount
 
     for (const response of dispatch.responses) {
-      if (isRecent) recentResponseCount++
-      processResponseItems(response, { filterActive, orderSet, overall, info, key, monthDate, isRecent, recentScores })
+      processResponseItems(response, { filterActive, orderSet, overall, info, key, monthDate, isRecent, recentScores, recentResponseCountRef })
     }
 
-    overallByMonth.set(key, overall)
+    if (existingOverall !== undefined || overall.scoreCount > scoreCountBefore) {
+      overallByMonth.set(key, overall)
+    }
   }
 
-  return { overallByMonth, deptInfo, recentScores, recentResponseCount }
+  return { overallByMonth, deptInfo, recentScores, recentResponseCount: recentResponseCountRef.value }
 }
 
 export function getAvailableQuestions(tenantId: string): Promise<UniqueQuestion[]> {
@@ -199,21 +215,21 @@ export async function getDashboardData(tenantId: string, selectedOrders: number[
 
   const activeDeptIds = new Set(activeDepts.map((d) => d.id))
 
-  for (const [name, info] of deptInfo.entries()) {
+  for (const [deptId, info] of deptInfo.entries()) {
     if (!activeDeptIds.has(info.deptId)) {
-      deptInfo.delete(name)
+      deptInfo.delete(deptId)
     }
   }
 
   for (const dept of activeDepts) {
     const alreadyPresent = [...deptInfo.values()].some((info) => info.deptId === dept.id)
     if (!alreadyPresent) {
-      deptInfo.set(dept.name, { deptId: dept.id, monthMap: new Map(), adherenceResponses: 0, adherenceRecipients: 0 })
+      deptInfo.set(dept.id, { deptId: dept.id, deptName: dept.name, monthMap: new Map(), adherenceResponses: 0, adherenceRecipients: 0 })
     }
   }
 
   const rawAvg =
-    recentResponseCount >= MINIMUM_RESPONDENTS_FOR_DISPLAY
+    recentResponseCount >= MINIMUM_RESPONDENTS_FOR_DISPLAY && recentScores.length > 0
       ? roundTwo(recentScores.reduce((a, b) => a + b, 0) / recentScores.length)
       : null
 
@@ -227,18 +243,19 @@ export async function getDashboardData(tenantId: string, selectedOrders: number[
 
   const overallTrend: TrendPoint[] = sortedMonths.map((m) => ({
     month: m.monthKey,
-    avg: m.responseCount >= MINIMUM_RESPONDENTS_FOR_DISPLAY ? toHealthIndex(roundTwo(m.totalScore / m.scoreCount)) : 0,
+    avg: m.responseCount >= MINIMUM_RESPONDENTS_FOR_DISPLAY && m.scoreCount > 0 ? toHealthIndex(roundTwo(m.totalScore / m.scoreCount)) : null,
     responses: m.responseCount,
   }))
 
-  const deptNames = [...deptInfo.keys()].sort()
+  const sortedDeptInfos = [...deptInfo.values()].sort((a, b) => a.deptName.localeCompare(b.deptName))
+  const deptNames = sortedDeptInfos.map((info) => info.deptName)
 
   const deptMonthlyChart: ChartMonthPoint[] = sortedMonths.map(({ monthKey }) => {
     const point: ChartMonthPoint = { month: monthKey }
-    for (const dept of deptNames) {
-      const data = deptInfo.get(dept)?.monthMap.get(monthKey)
+    for (const di of sortedDeptInfos) {
+      const data = di.monthMap.get(monthKey)
       if (data && data.responseCount >= MINIMUM_RESPONDENTS_FOR_DISPLAY && data.scoreCount > 0) {
-        point[dept] = toHealthIndex(roundTwo(data.totalScore / data.scoreCount))
+        point[di.deptName] = toHealthIndex(roundTwo(data.totalScore / data.scoreCount))
       }
     }
     return point
@@ -248,21 +265,21 @@ export async function getDashboardData(tenantId: string, selectedOrders: number[
   const latestMonthKey = lastMonth ? lastMonth.monthKey : null
 
   const deptComparison: BarPoint[] = latestMonthKey
-    ? [...deptInfo.entries()]
-        .map(([dept, info]) => {
+    ? [...deptInfo.values()]
+        .map((info) => {
           const data = info.monthMap.get(latestMonthKey)
           const hasEnoughRespondents = data !== undefined && data.responseCount >= MINIMUM_RESPONDENTS_FOR_DISPLAY
           return {
-            dept,
+            dept: info.deptName,
             avg: hasEnoughRespondents && data.scoreCount > 0 ? toHealthIndex(roundTwo(data.totalScore / data.scoreCount)) : 0,
           }
         })
         .sort((a, b) => (b.avg ?? 0) - (a.avg ?? 0))
     : []
 
-  const adherenceChart: BarPoint[] = [...deptInfo.entries()]
-    .map(([dept, info]) => ({
-      dept,
+  const adherenceChart: BarPoint[] = [...deptInfo.values()]
+    .map((info) => ({
+      dept: info.deptName,
       adherence:
         info.adherenceRecipients > 0
           ? Math.round((info.adherenceResponses / info.adherenceRecipients) * 1000) / 10
@@ -270,8 +287,8 @@ export async function getDashboardData(tenantId: string, selectedOrders: number[
     }))
     .sort((a, b) => (b.adherence ?? 0) - (a.adherence ?? 0))
 
-  const deptCards: DeptCard[] = [...deptInfo.entries()]
-    .map(([dept, info]) => {
+  const deptCards: DeptCard[] = [...deptInfo.values()]
+    .map((info) => {
       const sortedEntries = [...info.monthMap.entries()].sort(
         (a, b) => b[1].monthDate.getTime() - a[1].monthDate.getTime(),
       )
@@ -297,7 +314,7 @@ export async function getDashboardData(tenantId: string, selectedOrders: number[
       }
 
       return {
-        dept,
+        dept: info.deptName,
         deptId: info.deptId,
         avg,
         prevAvg,
@@ -335,26 +352,26 @@ export interface DeptHealthSummary {
 }
 
 function aggregateDeptQuestionScores(dispatches: DispatchWithData[]): DeptQuestionScore[] {
-  const questionMap = new Map<string, { totalNormalized: number; itemCount: number }>()
+  const questionMap = new Map<string, { totalNormalized: number; itemCount: number; questionText: string }>()
 
   for (const dispatch of dispatches) {
     for (const response of dispatch.responses) {
       for (const item of response.items) {
         const normalized = normalizeScore(item.score, item.question.scoreDirection)
-        const existing = questionMap.get(item.question.text) ?? { totalNormalized: 0, itemCount: 0 }
+        const existing = questionMap.get(item.question.id) ?? { totalNormalized: 0, itemCount: 0, questionText: item.question.text }
         existing.totalNormalized += normalized
         existing.itemCount++
-        questionMap.set(item.question.text, existing)
+        questionMap.set(item.question.id, existing)
       }
     }
   }
 
-  return [...questionMap.entries()]
-    .filter(([, data]) => data.itemCount >= MINIMUM_RESPONDENTS_FOR_DISPLAY)
-    .map(([text, data]) => {
+  return [...questionMap.values()]
+    .filter((data) => data.itemCount >= MINIMUM_RESPONDENTS_FOR_DISPLAY)
+    .map((data) => {
       const rawAvg = roundTwo(data.totalNormalized / data.itemCount)
       return {
-        questionText: text,
+        questionText: data.questionText,
         healthIndex: toHealthIndex(rawAvg),
         rawAvg,
         itemCount: data.itemCount,
@@ -364,7 +381,9 @@ function aggregateDeptQuestionScores(dispatches: DispatchWithData[]): DeptQuesti
 }
 
 export async function getDeptHealthSummary(tenantId: string, deptId: string): Promise<DeptHealthSummary> {
-  const thirtyDaysAgo = subDays(new Date(), 30)
+  const orgTimezone = await findOrganizationTimezone(tenantId)
+  const nowInOrgTz = toZonedTime(new Date(), orgTimezone)
+  const thirtyDaysAgo = fromZonedTime(subDays(nowInOrgTz, 30), orgTimezone)
 
   const [dispatches, activeAlerts] = await Promise.all([
     findDeptDispatchesWithData(tenantId, deptId, thirtyDaysAgo),

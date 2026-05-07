@@ -169,6 +169,7 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
           <ScheduleHealthSurveyDispatchButton
             hasConfigs={configs.length > 0}
             configs={configs.map((c) => ({ id: c.id, name: c.name, departmentName: c.department.name }))}
+            orgTimezone={timezone}
           />
         </div>
       </div>

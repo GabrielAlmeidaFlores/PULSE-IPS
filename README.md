@@ -597,11 +597,11 @@ const color = healthIndexAccent(hi)          // → classe CSS de cor
 2. Define:
    - **Nome e descrição** (opcional): para identificar a configuração facilmente
    - **Frequência**: `daily`, `twice_weekly`, `weekly`, `biweekly`, `monthly`
-   - **Dia do mês** (apenas para `monthly`): seleciona o dia exato (1–28) em que o disparo deve ocorrer; quando omitido, o sistema usa intervalo de 28 dias
+   - **Dia do mês** (obrigatório para `monthly`): seleciona o dia exato (1–28) em que o disparo deve ocorrer; máximo 28 para compatibilidade com fevereiro
    - **Dias da semana**: seleção dos dias em que o Pulse deve disparar (0=Dom … 6=Sáb), armazenados na tabela relacional `health_survey_config_work_days` — nunca como string separada por vírgula
    - **Horário de expediente**: `workStartTime` e `workEndTime` (formato `HH:mm`)
    - **Perguntas**: lista de questões com score de 1 a 5, cada uma com `scoreDirection` (`higher_is_better` ou `lower_is_better`). Perguntas de estresse e carga de trabalho usam `lower_is_better` (1 = ótimo). O sistema normaliza automaticamente antes de calcular métricas e gerar alertas.
-3. Múltiplas configurações são permitidas para o mesmo departamento — a constraint `@@unique([tenantId, departmentId])` foi removida; cada configuração tem nome próprio para diferenciação. Um `@@index([tenantId, departmentId])` substitui para performance de consulta.
+3. **Múltiplas configurações são permitidas para o mesmo departamento** — não há deduplicação. Cada configuração é independente e identificada pelo nome. Se o mesmo setor for selecionado em duas criações distintas, duas configs independentes são geradas lado a lado.
 
 ---
 
@@ -613,30 +613,35 @@ Este é o fluxo central da plataforma. Ocorre de duas formas:
 
 ```
 A cada 15 min → job health-survey-dispatcher
-  ├── runAutoDispatchScheduler()
-  │     ├── Busca configs ativas com employees
-  │     ├── Verifica se hoje é dia de trabalho (timezone da org)
-  │     ├── Verifica intervalo desde o último disparo
+  ├── runHealthSurveyAutoDispatchScheduler()
+  │     ├── Busca configs ativas com employees (billing ativo)
+  │     ├── [GATE 1] isWithinWorkHours → skip se fora do expediente
+  │     ├── [GATE 2] shouldSkipDispatch → skip se dia/intervalo não elegível
   │     └── Para cada config elegível:
   │           ├── Cria HealthSurveyDispatch (status: scheduled)
-  │           └── Chama sendDispatchTokensAndMessages()
+  │           └── sendDispatchTokensAndMessages()
+  │                 ├── Filtra por consentimento elegível
+  │                 ├── Reutiliza tokens não usados existentes
+  │                 ├── Cria novos tokens (expira em 48h)
+  │                 ├── Marca dispatch → status: available, dispatchedAt=now, total_recipients
+  │                 └── [GATE FEATURE] messaging → enfileira mensagens no BullMQ
   │
   └── runHealthSurveyDispatcher()
-        ├── Busca dispatches com status: scheduled e scheduledAt <= now()
-        └── Chama sendDispatchTokensAndMessages() para cada um
+        ├── Busca dispatches com status: scheduled e scheduledAt <= now() (disparos manuais)
+        └── sendDispatchTokensAndMessages() para cada um
 ```
 
 **`sendDispatchTokensAndMessages` — lógica de envio inteligente:**
 
 ```
 sendDispatchTokensAndMessages(dispatch)
-  ├── Filtra colaboradores elegíveis por consentimento (aceito ou sem registro)
+  ├── Filtra colaboradores elegíveis por consentimento (aceito ou sem registro → elegível)
   ├── Busca tokens existentes para o dispatch (via link assinado ou reenvio anterior)
-  ├── respondedEmployeeIds — colaboradores que já responderam antes do disparo → pula mensagem
-  ├── existingUnusedTokenMap — tokens válidos não usados → reutiliza o token
+  ├── respondedEmployeeIds — colaboradores que já responderam → pula criação de token e mensagem
+  ├── existingUnusedTokenMap — tokens válidos não usados → reutiliza o token, reenvia mensagem
   ├── newTokenInputs — demais colaboradores → cria novo token (expira em 48h)
-  ├── total_recipients = todos os elegíveis (inclui pré-respondentes para cálculo correto de aderência)
-  └── Marca dispatch como status: available
+  ├── Marca dispatch → status: available, dispatchedAt=now, total_recipients=elegíveis (incl. pré-respondentes)
+  └── [GATE FEATURE] messaging → enfileira jobs no BullMQ para envio via getMessagingService()
 ```
 
 **Disparo manual:**

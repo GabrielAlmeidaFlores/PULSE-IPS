@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { deactivateHealthSurveyConfigAction } from "@/app/(tenant)/health-surveys/configure/actions"
+import { ConfirmActionModal } from "@/components/confirm-action-modal"
 
 interface DeactivateHealthSurveyConfigButtonProps {
   configId: string
@@ -14,7 +15,7 @@ interface DeactivateHealthSurveyConfigButtonProps {
 export function DeactivateHealthSurveyConfigButton({ configId, configName }: DeactivateHealthSurveyConfigButtonProps): React.ReactElement {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [showConfirm, setShowConfirm] = useState(false)
+  const [open, setOpen] = useState(false)
 
   function handleConfirm(): void {
     startTransition(async () => {
@@ -25,45 +26,33 @@ export function DeactivateHealthSurveyConfigButton({ configId, configName }: Dea
         toast.success("Pesquisa desativada com sucesso")
         router.refresh()
       }
-      setShowConfirm(false)
+      setOpen(false)
     })
   }
 
-  if (showConfirm) {
-    return (
-      <div className="flex items-center gap-1 shrink-0">
-        <span className="text-[10px] text-muted-foreground hidden sm:inline">Desativar &ldquo;{configName}&rdquo;?</span>
-        <button
-          onClick={handleConfirm}
-          disabled={isPending}
-          className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50 transition-colors"
-          style={{ borderRadius: 0 }}
-          type="button"
-        >
-          {isPending ? "..." : "Confirmar"}
-        </button>
-        <button
-          onClick={() => setShowConfirm(false)}
-          disabled={isPending}
-          className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          style={{ borderRadius: 0 }}
-          type="button"
-        >
-          Cancelar
-        </button>
-      </div>
-    )
-  }
-
   return (
-    <button
-      onClick={() => setShowConfirm(true)}
-      className="p-1.5 text-muted-foreground hover:text-status-danger transition-colors"
-      style={{ borderRadius: 0 }}
-      type="button"
-      title={`Desativar pesquisa "${configName}"`}
-    >
-      <Trash2 className="h-3.5 w-3.5" />
-    </button>
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="p-1.5 text-muted-foreground hover:text-status-danger transition-colors"
+        style={{ borderRadius: 0 }}
+        type="button"
+        title={`Desativar pesquisa "${configName}"`}
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </button>
+
+      <ConfirmActionModal
+        open={open}
+        onClose={() => setOpen(false)}
+        onConfirm={handleConfirm}
+        loading={isPending}
+        title="Desativar pesquisa"
+        description={`Tem certeza que deseja desativar "${configName}"? Esta ação não pode ser desfeita.`}
+        confirmLabel="Desativar"
+        variant="destructive"
+      />
+    </>
   )
 }
+

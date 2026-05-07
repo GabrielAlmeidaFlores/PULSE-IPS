@@ -1,4 +1,5 @@
 import { addDays } from "date-fns"
+import { fromZonedTime, formatInTimeZone } from "date-fns-tz"
 import { MINIMUM_RESPONDENTS_FOR_DISPLAY } from "@/libs/utils/anonymity"
 import type { PgrReview, PgrQuestionResult, PgrDeptResultWithoutReviewId, PgrQuestionResultWithoutReviewId, PgrScoreDistribution } from "@/modules/pgr/pgr.types"
 import type { ScoreDirection } from "@/modules/health-surveys/health-survey.types"
@@ -130,15 +131,27 @@ function buildDeptQuestionResults(
 }
 
 export async function generatePgrReport(tenantId: string, period: string, forceRegenerate = false): Promise<void> {
-  const org = await findOrgWithDepartmentsForPgr(tenantId)
-  const dispatches = await findDispatchesForPgr(tenantId)
+  const PERIOD_RE = /^\d{4}-\d{2}$/
+  if (!PERIOD_RE.test(period)) {
+    throw new AppError("INVALID_PERIOD", `Período inválido: ${period}. Use o formato AAAA-MM.`)
+  }
 
-  const [periodYear, periodMonth] = period.split("-").map(Number)
-  const periodDispatches = dispatches.filter((d) => {
-    if (!d.dispatchedAt) return false
-    const dt = new Date(d.dispatchedAt)
-    return dt.getFullYear() === periodYear && dt.getMonth() + 1 === periodMonth
-  })
+  const org = await findOrgWithDepartmentsForPgr(tenantId)
+  const orgTimezone = org.timezone ?? "America/Sao_Paulo"
+
+  const [periodYear, periodMonth] = period.split("-").map(Number) as [number, number]
+  const nextMonth = periodMonth === 12 ? 1 : periodMonth + 1
+  const nextYear = periodMonth === 12 ? periodYear + 1 : periodYear
+  const periodStart = fromZonedTime(
+    `${String(periodYear)}-${String(periodMonth).padStart(2, "0")}-01T00:00:00`,
+    orgTimezone,
+  )
+  const periodEnd = fromZonedTime(
+    `${String(nextYear)}-${String(nextMonth).padStart(2, "0")}-01T00:00:00`,
+    orgTimezone,
+  )
+
+  const periodDispatches = await findDispatchesForPgr(tenantId, periodStart, periodEnd)
 
   if (periodDispatches.length === 0) {
     throw new AppError("NO_DATA_FOR_PERIOD", `Nenhum dado encontrado para o período ${period}.`)
@@ -161,7 +174,7 @@ export async function generatePgrReport(tenantId: string, period: string, forceR
     )
     const allItems = allResponses.flatMap((r) => r.items)
     const avgScore =
-      allResponses.length >= MINIMUM_RESPONDENTS_FOR_DISPLAY
+      allResponses.length >= MINIMUM_RESPONDENTS_FOR_DISPLAY && allItems.length > 0
         ? allItems.reduce((sum, item) => {
             const dir = questionDirections.get(item.questionId) ?? "higher_is_better"
             return sum + (dir === "lower_is_better" ? 6 - item.score : item.score)
@@ -221,7 +234,7 @@ export async function sendPgrReviewReminders(): Promise<{ remindersCreated: numb
         tenantId: review.tenantId,
         type: "pgr_review_due",
         severity: "warning",
-        message: `Revisão PGR prevista para ${review.nextReviewAt?.toLocaleDateString("pt-BR") ?? "em breve"}.`,
+        message: `Revisão PGR prevista para ${review.nextReviewAt !== null && review.nextReviewAt !== undefined ? formatInTimeZone(review.nextReviewAt, review.organization.timezone ?? "America/Sao_Paulo", "dd/MM/yyyy") : "em breve"}.`,
       })
       remindersCreated++
     }
@@ -240,8 +253,14 @@ export async function getPgrScoreDistributions(
   questionResults: PgrQuestionResult[],
 ): Promise<PgrScoreDistribution[]> {
   const [yearStr, monthStr] = period.split("-")
-  const startDate = new Date(Number(yearStr), Number(monthStr) - 1, 1)
-  const endDate = new Date(Number(yearStr), Number(monthStr), 1)
+  const org = await findOrgWithDepartmentsForPgr(tenantId)
+  const tz = org.timezone ?? "America/Sao_Paulo"
+  const y = Number(yearStr)
+  const m = Number(monthStr)
+  const startDate = fromZonedTime(`${String(y)}-${String(m).padStart(2, "0")}-01T00:00:00`, tz)
+  const nextM = m === 12 ? 1 : m + 1
+  const nextY = m === 12 ? y + 1 : y
+  const endDate = fromZonedTime(`${String(nextY)}-${String(nextM).padStart(2, "0")}-01T00:00:00`, tz)
 
   const rawItems = await findItemScoresForPeriod(tenantId, startDate, endDate)
 

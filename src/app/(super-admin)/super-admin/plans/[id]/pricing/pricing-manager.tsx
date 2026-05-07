@@ -7,6 +7,7 @@ import type { ActionResult } from "@/libs/utils/action-result"
 import { addPlanPriceAction, updatePlanPriceAction, deactivatePlanPriceAction } from "@/app/(super-admin)/super-admin/plans/actions"
 import { NativeSelect } from "@/components/ui/native-select"
 import type { BillingInterval } from "@/modules/plans/plan.types"
+import { ConfirmActionModal } from "@/components/confirm-action-modal"
 
 interface PlanPrice {
   id: string
@@ -93,6 +94,7 @@ function EditPriceRow({ price }: { price: PlanPrice }): React.ReactElement {
   const [editing, setEditing] = useState(false)
   const [value, setValue] = useState(String(price.priceInCents / 100).replace(".", ","))
   const [error, setError] = useState<string | undefined>()
+  const [showDeactivateModal, setShowDeactivateModal] = useState(false)
 
   function handleSave(): void {
     const cents = Math.round(parseFloat(value.replace(",", ".")) * 100)
@@ -118,6 +120,7 @@ function EditPriceRow({ price }: { price: PlanPrice }): React.ReactElement {
       if (result.error) {
         setError(result.error)
       } else {
+        setShowDeactivateModal(false)
         router.refresh()
       }
     })
@@ -183,7 +186,7 @@ function EditPriceRow({ price }: { price: PlanPrice }): React.ReactElement {
             )}
             {price.isActive && (
               <button
-                onClick={handleDeactivate}
+                onClick={() => setShowDeactivateModal(true)}
                 disabled={pending}
                 className="flex items-center gap-1 px-2 py-1 border border-status-danger-border text-status-danger hover:bg-status-danger-subtle transition-colors disabled:opacity-50"
                 style={{ borderRadius: 0 }}
@@ -195,6 +198,17 @@ function EditPriceRow({ price }: { price: PlanPrice }): React.ReactElement {
           </div>
         )}
       </td>
+
+      <ConfirmActionModal
+        open={showDeactivateModal}
+        onClose={() => setShowDeactivateModal(false)}
+        onConfirm={handleDeactivate}
+        loading={pending}
+        title="Remover preço"
+        description="Tem certeza que deseja remover este preço? Esta ação não pode ser desfeita. Assinaturas existentes não são afetadas."
+        confirmLabel="Remover"
+        variant="destructive"
+      />
     </tr>
   )
 }

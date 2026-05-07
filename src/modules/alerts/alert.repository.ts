@@ -1,6 +1,7 @@
 import { prisma } from "@/libs/db"
 import type { Prisma } from "@prisma/client"
 import type { AlertSeverity, AlertType, AlertWithDepartment } from "@/modules/alerts/alert.types"
+import { formatInTimeZone } from "date-fns-tz"
 import { MINIMUM_RESPONDENTS_FOR_DISPLAY } from "@/libs/utils/anonymity"
 
 export interface CreateAlertInput {
@@ -153,7 +154,7 @@ export interface DeptDispatchAvg {
   departmentId: string
   departmentName: string
   avgScore: number
-  createdAt: Date
+  effectiveDate: Date
 }
 
 interface DispatchWithResponses {
@@ -163,12 +164,13 @@ interface DispatchWithResponses {
 }
 
 function accumulateDayScores(
-  dayMap: Map<string, { scores: number[]; responseCount: number; createdAt: Date }>,
+  dayMap: Map<string, { scores: number[]; responseCount: number; effectiveDate: Date }>,
   dispatch: DispatchWithResponses,
+  timezone: string,
 ): void {
   const effectiveDate = dispatch.dispatchedAt ?? dispatch.createdAt
-  const dayKey = effectiveDate.toISOString().slice(0, 10)
-  const existing = dayMap.get(dayKey) ?? { scores: [], responseCount: 0, createdAt: dispatch.createdAt }
+  const dayKey = formatInTimeZone(effectiveDate, timezone, "yyyy-MM-dd")
+  const existing = dayMap.get(dayKey) ?? { scores: [], responseCount: 0, effectiveDate }
   for (const r of dispatch.responses) {
     for (const item of r.items) {
       existing.scores.push(item.question.scoreDirection === "lower_is_better" ? 6 - item.score : item.score)
@@ -184,6 +186,7 @@ export async function findAllTenantsDeptRecentDispatchAvgs(departmentId: string,
     where: { departmentId },
     include: {
       department: { select: { id: true, name: true, tenantId: true } },
+      organization: { select: { timezone: true } },
       dispatches: {
         where: { status: "available" },
         orderBy: { createdAt: "desc" },
@@ -204,17 +207,18 @@ export async function findAllTenantsDeptRecentDispatchAvgs(departmentId: string,
   const dept = configs[0]?.department
   if (!dept) return []
 
-  const dayMap = new Map<string, { scores: number[]; responseCount: number; createdAt: Date }>()
+  const dayMap = new Map<string, { scores: number[]; responseCount: number; effectiveDate: Date }>()
 
   for (const config of configs) {
+    const configTimezone = config.organization?.timezone ?? "America/Sao_Paulo"
     for (const dispatch of config.dispatches) {
-      if (dispatch.responses.length < MINIMUM_RESPONDENTS_FOR_DISPLAY) continue
-      accumulateDayScores(dayMap, { ...dispatch, dispatchedAt: dispatch.dispatchedAt })
+      accumulateDayScores(dayMap, { ...dispatch, dispatchedAt: dispatch.dispatchedAt }, configTimezone)
     }
   }
 
   const results: DeptDispatchAvg[] = []
   for (const [, data] of Array.from(dayMap.entries())) {
+    if (data.responseCount < MINIMUM_RESPONDENTS_FOR_DISPLAY) continue
     if (data.scores.length === 0) continue
     const avgScore = data.scores.reduce((a, b) => a + b, 0) / data.scores.length
     results.push({
@@ -222,10 +226,10 @@ export async function findAllTenantsDeptRecentDispatchAvgs(departmentId: string,
       departmentId: dept.id,
       departmentName: dept.name,
       avgScore,
-      createdAt: data.createdAt,
+      effectiveDate: data.effectiveDate,
     })
   }
-  return results.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, limitPerDept)
+  return results.sort((a, b) => b.effectiveDate.getTime() - a.effectiveDate.getTime()).slice(0, limitPerDept)
 }
 
 export function findAllTenantsActiveDepartments(): Promise<{ id: string; tenantId: string; name: string }[]> {
@@ -245,6 +249,14 @@ export function hasOpenAlertOfType(tenantId: string, type: AlertType, department
     },
     select: { id: true },
   }).then((result) => result !== null)
+}
+
+export async function findAllTenantsOpenAlertDepartmentIdsByType(type: AlertType): Promise<Set<string>> {
+  const alerts = await prisma.alert.findMany({
+    where: { type, resolvedAt: null, departmentId: { not: null } },
+    select: { departmentId: true },
+  })
+  return new Set(alerts.map((a) => a.departmentId).filter((id): id is string => id !== null))
 }
 
 export interface EmployeeWithExpiredConsentToken {

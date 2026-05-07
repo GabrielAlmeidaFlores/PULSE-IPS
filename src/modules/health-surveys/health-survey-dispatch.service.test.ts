@@ -394,7 +394,7 @@ describe("checkHealthSurveyDispatchAdherence", () => {
     expect(mockCreateAdherenceAlert).not.toHaveBeenCalled()
   })
 
-  it("handles dispatch with zero recipients gracefully (adherence = 0)", async () => {
+  it("handles dispatch with zero recipients gracefully — skips alert creation", async () => {
     const dispatch = {
       id: "d-1",
       tenantId: TENANT_ID,
@@ -405,7 +405,8 @@ describe("checkHealthSurveyDispatchAdherence", () => {
     mockCountResponses.mockResolvedValue(0)
 
     const result = await checkHealthSurveyDispatchAdherence()
-    expect(result.alertsCreated).toBe(1)
+    expect(result.alertsCreated).toBe(0)
+    expect(mockMarkDispatchAdherenceChecked).toHaveBeenCalledWith(TENANT_ID, "d-1", 0)
   })
 })
 
