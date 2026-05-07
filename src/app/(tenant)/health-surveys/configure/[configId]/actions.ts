@@ -26,7 +26,7 @@ const updateHealthSurveyConfigSchema = z.object({
   workEndTime: z.string().regex(TIME_REGEX),
   workDays: z.array(z.number().int().min(0).max(6)).min(1).max(7),
   questions: z.array(questionSchema).min(1, "Adicione ao menos uma pergunta").max(20),
-  departmentIds: z.union([z.array(z.string().uuid()), z.literal("all")]),
+  departmentIds: z.union([z.array(z.string().uuid()).min(1, "Selecione ao menos um setor."), z.literal("all")]),
 })
 
 export async function updateHealthSurveyConfigAction(configId: string, input: unknown): Promise<ActionResult> {

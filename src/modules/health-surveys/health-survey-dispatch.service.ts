@@ -207,7 +207,8 @@ export async function runHealthSurveyDispatcher(): Promise<{ dispatched: number;
     const config = dispatch.healthSurveyConfiguration
     const timezone = dispatch.organization.timezone
 
-    if (!isWorkDay(config.workDays.map((w) => w.dayOfWeek), timezone)) {
+    const isMonthlyWithFixedDay = config.frequency === "monthly" && config.scheduledDayOfMonth !== null
+    if (!isMonthlyWithFixedDay && !isWorkDay(config.workDays.map((w) => w.dayOfWeek), timezone)) {
       continue
     }
 

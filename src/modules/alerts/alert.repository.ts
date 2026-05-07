@@ -179,6 +179,7 @@ function accumulateDayScores(
 }
 
 export async function findAllTenantsDeptRecentDispatchAvgs(departmentId: string, limitPerDept: number): Promise<DeptDispatchAvg[]> {
+  const DISPATCHES_PER_CONFIG_SAFETY_FACTOR = 3
   const configs = await prisma.healthSurveyConfiguration.findMany({
     where: { departmentId },
     include: {
@@ -186,7 +187,7 @@ export async function findAllTenantsDeptRecentDispatchAvgs(departmentId: string,
       dispatches: {
         where: { status: "available" },
         orderBy: { createdAt: "desc" },
-        take: limitPerDept * 3,
+        take: limitPerDept * DISPATCHES_PER_CONFIG_SAFETY_FACTOR,
         include: {
           responses: {
             include: {

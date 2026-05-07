@@ -873,6 +873,7 @@ Múltiplas configurações por tenant/setor são permitidas (sem unicidade em `(
 | work_start_time | varchar(5) | `"HH:MM"` — início do expediente configurado para esta pesquisa (ex: `"09:00"`) |
 | work_end_time | varchar(5) | `"HH:MM"` — fim do expediente configurado para esta pesquisa (ex: `"18:00"`) |
 | is_active | boolean | NOT NULL |
+| INDEX | (tenant_id) | |
 | INDEX | (tenant_id, department_id) | |
 
 Dias de trabalho da pesquisa em `health_survey_config_work_days` (join table — ver abaixo). Armazenados como `day_of_week INT` (0=Dom … 6=Sáb).

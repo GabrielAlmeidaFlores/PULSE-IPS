@@ -33,7 +33,7 @@ export async function findPgrReviewsByTenantPaginated(
   take: number,
 ): Promise<{ items: PgrReviewListItem[]; total: number }> {
   const where: Prisma.PgrReviewWhereInput = { tenantId }
-  if (filters.year !== undefined) where.period = { startsWith: filters.year }
+  if (filters.year !== undefined && /^\d{4}$/.test(filters.year)) where.period = { startsWith: filters.year }
   if (filters.status !== undefined) where.status = filters.status
 
   const [items, total] = await prisma.$transaction([

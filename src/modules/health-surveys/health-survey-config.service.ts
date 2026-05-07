@@ -5,6 +5,7 @@ import {
   createManyHealthSurveyConfigEntries,
   updateExistingHealthSurveyConfigEntry,
   deactivateHealthSurveyConfigEntry,
+  findDepartmentIdsWithActiveHealthSurveyConfigs,
   type HealthSurveyConfigListingFilters,
 } from "@/modules/health-surveys/health-survey.repository"
 import { findActiveDepartmentsByTenant } from "@/modules/departments/department.repository"
@@ -74,6 +75,12 @@ export async function createHealthSurveyForDepartments(tenantId: string, input: 
     throw new AppError("NO_DEPARTMENTS", "Selecione ao menos um setor.")
   }
 
+  const deptsWithExistingConfig = await findDepartmentIdsWithActiveHealthSurveyConfigs(tenantId, targetDeptIds)
+  const existingSet = new Set(deptsWithExistingConfig)
+  const deptsWithoutConfig = targetDeptIds.filter((id) => !existingSet.has(id))
+
+  if (deptsWithoutConfig.length === 0) return
+
   const configInput: Omit<CreateHealthSurveyConfigInput, "departmentId"> = {
     name: input.name,
     description: input.description,
@@ -87,7 +94,7 @@ export async function createHealthSurveyForDepartments(tenantId: string, input: 
 
   await createManyHealthSurveyConfigEntries(
     tenantId,
-    targetDeptIds.map((deptId) => ({ ...configInput, departmentId: deptId })),
+    deptsWithoutConfig.map((deptId) => ({ ...configInput, departmentId: deptId })),
   )
 }
 
