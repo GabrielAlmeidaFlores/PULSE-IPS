@@ -8,7 +8,7 @@ import type {
   HealthSurveyQuestion,
 } from "@prisma/client"
 
-export type ItemWithQuestion = HealthSurveyResponseItem & { question: Pick<HealthSurveyQuestion, "order" | "text" | "scoreDirection"> }
+export type ItemWithQuestion = HealthSurveyResponseItem & { question: Pick<HealthSurveyQuestion, "id" | "order" | "text" | "scoreDirection"> }
 
 export type DispatchWithData = HealthSurveyDispatch & {
   healthSurveyConfiguration: HealthSurveyConfiguration & { department: Department }
@@ -51,7 +51,7 @@ export function findDispatchesWithData(tenantId: string, since: Date): Promise<D
       healthSurveyConfiguration: { include: { department: true } },
       responses: {
         include: {
-          items: { include: { question: { select: { order: true, text: true, scoreDirection: true } } } },
+          items: { include: { question: { select: { id: true, order: true, text: true, scoreDirection: true } } } },
         },
       },
     },
@@ -61,7 +61,7 @@ export function findDispatchesWithData(tenantId: string, since: Date): Promise<D
 
 export function findUniqueQuestions(tenantId: string): Promise<UniqueQuestion[]> {
   return prisma.healthSurveyQuestion.findMany({
-    where: { tenantId },
+    where: { tenantId, isActive: true },
     select: { order: true, text: true },
     distinct: ["order", "text"],
     orderBy: { order: "asc" },
@@ -98,7 +98,7 @@ export function findDeptDispatchesWithData(tenantId: string, deptId: string, sin
       healthSurveyConfiguration: { include: { department: true } },
       responses: {
         include: {
-          items: { include: { question: { select: { order: true, text: true, scoreDirection: true } } } },
+          items: { include: { question: { select: { id: true, order: true, text: true, scoreDirection: true } } } },
         },
       },
     },

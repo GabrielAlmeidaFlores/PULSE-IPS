@@ -74,7 +74,7 @@ function makeResponse(dispatchId: string, index: number): DispatchWithData["resp
         healthSurveyResponseId: `response-${index}`,
         questionId: "q-1",
         score: 4,
-        question: { text: "Estresse", order: 1, scoreDirection: "lower_is_better" },
+        question: { id: "q-1", text: "Estresse", order: 1, scoreDirection: "lower_is_better" },
       },
     ],
   }
@@ -292,7 +292,7 @@ describe("getDashboardData — trend down", () => {
             healthSurveyResponseId: `prev-response-${i}`,
             questionId: "q-1",
             score: 1,
-            question: { text: "Estresse", order: 1, scoreDirection: "lower_is_better" },
+            question: { id: "q-1", text: "Estresse", order: 1, scoreDirection: "lower_is_better" },
           },
         ],
       })),

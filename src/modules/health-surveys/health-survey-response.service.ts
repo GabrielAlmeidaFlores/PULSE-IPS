@@ -61,6 +61,9 @@ export async function validateHealthSurveyToken(token: string): Promise<HealthSu
     currentConsent?.event === "accepted" &&
     currentConsent?.consentTermVersionId === activeTermVersion?.id
 
+  const questions = tokenRecord.dispatch.healthSurveyConfiguration.questions
+  if (questions.length === 0) return { valid: false, error: "Esta pesquisa não possui perguntas ativas." }
+
   return {
     valid: true,
     employeeName: tokenRecord.employee.name,
@@ -74,7 +77,7 @@ export async function validateHealthSurveyToken(token: string): Promise<HealthSu
       workEndTime: tokenRecord.workEndTime,
       tenantId: tokenRecord.tenantId,
     },
-    questions: tokenRecord.dispatch.healthSurveyConfiguration.questions.map((q) => ({
+    questions: questions.map((q) => ({
       id: q.id,
       text: q.text,
       order: q.order,
@@ -120,6 +123,7 @@ export async function unlockHealthSurveyViaIdentifier(
 ): Promise<SignedLinkUnlockResult> {
   const dispatch = await findHealthSurveyDispatchBySignedLinkToken(signedLinkToken)
   if (!dispatch) throw new AppError("DISPATCH_NOT_FOUND", "Link de pesquisa inválido ou expirado.")
+  if (dispatch.status !== "available") throw new AppError("DISPATCH_NOT_AVAILABLE", "Esta pesquisa não está disponível no momento.")
 
   const tenantId = dispatch.tenantId
   const timezone = dispatch.healthSurveyConfiguration.organization.timezone ?? "America/Sao_Paulo"
@@ -138,20 +142,17 @@ export async function unlockHealthSurveyViaIdentifier(
     currentConsent?.event === "accepted" &&
     currentConsent?.consentTermVersionId === activeTermVersion?.id
 
+  const config = dispatch.healthSurveyConfiguration
+  const workStartTime = employee.workStartTime ?? config.department.workStartTime ?? config.workStartTime
+  const workEndTime = employee.workEndTime ?? config.department.workEndTime ?? config.workEndTime
+  const nowInTimezone = toZonedTime(new Date(), timezone)
+  const currentTime = format(nowInTimezone, "HH:mm")
+
+  if (!isInsideWorkWindow(currentTime, workStartTime, workEndTime)) {
+    throw new AppError("OUTSIDE_WORK_WINDOW", `Pesquisa disponível apenas entre ${workStartTime} e ${workEndTime}.`)
+  }
+
   if (!hasAcceptedCurrentVersion) {
-    const config = dispatch.healthSurveyConfiguration
-    const workStartTime = employee.workStartTime ?? config.department.workStartTime ?? config.workStartTime
-    const workEndTime = employee.workEndTime ?? config.department.workEndTime ?? config.workEndTime
-
-    const nowInTimezone = toZonedTime(new Date(), timezone)
-    const currentTime = format(nowInTimezone, "HH:mm")
-    if (!isInsideWorkWindow(currentTime, workStartTime, workEndTime)) {
-      throw new AppError(
-        "OUTSIDE_WORK_WINDOW",
-        `Pesquisa disponível apenas entre ${workStartTime} e ${workEndTime}.`,
-      )
-    }
-
     const existingUnusedToken = await findUnusedHealthSurveyTokenForEmployee(tenantId, dispatch.id, employee.id)
     let consentToken: string
     if (existingUnusedToken) {
@@ -184,25 +185,12 @@ export async function unlockHealthSurveyViaIdentifier(
   const usedToken = await findUsedHealthSurveyTokenForEmployee(tenantId, dispatch.id, employee.id)
   if (usedToken) return { token: usedToken.token, alreadyAnswered: true }
 
-  const config = dispatch.healthSurveyConfiguration
-  const workStartTime = employee.workStartTime ?? config.department.workStartTime ?? config.workStartTime
-  const workEndTime = employee.workEndTime ?? config.department.workEndTime ?? config.workEndTime
-
   const existingToken = await findUnusedHealthSurveyTokenForEmployee(tenantId, dispatch.id, employee.id)
   if (existingToken) {
     if (existingToken.workStartTime !== workStartTime || existingToken.workEndTime !== workEndTime) {
       await refreshHealthSurveyTokenWorkHours(existingToken.id, workStartTime, workEndTime)
     }
     return { token: existingToken.token, alreadyAnswered: false }
-  }
-
-  const nowInTimezone = toZonedTime(new Date(), timezone)
-  const currentTime = format(nowInTimezone, "HH:mm")
-  if (!isInsideWorkWindow(currentTime, workStartTime, workEndTime)) {
-    throw new AppError(
-      "OUTSIDE_WORK_WINDOW",
-      `Pesquisa disponível apenas entre ${workStartTime} e ${workEndTime}.`,
-    )
   }
 
   const newToken = randomUUID()

@@ -1,6 +1,7 @@
 import { prisma } from "@/libs/db"
 import type { Prisma } from "@prisma/client"
 import type { AlertSeverity, AlertType, AlertWithDepartment } from "@/modules/alerts/alert.types"
+import { formatInTimeZone } from "date-fns-tz"
 import { MINIMUM_RESPONDENTS_FOR_DISPLAY } from "@/libs/utils/anonymity"
 
 export interface CreateAlertInput {
@@ -165,9 +166,10 @@ interface DispatchWithResponses {
 function accumulateDayScores(
   dayMap: Map<string, { scores: number[]; responseCount: number; effectiveDate: Date }>,
   dispatch: DispatchWithResponses,
+  timezone: string,
 ): void {
   const effectiveDate = dispatch.dispatchedAt ?? dispatch.createdAt
-  const dayKey = effectiveDate.toISOString().slice(0, 10)
+  const dayKey = formatInTimeZone(effectiveDate, timezone, "yyyy-MM-dd")
   const existing = dayMap.get(dayKey) ?? { scores: [], responseCount: 0, effectiveDate }
   for (const r of dispatch.responses) {
     for (const item of r.items) {
@@ -184,6 +186,7 @@ export async function findAllTenantsDeptRecentDispatchAvgs(departmentId: string,
     where: { departmentId },
     include: {
       department: { select: { id: true, name: true, tenantId: true } },
+      organization: { select: { timezone: true } },
       dispatches: {
         where: { status: "available" },
         orderBy: { createdAt: "desc" },
@@ -207,14 +210,15 @@ export async function findAllTenantsDeptRecentDispatchAvgs(departmentId: string,
   const dayMap = new Map<string, { scores: number[]; responseCount: number; effectiveDate: Date }>()
 
   for (const config of configs) {
+    const configTimezone = config.organization?.timezone ?? "America/Sao_Paulo"
     for (const dispatch of config.dispatches) {
-      if (dispatch.responses.length < MINIMUM_RESPONDENTS_FOR_DISPLAY) continue
-      accumulateDayScores(dayMap, { ...dispatch, dispatchedAt: dispatch.dispatchedAt })
+      accumulateDayScores(dayMap, { ...dispatch, dispatchedAt: dispatch.dispatchedAt }, configTimezone)
     }
   }
 
   const results: DeptDispatchAvg[] = []
   for (const [, data] of Array.from(dayMap.entries())) {
+    if (data.responseCount < MINIMUM_RESPONDENTS_FOR_DISPLAY) continue
     if (data.scores.length === 0) continue
     const avgScore = data.scores.reduce((a, b) => a + b, 0) / data.scores.length
     results.push({

@@ -212,6 +212,10 @@ export async function runHealthSurveyDispatcher(): Promise<{ dispatched: number;
       continue
     }
 
+    if (!isWithinWorkHours(config.workStartTime, config.workEndTime, timezone)) {
+      continue
+    }
+
     try {
       const dept = config.department
       const deptWorkDays = dept.workDays.map((w) => w.dayOfWeek)
@@ -300,8 +304,13 @@ export async function checkHealthSurveyDispatchAdherence(): Promise<{ processed:
   let alertsCreated = 0
 
   for (const dispatch of dispatches) {
+    if (dispatch.totalRecipients === 0) {
+      await markHealthSurveyDispatchAdherenceChecked(dispatch.tenantId, dispatch.id, 0)
+      continue
+    }
+
     const responseCount = await countHealthSurveyResponsesForDispatch(dispatch.tenantId, dispatch.id)
-    const adherenceRate = dispatch.totalRecipients > 0 ? responseCount / dispatch.totalRecipients : 0
+    const adherenceRate = Math.min(1.0, responseCount / dispatch.totalRecipients)
 
     if (adherenceRate < ALERT_ADHERENCE_THRESHOLD) {
       const departmentId = dispatch.healthSurveyConfiguration.departmentId

@@ -1,4 +1,5 @@
 import { addDays } from "date-fns"
+import { toZonedTime, fromZonedTime } from "date-fns-tz"
 import { MINIMUM_RESPONDENTS_FOR_DISPLAY } from "@/libs/utils/anonymity"
 import type { PgrReview, PgrQuestionResult, PgrDeptResultWithoutReviewId, PgrQuestionResultWithoutReviewId, PgrScoreDistribution } from "@/modules/pgr/pgr.types"
 import type { ScoreDirection } from "@/modules/health-surveys/health-survey.types"
@@ -134,9 +135,10 @@ export async function generatePgrReport(tenantId: string, period: string, forceR
   const dispatches = await findDispatchesForPgr(tenantId)
 
   const [periodYear, periodMonth] = period.split("-").map(Number)
+  const orgTimezone = org.timezone ?? "America/Sao_Paulo"
   const periodDispatches = dispatches.filter((d) => {
     if (!d.dispatchedAt) return false
-    const dt = new Date(d.dispatchedAt)
+    const dt = toZonedTime(new Date(d.dispatchedAt), orgTimezone)
     return dt.getFullYear() === periodYear && dt.getMonth() + 1 === periodMonth
   })
 
@@ -161,7 +163,7 @@ export async function generatePgrReport(tenantId: string, period: string, forceR
     )
     const allItems = allResponses.flatMap((r) => r.items)
     const avgScore =
-      allResponses.length >= MINIMUM_RESPONDENTS_FOR_DISPLAY
+      allResponses.length >= MINIMUM_RESPONDENTS_FOR_DISPLAY && allItems.length > 0
         ? allItems.reduce((sum, item) => {
             const dir = questionDirections.get(item.questionId) ?? "higher_is_better"
             return sum + (dir === "lower_is_better" ? 6 - item.score : item.score)
@@ -240,8 +242,14 @@ export async function getPgrScoreDistributions(
   questionResults: PgrQuestionResult[],
 ): Promise<PgrScoreDistribution[]> {
   const [yearStr, monthStr] = period.split("-")
-  const startDate = new Date(Number(yearStr), Number(monthStr) - 1, 1)
-  const endDate = new Date(Number(yearStr), Number(monthStr), 1)
+  const org = await findOrgWithDepartmentsForPgr(tenantId)
+  const tz = org.timezone ?? "America/Sao_Paulo"
+  const y = Number(yearStr)
+  const m = Number(monthStr)
+  const startDate = fromZonedTime(`${String(y)}-${String(m).padStart(2, "0")}-01T00:00:00`, tz)
+  const nextM = m === 12 ? 1 : m + 1
+  const nextY = m === 12 ? y + 1 : y
+  const endDate = fromZonedTime(`${String(nextY)}-${String(nextM).padStart(2, "0")}-01T00:00:00`, tz)
 
   const rawItems = await findItemScoresForPeriod(tenantId, startDate, endDate)
 

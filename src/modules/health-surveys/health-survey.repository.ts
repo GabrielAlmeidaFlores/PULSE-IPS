@@ -441,7 +441,7 @@ export function findHealthSurveyTokenByValue(token: string): Promise<HealthSurve
     where: { token },
     include: {
       employee: true,
-      dispatch: { include: { healthSurveyConfiguration: { include: { questions: { orderBy: { order: "asc" } }, organization: true } } } },
+      dispatch: { include: { healthSurveyConfiguration: { include: { questions: { where: { isActive: true }, orderBy: { order: "asc" } }, organization: true } } } },
     },
   })
 }
@@ -546,7 +546,7 @@ export function findUsedHealthSurveyTokenForEmployee(
 export async function createHealthSurveyResponseWithItems(data: CreateHealthSurveyResponseInput): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const claimed = await tx.healthSurveyResponseToken.updateMany({
-      where: { id: data.tokenId, usedAt: null },
+      where: { id: data.tokenId, tenantId: data.tenantId, usedAt: null },
       data: { usedAt: new Date() },
     })
 
