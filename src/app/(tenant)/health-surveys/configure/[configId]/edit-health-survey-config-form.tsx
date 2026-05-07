@@ -13,10 +13,11 @@ interface DepartmentOption {
 interface EditHealthSurveyConfigFormProps {
   configId: string
   initialConfig: HealthSurveyConfigWithDetails
+  initialDeptIds: string[]
   departments: DepartmentOption[]
 }
 
-export function EditHealthSurveyConfigForm({ configId, initialConfig, departments }: EditHealthSurveyConfigFormProps): React.ReactElement {
+export function EditHealthSurveyConfigForm({ configId, initialConfig, initialDeptIds, departments }: EditHealthSurveyConfigFormProps): React.ReactElement {
   const handleSubmit = useCallback(
     (data: HealthSurveyConfigFormData) => updateHealthSurveyConfigAction(configId, data),
     [configId],
@@ -26,6 +27,7 @@ export function EditHealthSurveyConfigForm({ configId, initialConfig, department
     <HealthSurveyConfigForm
       mode="edit"
       initialConfig={initialConfig}
+      initialDeptIds={initialDeptIds}
       departments={departments}
       onSubmit={handleSubmit}
       cancelHref="/health-surveys/configure"

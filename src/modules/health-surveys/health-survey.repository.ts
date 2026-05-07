@@ -49,10 +49,8 @@ export async function findHealthSurveyConfigsByTenantPaginated(
     questions: { where: { isActive: true }, orderBy: { order: "asc" as const } },
     workDays: true,
   }
-  const [items, total] = await prisma.$transaction([
-    prisma.healthSurveyConfiguration.findMany({ where, include, orderBy: { createdAt: "desc" }, skip, take }),
-    prisma.healthSurveyConfiguration.count({ where }),
-  ])
+  const items = await prisma.healthSurveyConfiguration.findMany({ where, include, orderBy: { createdAt: "desc" }, skip, take })
+  const total = await prisma.healthSurveyConfiguration.count({ where })
   return { items: items as HealthSurveyConfigWithDetails[], total }
 }
 
@@ -60,6 +58,18 @@ export function findHealthSurveyConfigById(tenantId: string, configId: string): 
   return prisma.healthSurveyConfiguration.findFirst({
     where: { id: configId, tenantId },
     include: { department: true, questions: { where: { isActive: true }, orderBy: { order: "asc" } }, workDays: true },
+  })
+}
+
+export function findHealthSurveyConfigsByName(tenantId: string, name: string): Promise<HealthSurveyConfigWithDetails[]> {
+  return prisma.healthSurveyConfiguration.findMany({
+    where: { tenantId, name, isActive: true },
+    include: {
+      department: true,
+      questions: { where: { isActive: true }, orderBy: { order: "asc" } },
+      workDays: true,
+    },
+    orderBy: { createdAt: "asc" },
   })
 }
 

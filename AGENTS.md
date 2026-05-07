@@ -2522,6 +2522,25 @@ Páginas do painel (`(tenant)` e `(super-admin)`) seguem o padrão:
 
 O `<body>` em `src/app/layout.tsx` tem `suppressHydrationWarning` para evitar erros de hidratação causados por extensões de browser (ex: Grammarly) que injetam atributos no DOM.
 
+### `color-scheme` para inputs nativos de data/hora — regra global
+
+Inputs nativos do browser (`<input type="time">`, `<input type="date">`, `<input type="datetime-local">`) exibem ícones controlados pela propriedade CSS `color-scheme`. Sem essa propriedade no dark mode, o ícone de relógio/calendário permanece escuro mesmo com o restante da interface em dark.
+
+**Implementação:** uma regra global em `src/app/globals.css` cobre todos os inputs nativos de data/hora:
+
+```css
+/* globals.css — regra global (não repetir em componentes individuais) */
+.dark input[type="time"],
+.dark input[type="date"],
+.dark input[type="datetime-local"] {
+  color-scheme: dark;
+}
+```
+
+O componente shadcn `<Input>` já aplica `[color-scheme:light] dark:[color-scheme:dark]` via Tailwind — a regra global em globals.css cobre os inputs nativos que **não** usam o componente `<Input>` (ex: em `health-survey-config-form.tsx` e `department-controls.tsx`).
+
+**Regra:** nunca adicione `dark:[color-scheme:dark]` inline em inputs individuais — a regra global em globals.css é a fonte única de verdade e cobre todos os casos.
+
 ---
 
 ## 15. Pagamento e Faturamento (Stripe)
@@ -3087,7 +3106,52 @@ Job health-survey-dispatcher (a cada 15min) — runHealthSurveyAutoDispatchSched
 
 **Frequência mensal sem `scheduledDayOfMonth`:** quando `frequency = "monthly"` e `scheduledDayOfMonth = null`, `shouldSkipDispatch` cai no path de intervalo fixo (28 dias), disparando no primeiro dia de trabalho qualificado após o cooldown. **Nota:** a UI e a Server Action (`createHealthSurveyConfigAction`) **obrigam** a seleção de um dia do mês para frequência mensal — esse path de fallback existe apenas para configs legadas criadas sem dia fixo.
 
-**Criação de configurações para múltiplos setores (`createHealthSurveyForDepartments`):** a função cria configurações para todos os setores selecionados (ou todos os setores ativos quando `departmentIds = "all"`). **Múltiplas configurações por setor são permitidas** — não há deduplicação. Cada configuração é independente e identificada pelo nome. Se o setor já tiver uma config ativa, uma nova é criada lado a lado.
+**Criação de configurações para múltiplos setores (`createHealthSurveyForDepartments`):** ao criar configs para múltiplos setores (incluindo `departmentIds: "all"`), a função verifica via `findDepartmentIdsWithActiveHealthSurveyConfigsByName` quais setores já possuem config ativa **com o mesmo nome** e pula silenciosamente os que já têm. Isso evita duplicatas sem lançar erro. Se todos os setores já possuem config ativa com aquele nome, a função retorna sem criar nada.
+
+### 20.3.1 Agrupamento de pesquisas na listagem
+
+A listagem de pesquisas em `/health-surveys/configure` exibe configs com o **mesmo `name`** como uma única linha. Isso é um agrupamento visual em memória — não há coluna `group_id` no banco.
+
+**Regras do agrupamento:**
+
+| Aspecto | Comportamento |
+|---|---|
+| Chave de agrupamento | Campo `name` da `health_survey_configuration` — configs com nome idêntico formam um grupo |
+| Coluna "Setores" | Exibe apenas departamentos **ativos** (`department.isActive = true`) para cada config no grupo |
+| Coluna "Perguntas" | Contagem do representante do grupo (primeira config por `createdAt ASC`) |
+| Linha única por grupo | `total` do service retorna número de grupos, não de configs brutas |
+| Sem unicidade no banco | Múltiplas configs com mesmo nome e setores diferentes coexistem normalmente |
+
+**Funções de serviço envolvidas:**
+
+```typescript
+// Listagem — agrupa em memória após carregar até 1000 configs
+getHealthSurveyConfigsGrouped(tenantId, filters, page, pageSize): Promise<{ items: ConfigGroup[], total: number }>
+
+// Detalhe de grupo — retorna representative + todos os deptIds ativos do grupo
+getHealthSurveyConfigGroup(tenantId, configId): Promise<{ representative, allDeptIds } | null>
+
+// Busca siblings pelo nome — usada internamente para montar allDeptIds
+getHealthSurveyConfigGroupByName(tenantId, name): Promise<ConfigGroup | null>
+```
+
+**Edição de grupo (`updateHealthSurveyConfigAction`):**
+
+Ao salvar a edição de uma pesquisa (adicionando/removendo setores), a Server Action em `configure/[configId]/actions.ts` orquestra:
+
+```
+Setores atuais (allDeptIds) vs setores enviados (deptIds do form)
+  ├─ keptDeptIds   → configs existentes: atualiza frequência/horário/perguntas
+  ├─ removedDeptIds → configs existentes: desativa (isActive = false)
+  └─ newDeptIds    → cria novas configs para os setores novos
+```
+
+**Comportamento ao deletar setor (`departments`):**  
+Quando um setor é excluído/desativado, a coluna "Setores" da listagem filtra aquele setor automaticamente (via `department.isActive = true`). A config do setor inativo permanece no banco com `isActive = true` até que o grupo seja salvo novamente (quando `removedDeptIds` inclui o setor inativo e desativa a config).
+
+**Setores na página de edição:** o select de setores em `/configure/[configId]` exibe apenas setores com `isActive = true`. Setores deletados/inativos nunca aparecem como opção selecionável.
+
+**Carregamento:** `getHealthSurveyConfigsGrouped` usa `skip=0, take=1000` internamente — adequado para o volume esperado de pesquisas por tenant. Não usa `$queryRaw`.
 
 ### 20.4 Resposta ao formulário (anonimato garantido)
 

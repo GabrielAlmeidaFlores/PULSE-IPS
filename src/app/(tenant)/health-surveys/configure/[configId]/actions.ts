@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache"
 import { AppError } from "@/libs/errors/app-error"
 import type { ActionResult } from "@/libs/utils/action-result"
 import { getSession } from "@/modules/auth/session"
-import { updateHealthSurveyConfig, createHealthSurveyForDepartments, deactivateHealthSurveyConfig, getHealthSurveyConfig } from "@/modules/health-surveys/health-survey-config.service"
+import { updateHealthSurveyConfig, createHealthSurveyForDepartments, deactivateHealthSurveyConfig, getHealthSurveyConfigGroupByName, getHealthSurveyConfig } from "@/modules/health-surveys/health-survey-config.service"
 
 const questionSchema = z.object({
   text: z.string().min(1).max(500),
@@ -46,29 +46,35 @@ export async function updateHealthSurveyConfigAction(configId: string, input: un
     return { error: "Selecione o dia do mês para o envio mensal." }
   }
 
-  const selectedDeptIds = departmentIds === "all" ? [] : departmentIds
-  if (selectedDeptIds.length === 0 && departmentIds !== "all") {
-    return { error: "Selecione ao menos um setor." }
-  }
-
   try {
     const currentConfig = await getHealthSurveyConfig(session.tenantId, parsedConfigId.data)
     if (!currentConfig) return { error: "Pesquisa não encontrada." }
 
-    const currentDeptId = currentConfig.department.id
+    const groupConfigs = await getHealthSurveyConfigGroupByName(session.tenantId, currentConfig.name)
+
+    const selectedDeptIds = departmentIds === "all" ? null : new Set(departmentIds)
     const configUpdate = { name, description, frequency, scheduledDayOfMonth, workStartTime, workEndTime, workDays, questions }
 
-    if (departmentIds === "all" || selectedDeptIds.includes(currentDeptId)) {
-      await updateHealthSurveyConfig(session.tenantId, parsedConfigId.data, configUpdate)
-    } else {
-      await deactivateHealthSurveyConfig(session.tenantId, parsedConfigId.data)
-    }
+    const existingDeptIds = new Set(groupConfigs.map((c) => c.departmentId))
+    const keptDeptIds = selectedDeptIds === null ? existingDeptIds : new Set([...existingDeptIds].filter((id) => selectedDeptIds.has(id)))
+    const removedDeptIds = selectedDeptIds === null ? new Set<string>() : new Set([...existingDeptIds].filter((id) => !selectedDeptIds.has(id)))
+    const newDeptIds = selectedDeptIds === null ? [] : [...selectedDeptIds].filter((id) => !existingDeptIds.has(id))
 
-    const newDeptIds = departmentIds === "all" ? null : selectedDeptIds.filter((id) => id !== currentDeptId)
-    if (newDeptIds === null || newDeptIds.length > 0) {
+    await Promise.all(
+      groupConfigs
+        .filter((c) => keptDeptIds.has(c.departmentId))
+        .map((c) => updateHealthSurveyConfig(session.tenantId, c.id, configUpdate)),
+    )
+
+    await Promise.all(
+      groupConfigs
+        .filter((c) => removedDeptIds.has(c.departmentId))
+        .map((c) => deactivateHealthSurveyConfig(session.tenantId, c.id)),
+    )
+
+    if (newDeptIds.length > 0) {
       await createHealthSurveyForDepartments(session.tenantId, {
-        departmentIds: newDeptIds ?? "all",
-        excludeDeptIds: [currentDeptId],
+        departmentIds: newDeptIds,
         name,
         ...(description !== undefined && { description }),
         frequency,

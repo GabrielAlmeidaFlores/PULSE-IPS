@@ -21,6 +21,7 @@ interface HealthSurveyConfigFormProps {
   mode: FormMode
   departments?: DepartmentOption[]
   initialConfig?: HealthSurveyConfigWithDetails | null
+  initialDeptIds?: string[]
   onSubmit: (data: HealthSurveyConfigFormData) => Promise<{ error?: string } | undefined>
   cancelHref: string
 }
@@ -105,13 +106,14 @@ function submitLabel(mode: FormMode): string {
   return "Salvar alterações"
 }
 
-export function HealthSurveyConfigForm({ mode, departments, initialConfig, onSubmit, cancelHref }: HealthSurveyConfigFormProps): React.ReactElement {
+export function HealthSurveyConfigForm({ mode, departments, initialConfig, initialDeptIds, onSubmit, cancelHref }: HealthSurveyConfigFormProps): React.ReactElement {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
   const [name, setName] = useState(initialConfig?.name ?? "Pesquisa de Saúde")
   const [description, setDescription] = useState(initialConfig?.description ?? "")
   const [selectedDeptIds, setSelectedDeptIds] = useState<Set<string>>(() => {
+    if (initialDeptIds !== undefined && initialDeptIds.length > 0) return new Set(initialDeptIds)
     if (initialConfig !== null && initialConfig !== undefined) return new Set([initialConfig.department.id])
     return new Set()
   })

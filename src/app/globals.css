@@ -488,6 +488,12 @@ input[type="number"] {
   -moz-appearance: textfield;
 }
 
+.dark input[type="time"],
+.dark input[type="date"],
+.dark input[type="datetime-local"] {
+  color-scheme: dark;
+}
+
 /* Tiptap rich text editor */
 .prose-editor .tiptap {
   min-height: inherit;
