@@ -19,7 +19,7 @@ const TIME_REGEX = /^\d{2}:\d{2}$/
 
 const updateHealthSurveyConfigSchema = z.object({
   name: z.string().min(1, "Informe o nome da pesquisa").max(255),
-  description: z.string().max(500).optional().transform((v) => v ?? ""),
+  description: z.string().max(500).optional().transform((v) => (v?.trim() ? v.trim() : undefined)),
   frequency: z.enum(["daily", "twice_weekly", "weekly", "biweekly", "monthly"]),
   scheduledDayOfMonth: z.number().int().min(1).max(28).nullable(),
   workStartTime: z.string().regex(TIME_REGEX),
@@ -60,12 +60,13 @@ export async function updateHealthSurveyConfigAction(configId: string, input: un
       await deactivateHealthSurveyConfig(session.tenantId, configId)
     }
 
-    const newDeptIds = departmentIds === "all" ? [] : selectedDeptIds.filter((id) => id !== currentDeptId)
-    if (newDeptIds.length > 0) {
+    const newDeptIds = departmentIds === "all" ? null : selectedDeptIds.filter((id) => id !== currentDeptId)
+    if (newDeptIds === null || newDeptIds.length > 0) {
       await createHealthSurveyForDepartments(session.tenantId, {
-        departmentIds: newDeptIds,
+        departmentIds: newDeptIds ?? "all",
+        excludeDeptIds: [currentDeptId],
         name,
-        description,
+        ...(description !== undefined && { description }),
         frequency,
         scheduledDayOfMonth,
         workStartTime,

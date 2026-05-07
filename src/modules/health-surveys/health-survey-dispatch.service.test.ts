@@ -282,6 +282,75 @@ describe("runHealthSurveyAutoDispatchScheduler", () => {
   })
 })
 
+describe("runHealthSurveyAutoDispatchScheduler — frequência mensal", () => {
+  it("pula quando hoje não é o dia do mês agendado", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
+
+    mockFindActiveConfigs.mockResolvedValue([
+      makeAutoDispatchConfig({ frequency: "monthly", scheduledDayOfMonth: 20, workDays: [0, 1, 2, 3, 4, 5, 6] }),
+    ])
+
+    const result = await runHealthSurveyAutoDispatchScheduler()
+    expect(result.skipped).toBe(1)
+    expect(result.triggered).toBe(0)
+    expect(mockCreateDispatch).not.toHaveBeenCalled()
+
+    vi.useRealTimers()
+  })
+
+  it("dispara quando hoje é o dia do mês agendado e nunca foi disparado antes", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
+
+    mockFindActiveConfigs.mockResolvedValue([
+      makeAutoDispatchConfig({ frequency: "monthly", scheduledDayOfMonth: 15, workDays: [0, 1, 2, 3, 4, 5, 6], lastDispatchedAt: null }),
+    ])
+    mockFindEmployeeIdsEligibleForDispatch.mockResolvedValue(["emp-1"])
+    mockFindExistingTokensForDispatch.mockResolvedValue([])
+
+    const result = await runHealthSurveyAutoDispatchScheduler()
+    expect(result.triggered).toBe(1)
+    expect(result.skipped).toBe(0)
+
+    vi.useRealTimers()
+  })
+
+  it("pula quando hoje é o dia correto mas o último disparo foi há menos de 25 dias", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
+
+    const recentDispatch = new Date(Date.now() - 1000 * 60 * 60 * 24 * 10)
+    mockFindActiveConfigs.mockResolvedValue([
+      makeAutoDispatchConfig({ frequency: "monthly", scheduledDayOfMonth: 15, workDays: [0, 1, 2, 3, 4, 5, 6], lastDispatchedAt: recentDispatch }),
+    ])
+
+    const result = await runHealthSurveyAutoDispatchScheduler()
+    expect(result.skipped).toBe(1)
+    expect(result.triggered).toBe(0)
+
+    vi.useRealTimers()
+  })
+
+  it("dispara quando hoje é o dia correto e o último disparo foi há mais de 25 dias", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
+
+    const oldDispatch = new Date(Date.now() - 1000 * 60 * 60 * 24 * 30)
+    mockFindActiveConfigs.mockResolvedValue([
+      makeAutoDispatchConfig({ frequency: "monthly", scheduledDayOfMonth: 15, workDays: [0, 1, 2, 3, 4, 5, 6], lastDispatchedAt: oldDispatch }),
+    ])
+    mockFindEmployeeIdsEligibleForDispatch.mockResolvedValue(["emp-1"])
+    mockFindExistingTokensForDispatch.mockResolvedValue([])
+
+    const result = await runHealthSurveyAutoDispatchScheduler()
+    expect(result.triggered).toBe(1)
+    expect(result.skipped).toBe(0)
+
+    vi.useRealTimers()
+  })
+})
+
 describe("checkHealthSurveyDispatchAdherence", () => {
   it("returns zeros when no dispatches to check", async () => {
     mockFindDispatches48hAgo.mockResolvedValue([])

@@ -23,14 +23,12 @@ const STATUS_PRIORITY: Record<string, number> = {
   failed: 0,
   scheduled: 1,
   available: 2,
-  sent: 2,
   cancelled: 3,
 }
 
 const STATUS_STYLE: Record<string, string> = {
   scheduled: "bg-muted text-muted-foreground border-border",
   available: "bg-primary/10 text-primary border-primary/20",
-  sent: "bg-primary/10 text-primary border-primary/20",
   cancelled: "badge-warning",
   failed: "bg-destructive/10 text-destructive border-destructive/20",
 }
@@ -38,7 +36,6 @@ const STATUS_STYLE: Record<string, string> = {
 const STATUS_LABELS: Record<string, string> = {
   scheduled: "Agendado",
   available: "Disponível",
-  sent: "Disponível",
   cancelled: "Cancelado",
   failed: "Falhou",
 }

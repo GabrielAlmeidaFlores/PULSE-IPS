@@ -14,7 +14,7 @@ import {
   findOrgWithDepartmentsForPgr,
   findDispatchesForPgr,
   findPgrReviewByTenantAndPeriod,
-  deletePgrReview,
+  replacePgrReviewAtomic,
   createPgrReviewAtomic,
   findAllTenantsUpcomingPgrReviews,
   findExistingPgrAlert,
@@ -151,7 +151,6 @@ export async function generatePgrReport(tenantId: string, period: string, forceR
     if (!forceRegenerate) {
       throw new AppError("DUPLICATE_PGR_PERIOD", `Já existe um relatório gerado para o período ${period}.`)
     }
-    await deletePgrReview(tenantId, existingReview.id)
   }
 
   const deptResults: CreatePgrDeptResultInput[] = org.departments.map((dept) => {
@@ -191,11 +190,20 @@ export async function generatePgrReport(tenantId: string, period: string, forceR
     ),
   )
 
-  await createPgrReviewAtomic(
-    { tenantId, period, status: "generated", reviewedAt: new Date() },
-    deptResults,
-    questionResults,
-  )
+  if (existingReview) {
+    await replacePgrReviewAtomic(
+      existingReview.id,
+      { tenantId, period, status: "generated", reviewedAt: new Date() },
+      deptResults,
+      questionResults,
+    )
+  } else {
+    await createPgrReviewAtomic(
+      { tenantId, period, status: "generated", reviewedAt: new Date() },
+      deptResults,
+      questionResults,
+    )
+  }
 }
 
 export async function sendPgrReviewReminders(): Promise<{ remindersCreated: number }> {

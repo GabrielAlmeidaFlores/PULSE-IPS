@@ -2,14 +2,16 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import {
   getHealthSurveyConfigs,
   getHealthSurveyConfig,
+  getHealthSurveyConfigsPaginated,
   createHealthSurveyForDepartments,
   updateHealthSurveyConfig,
   deactivateHealthSurveyConfig,
 } from "@/modules/health-surveys/health-survey-config.service"
 import {
   findHealthSurveyConfigsByTenant,
+  findHealthSurveyConfigsByTenantPaginated,
   findHealthSurveyConfigById,
-  createNewHealthSurveyConfigEntry,
+  createManyHealthSurveyConfigEntries,
   updateExistingHealthSurveyConfigEntry,
   deactivateHealthSurveyConfigEntry,
 } from "@/modules/health-surveys/health-survey.repository"
@@ -20,8 +22,9 @@ vi.mock("@/modules/departments/department.repository")
 vi.mock("@/env", () => ({ env: { NEXT_PUBLIC_APP_URL: "http://localhost:3000" } }))
 
 const mockFindConfigs = vi.mocked(findHealthSurveyConfigsByTenant)
+const mockFindConfigsPaginated = vi.mocked(findHealthSurveyConfigsByTenantPaginated)
 const mockFindConfig = vi.mocked(findHealthSurveyConfigById)
-const mockCreateNewConfig = vi.mocked(createNewHealthSurveyConfigEntry)
+const mockCreateManyConfigs = vi.mocked(createManyHealthSurveyConfigEntries)
 const mockUpdateConfig = vi.mocked(updateExistingHealthSurveyConfigEntry)
 const mockDeactivateConfig = vi.mocked(deactivateHealthSurveyConfigEntry)
 const mockFindActiveDepts = vi.mocked(findActiveDepartmentsByTenant)
@@ -56,6 +59,52 @@ describe("getHealthSurveyConfigs", () => {
   })
 })
 
+describe("getHealthSurveyConfigsPaginated", () => {
+  it("delega ao repository com skip/take calculados corretamente", async () => {
+    mockFindConfigsPaginated.mockResolvedValue({ items: [], total: 0 })
+
+    await getHealthSurveyConfigsPaginated("tenant-1", { page: 2, pageSize: 10 })
+
+    expect(mockFindConfigsPaginated).toHaveBeenCalledWith("tenant-1", {}, 10, 10)
+  })
+
+  it("primeira página usa skip = 0", async () => {
+    mockFindConfigsPaginated.mockResolvedValue({ items: [], total: 0 })
+
+    await getHealthSurveyConfigsPaginated("tenant-1", { page: 1, pageSize: 10 })
+
+    expect(mockFindConfigsPaginated).toHaveBeenCalledWith("tenant-1", {}, 0, 10)
+  })
+
+  it("repassa filtros opcionais ao repository", async () => {
+    mockFindConfigsPaginated.mockResolvedValue({ items: [], total: 0 })
+
+    await getHealthSurveyConfigsPaginated("tenant-1", {
+      page: 1,
+      pageSize: 5,
+      q: "saúde",
+      frequency: "weekly",
+      departmentId: "dept-1",
+    })
+
+    expect(mockFindConfigsPaginated).toHaveBeenCalledWith(
+      "tenant-1",
+      { q: "saúde", frequency: "weekly", departmentId: "dept-1" },
+      0,
+      5,
+    )
+  })
+
+  it("retorna items e total do repository", async () => {
+    const fakeItems = [{ id: "cfg-1" }] as Awaited<ReturnType<typeof findHealthSurveyConfigsByTenant>>
+    mockFindConfigsPaginated.mockResolvedValue({ items: fakeItems, total: 42 })
+
+    const result = await getHealthSurveyConfigsPaginated("tenant-1", { page: 1, pageSize: 10 })
+
+    expect(result).toEqual({ items: fakeItems, total: 42 })
+  })
+})
+
 describe("getHealthSurveyConfig", () => {
   it("returns a health survey config by id", async () => {
     mockFindConfig.mockResolvedValue({ id: "cfg-1" } as Awaited<ReturnType<typeof findHealthSurveyConfigById>>)
@@ -72,34 +121,72 @@ describe("getHealthSurveyConfig", () => {
 })
 
 describe("createHealthSurveyForDepartments", () => {
-  it("cria uma config por setor explicitamente selecionado", async () => {
-    mockCreateNewConfig.mockResolvedValue({ id: "cfg-1" } as Awaited<ReturnType<typeof createNewHealthSurveyConfigEntry>>)
+  it("cria configs para setores explicitamente selecionados via createManyHealthSurveyConfigEntries", async () => {
+    mockCreateManyConfigs.mockResolvedValue(undefined)
 
     await createHealthSurveyForDepartments("tenant-1", {
       ...BASE_CONFIG_INPUT,
       departmentIds: ["dept-1", "dept-2"],
     })
 
-    expect(mockCreateNewConfig).toHaveBeenCalledTimes(2)
-    expect(mockCreateNewConfig).toHaveBeenCalledWith("tenant-1", { ...BASE_CONFIG_INPUT, departmentId: "dept-1" })
-    expect(mockCreateNewConfig).toHaveBeenCalledWith("tenant-1", { ...BASE_CONFIG_INPUT, departmentId: "dept-2" })
+    expect(mockCreateManyConfigs).toHaveBeenCalledOnce()
+    expect(mockCreateManyConfigs).toHaveBeenCalledWith("tenant-1", [
+      { ...BASE_CONFIG_INPUT, departmentId: "dept-1" },
+      { ...BASE_CONFIG_INPUT, departmentId: "dept-2" },
+    ])
   })
 
-  it("cria uma config para todos os setores quando departmentIds = 'all'", async () => {
+  it("cria configs para todos os setores quando departmentIds = 'all'", async () => {
     mockFindActiveDepts.mockResolvedValue([
       { id: "dept-a" },
       { id: "dept-b" },
     ] as Awaited<ReturnType<typeof findActiveDepartmentsByTenant>>)
-    mockCreateNewConfig.mockResolvedValue({ id: "cfg-1" } as Awaited<ReturnType<typeof createNewHealthSurveyConfigEntry>>)
+    mockCreateManyConfigs.mockResolvedValue(undefined)
 
     await createHealthSurveyForDepartments("tenant-1", {
       ...BASE_CONFIG_INPUT,
       departmentIds: "all",
     })
 
-    expect(mockCreateNewConfig).toHaveBeenCalledTimes(2)
-    expect(mockCreateNewConfig).toHaveBeenCalledWith("tenant-1", { ...BASE_CONFIG_INPUT, departmentId: "dept-a" })
-    expect(mockCreateNewConfig).toHaveBeenCalledWith("tenant-1", { ...BASE_CONFIG_INPUT, departmentId: "dept-b" })
+    expect(mockCreateManyConfigs).toHaveBeenCalledWith("tenant-1", [
+      { ...BASE_CONFIG_INPUT, departmentId: "dept-a" },
+      { ...BASE_CONFIG_INPUT, departmentId: "dept-b" },
+    ])
+  })
+
+  it("exclui setores listados em excludeDeptIds ao usar 'all'", async () => {
+    mockFindActiveDepts.mockResolvedValue([
+      { id: "dept-a" },
+      { id: "dept-b" },
+      { id: "dept-c" },
+    ] as Awaited<ReturnType<typeof findActiveDepartmentsByTenant>>)
+    mockCreateManyConfigs.mockResolvedValue(undefined)
+
+    await createHealthSurveyForDepartments("tenant-1", {
+      ...BASE_CONFIG_INPUT,
+      departmentIds: "all",
+      excludeDeptIds: ["dept-a"],
+    })
+
+    expect(mockCreateManyConfigs).toHaveBeenCalledWith("tenant-1", [
+      { ...BASE_CONFIG_INPUT, departmentId: "dept-b" },
+      { ...BASE_CONFIG_INPUT, departmentId: "dept-c" },
+    ])
+  })
+
+  it("exclui setores listados em excludeDeptIds ao usar lista explícita", async () => {
+    mockCreateManyConfigs.mockResolvedValue(undefined)
+
+    await createHealthSurveyForDepartments("tenant-1", {
+      ...BASE_CONFIG_INPUT,
+      departmentIds: ["dept-1", "dept-2", "dept-3"],
+      excludeDeptIds: ["dept-2"],
+    })
+
+    expect(mockCreateManyConfigs).toHaveBeenCalledWith("tenant-1", [
+      { ...BASE_CONFIG_INPUT, departmentId: "dept-1" },
+      { ...BASE_CONFIG_INPUT, departmentId: "dept-3" },
+    ])
   })
 
   it("lança AppError quando não há setores disponíveis para 'all'", async () => {
@@ -107,6 +194,18 @@ describe("createHealthSurveyForDepartments", () => {
 
     await expect(
       createHealthSurveyForDepartments("tenant-1", { ...BASE_CONFIG_INPUT, departmentIds: "all" }),
+    ).rejects.toMatchObject({ code: "NO_DEPARTMENTS" })
+  })
+
+  it("lança AppError quando todos os setores explícitos são excluídos por excludeDeptIds", async () => {
+    mockCreateManyConfigs.mockResolvedValue(undefined)
+
+    await expect(
+      createHealthSurveyForDepartments("tenant-1", {
+        ...BASE_CONFIG_INPUT,
+        departmentIds: ["dept-1"],
+        excludeDeptIds: ["dept-1"],
+      }),
     ).rejects.toMatchObject({ code: "NO_DEPARTMENTS" })
   })
 })

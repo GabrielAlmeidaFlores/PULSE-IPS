@@ -2779,7 +2779,7 @@ Processos recorrentes gerenciados pelo **BullMQ** com Redis como broker.
 
 | Job | Frequência | Responsabilidade |
 |---|---|---|
-| `health-survey-dispatcher` | A cada 15min | Verifica dispatches `scheduled` com `scheduled_at <= now()`, gera tokens, envia via messaging |
+| `health-survey-dispatcher` | A cada 15min | Itera configurações ativas; verifica janela de horário de trabalho e intervalo de frequência (`shouldSkipDispatch`); cria dispatch + tokens + envia mensagens |
 | `health-survey-adherence-checker` | A cada hora | 48h após cada dispatch, calcula taxa de adesão e cria alertas `low_adherence` |
 | `health-survey-score-alert-detector` | Diário (03:00) | Calcula quedas de score; cria alertas `score_drop` e `negative_trend` |
 | `employee-unpause` | Diário (01:00) | Reverte `status = 'active'` para colaboradores com `pause_end_at <= today` |
@@ -2958,14 +2958,24 @@ Employee cadastrado (sem convite separado)
 ### 20.3 Envio de pesquisa
 
 ```
-Job health-survey-dispatcher (a cada 15min)
-  → Busca dispatches status='scheduled' e scheduled_at <= now()
-    → Filtra employees: status='active', excluindo apenas refused/opted_out
-    → Gera health_survey_response_token por employee (expires_at = +48h, snapshot do horário)
-    → [GATE] hasTenantPlanFeature(tenantId, "messaging")
-        ├─ SEM feature: tokens criados, nenhuma mensagem enviada → RH usa link assinado
-        └─ COM feature: messagingService.sendBulk → Registra em message_logs
-    → Atualiza dispatch: status='available', dispatched_at, total_recipients
+Job health-survey-dispatcher (a cada 15min) — runHealthSurveyAutoDispatchScheduler
+  → Busca todas as configurações ativas com billing ativo (findAllTenantsActiveHealthSurveyConfigsForAutoDispatch)
+    → Para cada configuração:
+        [GATE 1] isWithinWorkHours(workStartTime, workEndTime, timezone) → skip se fora do expediente
+        [GATE 2] shouldSkipDispatch(config, timezone):
+            - Para frequência 'monthly' com scheduledDayOfMonth (condições independentes — OR):
+                → skip se hoje NÃO é o dia do mês configurado (getDayOfMonthInTimezone ≠ scheduledDayOfMonth)
+                → skip se o último dispatch foi há menos de 25 dias (cooldown anti-duplicata)
+            - Para outras frequências (condições independentes — OR):
+                → skip se hoje não é um dia de trabalho da config (isWorkDay)
+                → skip se o último dispatch foi há menos de FREQUENCY_INTERVAL_DAYS dias
+        [PASS] → fireDispatch:
+            → Cria health_survey_dispatch (status='available', dispatchedAt=now)
+            → Gera health_survey_response_token por employee elegível (expires_at = +48h)
+            → [GATE FEATURE] hasTenantPlanFeature(tenantId, "messaging")
+                ├─ SEM feature: tokens criados, nenhuma mensagem enviada → RH usa link assinado
+                └─ COM feature: messagingService.sendBulk → Registra em message_logs
+            → Atualiza dispatch: total_recipients
 ```
 
 ### 20.4 Resposta ao formulário (anonimato garantido)
@@ -3044,12 +3054,21 @@ RH acessa /health-surveys/[dispatchId]
 Colaborador acessa /health-survey/link/[signedLinkToken]
   └─ Tela de identificação: campo único aceita telefone ou documento
        ├─ Colaborador não encontrado → erro "Colaborador não encontrado"
-       ├─ Sem consentimento aceito → erro "Você precisa aceitar os termos"
+       ├─ Colaborador pertence a outro setor → erro EMPLOYEE_NOT_IN_DEPARTMENT "Esta pesquisa não está disponível para o seu setor."
+       ├─ Sem consentimento aceito → exibe Consent Gate inline para o colaborador aceitar o TCLE
        ├─ Já respondeu → retorna { alreadyAnswered: true } → mensagem "Você já respondeu esta pesquisa"
        ├─ Fora da janela de trabalho → erro "Pesquisa disponível apenas entre HH:MM e HH:MM"
        └─ Token gerado → redirect para /health-survey/[token]
              └─ Resposta salva normalmente (sem employee_id) → aderência calculada corretamente
 ```
+
+**Guards executados em `unlockHealthSurveyViaIdentifier` (ordem):**
+1. Dispatch encontrado pelo `signedLinkToken` — se não encontrado: erro
+2. Colaborador encontrado por telefone ou documento no tenant — se não encontrado: erro
+3. `employee.departmentId === dispatch.healthSurveyConfiguration.departmentId` — se diferente: `EMPLOYEE_NOT_IN_DEPARTMENT`
+4. Consentimento ativo — se sem aceite: retorna `{ needsConsent: true }` → Consent Gate exibida inline
+5. Já respondeu — se `used_at IS NOT NULL`: retorna `{ alreadyAnswered: true }`
+6. Janela de trabalho — fora do horário configurado: erro
 
 O `signedLinkToken` é gerado pelo `randomUUID()` no momento da criação do dispatch e armazenado em `health_survey_dispatches.signed_link_token`. É permanente enquanto o dispatch existir — o mesmo link pode ser usado por múltiplos colaboradores.
 
@@ -3130,6 +3149,24 @@ Job `organization-deletion-executor` (diário 03:30)
 **Regra crítica:** `confirmAccountDeletionAction` **nunca** chama `destroySession()` diretamente. A sessão é destruída apenas quando o usuário clica no botão do modal de confirmação, via `logoutAction()` no Client Component. Chamar `destroySession()` na Server Action destrói o cookie antes do client processar o resultado e renderizar o modal.
 
 **Cancelamento:** Admin ou Super Admin pode cancelar a exclusão enquanto `deletionScheduledAt > now()`. A ação `cancelScheduledOrganizationDeletion` zera `deletionScheduledAt` e `reativaCancelledAt` no Stripe (se aplicável). O `DeletionScheduledModal` exibido no `(tenant)/layout.tsx` oferece o botão de cancelamento.
+
+### 20.13 Geração de relatório PGR com force-regenerate
+
+```
+Admin → /pgr → botão "Gerar relatório" (período selecionado)
+  └─→ generatePgrReportAction(tenantId, period, forceRegenerate = false)
+        ├─ Verifica se já existe PgrReview para o período
+        │    └─ Se existe e forceRegenerate = false → retorna { error: code: "DUPLICATE_PGR_PERIOD" }
+        └─ Se existe e forceRegenerate = true → replacePgrReviewAtomic(existingId, novosDados, deptResults, questionResults)
+              └─ $transaction: DELETE pgr_reviews + DELETE pgr_dept_results + DELETE pgr_question_results
+                              + INSERT pgr_reviews + INSERT pgr_dept_results + INSERT pgr_question_results
+
+Client Component (pgr-generate-button.tsx) recebe DUPLICATE_PGR_PERIOD
+  └─ Exibe confirmação "Já existe um relatório para este período. Deseja substituir?"
+       └─ Admin confirma → chama novamente com forceRegenerate = true
+```
+
+**Regra de imutabilidade histórica:** o PGR usa respostas de `health_survey_response_items` referenciadas por `question_id`. Mesmo que perguntas sejam desativadas depois, o histórico é preservado porque `findDispatchesForPgr` não filtra `isActive` nas perguntas. A geração de um novo relatório para um período já existente (via `forceRegenerate`) é atômica — nunca deixa o banco em estado parcial.
 
 ---
 

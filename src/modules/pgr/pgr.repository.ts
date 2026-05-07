@@ -135,16 +135,38 @@ export function findPgrReviewByTenantAndPeriod(tenantId: string, period: string)
   return prisma.pgrReview.findFirst({ where: { tenantId, period } })
 }
 
-export function deletePgrReview(tenantId: string, id: string): Promise<PgrReview> {
-  return prisma.pgrReview.delete({ where: { id, tenantId } })
-}
-
 export function createPgrReviewAtomic(
   reviewData: CreatePgrReviewInput,
   deptResults: CreatePgrDeptResultInput[],
   questionResults: CreatePgrQuestionResultInput[],
 ): Promise<PgrReview> {
   return prisma.$transaction(async (tx) => {
+    const review = await tx.pgrReview.create({
+      data: {
+        tenantId: reviewData.tenantId,
+        period: reviewData.period,
+        status: reviewData.status,
+        reviewedAt: reviewData.reviewedAt,
+      },
+    })
+    const resultsWithId = deptResults.map((r) => ({ ...r, pgrReviewId: review.id }))
+    await tx.pgrDeptResult.createMany({ data: resultsWithId })
+    if (questionResults.length > 0) {
+      const questionResultsWithId = questionResults.map((r) => ({ ...r, pgrReviewId: review.id }))
+      await tx.pgrQuestionResult.createMany({ data: questionResultsWithId })
+    }
+    return review
+  })
+}
+
+export function replacePgrReviewAtomic(
+  existingId: string,
+  reviewData: CreatePgrReviewInput,
+  deptResults: CreatePgrDeptResultInput[],
+  questionResults: CreatePgrQuestionResultInput[],
+): Promise<PgrReview> {
+  return prisma.$transaction(async (tx) => {
+    await tx.pgrReview.delete({ where: { id: existingId, tenantId: reviewData.tenantId } })
     const review = await tx.pgrReview.create({
       data: {
         tenantId: reviewData.tenantId,

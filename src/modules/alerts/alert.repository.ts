@@ -152,13 +152,13 @@ export interface DeptDispatchAvg {
   tenantId: string
   departmentId: string
   departmentName: string
-  dispatchId: string
   avgScore: number
   createdAt: Date
 }
 
 interface DispatchWithResponses {
   createdAt: Date
+  dispatchedAt: Date | null
   responses: { items: { score: number; question: { scoreDirection: string } }[] }[]
 }
 
@@ -166,7 +166,8 @@ function accumulateDayScores(
   dayMap: Map<string, { scores: number[]; responseCount: number; createdAt: Date }>,
   dispatch: DispatchWithResponses,
 ): void {
-  const dayKey = dispatch.createdAt.toISOString().slice(0, 10)
+  const effectiveDate = dispatch.dispatchedAt ?? dispatch.createdAt
+  const dayKey = effectiveDate.toISOString().slice(0, 10)
   const existing = dayMap.get(dayKey) ?? { scores: [], responseCount: 0, createdAt: dispatch.createdAt }
   for (const r of dispatch.responses) {
     for (const item of r.items) {
@@ -207,7 +208,7 @@ export async function findAllTenantsDeptRecentDispatchAvgs(departmentId: string,
   for (const config of configs) {
     for (const dispatch of config.dispatches) {
       if (dispatch.responses.length < MINIMUM_RESPONDENTS_FOR_DISPLAY) continue
-      accumulateDayScores(dayMap, dispatch)
+      accumulateDayScores(dayMap, { ...dispatch, dispatchedAt: dispatch.dispatchedAt })
     }
   }
 
@@ -219,7 +220,6 @@ export async function findAllTenantsDeptRecentDispatchAvgs(departmentId: string,
       tenantId: dept.tenantId,
       departmentId: dept.id,
       departmentName: dept.name,
-      dispatchId: "",
       avgScore,
       createdAt: data.createdAt,
     })

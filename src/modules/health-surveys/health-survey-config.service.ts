@@ -2,7 +2,7 @@ import {
   findHealthSurveyConfigsByTenant,
   findHealthSurveyConfigsByTenantPaginated,
   findHealthSurveyConfigById,
-  createNewHealthSurveyConfigEntry,
+  createManyHealthSurveyConfigEntries,
   updateExistingHealthSurveyConfigEntry,
   deactivateHealthSurveyConfigEntry,
   type HealthSurveyConfigListingFilters,
@@ -44,6 +44,7 @@ export function getHealthSurveyConfig(tenantId: string, configId: string): Retur
 
 export interface CreateHealthSurveyForDepartmentsInput {
   departmentIds: string[] | "all"
+  excludeDeptIds?: string[]
   name: string
   description?: string
   frequency: "daily" | "twice_weekly" | "weekly" | "biweekly" | "monthly"
@@ -64,6 +65,11 @@ export async function createHealthSurveyForDepartments(tenantId: string, input: 
     targetDeptIds = input.departmentIds
   }
 
+  if (input.excludeDeptIds !== undefined && input.excludeDeptIds.length > 0) {
+    const excludeSet = new Set(input.excludeDeptIds)
+    targetDeptIds = targetDeptIds.filter((id) => !excludeSet.has(id))
+  }
+
   if (targetDeptIds.length === 0) {
     throw new AppError("NO_DEPARTMENTS", "Selecione ao menos um setor.")
   }
@@ -79,9 +85,10 @@ export async function createHealthSurveyForDepartments(tenantId: string, input: 
     questions: input.questions,
   }
 
-  for (const deptId of targetDeptIds) {
-    await createNewHealthSurveyConfigEntry(tenantId, { ...configInput, departmentId: deptId })
-  }
+  await createManyHealthSurveyConfigEntries(
+    tenantId,
+    targetDeptIds.map((deptId) => ({ ...configInput, departmentId: deptId })),
+  )
 }
 
 export async function updateHealthSurveyConfig(tenantId: string, configId: string, input: UpdateHealthSurveyConfigInput): Promise<void> {
