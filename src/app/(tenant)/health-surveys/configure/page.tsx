@@ -132,7 +132,7 @@ export default async function ConfigureHealthSurveyListPage({ searchParams }: Co
                     >
                       <Pencil size={12} />
                     </Link>
-                    <DeactivateHealthSurveyGroupButton configIds={group.configIds} groupName={group.name} />
+                    <DeactivateHealthSurveyGroupButton groupName={group.name} />
                   </div>
                 </td>
               </tr>

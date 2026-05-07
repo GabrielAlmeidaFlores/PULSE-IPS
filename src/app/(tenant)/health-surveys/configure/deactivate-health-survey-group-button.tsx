@@ -8,18 +8,17 @@ import { deactivateHealthSurveyGroupAction } from "@/app/(tenant)/health-surveys
 import { ConfirmActionModal } from "@/components/confirm-action-modal"
 
 interface DeactivateHealthSurveyGroupButtonProps {
-  configIds: string[]
   groupName: string
 }
 
-export function DeactivateHealthSurveyGroupButton({ configIds, groupName }: DeactivateHealthSurveyGroupButtonProps): React.ReactElement {
+export function DeactivateHealthSurveyGroupButton({ groupName }: DeactivateHealthSurveyGroupButtonProps): React.ReactElement {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [open, setOpen] = useState(false)
 
   function handleConfirm(): void {
     startTransition(async () => {
-      const result = await deactivateHealthSurveyGroupAction(configIds)
+      const result = await deactivateHealthSurveyGroupAction(groupName)
       if (result?.error) {
         toast.error(result.error)
       } else {

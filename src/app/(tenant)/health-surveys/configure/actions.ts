@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache"
 import { AppError } from "@/libs/errors/app-error"
 import type { ActionResult } from "@/libs/utils/action-result"
 import { getSession } from "@/modules/auth/session"
-import { deactivateHealthSurveyConfig } from "@/modules/health-surveys/health-survey-config.service"
+import { deactivateHealthSurveyConfig, getHealthSurveyConfigGroupByName } from "@/modules/health-surveys/health-survey-config.service"
 
 export async function deactivateHealthSurveyConfigAction(configId: string): Promise<ActionResult> {
   const session = await getSession()
@@ -24,15 +24,17 @@ export async function deactivateHealthSurveyConfigAction(configId: string): Prom
   }
 }
 
-export async function deactivateHealthSurveyGroupAction(configIds: string[]): Promise<ActionResult> {
+export async function deactivateHealthSurveyGroupAction(groupName: string): Promise<ActionResult> {
   const session = await getSession()
   if (!session) return { error: "Sessão expirada." }
 
-  const parsed = z.array(z.string().uuid()).min(1).safeParse(configIds)
-  if (!parsed.success) return { error: "Pesquisa inválida." }
+  const parsedName = z.string().min(1).max(255).safeParse(groupName)
+  if (!parsedName.success) return { error: "Nome da pesquisa inválido." }
 
   try {
-    await Promise.all(parsed.data.map((id) => deactivateHealthSurveyConfig(session.tenantId, id)))
+    const siblings = await getHealthSurveyConfigGroupByName(session.tenantId, parsedName.data)
+    if (siblings.length === 0) return { error: "Pesquisa não encontrada." }
+    await Promise.all(siblings.map((c) => deactivateHealthSurveyConfig(session.tenantId, c.id)))
     revalidatePath("/health-surveys/configure")
     return {}
   } catch (err) {
