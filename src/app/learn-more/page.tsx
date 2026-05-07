@@ -356,7 +356,7 @@ export default function LearnMorePage(): React.ReactElement {
           <div className="max-w-xl mx-auto">
             {([
               { actor: "voce", icon: <ClipboardList className="w-5 h-5" />, title: "Você cria os departamentos", desc: "Cadastra os setores da empresa com os horários de expediente e dias de trabalho de cada equipe." },
-              { actor: "voce", icon: <Clock className="w-5 h-5" />, title: "Você configura a pesquisa uma vez", desc: "Define as perguntas e a frequência de envio para cada setor — diariamente, semanalmente, quinzenalmente ou mensalmente." },
+              { actor: "voce", icon: <Clock className="w-5 h-5" />, title: "Você configura as pesquisas por setor", desc: "Cria uma ou mais pesquisas por setor, cada uma com nome, perguntas e frequência próprios — diariamente, duas vezes por semana, semanalmente, quinzenalmente ou mensalmente." },
               { actor: "voce", icon: <Users className="w-5 h-5" />, title: "Você cadastra sua equipe", desc: "Registra os colaboradores por setor — um a um ou importando uma planilha Excel. Leva minutos." },
               { actor: "pulse", icon: <Zap className="w-5 h-5" />, title: "Pulse dispara as pesquisas automaticamente", desc: "Dentro do horário de expediente e nos dias configurados, o Pulse envia o link da pesquisa para cada colaborador cadastrado." },
               { actor: "colaborador", icon: <UserCheck className="w-5 h-5" />, title: "Colaborador abre o link — e consente no primeiro acesso", desc: "Na primeira vez, o colaborador lê os Termos de Consentimento (TCLE) direto no link. Aceita ou recusa com um clique. O registro é imutável. Nas próximas pesquisas, vai direto para o formulário." },
@@ -657,8 +657,9 @@ export default function LearnMorePage(): React.ReactElement {
                 q: "Posso configurar frequências diferentes por setor?",
                 a: (
                   <span>
-                    <strong className="text-foreground">Sim, com bastante flexibilidade.</strong> Cada setor tem sua própria configuração independente:{"\n\n"}
-                    <strong className="text-foreground">Frequência:</strong> diária, semanal, quinzenal ou mensal.{"\n"}
+                    <strong className="text-foreground">Sim, com bastante flexibilidade.</strong> Você pode criar múltiplas pesquisas por setor — cada uma com nome, perguntas e frequência próprios:{"\n\n"}
+                    <strong className="text-foreground">Frequência:</strong> diária, duas vezes por semana, semanal, quinzenal ou mensal.{"\n"}
+                    <strong className="text-foreground">Dia do mês:</strong> para frequência mensal, você escolhe o dia exato (1 a 28) em que o disparo deve ocorrer.{"\n"}
                     <strong className="text-foreground">Dias da semana:</strong> você escolhe em quais dias o Pulse deve enviar.{"\n"}
                     <strong className="text-foreground">Horário de expediente:</strong> o envio só acontece dentro da janela configurada.{"\n\n"}
                     Para colaboradores com turnos especiais, é possível configurar horário individual por colaborador — substituindo a configuração do setor.

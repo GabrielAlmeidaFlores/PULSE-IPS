@@ -8,16 +8,7 @@ import { createHash, randomUUID } from "crypto"
 import bcrypt from "bcryptjs"
 import { PrismaClient } from "@prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
-import {
-  addWeeks,
-  addDays,
-  addHours,
-  subMonths,
-  format,
-  startOfDay,
-  setHours,
-  setMinutes,
-} from "date-fns"
+import { addWeeks, addDays, addHours, subMonths, setHours, setMinutes } from "date-fns"
 
 function toHealthIndex(avg: number): number {
   return Math.round(((avg - 1) / 4) * 100)
@@ -42,8 +33,9 @@ const ADMIN_PASSWORD = "Testando123!"
 const RH_EMAIL = "rh@demo.com"
 const RH_PASSWORD = "Testando123!"
 
-const NOW = new Date("2026-04-23T10:00:00Z")
-const ONE_YEAR_AGO = subMonths(NOW, 12)
+const NOW = new Date("2026-05-06T10:00:00Z")
+const START = new Date("2024-03-04T09:00:00Z")
+const TOTAL_WEEKS = 113
 
 function rand(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min
@@ -53,86 +45,15 @@ function clamp(v: number, min = 1, max = 5): number {
   return Math.max(min, Math.min(max, v))
 }
 
-function sample<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)] as T
-}
-
 function documentHash(doc: string): string {
   return createHash("sha256").update(doc).digest("hex")
 }
 
-interface DeptProfile {
-  name: string
-  employeeCount: number
-  frequency: "weekly" | "biweekly"
-  baseScore: (weekIndex: number) => number
-  adherenceRate: (weekIndex: number) => number
-  workDays: number[]
-}
+// ──────────────────────────────────────────
+// Question banks
+// ──────────────────────────────────────────
 
-const DEPT_PROFILES: DeptProfile[] = [
-  {
-    name: "Tecnologia",
-    employeeCount: 8,
-    frequency: "weekly",
-    baseScore: (w) => {
-      if (w < 16) return 4.1 + (Math.random() - 0.5) * 0.4
-      if (w < 28) return 3.2 + (Math.random() - 0.5) * 0.6
-      if (w < 36) return 3.6 + (Math.random() - 0.5) * 0.4
-      return 3.9 + (Math.random() - 0.5) * 0.3
-    },
-    adherenceRate: (w) => (w >= 16 && w < 28 ? 0.65 : 0.88),
-    workDays: [1, 2, 3, 4, 5],
-  },
-  {
-    name: "Comercial",
-    employeeCount: 7,
-    frequency: "weekly",
-    baseScore: (_) => 4.0 + (Math.random() - 0.5) * 0.5,
-    adherenceRate: (_) => 0.9 + Math.random() * 0.1,
-    workDays: [1, 2, 3, 4, 5, 6],
-  },
-  {
-    name: "Recursos Humanos",
-    employeeCount: 5,
-    frequency: "biweekly",
-    baseScore: (_) => 4.4 + (Math.random() - 0.5) * 0.4,
-    adherenceRate: (_) => 0.92 + Math.random() * 0.08,
-    workDays: [1, 2, 3, 4, 5],
-  },
-  {
-    name: "Financeiro",
-    employeeCount: 6,
-    frequency: "weekly",
-    baseScore: (w) => clamp(3.6 - w * 0.025 + (Math.random() - 0.5) * 0.4),
-    adherenceRate: (w) => clamp(0.82 - w * 0.003 + (Math.random() - 0.5) * 0.1, 0.4, 0.95),
-    workDays: [1, 2, 3, 4, 5],
-  },
-  {
-    name: "Operações",
-    employeeCount: 9,
-    frequency: "weekly",
-    baseScore: (w) => {
-      if (w >= 18 && w < 30) return 2.1 + (Math.random() - 0.5) * 0.5
-      return 2.7 + (Math.random() - 0.5) * 0.5
-    },
-    adherenceRate: (w) => (w >= 18 && w < 30 ? 0.55 : 0.72),
-    workDays: [1, 2, 3, 4, 5, 6, 0],
-  },
-  {
-    name: "Marketing",
-    employeeCount: 6,
-    frequency: "biweekly",
-    baseScore: (w) => {
-      const cycle = Math.sin((w / 52) * Math.PI * 3)
-      return clamp(3.5 + cycle * 0.8 + (Math.random() - 0.5) * 0.4)
-    },
-    adherenceRate: (_) => 0.75 + Math.random() * 0.2,
-    workDays: [1, 2, 3, 4, 5],
-  },
-]
-
-const QUESTION_BANKS: Record<string, { text: string; direction: string }[]> = {
+const QUESTION_BANKS = {
   default: [
     { text: "Como você avalia seu nível de energia e disposição para trabalhar esta semana?", direction: "higher_is_better" },
     { text: "Você sente que sua carga de trabalho está equilibrada e gerenciável?", direction: "higher_is_better" },
@@ -140,48 +61,213 @@ const QUESTION_BANKS: Record<string, { text: string; direction: string }[]> = {
     { text: "Você se sente reconhecido(a) e valorizado(a) pelo seu trabalho?", direction: "higher_is_better" },
     { text: "Qual é o seu nível de satisfação geral com o ambiente de trabalho?", direction: "higher_is_better" },
   ],
+  burnout: [
+    { text: "Você tem conseguido se desligar do trabalho nos momentos de descanso?", direction: "higher_is_better" },
+    { text: "Com que frequência você se sente esgotado(a) ao final da jornada?", direction: "lower_is_better" },
+    { text: "Você tem autonomia suficiente para organizar sua própria rotina de trabalho?", direction: "higher_is_better" },
+    { text: "O volume de demandas que chegam até você é administrável?", direction: "higher_is_better" },
+  ],
+  physical: [
+    { text: "As condições físicas do ambiente de trabalho (temperatura, iluminação, ruído) são adequadas?", direction: "higher_is_better" },
+    { text: "Os equipamentos e ferramentas que você usa estão em boas condições de uso?", direction: "higher_is_better" },
+    { text: "Você sente dores físicas (costas, pescoço, pulsos) decorrentes das atividades de trabalho?", direction: "lower_is_better" },
+    { text: "O ambiente de trabalho oferece condições adequadas de ergonomia?", direction: "higher_is_better" },
+  ],
+  leadership: [
+    { text: "Você recebe feedbacks regulares e construtivos sobre seu desempenho?", direction: "higher_is_better" },
+    { text: "Sua liderança demonstra interesse genuíno pelo seu bem-estar?", direction: "higher_is_better" },
+    { text: "Você sente clareza sobre as expectativas e metas do seu trabalho?", direction: "higher_is_better" },
+    { text: "Existe um canal aberto para comunicar preocupações à sua liderança?", direction: "higher_is_better" },
+  ],
 }
 
-const DOCUMENT_TEMPLATES = [
-  { title: "Programa de Gerenciamento de Riscos (PGR) — 2025", type: "pgr" },
-  { title: "Manual de Segurança e Saúde Ocupacional", type: "manual" },
-  { title: "Plano de Ação Corretiva — Operações Q3/2025", type: "action_plan" },
-  { title: "Relatório de Incidentes — Outubro 2025", type: "report" },
-  { title: "Treinamento NR-1: Riscos Psicossociais no Trabalho", type: "training" },
-  { title: "Política de Bem-Estar e Saúde Mental", type: "policy" },
-  { title: "Ata de Reunião CIPA — Novembro 2025", type: "meeting_minutes" },
-]
+type BankKey = keyof typeof QUESTION_BANKS
 
-const REPORT_TEMPLATES = [
+interface ConfigProfile {
+  name: string
+  questionBank: BankKey
+  frequency: "weekly" | "biweekly" | "monthly"
+  baseScore: (w: number) => number
+  adherenceRate: (w: number) => number
+}
+
+interface DeptProfile {
+  deptName: string
+  employeeCount: number
+  workDays: number[]
+  workStartTime: string
+  workEndTime: string
+  startWeek: number
+  configs: ConfigProfile[]
+}
+
+const DEPT_PROFILES: DeptProfile[] = [
   {
-    content: "Estou sentindo uma pressão muito grande para entregar resultados impossíveis em prazos irreais. Isso está afetando meu sono e minha saúde.",
-    category: "overload",
-    status: "resolved",
+    deptName: "Tecnologia",
+    employeeCount: 8,
+    workDays: [1, 2, 3, 4, 5],
+    workStartTime: "09:00",
+    workEndTime: "18:00",
+    startWeek: 0,
+    configs: [
+      {
+        name: "Saúde Geral — Tecnologia",
+        questionBank: "default",
+        frequency: "weekly",
+        baseScore: (w) => {
+          if (w < 35) return clamp(4.1 + (Math.random() - 0.5) * 0.5)
+          if (w < 71) return clamp(3.0 + (Math.random() - 0.5) * 0.8)
+          if (w < 97) return clamp(3.6 + (Math.random() - 0.5) * 0.5)
+          return clamp(4.0 + (Math.random() - 0.5) * 0.4)
+        },
+        adherenceRate: (w) => (w >= 35 && w < 71 ? 0.68 + Math.random() * 0.1 : 0.86 + Math.random() * 0.08),
+      },
+      {
+        name: "Carga de Trabalho — Tecnologia",
+        questionBank: "burnout",
+        frequency: "biweekly",
+        baseScore: (w) => {
+          if (w < 30) return clamp(3.9 + (Math.random() - 0.5) * 0.5)
+          if (w < 75) return clamp(2.7 + (Math.random() - 0.5) * 0.7)
+          return clamp(3.5 + (Math.random() - 0.5) * 0.5)
+        },
+        adherenceRate: (_) => 0.80 + Math.random() * 0.12,
+      },
+    ],
   },
   {
-    content: "Há um colega que faz comentários inapropriados e cria um ambiente hostil. Já aconteceu mais de uma vez.",
-    category: "harassment",
-    status: "analyzing",
+    deptName: "Comercial",
+    employeeCount: 7,
+    workDays: [1, 2, 3, 4, 5, 6],
+    workStartTime: "08:00",
+    workEndTime: "18:00",
+    startWeek: 0,
+    configs: [
+      {
+        name: "Saúde Geral — Comercial",
+        questionBank: "default",
+        frequency: "weekly",
+        baseScore: (w) => {
+          const weekInYear = w % 52
+          if (weekInYear >= 34 && weekInYear <= 42) return clamp(3.5 + (Math.random() - 0.5) * 0.6)
+          return clamp(4.0 + (Math.random() - 0.5) * 0.5)
+        },
+        adherenceRate: (w) => {
+          const weekInYear = w % 52
+          return weekInYear >= 34 && weekInYear <= 42 ? 0.80 + Math.random() * 0.08 : 0.91 + Math.random() * 0.07
+        },
+      },
+    ],
   },
   {
-    content: "As cadeiras e mesas na área de operações estão causando dores nas costas. Precisamos de ergonomia adequada.",
-    category: "physical_environment",
-    status: "resolved",
+    deptName: "Recursos Humanos",
+    employeeCount: 5,
+    workDays: [1, 2, 3, 4, 5],
+    workStartTime: "09:00",
+    workEndTime: "18:00",
+    startWeek: 0,
+    configs: [
+      {
+        name: "Saúde Geral — RH",
+        questionBank: "default",
+        frequency: "biweekly",
+        baseScore: (_) => clamp(4.3 + (Math.random() - 0.5) * 0.4),
+        adherenceRate: (_) => 0.92 + Math.random() * 0.08,
+      },
+    ],
   },
   {
-    content: "Existe um conflito sério entre dois líderes que está afetando toda a equipe. Precisamos de mediação.",
-    category: "conflict",
-    status: "open",
+    deptName: "Financeiro",
+    employeeCount: 6,
+    workDays: [1, 2, 3, 4, 5],
+    workStartTime: "09:00",
+    workEndTime: "18:00",
+    startWeek: 0,
+    configs: [
+      {
+        name: "Saúde Geral — Financeiro",
+        questionBank: "default",
+        frequency: "weekly",
+        baseScore: (w) => clamp(3.9 - w * 0.0095 + (Math.random() - 0.5) * 0.5),
+        adherenceRate: (w) => clamp(0.85 - w * 0.002 + (Math.random() - 0.5) * 0.06, 0.48, 0.88),
+      },
+    ],
   },
   {
-    content: "O volume de reuniões está completamente excessivo. Passamos mais tempo em reunião do que trabalhando.",
-    category: "overload",
-    status: "analyzing",
+    deptName: "Operações",
+    employeeCount: 9,
+    workDays: [0, 1, 2, 3, 4, 5, 6],
+    workStartTime: "07:00",
+    workEndTime: "16:00",
+    startWeek: 0,
+    configs: [
+      {
+        name: "Saúde Geral — Operações",
+        questionBank: "default",
+        frequency: "weekly",
+        baseScore: (w) => {
+          if (w < 52) return clamp(2.9 + (Math.random() - 0.5) * 0.6)
+          if (w < 87) return clamp(2.1 + (Math.random() - 0.5) * 0.5)
+          return clamp(2.7 + (Math.random() - 0.5) * 0.5)
+        },
+        adherenceRate: (w) => (w >= 52 && w < 87 ? 0.50 + Math.random() * 0.12 : 0.68 + Math.random() * 0.12),
+      },
+      {
+        name: "Segurança e Ergonomia — Operações",
+        questionBank: "physical",
+        frequency: "monthly",
+        baseScore: (w) => {
+          if (w < 60) return clamp(2.5 + (Math.random() - 0.5) * 0.6)
+          return clamp(3.2 + (Math.random() - 0.5) * 0.5)
+        },
+        adherenceRate: (_) => 0.72 + Math.random() * 0.16,
+      },
+    ],
   },
   {
-    content: "Me sinto muito mal com o nível de cobrança e microgerenciamento que estou sofrendo.",
-    category: "other",
-    status: "open",
+    deptName: "Marketing",
+    employeeCount: 6,
+    workDays: [1, 2, 3, 4, 5],
+    workStartTime: "09:00",
+    workEndTime: "18:00",
+    startWeek: 0,
+    configs: [
+      {
+        name: "Saúde Geral — Marketing",
+        questionBank: "default",
+        frequency: "biweekly",
+        baseScore: (w) => {
+          const cycle = Math.sin((w / 52) * Math.PI * 2)
+          return clamp(3.6 + cycle * 0.6 + (Math.random() - 0.5) * 0.4)
+        },
+        adherenceRate: (_) => 0.74 + Math.random() * 0.18,
+      },
+    ],
+  },
+  {
+    deptName: "Suporte",
+    employeeCount: 5,
+    workDays: [1, 2, 3, 4, 5],
+    workStartTime: "09:00",
+    workEndTime: "18:00",
+    startWeek: 61,
+    configs: [
+      {
+        name: "Saúde Geral — Suporte",
+        questionBank: "default",
+        frequency: "weekly",
+        baseScore: (w) => {
+          const relW = w - 61
+          if (relW < 14) return clamp(4.0 + (Math.random() - 0.5) * 0.5)
+          if (relW < 34) return clamp(3.2 + (Math.random() - 0.5) * 0.6)
+          return clamp(3.8 + (Math.random() - 0.5) * 0.4)
+        },
+        adherenceRate: (w) => {
+          const relW = w - 61
+          return relW >= 14 && relW < 34 ? 0.74 + Math.random() * 0.1 : 0.86 + Math.random() * 0.08
+        },
+      },
+    ],
   },
 ]
 
@@ -239,6 +325,13 @@ const EMPLOYEES_BY_DEPT: Record<string, { name: string; phone: string; email?: s
     { name: "Amanda Xavier", phone: "+5511911110040", email: "amanda.xavier@demo.com" },
     { name: "Leonardo Fonseca", phone: "+5511911110041", email: "leonardo.fonseca@demo.com" },
   ],
+  Suporte: [
+    { name: "Claudia Araújo", phone: "+5511911110042", email: "claudia.araujo@demo.com" },
+    { name: "Henrique Vaz", phone: "+5511911110043", email: "henrique.vaz@demo.com" },
+    { name: "Patricia Neves", phone: "+5511911110044", email: "patricia.neves@demo.com" },
+    { name: "Marcos Silveira", phone: "+5511911110045", email: "marcos.silveira@demo.com" },
+    { name: "Juliana Castro", phone: "+5511911110046", email: "juliana.castro@demo.com" },
+  ],
 }
 
 async function main(): Promise<void> {
@@ -251,16 +344,8 @@ async function main(): Promise<void> {
   if (!org) {
     logger.info("🏗️  Organização demo não encontrada. Criando...")
     org = await prisma.organization.create({
-      data: {
-        id: randomUUID(),
-        slug: ORG_SLUG_NEW,
-        name: ORG_NAME_NEW,
-        timezone: TIMEZONE,
-        billingStatus: "active",
-        isActive: true,
-      },
+      data: { id: randomUUID(), slug: ORG_SLUG_NEW, name: ORG_NAME_NEW, timezone: TIMEZONE, billingStatus: "active", isActive: true },
     })
-    logger.info(`✅ Organização criada: ${org.name} (${org.id})`)
   }
 
   const tenantId = org.id
@@ -268,7 +353,6 @@ async function main(): Promise<void> {
 
   logger.info("🗑️  Limpando dados antigos...")
   await prisma.organization.update({ where: { id: tenantId }, data: { slug: ORG_SLUG_NEW, name: ORG_NAME_NEW } })
-
   await prisma.healthSurveyResponseItem.deleteMany({ where: { healthSurveyResponse: { tenantId } } })
   await prisma.healthSurveyResponse.deleteMany({ where: { tenantId } })
   await prisma.healthSurveyResponseToken.deleteMany({ where: { tenantId } })
@@ -279,6 +363,9 @@ async function main(): Promise<void> {
   await prisma.employee.deleteMany({ where: { tenantId } })
   await prisma.pgrReview.deleteMany({ where: { tenantId } })
   await prisma.anonymousReport.deleteMany({ where: { tenantId } })
+  await prisma.actionPlanTask.deleteMany({ where: { tenantId } })
+  await prisma.actionPlanSuggestionTask.deleteMany({ where: { suggestion: { tenantId } } })
+  await prisma.actionPlanSuggestion.deleteMany({ where: { tenantId } })
   await prisma.actionPlan.deleteMany({ where: { tenantId } })
   await prisma.document.deleteMany({ where: { tenantId } })
   await prisma.alert.deleteMany({ where: { tenantId } })
@@ -288,76 +375,43 @@ async function main(): Promise<void> {
   await prisma.messageLog.deleteMany({ where: { tenantId } })
   await prisma.organizationSubscription.deleteMany({ where: { tenantId } })
   await prisma.organizationUser.deleteMany({ where: { tenantId } })
-  logger.info("✅ Dados limpos. Org renomeada para 'demo'.")
+  logger.info("✅ Dados limpos.")
 
   logger.info("👤 Criando usuários...")
   const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 10)
   const rhPasswordHash = await bcrypt.hash(RH_PASSWORD, 10)
   const consentTermVersion = await prisma.consentTermVersion.findFirst({ where: { isActive: true } })
-  if (!consentTermVersion) throw new Error("Nenhuma versão de TCLE ativa encontrada.")
+  if (!consentTermVersion) throw new Error("Nenhuma versão de TCLE ativa encontrada. Execute yarn seed primeiro.")
   const platformTermsVersion = await prisma.platformTermsVersion.findFirst({ where: { isActive: true } })
   if (!platformTermsVersion) throw new Error("Nenhuma versão de Termos da Plataforma ativa encontrada.")
 
   const adminUser = await prisma.organizationUser.create({
-    data: {
-      id: randomUUID(),
-      tenantId,
-      email: ADMIN_EMAIL,
-      passwordHash,
-      name: "Admin Demo",
-      role: "admin",
-      isActive: true,
-      emailVerifiedAt: ONE_YEAR_AGO,
-    },
+    data: { id: randomUUID(), tenantId, email: ADMIN_EMAIL, passwordHash, name: "Admin Demo", role: "admin", isActive: true, emailVerifiedAt: START },
   })
-
   const rhUser = await prisma.organizationUser.create({
-    data: {
-      id: randomUUID(),
-      tenantId,
-      email: RH_EMAIL,
-      passwordHash: rhPasswordHash,
-      name: "RH Demo",
-      role: "rh",
-      isActive: true,
-      emailVerifiedAt: ONE_YEAR_AGO,
-    },
+    data: { id: randomUUID(), tenantId, email: RH_EMAIL, passwordHash: rhPasswordHash, name: "RH Demo", role: "rh", isActive: true, emailVerifiedAt: START },
   })
-
   await prisma.platformTermsAcceptance.create({
-    data: {
-      id: randomUUID(),
-      termsVersionId: platformTermsVersion.id,
-      userId: adminUser.id,
-      acceptedAt: ONE_YEAR_AGO,
-      ipAddress: "127.0.0.1",
-      userAgent: "seed/demo",
-    },
+    data: { id: randomUUID(), termsVersionId: platformTermsVersion.id, userId: adminUser.id, acceptedAt: START, ipAddress: "127.0.0.1", userAgent: "seed/demo" },
   })
+  logger.info(`✅ Usuários: ${ADMIN_EMAIL}, ${RH_EMAIL}`)
 
-  logger.info(`✅ Usuários criados: ${ADMIN_EMAIL}, ${RH_EMAIL}`)
-
-  logger.info("💳 Criando assinatura...")
+  logger.info("💳 Criando assinatura Professional...")
   const professionalPlanPrice = await prisma.planPrice.findFirst({
     where: { externalPriceId: "price_professional_monthly", isActive: true },
     include: { plan: true },
   })
   if (!professionalPlanPrice) throw new Error("Plano Professional não encontrado. Execute yarn seed primeiro.")
 
-  const subscriptionStart = new Date(ONE_YEAR_AGO)
-  subscriptionStart.setDate(1)
-  const subscriptionEnd = new Date(subscriptionStart)
-  subscriptionEnd.setMonth(subscriptionEnd.getMonth() + 1)
-
-  await prisma.organizationSubscription.create({
+  const subscription = await prisma.organizationSubscription.create({
     data: {
       id: randomUUID(),
       tenantId,
       planId: professionalPlanPrice.planId,
       externalSubscriptionId: `sub_demo_${tenantId.slice(0, 8)}`,
       status: "active",
-      currentPeriodStart: subscriptionStart,
-      currentPeriodEnd: subscriptionEnd,
+      currentPeriodStart: START,
+      currentPeriodEnd: addDays(NOW, 25),
       cancelAtPeriodEnd: false,
       snapshotPlanName: "Professional",
       snapshotMaxEmployees: 150,
@@ -366,343 +420,258 @@ async function main(): Promise<void> {
       snapshotExternalPriceId: "price_professional_monthly",
     },
   })
+
+  const PROFESSIONAL_FEATURES = ["action_plans", "documents", "anonymous_reports", "pgr", "messaging"] as const
+  await prisma.subscriptionFeature.createMany({
+    data: PROFESSIONAL_FEATURES.map((feature) => ({ subscriptionId: subscription.id, feature })),
+  })
   logger.info("✅ Assinatura Professional criada.")
 
   logger.info("🏢 Criando departamentos, colaboradores e configurações...")
   const deptMap: Record<string, string> = {}
   const employeeMap: Record<string, string[]> = {}
-  const configMap: Record<string, string> = {}
-  const questionMap: Record<string, string[]> = {}
+  const configsMap: Record<string, { id: string; profile: ConfigProfile; questionIds: string[] }[]> = {}
 
-  for (const profile of DEPT_PROFILES) {
+  for (const deptProfile of DEPT_PROFILES) {
+    const deptCreatedAt = addWeeks(START, deptProfile.startWeek)
+
     const dept = await prisma.department.create({
       data: {
         id: randomUUID(),
         tenantId,
-        name: profile.name,
+        name: deptProfile.deptName,
         isActive: true,
-        workStartTime: "09:00",
-        workEndTime: "18:00",
+        workStartTime: deptProfile.workStartTime,
+        workEndTime: deptProfile.workEndTime,
+        createdAt: deptCreatedAt,
       },
     })
-    deptMap[profile.name] = dept.id
+    deptMap[deptProfile.deptName] = dept.id
 
     await prisma.departmentWorkDay.createMany({
-      data: profile.workDays.map((d) => ({ departmentId: dept.id, dayOfWeek: d })),
+      data: deptProfile.workDays.map((d) => ({ departmentId: dept.id, dayOfWeek: d })),
     })
 
-    const deptEmployees = EMPLOYEES_BY_DEPT[profile.name] ?? []
+    const deptEmployees = EMPLOYEES_BY_DEPT[deptProfile.deptName] ?? []
     const empIds: string[] = []
+    let empIdx = 0
     for (const emp of deptEmployees) {
+      empIdx++
       const empRecord = await prisma.employee.create({
-        data: {
-          id: randomUUID(),
-          tenantId,
-          departmentId: dept.id,
-          name: emp.name,
-          phone: emp.phone,
-          email: emp.email ?? null,
-          status: "active",
-        },
+        data: { id: randomUUID(), tenantId, departmentId: dept.id, name: emp.name, phone: emp.phone, email: emp.email ?? null, status: "active", createdAt: deptCreatedAt },
       })
       empIds.push(empRecord.id)
 
       await prisma.employeeConsent.create({
         data: {
-          id: randomUUID(),
-          tenantId,
-          employeeId: empRecord.id,
-          consentTermVersionId: consentTermVersion.id,
-          event: "invited",
-          source: "system",
-          token: randomUUID(),
-          tokenExpiresAt: addDays(ONE_YEAR_AGO, 7),
-          createdAt: ONE_YEAR_AGO,
-        },
-      })
-
-      await prisma.employeeConsent.create({
-        data: {
-          id: randomUUID(),
-          tenantId,
-          employeeId: empRecord.id,
-          consentTermVersionId: consentTermVersion.id,
-          event: "accepted",
-          source: "message_link",
-          documentHash: documentHash(`000.000.000-${empIds.length.toString().padStart(2, "0")}`),
-          createdAt: addDays(ONE_YEAR_AGO, 1),
+          id: randomUUID(), tenantId, employeeId: empRecord.id, consentTermVersionId: consentTermVersion.id,
+          event: "accepted", source: "message_link",
+          documentHash: documentHash(`000.000.000-${empIdx.toString().padStart(2, "0")}`),
+          createdAt: addDays(deptCreatedAt, 1),
         },
       })
     }
-    employeeMap[profile.name] = empIds
+    employeeMap[deptProfile.deptName] = empIds
 
-    const config = await prisma.healthSurveyConfiguration.create({
-      data: {
-        id: randomUUID(),
-        tenantId,
-        departmentId: dept.id,
-        frequency: profile.frequency === "weekly" ? "weekly" : "biweekly",
-        workStartTime: "09:00",
-        workEndTime: "18:00",
-        isActive: true,
-      },
-    })
-    configMap[profile.name] = config.id
-
-    await prisma.healthSurveyConfigWorkDay.createMany({
-      data: profile.workDays.map((d) => ({ configId: config.id, dayOfWeek: d })),
-    })
-
-    const questions = QUESTION_BANKS["default"] ?? []
-    const qIds: string[] = []
-    for (let qi = 0; qi < questions.length; qi++) {
-      const q = questions[qi]
-      if (!q) continue
-      const question = await prisma.healthSurveyQuestion.create({
+    const configEntries: { id: string; profile: ConfigProfile; questionIds: string[] }[] = []
+    for (const configProfile of deptProfile.configs) {
+      const config = await prisma.healthSurveyConfiguration.create({
         data: {
-          id: randomUUID(),
-          tenantId,
-          healthSurveyConfigurationId: config.id,
-          text: q.text,
-          order: qi + 1,
-          scoreDirection: q.direction,
+          id: randomUUID(), tenantId, departmentId: dept.id,
+          name: configProfile.name,
+          frequency: configProfile.frequency,
+          workStartTime: deptProfile.workStartTime,
+          workEndTime: deptProfile.workEndTime,
           isActive: true,
+          createdAt: deptCreatedAt,
         },
       })
-      qIds.push(question.id)
+
+      await prisma.healthSurveyConfigWorkDay.createMany({
+        data: deptProfile.workDays.map((d) => ({ configId: config.id, dayOfWeek: d })),
+      })
+
+      const bank = QUESTION_BANKS[configProfile.questionBank]
+      const qIds: string[] = []
+      for (let qi = 0; qi < bank.length; qi++) {
+        const q = bank[qi]
+        if (!q) continue
+        const question = await prisma.healthSurveyQuestion.create({
+          data: { id: randomUUID(), tenantId, healthSurveyConfigurationId: config.id, text: q.text, order: qi + 1, scoreDirection: q.direction, isActive: true },
+        })
+        qIds.push(question.id)
+      }
+      configEntries.push({ id: config.id, profile: configProfile, questionIds: qIds })
     }
-    questionMap[profile.name] = qIds
+    configsMap[deptProfile.deptName] = configEntries
+  }
+  logger.info("✅ Departamentos, colaboradores e configurações criados.")
+
+  logger.info(`📊 Gerando ${TOTAL_WEEKS} semanas de pesquisas (26 meses) em memória...`)
+
+  type AlertRow = {
+    id: string; tenantId: string; departmentId: string | null
+    type: string; severity: string; message: string
+    isRead: boolean; resolvedAt: Date | null; createdAt: Date
   }
 
-  logger.info("✅ Departamentos e colaboradores criados.")
+  type DispatchRow = {
+    id: string; tenantId: string; healthSurveyConfigurationId: string
+    scheduledAt: Date; dispatchedAt: Date; adherenceCheckedAt: Date
+    status: string; totalRecipients: number; totalResponses: number; signedLinkToken: string
+  }
 
-  logger.info("📊 Gerando 1 ano de pesquisas em memória...")
+  type TokenRow = {
+    id: string; tenantId: string; dispatchId: string; employeeId: string
+    token: string; expiresAt: Date; usedAt: Date; workStartTime: string; workEndTime: string; createdAt: Date
+  }
 
-  const TOTAL_WEEKS = 52
-  const alertsToCreate: {
-    id: string
-    tenantId: string
-    departmentId: string | null
-    type: string
-    severity: string
-    message: string
-    isRead: boolean
-    resolvedAt: Date | null
-    createdAt: Date
-  }[] = []
+  type ResponseRow = { id: string; tenantId: string; dispatchId: string; createdAt: Date }
+  type ItemRow = { id: string; healthSurveyResponseId: string; questionId: string; score: number }
 
-  const allDispatches: {
-    id: string
-    tenantId: string
-    healthSurveyConfigurationId: string
-    scheduledAt: Date
-    dispatchedAt: Date
-    adherenceCheckedAt: Date
-    status: string
-    totalRecipients: number
-    totalResponses: number
-  }[] = []
-  const allTokens: {
-    id: string
-    tenantId: string
-    dispatchId: string
-    employeeId: string
-    token: string
-    expiresAt: Date
-    usedAt: Date
-    workStartTime: string
-    workEndTime: string
-    createdAt: Date
-  }[] = []
-  const allResponses: {
-    id: string
-    tenantId: string
-    dispatchId: string
-    createdAt: Date
-  }[] = []
-  const allItems: {
-    id: string
-    healthSurveyResponseId: string
-    questionId: string
-    score: number
-  }[] = []
+  const alertsToCreate: AlertRow[] = []
+  const allDispatches: DispatchRow[] = []
+  const allTokens: TokenRow[] = []
+  const allResponses: ResponseRow[] = []
+  const allItems: ItemRow[] = []
 
-  for (const profile of DEPT_PROFILES) {
-    const deptId = deptMap[profile.name]
-    const configId = configMap[profile.name]
-    const qIds = questionMap[profile.name] ?? []
-    const empIds = employeeMap[profile.name] ?? []
-    if (!deptId || !configId || qIds.length === 0 || empIds.length === 0) continue
+  for (const deptProfile of DEPT_PROFILES) {
+    const deptId = deptMap[deptProfile.deptName]
+    const empIds = employeeMap[deptProfile.deptName] ?? []
+    const configEntries = configsMap[deptProfile.deptName] ?? []
+    if (!deptId || empIds.length === 0) continue
 
-    const dispatchIntervalWeeks = profile.frequency === "weekly" ? 1 : 2
-    let weekIndex = 0
-    let prevAvgScore = 4.0
+    for (const configEntry of configEntries) {
+      const { id: configId, profile: configProfile, questionIds: qIds } = configEntry
+      if (qIds.length === 0) continue
 
-    while (weekIndex < TOTAL_WEEKS) {
-      const dispatchDate = setMinutes(setHours(addWeeks(ONE_YEAR_AGO, weekIndex), 9), 0)
-      const baseScore = profile.baseScore(weekIndex)
-      const adherence = profile.adherenceRate(weekIndex)
-      const respondentCount = Math.max(1, Math.round(empIds.length * adherence))
-      const respondents = empIds.slice(0, respondentCount)
-      const dispatchId = randomUUID()
+      const freqWeeks = configProfile.frequency === "weekly" ? 1 : configProfile.frequency === "biweekly" ? 2 : 4
+      let prevAvgScore = 3.5
 
-      allDispatches.push({
-        id: dispatchId,
-        tenantId,
-        healthSurveyConfigurationId: configId,
-        scheduledAt: dispatchDate,
-        dispatchedAt: dispatchDate,
-        adherenceCheckedAt: addDays(dispatchDate, 2),
-        status: "available",
-        totalRecipients: empIds.length,
-        totalResponses: respondents.length,
-      })
+      for (let w = deptProfile.startWeek; w < TOTAL_WEEKS; w += freqWeeks) {
+        const dispatchDate = setMinutes(setHours(addWeeks(START, w), 9), 0)
+        if (dispatchDate > NOW) break
 
-      const scores: number[] = []
+        const baseScore = configProfile.baseScore(w)
+        const adherence = configProfile.adherenceRate(w)
+        const respondentCount = Math.max(1, Math.round(empIds.length * adherence))
+        const respondents = empIds.slice(0, respondentCount)
+        const dispatchId = randomUUID()
 
-      for (const empId of respondents) {
-        const empScore = clamp(Math.round(baseScore + (Math.random() - 0.5) * 1.2))
-        scores.push(empScore)
-
-        const tokenId = randomUUID()
-        const responseId = randomUUID()
-        const usedAt = addHours(dispatchDate, rand(1, 6))
-
-        allTokens.push({
-          id: tokenId,
+        allDispatches.push({
+          id: dispatchId,
           tenantId,
-          dispatchId,
-          employeeId: empId,
-          token: randomUUID(),
-          expiresAt: addDays(dispatchDate, 2),
-          usedAt,
-          workStartTime: "09:00",
-          workEndTime: "18:00",
-          createdAt: dispatchDate,
+          healthSurveyConfigurationId: configId,
+          scheduledAt: dispatchDate,
+          dispatchedAt: dispatchDate,
+          adherenceCheckedAt: addDays(dispatchDate, 2),
+          status: "available",
+          totalRecipients: empIds.length,
+          totalResponses: respondents.length,
+          signedLinkToken: randomUUID(),
         })
 
-        allResponses.push({
-          id: responseId,
-          tenantId,
-          dispatchId,
-          createdAt: usedAt,
-        })
+        const scores: number[] = []
+        for (const empId of respondents) {
+          const empScore = clamp(Math.round(baseScore + (Math.random() - 0.5) * 1.2))
+          scores.push(empScore)
 
-        for (const qId of qIds) {
-          allItems.push({
-            id: randomUUID(),
-            healthSurveyResponseId: responseId,
-            questionId: qId,
-            score: clamp(Math.round(empScore + (Math.random() - 0.5) * 0.8)),
+          const tokenId = randomUUID()
+          const responseId = randomUUID()
+          const usedAt = addHours(dispatchDate, rand(1, 6))
+
+          allTokens.push({
+            id: tokenId, tenantId, dispatchId, employeeId: empId,
+            token: randomUUID(), expiresAt: addDays(dispatchDate, 2), usedAt,
+            workStartTime: deptProfile.workStartTime, workEndTime: deptProfile.workEndTime,
+            createdAt: dispatchDate,
           })
+
+          allResponses.push({ id: responseId, tenantId, dispatchId, createdAt: usedAt })
+
+          for (const qId of qIds) {
+            allItems.push({
+              id: randomUUID(), healthSurveyResponseId: responseId, questionId: qId,
+              score: clamp(Math.round(empScore + (Math.random() - 0.5) * 0.8)),
+            })
+          }
         }
-      }
 
-      const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 3.0
+        const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 3.0
 
-      if (adherence < 0.8 && empIds.length >= 5) {
-        const pct = Math.round(adherence * 100)
-        const responseCount = Math.round(empIds.length * adherence)
-        if (adherence < 0.5) {
+        if (adherence < 0.8 && empIds.length >= 5) {
+          const pct = Math.round(adherence * 100)
+          const alertType = adherence < 0.5 ? "no_response" : "low_adherence"
           alertsToCreate.push({
-            id: randomUUID(),
-            tenantId,
-            departmentId: deptId,
-            type: "no_response",
-            severity: adherence < 0.25 ? "critical" : "warning",
-            message: `Taxa de adesão: ${pct}% (${responseCount}/${empIds.length})`,
-            isRead: weekIndex < TOTAL_WEEKS - 8,
-            resolvedAt: weekIndex < TOTAL_WEEKS - 8 ? addDays(dispatchDate, rand(3, 10)) : null,
-            createdAt: addDays(dispatchDate, 2),
-          })
-        } else {
-          alertsToCreate.push({
-            id: randomUUID(),
-            tenantId,
-            departmentId: deptId,
-            type: "low_adherence",
-            severity: "warning",
-            message: `Taxa de adesão: ${pct}% (${responseCount}/${empIds.length})`,
-            isRead: weekIndex < TOTAL_WEEKS - 8,
-            resolvedAt: weekIndex < TOTAL_WEEKS - 8 ? addDays(dispatchDate, rand(3, 10)) : null,
+            id: randomUUID(), tenantId, departmentId: deptId,
+            type: alertType,
+            severity: adherence < 0.3 ? "critical" : "warning",
+            message: `Taxa de adesão: ${pct}% (${respondents.length}/${empIds.length}) — ${configProfile.name}`,
+            isRead: w < TOTAL_WEEKS - 10,
+            resolvedAt: w < TOTAL_WEEKS - 10 ? addDays(dispatchDate, rand(3, 10)) : null,
             createdAt: addDays(dispatchDate, 2),
           })
         }
-      }
 
-      if (prevAvgScore - avgScore > 1.0) {
-        const drop = prevAvgScore - avgScore
-        const prevHi = toHealthIndex(prevAvgScore)
-        const currHi = toHealthIndex(avgScore)
-        alertsToCreate.push({
-          id: randomUUID(),
-          tenantId,
-          departmentId: deptId,
-          type: "score_drop",
-          severity: drop > 2 ? "critical" : "warning",
-          message: `Queda de ${drop.toFixed(1)} pontos no índice de saúde do setor ${profile.name}: de ${prevHi}% para ${currHi}% nas últimas 48h.`,
-          isRead: weekIndex < TOTAL_WEEKS - 8,
-          resolvedAt: weekIndex < TOTAL_WEEKS - 8 ? addDays(dispatchDate, rand(5, 14)) : null,
-          createdAt: addDays(dispatchDate, 2),
-        })
-      }
+        if (prevAvgScore - avgScore > 1.0) {
+          const drop = prevAvgScore - avgScore
+          alertsToCreate.push({
+            id: randomUUID(), tenantId, departmentId: deptId,
+            type: "score_drop",
+            severity: drop > 2 ? "critical" : "warning",
+            message: `Queda de ${drop.toFixed(1)} pontos — ${deptProfile.deptName} (${configProfile.name}): de ${toHealthIndex(prevAvgScore)}% para ${toHealthIndex(avgScore)}%.`,
+            isRead: w < TOTAL_WEEKS - 10,
+            resolvedAt: w < TOTAL_WEEKS - 10 ? addDays(dispatchDate, rand(5, 14)) : null,
+            createdAt: addDays(dispatchDate, 2),
+          })
+        }
 
-      if (avgScore < 3.0 && empIds.length >= 5) {
-        const hi = toHealthIndex(avgScore)
-        alertsToCreate.push({
-          id: randomUUID(),
-          tenantId,
-          departmentId: deptId,
-          type: "low_score",
-          severity: avgScore < 2 ? "critical" : "warning",
-          message: `O índice de saúde do setor ${profile.name} está abaixo do esperado: ${hi}% (${healthIndexLabel(hi)}).`,
-          isRead: weekIndex < TOTAL_WEEKS - 8,
-          resolvedAt: weekIndex < TOTAL_WEEKS - 8 ? addDays(dispatchDate, rand(5, 14)) : null,
-          createdAt: addDays(dispatchDate, 2),
-        })
-      }
+        if (avgScore < 3.0 && empIds.length >= 5) {
+          const hi = toHealthIndex(avgScore)
+          alertsToCreate.push({
+            id: randomUUID(), tenantId, departmentId: deptId,
+            type: "low_score",
+            severity: avgScore < 2 ? "critical" : "warning",
+            message: `Índice de saúde baixo — ${deptProfile.deptName}: ${hi}% (${healthIndexLabel(hi)}).`,
+            isRead: w < TOTAL_WEEKS - 10,
+            resolvedAt: w < TOTAL_WEEKS - 10 ? addDays(dispatchDate, rand(5, 14)) : null,
+            createdAt: addDays(dispatchDate, 2),
+          })
+        }
 
-      prevAvgScore = avgScore
-      weekIndex += dispatchIntervalWeeks
+        prevAvgScore = avgScore
+      }
     }
 
-    if (profile.name === "Financeiro") {
-      const latestDispatchDate = addWeeks(ONE_YEAR_AGO, TOTAL_WEEKS - 2)
-      const latestHi = toHealthIndex(profile.baseScore(TOTAL_WEEKS - 2))
+    if (deptProfile.deptName === "Financeiro") {
       alertsToCreate.push({
-        id: randomUUID(),
-        tenantId,
-        departmentId: deptId,
-        type: "negative_trend",
-        severity: "warning",
-        message: `O setor ${profile.name} apresenta tendência negativa por 3 períodos consecutivos abaixo da média histórica. Índice atual: ${latestHi}%.`,
-        isRead: false,
-        resolvedAt: null,
-        createdAt: latestDispatchDate,
+        id: randomUUID(), tenantId, departmentId: deptId,
+        type: "negative_trend", severity: "warning",
+        message: `Financeiro apresenta tendência negativa por 3 períodos consecutivos abaixo da média histórica. Índice atual: ${toHealthIndex(2.9)}%.`,
+        isRead: false, resolvedAt: null, createdAt: addDays(NOW, -7),
       })
     }
-
-    const nextReviewDate = addDays(NOW, 30)
-    if (profile.name === "Tecnologia") {
+    if (deptProfile.deptName === "Operações") {
       alertsToCreate.push({
-        id: randomUUID(),
-        tenantId,
-        departmentId: null,
-        type: "pgr_review_due",
-        severity: "warning",
-        message: `Revisão PGR prevista para ${format(nextReviewDate, "dd/MM/yyyy")}.`,
-        isRead: false,
-        resolvedAt: null,
-        createdAt: subMonths(nextReviewDate, 0),
+        id: randomUUID(), tenantId, departmentId: deptId,
+        type: "negative_trend", severity: "critical",
+        message: `Operações com tendência negativa persistente — índice em ${toHealthIndex(2.3)}% por 5 períodos consecutivos.`,
+        isRead: false, resolvedAt: null, createdAt: addDays(NOW, -5),
       })
     }
   }
 
-  logger.info(`📥 Inserindo ${allDispatches.length} dispatches, ${allTokens.length} tokens, ${allResponses.length} respostas, ${allItems.length} itens em batch...`)
+  alertsToCreate.push({
+    id: randomUUID(), tenantId, departmentId: null,
+    type: "pgr_review_due", severity: "warning",
+    message: `Revisão PGR prevista para ${addDays(NOW, 28).toLocaleDateString("pt-BR")}.`,
+    isRead: false, resolvedAt: null, createdAt: addDays(NOW, -3),
+  })
+
+  logger.info(`📥 Inserindo ${allDispatches.length} dispatches, ${allTokens.length} tokens, ${allResponses.length} respostas, ${allItems.length} itens...`)
 
   const BATCH = 500
   await prisma.healthSurveyDispatch.createMany({ data: allDispatches })
-
   for (let i = 0; i < allTokens.length; i += BATCH) {
     await prisma.healthSurveyResponseToken.createMany({ data: allTokens.slice(i, i + BATCH) })
   }
@@ -712,295 +681,319 @@ async function main(): Promise<void> {
   for (let i = 0; i < allItems.length; i += BATCH) {
     await prisma.healthSurveyResponseItem.createMany({ data: allItems.slice(i, i + BATCH) })
   }
+  logger.info(`✅ Pesquisas inseridas.`)
 
-  logger.info(`✅ Pesquisas geradas. Inserindo ${alertsToCreate.length} alertas...`)
+  logger.info(`🔔 Inserindo ${alertsToCreate.length} alertas...`)
   await prisma.alert.createMany({ data: alertsToCreate })
 
   logger.info("📋 Criando planos de ação...")
   const tecDeptId = deptMap["Tecnologia"] ?? ""
   const finDeptId = deptMap["Financeiro"] ?? ""
   const opsDeptId = deptMap["Operações"] ?? ""
-  const rhUserIdForAssign = rhUser.id
+  const supDeptId = deptMap["Suporte"] ?? ""
+  const mktDeptId = deptMap["Marketing"] ?? ""
 
   const plan1 = await prisma.actionPlan.create({
     data: {
-      id: randomUUID(),
-      tenantId,
-      title: "Reduzir sobrecarga e melhorar engajamento — Tecnologia",
-      description:
-        "Score de bem-estar caiu de 4.1 para 3.2 durante Q3/2025. Identificamos sobrecarga nas sprints e falta de rituais de feedback. Este plano implementa melhorias de processo e comunicação.",
-      status: "completed",
-      priority: "high",
-      dueDate: addDays(addWeeks(ONE_YEAR_AGO, 32), 0),
-      completedAt: addWeeks(ONE_YEAR_AGO, 34),
+      id: randomUUID(), tenantId,
+      title: "Reduzir sobrecarga e restaurar bem-estar — Tecnologia",
+      description: "Score de bem-estar em Tecnologia caiu de 4.1 para 2.8 entre maio e outubro/2025 (Q3 grande projeto). Pesquisa de carga de trabalho confirmou exaustão. Este plano implementa rituais de bem-estar, limite de horas extras e canal de feedback contínuo.",
+      status: "completed", priority: "high",
+      dueDate: addDays(addWeeks(START, 80), 0), completedAt: addWeeks(START, 83), createdAt: addWeeks(START, 71),
     },
   })
-
   await prisma.actionPlanTask.createMany({
     data: [
-      { id: randomUUID(), tenantId, actionPlanId: plan1.id, title: "Implementar retrospectiva quinzenal de bem-estar", assigneeId: rhUserIdForAssign, dueDate: addWeeks(ONE_YEAR_AGO, 22), completedAt: addWeeks(ONE_YEAR_AGO, 21) },
-      { id: randomUUID(), tenantId, actionPlanId: plan1.id, title: "Reduzir carga de horas extras — máx. 4h/semana", assigneeId: adminUser.id, dueDate: addWeeks(ONE_YEAR_AGO, 24), completedAt: addWeeks(ONE_YEAR_AGO, 25) },
-      { id: randomUUID(), tenantId, actionPlanId: plan1.id, title: "Criar canal direto de feedback com gestores", assigneeId: rhUserIdForAssign, dueDate: addWeeks(ONE_YEAR_AGO, 26), completedAt: addWeeks(ONE_YEAR_AGO, 27) },
+      { id: randomUUID(), tenantId, actionPlanId: plan1.id, title: "Implementar retrospectiva quinzenal de bem-estar", assigneeId: rhUser.id, dueDate: addWeeks(START, 73), completedAt: addWeeks(START, 72) },
+      { id: randomUUID(), tenantId, actionPlanId: plan1.id, title: "Limitar horas extras a 4h/semana por colaborador", assigneeId: adminUser.id, dueDate: addWeeks(START, 75), completedAt: addWeeks(START, 76) },
+      { id: randomUUID(), tenantId, actionPlanId: plan1.id, title: "Criar canal direto de feedback contínuo com gestores", assigneeId: rhUser.id, dueDate: addWeeks(START, 77), completedAt: addWeeks(START, 78) },
+      { id: randomUUID(), tenantId, actionPlanId: plan1.id, title: "Reduzir escopo do projeto para aliviar pressão imediata", assigneeId: adminUser.id, dueDate: addWeeks(START, 74), completedAt: addWeeks(START, 73) },
     ],
   })
 
   const plan2 = await prisma.actionPlan.create({
     data: {
-      id: randomUUID(),
-      tenantId,
-      title: "Reverter tendência negativa de bem-estar — Financeiro",
-      description:
-        "Score do departamento Financeiro vem caindo consistentemente nos últimos 3 meses. Análise indica pressão por fechamentos e falta de reconhecimento. Intervenção urgente necessária.",
-      status: "in_progress",
-      priority: "high",
-      dueDate: addDays(NOW, 30),
-      completedAt: null,
+      id: randomUUID(), tenantId,
+      title: "Reverter tendência negativa — Financeiro",
+      description: "Score do Financeiro declina continuamente nos últimos 26 meses (3.9 → 2.8). Análise qualitativa aponta pressão crescente por fechamentos mensais, metas irreais e falta de reconhecimento. Plano de intervenção urgente.",
+      status: "in_progress", priority: "high",
+      dueDate: addDays(NOW, 45), completedAt: null, createdAt: addDays(NOW, -14),
     },
   })
-
   await prisma.actionPlanTask.createMany({
     data: [
-      { id: randomUUID(), tenantId, actionPlanId: plan2.id, title: "Realizar 1:1s individuais com toda a equipe Financeiro", assigneeId: rhUserIdForAssign, dueDate: addDays(NOW, 7), completedAt: null },
-      { id: randomUUID(), tenantId, actionPlanId: plan2.id, title: "Revisar metas e prazos de fechamento contábil", assigneeId: adminUser.id, dueDate: addDays(NOW, 14), completedAt: null },
-      { id: randomUUID(), tenantId, actionPlanId: plan2.id, title: "Implementar programa de reconhecimento mensal", assigneeId: rhUserIdForAssign, dueDate: addDays(NOW, 21), completedAt: subMonths(NOW, 0) },
-      { id: randomUUID(), tenantId, actionPlanId: plan2.id, title: "Pesquisa qualitativa aprofundada com colaboradores voluntários", assigneeId: rhUserIdForAssign, dueDate: addDays(NOW, 10), completedAt: null },
+      { id: randomUUID(), tenantId, actionPlanId: plan2.id, title: "1:1s individuais com toda a equipe Financeiro", assigneeId: rhUser.id, dueDate: addDays(NOW, 7), completedAt: null },
+      { id: randomUUID(), tenantId, actionPlanId: plan2.id, title: "Revisão das metas e prazos de fechamento contábil", assigneeId: adminUser.id, dueDate: addDays(NOW, 14), completedAt: null },
+      { id: randomUUID(), tenantId, actionPlanId: plan2.id, title: "Implantar programa de reconhecimento mensal", assigneeId: rhUser.id, dueDate: addDays(NOW, 21), completedAt: addDays(NOW, -2) },
+      { id: randomUUID(), tenantId, actionPlanId: plan2.id, title: "Pesquisa qualitativa aprofundada (voluntários)", assigneeId: rhUser.id, dueDate: addDays(NOW, 10), completedAt: null },
     ],
   })
 
   const plan3 = await prisma.actionPlan.create({
     data: {
-      id: randomUUID(),
-      tenantId,
-      title: "Intervenção de emergência em bem-estar — Operações",
-      description:
-        "Múltiplos alertas críticos em Operações: score abaixo de 2.5, adesão às pesquisas inferior a 55%, relatos anônimos sobre sobrecarga e conflitos. Plano de intervenção emergencial.",
-      status: "open",
-      priority: "high",
-      dueDate: addDays(NOW, 14),
-      completedAt: null,
+      id: randomUUID(), tenantId,
+      title: "Intervenção emergencial — Operações",
+      description: "Crise em Operações: score < 2.2 por 8 semanas consecutivas, adesão < 55%, múltiplos relatos anônimos de sobrecarga e conflitos com lideranças. Plano de emergência com ações imediatas.",
+      status: "open", priority: "high",
+      dueDate: addDays(NOW, 21), completedAt: null, createdAt: addDays(NOW, -5),
     },
   })
-
   await prisma.actionPlanTask.createMany({
     data: [
-      { id: randomUUID(), tenantId, actionPlanId: plan3.id, title: "Reunião de escuta ativa com equipe de Operações", assigneeId: adminUser.id, dueDate: addDays(NOW, 3), completedAt: null },
-      { id: randomUUID(), tenantId, actionPlanId: plan3.id, title: "Avaliação ergonômica do ambiente físico", assigneeId: rhUserIdForAssign, dueDate: addDays(NOW, 5), completedAt: null },
+      { id: randomUUID(), tenantId, actionPlanId: plan3.id, title: "Reunião de escuta ativa com toda a equipe de Operações", assigneeId: adminUser.id, dueDate: addDays(NOW, 3), completedAt: null },
+      { id: randomUUID(), tenantId, actionPlanId: plan3.id, title: "Avaliação ergonômica completa do ambiente físico", assigneeId: rhUser.id, dueDate: addDays(NOW, 5), completedAt: null },
       { id: randomUUID(), tenantId, actionPlanId: plan3.id, title: "Revisão da escala de turnos e banco de horas", assigneeId: adminUser.id, dueDate: addDays(NOW, 7), completedAt: null },
-      { id: randomUUID(), tenantId, actionPlanId: plan3.id, title: "Processo de mediação para conflitos identificados", assigneeId: rhUserIdForAssign, dueDate: addDays(NOW, 10), completedAt: null },
-      { id: randomUUID(), tenantId, actionPlanId: plan3.id, title: "Check-in semanal presencial com liderança do setor", assigneeId: adminUser.id, dueDate: addDays(NOW, 14), completedAt: null },
+      { id: randomUUID(), tenantId, actionPlanId: plan3.id, title: "Processo de mediação para conflitos identificados", assigneeId: rhUser.id, dueDate: addDays(NOW, 10), completedAt: null },
+      { id: randomUUID(), tenantId, actionPlanId: plan3.id, title: "Check-in semanal presencial com liderança do setor", assigneeId: adminUser.id, dueDate: addDays(NOW, 21), completedAt: null },
+    ],
+  })
+
+  const plan4 = await prisma.actionPlan.create({
+    data: {
+      id: randomUUID(), tenantId,
+      title: "Melhorias ergonômicas — Operações",
+      description: "Pesquisa de Segurança e Ergonomia detectou score 2.4 no ambiente físico de Operações. Colaboradores relatam dores nas costas e equipamentos deteriorados. Plano de modernização do espaço físico.",
+      status: "completed", priority: "medium",
+      dueDate: addWeeks(START, 68), completedAt: addWeeks(START, 72), createdAt: addWeeks(START, 58),
+    },
+  })
+  await prisma.actionPlanTask.createMany({
+    data: [
+      { id: randomUUID(), tenantId, actionPlanId: plan4.id, title: "Laudo de ergonomia por empresa especializada", assigneeId: adminUser.id, dueDate: addWeeks(START, 60), completedAt: addWeeks(START, 61) },
+      { id: randomUUID(), tenantId, actionPlanId: plan4.id, title: "Substituição de 9 cadeiras e ajuste de mesas", assigneeId: adminUser.id, dueDate: addWeeks(START, 64), completedAt: addWeeks(START, 65) },
+      { id: randomUUID(), tenantId, actionPlanId: plan4.id, title: "Treinamento de ginástica laboral 2x por semana", assigneeId: rhUser.id, dueDate: addWeeks(START, 66), completedAt: addWeeks(START, 67) },
+    ],
+  })
+
+  const plan5 = await prisma.actionPlan.create({
+    data: {
+      id: randomUUID(), tenantId,
+      title: "Engajamento e adesão às pesquisas — Suporte",
+      description: "Adesão às pesquisas em Suporte caiu de 87% para 74% após o 14º mês. Análise sugere sobrecarga de atendimento e falta de clareza sobre a importância da participação.",
+      status: "in_progress", priority: "medium",
+      dueDate: addDays(NOW, 30), completedAt: null, createdAt: addDays(NOW, -21),
+    },
+  })
+  await prisma.actionPlanTask.createMany({
+    data: [
+      { id: randomUUID(), tenantId, actionPlanId: plan5.id, title: "Comunicado interno sobre importância das pesquisas de saúde", assigneeId: rhUser.id, dueDate: addDays(NOW, 5), completedAt: addDays(NOW, -14) },
+      { id: randomUUID(), tenantId, actionPlanId: plan5.id, title: "Ajustar horário de envio para após o pico de chamados", assigneeId: adminUser.id, dueDate: addDays(NOW, 10), completedAt: null },
+      { id: randomUUID(), tenantId, actionPlanId: plan5.id, title: "Sessão de feedback sobre rotação de plantões", assigneeId: rhUser.id, dueDate: addDays(NOW, 21), completedAt: null },
+    ],
+  })
+
+  const plan6 = await prisma.actionPlan.create({
+    data: {
+      id: randomUUID(), tenantId,
+      title: "Gestão do pico de final de ano — Comercial",
+      description: "Dados históricos mostram queda recorrente de score em Comercial todo mês de nov-dez (pressão de metas anuais). Plano preventivo para preparar a equipe para o próximo ciclo.",
+      status: "open", priority: "low",
+      dueDate: new Date("2026-10-31"), completedAt: null, createdAt: addDays(NOW, -3),
+    },
+  })
+  await prisma.actionPlanTask.createMany({
+    data: [
+      { id: randomUUID(), tenantId, actionPlanId: plan6.id, title: "Workshop de gestão de estresse e pressão para Comercial", assigneeId: rhUser.id, dueDate: new Date("2026-09-30"), completedAt: null },
+      { id: randomUUID(), tenantId, actionPlanId: plan6.id, title: "Revisar metas de novembro e dezembro com base em histórico real", assigneeId: adminUser.id, dueDate: new Date("2026-10-15"), completedAt: null },
     ],
   })
 
   logger.info("✅ Planos de ação criados.")
 
   logger.info("💡 Criando sugestões de planos de ação...")
-
-  const finDeptIdForSuggestion = deptMap["Financeiro"] ?? ""
-  const opsDeptIdForSuggestion = deptMap["Operações"] ?? ""
-  const tecDeptIdForSuggestionBlock = deptMap["Tecnologia"] ?? ""
-
-  const suggestion1 = await prisma.actionPlanSuggestion.create({
+  const s1 = await prisma.actionPlanSuggestion.create({
     data: {
-      id: randomUUID(),
-      tenantId,
-      suggestionKey: `alert-negative_trend-${finDeptIdForSuggestion}`,
-      title: `Plano de melhoria contínua — Financeiro`,
-      description: `Alerta gerado — setor: Financeiro, severidade: atenção. O setor Financeiro apresenta tendência negativa por 3 períodos consecutivos abaixo da média histórica. Tendências negativas prolongadas aumentam o risco de burnout e comprometem o cumprimento da NR-1. O problema se agrava a cada ciclo sem intervenção.`,
-      priority: "high",
-      reason: `Tendência negativa no setor Financeiro — ativo há poucos dias`,
+      id: randomUUID(), tenantId,
+      suggestionKey: `alert-negative_trend-${finDeptId}`,
+      title: "Plano de melhoria contínua — Financeiro",
+      description: "Alerta: tendência negativa detectada no setor Financeiro. O índice de saúde cai consistentemente há 3+ períodos. Tendências prolongadas aumentam o risco de burnout e comprometem a conformidade com a NR-1.",
+      priority: "high", reason: "Tendência negativa persistente no setor Financeiro — 3 períodos consecutivos abaixo da média histórica",
       status: "pending",
     },
   })
   await prisma.actionPlanSuggestionTask.createMany({
     data: [
-      { id: randomUUID(), suggestionId: suggestion1.id, title: "Análise detalhada das respostas dos últimos períodos", sortOrder: 0 },
-      { id: randomUUID(), suggestionId: suggestion1.id, title: "Reunião com liderança para identificar causas raiz", sortOrder: 1 },
-      { id: randomUUID(), suggestionId: suggestion1.id, title: "Definir metas de melhoria e prazo de reavaliação", sortOrder: 2 },
-      { id: randomUUID(), suggestionId: suggestion1.id, title: "Revisão do processo de trabalho no setor", sortOrder: 3 },
+      { id: randomUUID(), suggestionId: s1.id, title: "Análise detalhada das respostas dos últimos 3 meses", sortOrder: 0 },
+      { id: randomUUID(), suggestionId: s1.id, title: "Reunião de diagnóstico com liderança do Financeiro", sortOrder: 1 },
+      { id: randomUUID(), suggestionId: s1.id, title: "Definir metas de melhoria mensuráveis com prazo de 60 dias", sortOrder: 2 },
+      { id: randomUUID(), suggestionId: s1.id, title: "Programa de reconhecimento vinculado a indicadores de bem-estar", sortOrder: 3 },
     ],
   })
 
-  const suggestion2 = await prisma.actionPlanSuggestion.create({
+  const s2 = await prisma.actionPlanSuggestion.create({
     data: {
-      id: randomUUID(),
-      tenantId,
-      suggestionKey: `alert-low_adherence-${opsDeptIdForSuggestion}`,
-      title: `Engajamento nas pesquisas — Operações`,
-      description: `Alerta gerado — setor: Operações, severidade: atenção. Taxa de adesão abaixo da meta de 80%. Baixa participação compromete a representatividade dos dados e pode mascarar problemas reais de saúde no time.`,
-      priority: "medium",
-      reason: `Baixa adesão no setor Operações`,
+      id: randomUUID(), tenantId,
+      suggestionKey: `alert-no_response-${opsDeptId}`,
+      title: "Aumentar adesão às pesquisas — Operações",
+      description: "Taxa de adesão em Operações abaixo de 55% por 5 semanas. Baixa participação compromete a representatividade dos dados e viola a integridade do programa de monitoramento NR-1.",
+      priority: "high", reason: "Adesão crítica em Operações — abaixo do mínimo aceitável de 80%",
       status: "pending",
     },
   })
   await prisma.actionPlanSuggestionTask.createMany({
     data: [
-      { id: randomUUID(), suggestionId: suggestion2.id, title: "Comunicado interno sobre a importância das pesquisas", sortOrder: 0 },
-      { id: randomUUID(), suggestionId: suggestion2.id, title: "Alinhamento com gestores e lideranças do setor", sortOrder: 1 },
-      { id: randomUUID(), suggestionId: suggestion2.id, title: "Revisar horário e frequência de envio das pesquisas", sortOrder: 2 },
-      { id: randomUUID(), suggestionId: suggestion2.id, title: "Identificar e remover barreiras à participação", sortOrder: 3 },
+      { id: randomUUID(), suggestionId: s2.id, title: "Reunião com supervisores de Operações para alinhar importância", sortOrder: 0 },
+      { id: randomUUID(), suggestionId: s2.id, title: "Revisão do horário de envio das pesquisas (turno vs. horário)", sortOrder: 1 },
+      { id: randomUUID(), suggestionId: s2.id, title: "Criar incentivo de equipe para participação coletiva", sortOrder: 2 },
     ],
   })
 
-  const suggestion3 = await prisma.actionPlanSuggestion.create({
+  const s3 = await prisma.actionPlanSuggestion.create({
     data: {
-      id: randomUUID(),
-      tenantId,
-      suggestionKey: `alert-score_drop-${tecDeptIdForSuggestionBlock}`,
-      title: `Intervenção de bem-estar — Tecnologia`,
-      description: `Alerta gerado — setor: Tecnologia, severidade: atenção. Queda de índice detectada. Quedas de score costumam indicar aumento de pressão, sobrecarga ou conflitos não endereçados. Este alerta foi gerado durante o período de alta carga identificado em Q3.`,
-      priority: "high",
-      reason: `Alerta score_drop no setor Tecnologia`,
+      id: randomUUID(), tenantId,
+      suggestionKey: `converted-score_drop-tec-${tecDeptId}`,
+      title: "Intervenção de bem-estar — Tecnologia (Q3/2025)",
+      description: "Queda abrupta de score detectada em Tecnologia durante o projeto de grande porte. Score caiu de 4.1 para 2.8 em 8 semanas — maior queda registrada na organização.",
+      priority: "high", reason: "Queda de score acima de 2.0 pontos em Tecnologia — alerta crítico",
       status: "converted",
       actionPlanId: plan1.id,
     },
   })
   await prisma.actionPlanSuggestionTask.createMany({
     data: [
-      { id: randomUUID(), suggestionId: suggestion3.id, title: "Reunião de diagnóstico com liderança do setor", sortOrder: 0 },
-      { id: randomUUID(), suggestionId: suggestion3.id, title: "Levantamento dos principais fatores de risco relatados", sortOrder: 1 },
-      { id: randomUUID(), suggestionId: suggestion3.id, title: "Definir medidas corretivas e responsáveis", sortOrder: 2 },
-      { id: randomUUID(), suggestionId: suggestion3.id, title: "Monitorar evolução nas próximas pesquisas", sortOrder: 3 },
+      { id: randomUUID(), suggestionId: s3.id, title: "Diagnóstico rápido com liderança de Tecnologia", sortOrder: 0 },
+      { id: randomUUID(), suggestionId: s3.id, title: "Levantamento dos fatores de risco relatados", sortOrder: 1 },
+      { id: randomUUID(), suggestionId: s3.id, title: "Implementar medidas corretivas imediatas", sortOrder: 2 },
     ],
   })
 
-  const suggestion4 = await prisma.actionPlanSuggestion.create({
+  const s4 = await prisma.actionPlanSuggestion.create({
     data: {
-      id: randomUUID(),
-      tenantId,
-      suggestionKey: "open-reports",
-      title: "Responder relatos anônimos em aberto",
-      description: `Existem relatos anônimos sem resolução registrada. Relatos sem acompanhamento comprometem a confiança dos colaboradores no canal e a evidência de conformidade com a NR-1.`,
-      priority: "medium",
-      reason: `Relatos anônimos em aberto sem resolução`,
-      status: "dismissed",
-      dismissedAt: subMonths(NOW, 1),
+      id: randomUUID(), tenantId,
+      suggestionKey: "dismissed-open-reports-2024",
+      title: "Endereçar relatos anônimos em aberto",
+      description: "Existem 4 relatos anônimos sem resolução registrada há mais de 30 dias. Relatos sem acompanhamento corroem a confiança no canal e comprometem a evidência de conformidade.",
+      priority: "medium", reason: "Relatos anônimos sem resolução por mais de 30 dias",
+      status: "dismissed", dismissedAt: subMonths(NOW, 18),
     },
   })
   await prisma.actionPlanSuggestionTask.createMany({
     data: [
-      { id: randomUUID(), suggestionId: suggestion4.id, title: "Revisar relatos em aberto e definir responsáveis", sortOrder: 0 },
-      { id: randomUUID(), suggestionId: suggestion4.id, title: "Registrar tratativa para cada relato sem resolução", sortOrder: 1 },
-      { id: randomUUID(), suggestionId: suggestion4.id, title: "Arquivar relatos que não exigem ação adicional", sortOrder: 2 },
+      { id: randomUUID(), suggestionId: s4.id, title: "Revisar e categorizar todos os relatos em aberto", sortOrder: 0 },
+      { id: randomUUID(), suggestionId: s4.id, title: "Definir responsáveis e SLA para resposta", sortOrder: 1 },
     ],
   })
 
-  logger.info("✅ Sugestões de planos de ação criadas.")
+  const s5 = await prisma.actionPlanSuggestion.create({
+    data: {
+      id: randomUUID(), tenantId,
+      suggestionKey: `alert-low_score-ops-ergonomia-${opsDeptId}`,
+      title: "Programa de saúde física — Operações",
+      description: "Pesquisa de Segurança e Ergonomia detectou score médio de 2.4 em Operações. Indicadores de dor física e ambiente inadequado estão acima do aceitável para atividades operacionais.",
+      priority: "high", reason: "Score de ergonomia/ambiente físico crítico em Operações — 2.4/5.0",
+      status: "converted",
+      actionPlanId: plan4.id,
+    },
+  })
+  await prisma.actionPlanSuggestionTask.createMany({
+    data: [
+      { id: randomUUID(), suggestionId: s5.id, title: "Laudo técnico de ergonomia", sortOrder: 0 },
+      { id: randomUUID(), suggestionId: s5.id, title: "Substituição de equipamentos inadequados", sortOrder: 1 },
+      { id: randomUUID(), suggestionId: s5.id, title: "Ginástica laboral preventiva", sortOrder: 2 },
+    ],
+  })
+
+  logger.info("✅ Sugestões criadas.")
 
   logger.info("📄 Criando documentos...")
   await prisma.document.createMany({
-    data: DOCUMENT_TEMPLATES.map((doc) => ({
-      id: randomUUID(),
-      tenantId,
-      title: doc.title,
-      type: doc.type,
-      isActive: true,
-    })),
+    data: [
+      { id: randomUUID(), tenantId, title: "Programa de Gerenciamento de Riscos (PGR) — 2024", type: "pgr", isActive: true },
+      { id: randomUUID(), tenantId, title: "Programa de Gerenciamento de Riscos (PGR) — 2025", type: "pgr", isActive: true },
+      { id: randomUUID(), tenantId, title: "Manual de Segurança e Saúde Ocupacional", type: "manual", isActive: true },
+      { id: randomUUID(), tenantId, title: "Plano de Ação Corretiva — Operações Q3/2025", type: "action_plan", isActive: true },
+      { id: randomUUID(), tenantId, title: "Relatório de Incidentes — Outubro 2025", type: "report", isActive: true },
+      { id: randomUUID(), tenantId, title: "Treinamento NR-1: Riscos Psicossociais no Trabalho", type: "training", isActive: true },
+      { id: randomUUID(), tenantId, title: "Política de Bem-Estar e Saúde Mental", type: "policy", isActive: true },
+      { id: randomUUID(), tenantId, title: "Ata de Reunião CIPA — Novembro 2025", type: "meeting_minutes", isActive: true },
+      { id: randomUUID(), tenantId, title: "Laudo Ergonômico — Operações (2025)", type: "report", isActive: true },
+      { id: randomUUID(), tenantId, title: "Acordo de Metas Revisado — Financeiro 2026", type: "policy", isActive: true },
+    ],
   })
   logger.info("✅ Documentos criados.")
 
   logger.info("📢 Criando relatos anônimos...")
-  const _deptIdsArray = Object.values(deptMap)
   await prisma.anonymousReport.createMany({
-    data: REPORT_TEMPLATES.map((report) => {
-      const createdAt = addWeeks(ONE_YEAR_AGO, rand(4, 48))
-      return {
-        id: randomUUID(),
-        tenantId,
-        orgSlug: ORG_SLUG_NEW,
-        content: report.content,
-        category: report.category,
-        status: report.status,
-        resolvedAt: report.status === "resolved" ? addDays(createdAt, rand(3, 14)) : null,
-        createdAt,
-      }
-    }),
+    data: [
+      { id: randomUUID(), tenantId, orgSlug: ORG_SLUG_NEW, content: "Estou com uma pressão enorme para entregar resultados impossíveis em prazos irreais. Isso está afetando meu sono e saúde física.", category: "overload", status: "resolved", resolvedAt: addWeeks(START, 38), createdAt: addWeeks(START, 34) },
+      { id: randomUUID(), tenantId, orgSlug: ORG_SLUG_NEW, content: "Um colega faz comentários inapropriados e cria um ambiente hostil. Já aconteceu mais de uma vez na frente de outros.", category: "harassment", status: "resolved", resolvedAt: addWeeks(START, 20), createdAt: addWeeks(START, 16) },
+      { id: randomUUID(), tenantId, orgSlug: ORG_SLUG_NEW, content: "As cadeiras e mesas na área de operações estão causando dores nas costas. Precisamos de ergonomia adequada urgentemente.", category: "physical_environment", status: "resolved", resolvedAt: addWeeks(START, 68), createdAt: addWeeks(START, 59) },
+      { id: randomUUID(), tenantId, orgSlug: ORG_SLUG_NEW, content: "Há um conflito sério entre dois líderes que está afetando toda a equipe. Precisamos de mediação profissional urgente.", category: "conflict", status: "analyzing", resolvedAt: null, createdAt: addWeeks(START, 55) },
+      { id: randomUUID(), tenantId, orgSlug: ORG_SLUG_NEW, content: "O volume de reuniões está completamente excessivo. Passamos mais tempo em reunião do que trabalhando de verdade.", category: "overload", status: "resolved", resolvedAt: addWeeks(START, 48), createdAt: addWeeks(START, 44) },
+      { id: randomUUID(), tenantId, orgSlug: ORG_SLUG_NEW, content: "Me sinto muito mal com o nível de cobrança e microgerenciamento. Não tenho autonomia nenhuma para fazer meu trabalho.", category: "other", status: "resolved", resolvedAt: addWeeks(START, 82), createdAt: addWeeks(START, 78) },
+      { id: randomUUID(), tenantId, orgSlug: ORG_SLUG_NEW, content: "A temperatura do escritório está insuportável no verão. O ar-condicionado central não funciona adequadamente na ala leste.", category: "physical_environment", status: "resolved", resolvedAt: addWeeks(START, 12), createdAt: addWeeks(START, 8) },
+      { id: randomUUID(), tenantId, orgSlug: ORG_SLUG_NEW, content: "Sinto que as metas do setor financeiro são determinadas sem levar em conta a realidade operacional. Isso gera estresse crônico.", category: "overload", status: "analyzing", resolvedAt: null, createdAt: addWeeks(START, 90) },
+      { id: randomUUID(), tenantId, orgSlug: ORG_SLUG_NEW, content: "Tenho me sentindo invisível no time. Minha contribuição nunca é reconhecida publicamente, mesmo quando os resultados são bons.", category: "other", status: "open", resolvedAt: null, createdAt: addDays(NOW, -18) },
+      { id: randomUUID(), tenantId, orgSlug: ORG_SLUG_NEW, content: "O processo de onboarding para novos colaboradores de Suporte é inexistente. Estou há 2 meses sem treinamento adequado.", category: "other", status: "open", resolvedAt: null, createdAt: addDays(NOW, -10) },
+      { id: randomUUID(), tenantId, orgSlug: ORG_SLUG_NEW, content: "Há favoritismo explícito na distribuição de projetos premium. Sempre as mesmas pessoas recebem as oportunidades melhores.", category: "conflict", status: "analyzing", resolvedAt: null, createdAt: addDays(NOW, -6) },
+      { id: randomUUID(), tenantId, orgSlug: ORG_SLUG_NEW, content: "Estou com pensamentos negativos recorrentes sobre o trabalho e não estou conseguindo dormir há semanas.", category: "other", status: "open", resolvedAt: null, createdAt: addDays(NOW, -2) },
+    ],
   })
   logger.info("✅ Relatos anônimos criados.")
 
   logger.info("📋 Criando revisões PGR...")
-  const pgrDepts = DEPT_PROFILES.map((p) => ({ name: p.name, id: deptMap[p.name] ?? "", empCount: p.employeeCount }))
+  type PgrDeptResultRow = {
+    id: string; pgrReviewId: string; departmentId: string; departmentName: string
+    employeeCount: number; avgScore: number; responseCount: number; totalRecipients: number; createdAt: Date
+  }
+  type PgrQuestionResultRow = {
+    id: string; pgrReviewId: string; departmentId: string; questionId: string
+    questionText: string; questionOrder: number; scoreDirection: string; avgScore: number; responseCount: number; createdAt: Date
+  }
 
   const pgrPeriods = [
-    { period: "2025-06", reviewedAt: new Date("2025-06-30"), nextReviewAt: new Date("2025-12-31") },
-    { period: "2025-12", reviewedAt: new Date("2025-12-31"), nextReviewAt: new Date("2026-06-30") },
-    { period: "2026-03", reviewedAt: new Date("2026-03-31"), nextReviewAt: new Date("2026-09-30") },
+    { period: "2024-09", reviewedAt: new Date("2024-09-30"), nextReviewAt: new Date("2025-03-31"), weekApprox: 26 },
+    { period: "2025-03", reviewedAt: new Date("2025-03-31"), nextReviewAt: new Date("2025-09-30"), weekApprox: 52 },
+    { period: "2025-09", reviewedAt: new Date("2025-09-30"), nextReviewAt: new Date("2026-03-31"), weekApprox: 78 },
+    { period: "2025-12", reviewedAt: new Date("2025-12-31"), nextReviewAt: new Date("2026-06-30"), weekApprox: 91 },
+    { period: "2026-03", reviewedAt: new Date("2026-03-31"), nextReviewAt: new Date("2026-09-30"), weekApprox: 104 },
   ]
 
   for (const pgr of pgrPeriods) {
     const pgrId = randomUUID()
     await prisma.pgrReview.create({
-      data: {
-        id: pgrId,
-        tenantId,
-        period: pgr.period,
-        status: "completed",
-        reviewedAt: pgr.reviewedAt,
-        nextReviewAt: pgr.nextReviewAt,
-        createdAt: pgr.reviewedAt,
-      },
+      data: { id: pgrId, tenantId, period: pgr.period, status: "completed", reviewedAt: pgr.reviewedAt, nextReviewAt: pgr.nextReviewAt, createdAt: pgr.reviewedAt },
     })
 
-    const deptResultRows: {
-      id: string
-      pgrReviewId: string
-      departmentId: string
-      departmentName: string
-      employeeCount: number
-      avgScore: number
-      responseCount: number
-      totalRecipients: number
-      createdAt: Date
-    }[] = []
-    const questionResultRows: {
-      id: string
-      pgrReviewId: string
-      departmentId: string
-      questionId: string
-      questionText: string
-      questionOrder: number
-      scoreDirection: string
-      avgScore: number
-      responseCount: number
-      createdAt: Date
-    }[] = []
+    const deptResultRows: PgrDeptResultRow[] = []
+    const questionResultRows: PgrQuestionResultRow[] = []
 
-    for (const dept of pgrDepts) {
-      if (!dept.id) continue
-      const weekOfPgr = Math.round(
-        (pgr.reviewedAt.getTime() - ONE_YEAR_AGO.getTime()) / (7 * 24 * 3600 * 1000)
-      )
-      const profile = DEPT_PROFILES.find((p) => p.name === dept.name)
-      const avgScore = profile ? clamp(profile.baseScore(Math.max(0, weekOfPgr))) : 3.5
-      const responseCount = Math.round(dept.empCount * 0.82)
-      const deptResultId = randomUUID()
+    for (const deptProfile of DEPT_PROFILES) {
+      if (deptProfile.startWeek > pgr.weekApprox) continue
+      const deptId = deptMap[deptProfile.deptName]
+      if (!deptId) continue
+
+      const configEntries = configsMap[deptProfile.deptName] ?? []
+      const allScoresForDept: number[] = []
+
+      for (const ce of configEntries) {
+        const sc = ce.profile.baseScore(Math.max(deptProfile.startWeek, pgr.weekApprox - 4))
+        allScoresForDept.push(sc)
+      }
+      const avgScore = allScoresForDept.length > 0 ? allScoresForDept.reduce((a, b) => a + b, 0) / allScoresForDept.length : 3.5
+      const responseCount = Math.round(deptProfile.employeeCount * 0.82)
 
       deptResultRows.push({
-        id: deptResultId,
-        pgrReviewId: pgrId,
-        departmentId: dept.id,
-        departmentName: dept.name,
-        employeeCount: dept.empCount,
-        avgScore,
-        responseCount,
-        totalRecipients: dept.empCount,
+        id: randomUUID(), pgrReviewId: pgrId, departmentId: deptId,
+        departmentName: deptProfile.deptName, employeeCount: deptProfile.employeeCount,
+        avgScore: clamp(avgScore), responseCount, totalRecipients: deptProfile.employeeCount,
         createdAt: pgr.reviewedAt,
       })
 
-      const qIds = questionMap[dept.name] ?? []
+      const primaryConfig = configEntries[0]
+      if (!primaryConfig) continue
+      const qIds = primaryConfig.questionIds
+      const bank = QUESTION_BANKS[primaryConfig.profile.questionBank]
+
       for (let qi = 0; qi < qIds.length; qi++) {
         const qId = qIds[qi]
-        if (!qId) continue
+        const bankQ = bank[qi]
+        if (!qId || !bankQ) continue
         questionResultRows.push({
-          id: randomUUID(),
-          pgrReviewId: pgrId,
-          departmentId: dept.id,
-          questionId: qId,
-          questionText: (QUESTION_BANKS["default"] ?? [])[qi]?.text ?? `Pergunta ${qi + 1}`,
-          questionOrder: qi + 1,
-          scoreDirection: "higher_is_better",
+          id: randomUUID(), pgrReviewId: pgrId, departmentId: deptId, questionId: qId,
+          questionText: bankQ.text, questionOrder: qi + 1, scoreDirection: bankQ.direction,
           avgScore: clamp(avgScore + (Math.random() - 0.5) * 0.6),
-          responseCount,
-          createdAt: pgr.reviewedAt,
+          responseCount, createdAt: pgr.reviewedAt,
         })
       }
     }
@@ -1008,26 +1001,33 @@ async function main(): Promise<void> {
     await prisma.pgrDeptResult.createMany({ data: deptResultRows })
     await prisma.pgrQuestionResult.createMany({ data: questionResultRows })
   }
-
-  logger.info("✅ Revisões PGR criadas.")
+  logger.info("✅ Revisões PGR criadas (5 períodos).")
 
   await prisma.$disconnect()
 
   logger.info("")
   logger.info("🎉 Seed de demo concluído com sucesso!")
   logger.info("")
-  logger.info("  Organização: Demo (slug: demo)")
-  logger.info(`  Admin:       ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`)
-  logger.info(`  RH:          ${RH_EMAIL} / ${RH_PASSWORD}`)
+  logger.info("  Organização:  Demo (slug: demo)")
+  logger.info(`  Admin:        ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`)
+  logger.info(`  RH:           ${RH_EMAIL} / ${RH_PASSWORD}`)
   logger.info("")
-  logger.info("  Departamentos: 6 (Tecnologia, Comercial, RH, Financeiro, Operações, Marketing)")
-  logger.info("  Colaboradores: 41")
-  logger.info("  Pesquisas:     ~1 ano de dados com scores variados")
-  logger.info("  Alertas:       gerados automaticamente por perfil de setor")
-  logger.info("  Planos de ação: 3 (1 concluído, 1 em progresso, 1 aberto)")
-  logger.info("  Documentos:    7")
-  logger.info("  Relatos anônimos: 6")
-  logger.info("  Revisões PGR:  3")
+  logger.info("  Departamentos:  7 (Tecnologia, Comercial, RH, Financeiro, Operações, Marketing + Suporte [mês 14])")
+  logger.info("  Colaboradores:  46")
+  logger.info(`  Dispatches:     ${allDispatches.length}`)
+  logger.info(`  Respostas:      ${allResponses.length}`)
+  logger.info(`  Itens de resp:  ${allItems.length}`)
+  logger.info(`  Alertas:        ${alertsToCreate.length}`)
+  logger.info("  Planos de ação: 6")
+  logger.info("  Sugestões:      5")
+  logger.info("  Documentos:     10")
+  logger.info("  Relatos anôn.:  12")
+  logger.info("  Revisões PGR:   5 (set/2024 → mar/2026)")
+  logger.info("")
+  logger.info("  Configs por setor:")
+  logger.info("    Tecnologia:  2 configs (Saúde Geral semanal + Carga de Trabalho quinzenal)")
+  logger.info("    Operações:   2 configs (Saúde Geral semanal + Segurança/Ergonomia mensal)")
+  logger.info("    Demais:      1 config cada")
 }
 
 main().catch((e) => {

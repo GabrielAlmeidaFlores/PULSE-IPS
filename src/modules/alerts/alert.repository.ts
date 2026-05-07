@@ -152,12 +152,34 @@ export interface DeptDispatchAvg {
   tenantId: string
   departmentId: string
   departmentName: string
-  dispatchId: string
   avgScore: number
   createdAt: Date
 }
 
+interface DispatchWithResponses {
+  createdAt: Date
+  dispatchedAt: Date | null
+  responses: { items: { score: number; question: { scoreDirection: string } }[] }[]
+}
+
+function accumulateDayScores(
+  dayMap: Map<string, { scores: number[]; responseCount: number; createdAt: Date }>,
+  dispatch: DispatchWithResponses,
+): void {
+  const effectiveDate = dispatch.dispatchedAt ?? dispatch.createdAt
+  const dayKey = effectiveDate.toISOString().slice(0, 10)
+  const existing = dayMap.get(dayKey) ?? { scores: [], responseCount: 0, createdAt: dispatch.createdAt }
+  for (const r of dispatch.responses) {
+    for (const item of r.items) {
+      existing.scores.push(item.question.scoreDirection === "lower_is_better" ? 6 - item.score : item.score)
+    }
+  }
+  existing.responseCount += dispatch.responses.length
+  dayMap.set(dayKey, existing)
+}
+
 export async function findAllTenantsDeptRecentDispatchAvgs(departmentId: string, limitPerDept: number): Promise<DeptDispatchAvg[]> {
+  const DISPATCHES_PER_CONFIG_SAFETY_FACTOR = 3
   const configs = await prisma.healthSurveyConfiguration.findMany({
     where: { departmentId },
     include: {
@@ -165,7 +187,7 @@ export async function findAllTenantsDeptRecentDispatchAvgs(departmentId: string,
       dispatches: {
         where: { status: "available" },
         orderBy: { createdAt: "desc" },
-        take: limitPerDept,
+        take: limitPerDept * DISPATCHES_PER_CONFIG_SAFETY_FACTOR,
         include: {
           responses: {
             include: {
@@ -177,25 +199,31 @@ export async function findAllTenantsDeptRecentDispatchAvgs(departmentId: string,
     },
   })
 
-  const results: DeptDispatchAvg[] = []
+  if (configs.length === 0) return []
+
+  const dept = configs[0]?.department
+  if (!dept) return []
+
+  const dayMap = new Map<string, { scores: number[]; responseCount: number; createdAt: Date }>()
+
   for (const config of configs) {
     for (const dispatch of config.dispatches) {
       if (dispatch.responses.length < MINIMUM_RESPONDENTS_FOR_DISPLAY) continue
-      const allScores = dispatch.responses.flatMap((r) =>
-        r.items.map((item) =>
-          item.question.scoreDirection === "lower_is_better" ? 6 - item.score : item.score,
-        ),
-      )
-      const avgScore = allScores.reduce((a, b) => a + b, 0) / allScores.length
-      results.push({
-        tenantId: config.department.tenantId,
-        departmentId: config.department.id,
-        departmentName: config.department.name,
-        dispatchId: dispatch.id,
-        avgScore,
-        createdAt: dispatch.createdAt,
-      })
+      accumulateDayScores(dayMap, { ...dispatch, dispatchedAt: dispatch.dispatchedAt })
     }
+  }
+
+  const results: DeptDispatchAvg[] = []
+  for (const [, data] of Array.from(dayMap.entries())) {
+    if (data.scores.length === 0) continue
+    const avgScore = data.scores.reduce((a, b) => a + b, 0) / data.scores.length
+    results.push({
+      tenantId: dept.tenantId,
+      departmentId: dept.id,
+      departmentName: dept.name,
+      avgScore,
+      createdAt: data.createdAt,
+    })
   }
   return results.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, limitPerDept)
 }

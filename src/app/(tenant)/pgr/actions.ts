@@ -6,19 +6,23 @@ import { generatePgrReport, markPgrReviewAsReviewed } from "@/modules/pgr/pgr.se
 import { AppError } from "@/libs/errors/app-error"
 import type { ActionResult } from "@/libs/utils/action-result"
 
+interface PgrGenerateResult extends ActionResult {
+  code?: string
+}
+
 const periodSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Formato inválido. Use YYYY-MM.")
 
-export async function generatePgrReportAction(period: string): Promise<ActionResult> {
+export async function generatePgrReportAction(period: string, forceRegenerate = false): Promise<PgrGenerateResult> {
   const session = await getSession()
   if (!session) return { error: "Sessão expirada." }
   const parsed = periodSchema.safeParse(period)
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Período inválido." }
   try {
-    await generatePgrReport(session.tenantId, parsed.data)
+    await generatePgrReport(session.tenantId, parsed.data, forceRegenerate)
     revalidatePath("/pgr")
     return {}
   } catch (err) {
-    if (err instanceof AppError) return { error: err.message }
+    if (err instanceof AppError) return { error: err.message, code: err.code }
     throw err
   }
 }

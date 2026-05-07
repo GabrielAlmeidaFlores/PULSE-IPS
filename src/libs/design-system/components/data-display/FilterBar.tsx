@@ -133,6 +133,7 @@ export function FilterBar({ fields, values, title = "Filtros" }: FilterBarProps)
               <div key={field.key} className="flex flex-col gap-1">
                 <span className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">{field.label}</span>
                 <Input
+                  key={`${field.key}-${values[field.key] ?? ""}`}
                   className={`${field.width ?? "w-[200px]"} h-8 text-xs ${field.mono === true ? "font-mono" : ""}`}
                   style={{ borderRadius: 0 }}
                   placeholder={field.placeholder}

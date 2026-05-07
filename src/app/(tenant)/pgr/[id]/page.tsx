@@ -6,7 +6,6 @@ import { getPgrReviewById, getPgrScoreDistributions } from "@/modules/pgr/pgr.se
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import {
-  ArrowLeft,
   Users,
   CheckCircle2,
   Activity,
@@ -199,15 +198,8 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
   return (
     <div className="flex flex-col h-full">
       <div className="border-b border-border bg-card px-6 py-4 shrink-0">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-          <Link href="/pgr" className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
-            <ArrowLeft className="w-3 h-3" />
-            PGR
-          </Link>
-          <span>/</span>
-          <span className="capitalize">{periodLabel}</span>
-        </div>
-        <div className="flex items-center justify-between">
+        <Link href="/pgr" className="text-xs text-muted-foreground hover:text-foreground transition-colors">← PGR</Link>
+        <div className="flex items-center justify-between mt-2">
           <div>
             <h1 className="text-sm font-bold uppercase tracking-widest capitalize">{periodLabel}</h1>
             <p className="text-xs text-muted-foreground mt-0.5">

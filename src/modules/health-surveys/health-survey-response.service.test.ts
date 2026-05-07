@@ -110,7 +110,10 @@ function makeTokenRecord(overrides?: Partial<TokenRecord>): TokenRecord {
         id: CONFIG_ID,
         tenantId: TENANT_ID,
         departmentId: "dept-1",
+        name: "Pesquisa de Saúde",
+        description: null,
         frequency: "weekly",
+        scheduledDayOfMonth: null,
         workStartTime: "09:00",
         workEndTime: "18:00",
         isActive: true,
@@ -426,7 +429,10 @@ function makeDispatchRecord(overrides?: Partial<DispatchRecord>): DispatchRecord
       id: CONFIG_ID,
       tenantId: TENANT_ID,
       departmentId: "dept-1",
+      name: "Pesquisa de Saúde",
+      description: null,
       frequency: "weekly",
+      scheduledDayOfMonth: null,
       workStartTime: "09:00",
       workEndTime: "18:00",
       isActive: true,
@@ -520,6 +526,13 @@ describe("unlockHealthSurveyViaIdentifier — guards", () => {
 
     await expect(unlockHealthSurveyViaIdentifier(SIGNED_LINK_TOKEN, "99999999999"))
       .rejects.toMatchObject({ code: "EMPLOYEE_NOT_FOUND" })
+  })
+
+  it("lança EMPLOYEE_NOT_IN_DEPARTMENT quando o colaborador pertence a outro setor", async () => {
+    mockFindEmployeeByPhoneOrDocument.mockResolvedValue(makeEmployee({ departmentId: "dept-outro" }))
+
+    await expect(unlockHealthSurveyViaIdentifier(SIGNED_LINK_TOKEN, EMPLOYEE_PHONE))
+      .rejects.toMatchObject({ code: "EMPLOYEE_NOT_IN_DEPARTMENT" })
   })
 
   it("lança OUTSIDE_WORK_WINDOW quando fora do horário de trabalho e colaborador não aceitou o TCLE", async () => {

@@ -71,7 +71,10 @@ async function handleSubscriptionUpdate(subscription: WebhookSubscriptionData): 
   const customer = await findOrganizationByCustomerId(subscription.customer)
   if (!customer) return
 
-  const priceId = subscription.items.data[0]?.price.id ?? ""
+  const priceItem = subscription.items.data[0]
+  if (!priceItem) return
+
+  const priceId = priceItem.price.id
   const planPrice = await findPlanPriceForProvisioning(priceId)
   if (!planPrice) return
 

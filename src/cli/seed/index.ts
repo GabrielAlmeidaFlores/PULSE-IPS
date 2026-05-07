@@ -565,6 +565,7 @@ const PLANS = [
     description: "Ideal para empresas em crescimento. Até 50 colaboradores, pesquisas semanais, alertas automáticos e acesso ao canal de relatos anônimos.",
     maxEmployees: 50,
     externalProductId: "prod_starter_pulse",
+    features: ["anonymous_reports", "messaging"] as const,
     prices: [
       { interval: "month", priceInCents: 29900, externalPriceId: "price_starter_monthly" },
       { interval: "year",  priceInCents: 287040, externalPriceId: "price_starter_annual" },
@@ -575,6 +576,7 @@ const PLANS = [
     description: "Para empresas em expansão. Até 150 colaboradores, todos os recursos do Starter mais exportação de relatórios PGR em PDF e integrações via WhatsApp.",
     maxEmployees: 150,
     externalProductId: "prod_professional_pulse",
+    features: ["action_plans", "documents", "anonymous_reports", "pgr", "messaging"] as const,
     prices: [
       { interval: "month", priceInCents: 69900, externalPriceId: "price_professional_monthly" },
       { interval: "year",  priceInCents: 671040, externalPriceId: "price_professional_annual" },
@@ -585,6 +587,7 @@ const PLANS = [
     description: "Para grandes empresas. Até 300 colaboradores, suporte prioritário, SLA garantido e onboarding dedicado.",
     maxEmployees: 300,
     externalProductId: "prod_enterprise_pulse",
+    features: ["action_plans", "documents", "anonymous_reports", "pgr", "messaging"] as const,
     prices: [
       { interval: "month", priceInCents: 149900, externalPriceId: "price_enterprise_monthly" },
       { interval: "year",  priceInCents: 1439040, externalPriceId: "price_enterprise_annual" },
@@ -643,6 +646,12 @@ async function seedPlans(): Promise<void> {
       const display = (price.priceInCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
       logger.info(`  💰 Price: ${display}/${price.interval}`)
     }
+
+    await prisma.planFeature.deleteMany({ where: { planId } })
+    for (const feature of plan.features) {
+      await prisma.planFeature.create({ data: { planId, feature } })
+    }
+    logger.info(`  🎯 Features: ${plan.features.join(", ")}`)
   }
 }
 

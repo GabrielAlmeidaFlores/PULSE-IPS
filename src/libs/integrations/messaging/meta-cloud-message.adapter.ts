@@ -78,14 +78,14 @@ export class MetaCloudMessageAdapter implements IMessagingService {
     const parsed = metaCloudResponseSchema.safeParse(raw)
 
     if (!parsed.success) {
-      return { externalId: "", status: "failed", error: `Resposta inesperada da API: HTTP ${response.status}` }
+      return { externalId: null, status: "failed", error: `Resposta inesperada da API: HTTP ${response.status}` }
     }
 
     if (isErrorResponse(parsed.data)) {
-      return { externalId: "", status: "failed", error: parsed.data.error.message }
+      return { externalId: null, status: "failed", error: parsed.data.error.message }
     }
 
-    const messageId = parsed.data.messages[0]?.id ?? ""
+    const messageId = parsed.data.messages[0]?.id ?? null
     return { externalId: messageId, status: "sent" }
   }
 
@@ -94,7 +94,7 @@ export class MetaCloudMessageAdapter implements IMessagingService {
     const resolved = results.map((r) =>
       r.status === "fulfilled"
         ? r.value
-        : ({ externalId: "", status: "failed" as const, error: "rejected" } satisfies SendMessageResult),
+        : ({ externalId: null, status: "failed" as const, error: "rejected" } satisfies SendMessageResult),
     )
     return {
       sent: resolved.filter((r) => r.status !== "failed").length,

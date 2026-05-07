@@ -7,6 +7,7 @@ import { getPgrReviewsPaginated } from "@/modules/pgr/pgr.service"
 import { buildPaginationParams } from "@/libs/utils/pagination"
 import { format } from "date-fns"
 import { PgrGenerateButton } from "@/app/(tenant)/pgr/pgr-generate-button"
+import { PgrListFilters } from "@/app/(tenant)/pgr/pgr-list-filters"
 import { PageHelp } from "@/components/page-help"
 import { DataTable, TablePagination } from "@/libs/design-system"
 import { toHealthIndex as _toHealthIndex, healthIndexAccent, healthIndexLabel } from "@/libs/utils/health-index"
@@ -37,7 +38,11 @@ export default async function PgrPage({ searchParams }: Props): Promise<React.Re
   const params = await searchParams
   const { page, pageSize } = buildPaginationParams(params["page"], params["pageSize"])
 
-  const { items: reviews, total } = await getPgrReviewsPaginated(session.tenantId, { page, pageSize })
+  const query: Parameters<typeof getPgrReviewsPaginated>[1] = { page, pageSize }
+  if (params["year"] !== undefined) query.year = params["year"]
+  if (params["status"] !== undefined) query.status = params["status"]
+
+  const { items: reviews, total } = await getPgrReviewsPaginated(session.tenantId, query)
 
   return (
     <div className="flex flex-col h-full">
@@ -74,6 +79,12 @@ export default async function PgrPage({ searchParams }: Props): Promise<React.Re
           <p className="text-xs text-muted-foreground mt-0.5">{total} {total === 1 ? "revisão" : "revisões"}</p>
         </div>
         <PgrGenerateButton />
+      </div>
+      <div className="px-6 py-3 border-b border-border bg-card/50 shrink-0">
+        <PgrListFilters
+          currentYear={params["year"]}
+          currentStatus={params["status"]}
+        />
       </div>
       <div className="flex-1 overflow-y-auto p-6">
         <DataTable

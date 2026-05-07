@@ -10,7 +10,6 @@ vi.mock("@/modules/health-surveys/health-survey.repository", () => ({
   deleteAllTenantsExpiredHealthSurveyTokens: vi.fn(),
   findHealthSurveyConfigsByTenant: vi.fn(),
   findHealthSurveyConfigById: vi.fn(),
-  upsertHealthSurveyConfig: vi.fn(),
   findHealthSurveyDispatchesByTenant: vi.fn(),
   findHealthSurveyDispatchWithDashboard: vi.fn(),
   findHealthSurveyMultipleDispatchesWithDashboard: vi.fn(),

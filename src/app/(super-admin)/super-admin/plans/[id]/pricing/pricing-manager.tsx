@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
+import { Pencil, Trash2 } from "lucide-react"
 import type { ActionResult } from "@/libs/utils/action-result"
 import { addPlanPriceAction, updatePlanPriceAction, deactivatePlanPriceAction } from "@/app/(super-admin)/super-admin/plans/actions"
 import { NativeSelect } from "@/components/ui/native-select"
@@ -173,20 +174,22 @@ function EditPriceRow({ price }: { price: PlanPrice }): React.ReactElement {
               <button
                 onClick={() => setEditing(true)}
                 disabled={pending}
-                className="px-3 py-1 text-[10px] font-bold tracking-widest uppercase border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                className="flex items-center gap-1 px-2 py-1 border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
                 style={{ borderRadius: 0 }}
+                title="Editar"
               >
-                Editar
+                <Pencil className="h-3 w-3" />
               </button>
             )}
             {price.isActive && (
               <button
                 onClick={handleDeactivate}
                 disabled={pending}
-                className="px-3 py-1 text-[10px] font-bold tracking-widest uppercase border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                className="flex items-center gap-1 px-2 py-1 border border-status-danger-border text-status-danger hover:bg-status-danger-subtle transition-colors disabled:opacity-50"
                 style={{ borderRadius: 0 }}
+                title="Remover"
               >
-                {pending ? "..." : "Remover"}
+                <Trash2 className="h-3 w-3" />
               </button>
             )}
           </div>

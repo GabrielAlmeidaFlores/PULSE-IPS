@@ -6,7 +6,7 @@ import {
   createDepartment,
   updateDepartment,
   deactivateDepartment,
-  countActiveEmployeesByDepartment,
+  countEmployeesByDepartment,
   type DepartmentWithWorkDays,
   type DepartmentListingFilters,
 } from "@/modules/departments/department.repository"
@@ -40,9 +40,9 @@ export async function updateDept(
 }
 
 export async function removeDept(tenantId: string, departmentId: string, actorId?: string): Promise<{ count: number }> {
-  const activeCount = await countActiveEmployeesByDepartment(tenantId, departmentId)
-  if (activeCount > 0) {
-    throw new AppError("DEPARTMENT_HAS_EMPLOYEES", "Não é possível excluir um departamento com colaboradores ativos.")
+  const employeeCount = await countEmployeesByDepartment(tenantId, departmentId)
+  if (employeeCount > 0) {
+    throw new AppError("DEPARTMENT_HAS_EMPLOYEES", "Não é possível excluir um setor que possui colaboradores. Remova ou transfira os colaboradores antes de excluir.")
   }
   const result = await deactivateDepartment(tenantId, departmentId)
   await createAuditLog({ tenantId, ...(actorId !== undefined ? { userId: actorId } : {}), action: "department.deleted", resource: "departments", resourceId: departmentId })

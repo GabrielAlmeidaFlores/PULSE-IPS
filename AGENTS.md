@@ -859,20 +859,28 @@ Dias de trabalho do departamento em `department_work_days` (join table — ver a
 
 #### `health_survey_configurations`
 
+Múltiplas configurações por tenant/setor são permitidas (sem unicidade em `(tenant_id, department_id)`). Cada configuração é identificada por nome e descrição opcionais.
+
 | Coluna | Tipo | Constraints |
 |---|---|---|
 | id | uuid | PK |
 | tenant_id | uuid | NOT NULL |
 | department_id | uuid | NOT NULL, FK → departments.id |
+| name | varchar(255) | NOT NULL, default `'Pesquisa de Saúde'` — nome de identificação da configuração |
+| description | text | NULL — descrição opcional |
 | frequency | varchar(20) | `'daily'` \| `'twice_weekly'` \| `'weekly'` \| `'biweekly'` \| `'monthly'` |
+| scheduled_day_of_month | integer | NULL — dia do mês (1–28) para frequência `'monthly'`; quando NULL e frequência mensal, usa intervalo de 28 dias |
 | work_start_time | varchar(5) | `"HH:MM"` — início do expediente configurado para esta pesquisa (ex: `"09:00"`) |
 | work_end_time | varchar(5) | `"HH:MM"` — fim do expediente configurado para esta pesquisa (ex: `"18:00"`) |
 | is_active | boolean | NOT NULL |
-| UNIQUE | (tenant_id, department_id) | |
+| INDEX | (tenant_id) | |
+| INDEX | (tenant_id, department_id) | |
 
 Dias de trabalho da pesquisa em `health_survey_config_work_days` (join table — ver abaixo). Armazenados como `day_of_week INT` (0=Dom … 6=Sáb).
 
 > `work_start_time`, `work_end_time` e `work_days` (via join table) definem a janela de disparo da pesquisa. **Cadeia de herança no disparo:** `employee.workStartTime/workEndTime → department.workStartTime/workEndTime → healthSurveyConfig.workStartTime/workEndTime`. Para dias de trabalho por funcionário: `employee_work_days` (se não vazio) → `department_work_days`. Todos avaliados no `organizations.timezone`.
+
+> **Frequência mensal com `scheduled_day_of_month`:** quando preenchido, o scheduler dispara apenas no dia exato do mês (avaliado no fuso da organização) e impede reenvio se o último disparo foi há menos de 25 dias. Dias 29–31 são excluídos da UI — o valor máximo é 28 para garantir compatibilidade com fevereiro.
 
 > Não existe mais `send_days` (jsonb) nem `send_time` (time) separados — o disparo ocorre automaticamente pelo scheduler ao detectar que estamos dentro do expediente configurado.
 
@@ -915,7 +923,7 @@ Dias de trabalho configurados para uma pesquisa. Define em quais dias o schedule
 | health_survey_configuration_id | uuid | NOT NULL, FK → health_survey_configurations.id ON DELETE CASCADE |
 | text | text | NOT NULL |
 | order | integer | NOT NULL, default 0 |
-| score_direction | varchar(10) | NOT NULL — `'higher_better'` \| `'lower_better'` (afeta cálculo de score) |
+| score_direction | varchar(30) | NOT NULL — `'higher_is_better'` \| `'lower_is_better'` (afeta cálculo de score) |
 | is_active | boolean | NOT NULL, default true |
 
 #### `health_survey_dispatches`
@@ -1389,6 +1397,68 @@ const rows = await prisma.employee.findMany({
 const rows = await prisma.$queryRaw`SELECT * FROM employees WHERE tenant_id = ${tenantId}`
 ```
 
+### Strings vazias são proibidas em campos de banco de dados
+
+**Nunca use `""` (string vazia) como valor a ser persistido no banco.** Campos opcionais/nullable devem receber `null` ou `undefined`. Campos obrigatórios sem valor disponível devem lançar `AppError`. Nunca use `?? ""` ou `.default("")` como fallback para persistência.
+
+```typescript
+// ❌ PROIBIDO — armazena "" quando externalPriceId é null
+snapshotExternalPriceId: planPrice.externalPriceId ?? ""
+
+// ✅ CORRETO — lança erro explícito
+if (!planPrice.externalPriceId) {
+  throw new AppError("PLAN_PRICE_NOT_CONFIGURED", "Preço do plano sem ID externo configurado.")
+}
+snapshotExternalPriceId: planPrice.externalPriceId
+
+// ❌ PROIBIDO — armazena "" quando price.id é undefined
+const priceId = subscription.items.data[0]?.price.id ?? ""
+
+// ✅ CORRETO — early return explícito se dado obrigatório não existe
+const priceItem = subscription.items.data[0]
+if (!priceItem) return
+const priceId = priceItem.price.id
+```
+
+**Regras derivadas:**
+
+| Cenário | Solução correta |
+|---|---|
+| Campo nullable no banco, valor ausente | `null` — nunca `""` |
+| Campo não-nullable no banco, valor ausente | `AppError` — nunca `""` |
+| Campo opcional em interface TypeScript (`field?: string`) | Usar conditional spread `...(val ? { field: val } : {})` |
+| Resultado de adaptador externo sem ID | `externalId: null` no tipo, conditional spread no log |
+| Job sem ID ao registrar log | Pular o insert — nunca `jobId: ""` |
+| Tipo intermediário que será preenchido depois | Usar `Omit<T, 'field'>` como tipo intermediário |
+
+**`exactOptionalPropertyTypes` e conditional spread:**
+
+Com `exactOptionalPropertyTypes: true`, nunca atribua `string | undefined` a um campo `field?: string`:
+
+```typescript
+// ❌ PROIBIDO — tipo incompatível com exactOptionalPropertyTypes
+await createLog({ externalId: result.externalId ?? undefined })
+
+// ✅ CORRETO — conditional spread
+await createLog({
+  ...(result.externalId !== null ? { externalId: result.externalId } : {}),
+})
+```
+
+**Tipos intermediários sem o campo de ID (padrão para criação atômica):**
+
+Quando um repositório precisa receber objetos antes de conhecer o ID gerado pelo banco (ex: PGR), use `Omit<T, 'id'>` como tipo intermediário. O repositório adiciona o ID no `.map()` antes do `createMany`. Nunca passe `pgrReviewId: ""` ou `id: ""` como placeholder.
+
+```typescript
+// ❌ PROIBIDO — placeholder string vazia
+const deptResults: CreatePgrDeptResultInput[] = depts.map((d) => ({ pgrReviewId: "", ... }))
+
+// ✅ CORRETO — tipo intermediário sem o campo
+const deptResults: PgrDeptResultWithoutReviewId[] = depts.map((d) => ({ departmentId: d.id, ... }))
+// No repositório, o ID é adicionado atomicamente:
+const resultsWithId = deptResults.map((r) => ({ ...r, pgrReviewId: review.id }))
+```
+
 ### Tenant Guard obrigatório
 
 Toda query em tabela com `tenant_id` **deve** incluí-lo:
@@ -1628,6 +1698,45 @@ export async function createEmployeeAction(...) {
   return { success: true }
 }
 ```
+
+### UUID validation obrigatória em IDs recebidos por Server Actions
+
+**Toda Server Action que recebe um ID como parâmetro string deve validá-lo como UUID antes de usá-lo.** IDs vindos de props de Client Components podem ser manipulados — validar com Zod garante que não cheguem valores inválidos ao banco.
+
+```typescript
+// ✅ CORRETO — validação UUID antes de usar
+import { z } from "zod"
+
+export async function deactivateEntityAction(entityId: string): Promise<ActionResult> {
+  const session = await getSession()
+  if (!session) return { error: "Sessão expirada." }
+
+  const parsedId = z.string().uuid().safeParse(entityId)
+  if (!parsedId.success) return { error: "Registro inválido." }
+
+  await entityService.deactivate(session.tenantId, parsedId.data)
+  revalidatePath("/entities")
+  return {}
+}
+
+// ❌ PROIBIDO — ID não validado
+export async function deactivateEntityAction(entityId: string): Promise<ActionResult> {
+  await entityService.deactivate(session.tenantId, entityId)  // vulnerável
+}
+```
+
+### Campos derivados de frequência — enforcement server-side obrigatório
+
+**Campos que dependem da frequência selecionada devem ser normalizados no servidor**, independentemente do que o cliente enviou. Nunca confiar em contrato de UI para garantir consistência de dados.
+
+```typescript
+// ✅ CORRETO — server enforces nulling scheduledDayOfMonth for non-monthly
+const scheduledDayOfMonth = frequency === "monthly" ? rawScheduledDay : null
+
+// ❌ PROIBIDO — confiar que o cliente enviou null para frequências não-mensais
+const { scheduledDayOfMonth } = parsed.data  // pode vir com valor residual
+```
+
 
 ### Regras do `yarn lint` (ESLint — `eslint.config.mjs`)
 
@@ -2772,7 +2881,7 @@ Processos recorrentes gerenciados pelo **BullMQ** com Redis como broker.
 
 | Job | Frequência | Responsabilidade |
 |---|---|---|
-| `health-survey-dispatcher` | A cada 15min | Verifica dispatches `scheduled` com `scheduled_at <= now()`, gera tokens, envia via messaging |
+| `health-survey-dispatcher` | A cada 15min | Itera configurações ativas; verifica janela de horário de trabalho e intervalo de frequência (`shouldSkipDispatch`); cria dispatch + tokens + envia mensagens |
 | `health-survey-adherence-checker` | A cada hora | 48h após cada dispatch, calcula taxa de adesão e cria alertas `low_adherence` |
 | `health-survey-score-alert-detector` | Diário (03:00) | Calcula quedas de score; cria alertas `score_drop` e `negative_trend` |
 | `employee-unpause` | Diário (01:00) | Reverte `status = 'active'` para colaboradores com `pause_end_at <= today` |
@@ -2951,14 +3060,36 @@ Employee cadastrado (sem convite separado)
 ### 20.3 Envio de pesquisa
 
 ```
-Job health-survey-dispatcher (a cada 15min)
-  → Busca dispatches status='scheduled' e scheduled_at <= now()
-    → Filtra employees: status='active', excluindo apenas refused/opted_out
-    → Gera health_survey_response_token por employee (expires_at = +48h, snapshot do horário)
-    → [GATE] hasTenantPlanFeature(tenantId, "messaging")
-        ├─ SEM feature: tokens criados, nenhuma mensagem enviada → RH usa link assinado
-        └─ COM feature: messagingService.sendBulk → Registra em message_logs
-    → Atualiza dispatch: status='available', dispatched_at, total_recipients
+Job health-survey-dispatcher (a cada 15min) — runHealthSurveyAutoDispatchScheduler
+  → Busca todas as configurações ativas com billing ativo (findAllTenantsActiveHealthSurveyConfigsForAutoDispatch)
+    → Para cada configuração:
+        [GATE 1] isWithinWorkHours(workStartTime, workEndTime, timezone) → skip se fora do expediente
+        [GATE 2] shouldSkipDispatch(config, timezone):
+            - Para frequência 'monthly' com scheduledDayOfMonth (condições independentes — OR):
+                → skip se hoje NÃO é o dia do mês configurado (getDayOfMonthInTimezone ≠ scheduledDayOfMonth)
+                → skip se o último dispatch foi há menos de 25 dias (cooldown anti-duplicata)
+            - Para outras frequências (condições independentes — OR):
+                → skip se hoje não é um dia de trabalho da config (isWorkDay)
+                → skip se o último dispatch foi há menos de FREQUENCY_INTERVAL_DAYS dias
+        [PASS] → fireDispatch:
+            → Cria health_survey_dispatch (status='available', dispatchedAt=now)
+            → Gera health_survey_response_token por employee elegível (expires_at = +48h)
+            → [GATE FEATURE] hasTenantPlanFeature(tenantId, "messaging")
+                ├─ SEM feature: tokens criados, nenhuma mensagem enviada → RH usa link assinado
+                └─ COM feature: messagingService.sendBulk → Registra em message_logs
+            → Atualiza dispatch: total_recipients
+```
+
+**Frequência mensal sem `scheduledDayOfMonth`:** quando `frequency = "monthly"` e `scheduledDayOfMonth = null`, `shouldSkipDispatch` cai no path de intervalo fixo (28 dias), disparando no primeiro dia de trabalho qualificado após o cooldown. Esse é o comportamento intencional para configs mensais sem dia fixo.
+
+**Criação idempotente de configurações (`createHealthSurveyForDepartments`):** ao criar configs para múltiplos setores (incluindo `departmentIds: "all"`), a função busca via `findDepartmentIdsWithActiveHealthSurveyConfigs` quais setores já possuem config ativa e **pula silenciosamente** os que já têm. Isso evita duplicatas sem lançar erro. Se todos os setores já possuem config ativa, a função retorna sem criar nada.
+
+```typescript
+// Padrão de criação idempotente
+const deptsWithExistingConfig = await findDepartmentIdsWithActiveHealthSurveyConfigs(tenantId, targetDeptIds)
+const existingSet = new Set(deptsWithExistingConfig)
+const deptsWithoutConfig = targetDeptIds.filter((id) => !existingSet.has(id))
+if (deptsWithoutConfig.length === 0) return  // nada a criar
 ```
 
 ### 20.4 Resposta ao formulário (anonimato garantido)
@@ -3037,12 +3168,21 @@ RH acessa /health-surveys/[dispatchId]
 Colaborador acessa /health-survey/link/[signedLinkToken]
   └─ Tela de identificação: campo único aceita telefone ou documento
        ├─ Colaborador não encontrado → erro "Colaborador não encontrado"
-       ├─ Sem consentimento aceito → erro "Você precisa aceitar os termos"
+       ├─ Colaborador pertence a outro setor → erro EMPLOYEE_NOT_IN_DEPARTMENT "Esta pesquisa não está disponível para o seu setor."
+       ├─ Sem consentimento aceito → exibe Consent Gate inline para o colaborador aceitar o TCLE
        ├─ Já respondeu → retorna { alreadyAnswered: true } → mensagem "Você já respondeu esta pesquisa"
        ├─ Fora da janela de trabalho → erro "Pesquisa disponível apenas entre HH:MM e HH:MM"
        └─ Token gerado → redirect para /health-survey/[token]
              └─ Resposta salva normalmente (sem employee_id) → aderência calculada corretamente
 ```
+
+**Guards executados em `unlockHealthSurveyViaIdentifier` (ordem):**
+1. Dispatch encontrado pelo `signedLinkToken` — se não encontrado: erro
+2. Colaborador encontrado por telefone ou documento no tenant — se não encontrado: erro
+3. `employee.departmentId === dispatch.healthSurveyConfiguration.departmentId` — se diferente: `EMPLOYEE_NOT_IN_DEPARTMENT`
+4. Consentimento ativo — se sem aceite: retorna `{ needsConsent: true }` → Consent Gate exibida inline
+5. Já respondeu — se `used_at IS NOT NULL`: retorna `{ alreadyAnswered: true }`
+6. Janela de trabalho — fora do horário configurado: erro
 
 O `signedLinkToken` é gerado pelo `randomUUID()` no momento da criação do dispatch e armazenado em `health_survey_dispatches.signed_link_token`. É permanente enquanto o dispatch existir — o mesmo link pode ser usado por múltiplos colaboradores.
 
@@ -3123,6 +3263,24 @@ Job `organization-deletion-executor` (diário 03:30)
 **Regra crítica:** `confirmAccountDeletionAction` **nunca** chama `destroySession()` diretamente. A sessão é destruída apenas quando o usuário clica no botão do modal de confirmação, via `logoutAction()` no Client Component. Chamar `destroySession()` na Server Action destrói o cookie antes do client processar o resultado e renderizar o modal.
 
 **Cancelamento:** Admin ou Super Admin pode cancelar a exclusão enquanto `deletionScheduledAt > now()`. A ação `cancelScheduledOrganizationDeletion` zera `deletionScheduledAt` e `reativaCancelledAt` no Stripe (se aplicável). O `DeletionScheduledModal` exibido no `(tenant)/layout.tsx` oferece o botão de cancelamento.
+
+### 20.13 Geração de relatório PGR com force-regenerate
+
+```
+Admin → /pgr → botão "Gerar relatório" (período selecionado)
+  └─→ generatePgrReportAction(tenantId, period, forceRegenerate = false)
+        ├─ Verifica se já existe PgrReview para o período
+        │    └─ Se existe e forceRegenerate = false → retorna { error: code: "DUPLICATE_PGR_PERIOD" }
+        └─ Se existe e forceRegenerate = true → replacePgrReviewAtomic(existingId, novosDados, deptResults, questionResults)
+              └─ $transaction: DELETE pgr_reviews + DELETE pgr_dept_results + DELETE pgr_question_results
+                              + INSERT pgr_reviews + INSERT pgr_dept_results + INSERT pgr_question_results
+
+Client Component (pgr-generate-button.tsx) recebe DUPLICATE_PGR_PERIOD
+  └─ Exibe confirmação "Já existe um relatório para este período. Deseja substituir?"
+       └─ Admin confirma → chama novamente com forceRegenerate = true
+```
+
+**Regra de imutabilidade histórica:** o PGR usa respostas de `health_survey_response_items` referenciadas por `question_id`. Mesmo que perguntas sejam desativadas depois, o histórico é preservado porque `findDispatchesForPgr` não filtra `isActive` nas perguntas. A geração de um novo relatório para um período já existente (via `forceRegenerate`) é atômica — nunca deixa o banco em estado parcial.
 
 ---
 
@@ -3400,7 +3558,51 @@ As classes `badge-*` são utilitárias definidas em `@layer utilities` em `globa
 
 ## 25. Padrão de Navegação em Listagens
 
-### Botão de seta (ChevronRight) — obrigatório
+### Link de voltar em páginas de detalhe — padrão obrigatório
+
+**Toda página de detalhe (subpágina de uma seção) deve ter um link de voltar no topo do cabeçalho.** O padrão é um `Link` com seta unicode `←` seguida do nome da seção pai.
+
+#### Implementação obrigatória
+
+```tsx
+<div className="border-b border-border bg-card px-6 py-4 shrink-0">
+  <Link href="/secao" className="text-xs text-muted-foreground hover:text-foreground transition-colors">← Nome da Seção</Link>
+  <div className="mt-2">
+    <h1 className="text-sm font-bold uppercase tracking-widest">Título da Página</h1>
+    <p className="text-xs text-muted-foreground mt-0.5">Subtítulo opcional</p>
+  </div>
+</div>
+```
+
+Quando o header contém ações (botões, badges) ao lado do título, use `flex items-start justify-between` no `div` interno:
+
+```tsx
+<div className="border-b border-border bg-card px-6 py-4 shrink-0">
+  <Link href="/secao" className="text-xs text-muted-foreground hover:text-foreground transition-colors">← Nome da Seção</Link>
+  <div className="flex items-start justify-between mt-2">
+    <div>
+      <h1 className="text-sm font-bold uppercase tracking-widest">Título</h1>
+      <p className="text-xs text-muted-foreground mt-0.5">Subtítulo</p>
+    </div>
+    <div className="flex items-center gap-2">
+      {/* ações: botões, badges */}
+    </div>
+  </div>
+</div>
+```
+
+#### Regras
+
+| Regra | Detalhe |
+|---|---|
+| Sempre `← Nome da Seção` | Use seta unicode `←`, não ícone (`ChevronLeft`, `ArrowLeft`) |
+| `text-xs text-muted-foreground hover:text-foreground transition-colors` | Classe CSS exata — não varie |
+| Link acima do título | O link fica na linha de cima; o título vem abaixo com `mt-2` |
+| Sem separador `/` ou breadcrumb multilevel | Use apenas um nível de volta — nunca encadeie "Seção / Subseção" |
+| Sem botão "Voltar" com ícone inline | Nunca use `ChevronLeft`/`ArrowLeft` + texto "Voltar" lado a lado com divisor |
+| Sem `flex items-center gap-3` com separador `div w-px` | Padrão antigo proibido |
+
+### Botão de seta (ChevronRight) — obrigatório em listagens
 
 **Toda tabela de listagem que possui página de detalhe deve usar um `ChevronRight` como ação de navegação na última coluna da linha.** Nunca use texto "Visualizar", links no título/nome, ou qualquer outro padrão.
 
@@ -3437,6 +3639,92 @@ import Link from "next/link"
 #### Exceções — tabelas com ações inline mas SEM página de detalhe
 
 Tabelas como `documents`, `alerts` e `reports` gerenciam tudo inline (upload, status, resolução). **Não** adicionam coluna de seta.
+
+### Botões de ação inline (Editar / Excluir) — padrão obrigatório
+
+**Nenhum botão de ação destrutiva usa classes hardcoded `destructive/*` ou `hover:text-destructive`.** Todo botão de excluir/cancelar/desativar usa as CSS vars centralizadas `status-danger-*` definidas em `globals.css` (ver §32). Isso garante consistência visual automática entre temas dark/light.
+
+#### Padrão: icon-only (dentro de tabelas)
+
+```tsx
+import { Pencil, Trash2 } from "lucide-react"
+
+// Editar — icon-only
+<button
+  onClick={() => openEdit(item)}
+  style={{ borderRadius: 0 }}
+  className="flex items-center gap-1 px-2 py-1 border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+  title="Editar"
+>
+  <Pencil size={12} />
+</button>
+
+// Excluir — icon-only
+<button
+  onClick={() => setDeleteTarget(item)}
+  style={{ borderRadius: 0 }}
+  className="flex items-center gap-1 px-2 py-1 border border-status-danger-border text-status-danger hover:bg-status-danger-subtle transition-colors"
+  title="Excluir"
+>
+  <Trash2 size={12} />
+</button>
+```
+
+Quando o botão de editar é um `Link` de navegação (não um `onClick`), use o mesmo padrão mas com `<Link>`:
+
+```tsx
+<Link
+  href={`/rota/${item.id}`}
+  className="flex items-center gap-1 px-2 py-1 border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+  style={{ borderRadius: 0 }}
+  title="Editar"
+>
+  <Pencil size={12} />
+</Link>
+```
+
+#### Padrão: hover-only (ícone destrutivo sem borda permanente)
+
+Para ícones de remoção discretos (ex: remover item de lista dentro de form):
+
+```tsx
+<button
+  className="shrink-0 p-1 text-muted-foreground hover:text-status-danger transition-colors"
+  style={{ borderRadius: 0 }}
+  type="button"
+>
+  <Trash2 className="h-3.5 w-3.5" />
+</button>
+```
+
+#### Padrão: botão de confirmação destrutiva em modal (único caso com `bg-destructive` sólido)
+
+O botão final de confirmação dentro de um modal de exclusão usa background sólido. **Esta é a única exceção** — é intencional para comunicar o peso da ação:
+
+```tsx
+<button
+  className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50 transition-colors"
+  style={{ borderRadius: 0 }}
+>
+  Excluir
+</button>
+```
+
+#### Regras
+
+| Regra | Detalhe |
+|---|---|
+| **Sempre icon-only** | Nunca use texto "Editar" ou "Excluir" como label visível em botões de ação de tabela/listagem |
+| `Pencil` para editar | Sempre o ícone de lápis do lucide-react |
+| `Trash2` para excluir/remover | Sempre o ícone de lixeira do lucide-react |
+| `title="Editar"` / `title="Excluir"` | Sempre adicionar `title` para acessibilidade |
+| Nunca `border-destructive/40 text-destructive hover:bg-destructive/10` | Padrão antigo proibido — usa hardcoded Tailwind |
+| Nunca `hover:text-destructive` | Substituir por `hover:text-status-danger` |
+| `border-status-danger-border text-status-danger hover:bg-status-danger-subtle` | Padrão correto para botões de ação destrutiva com borda |
+| `bg-destructive text-destructive-foreground` | Permitido apenas no botão final de confirmação dentro de modal |
+| `transition-colors` obrigatório | Todo botão de ação deve ter `transition-colors` |
+| `disabled:opacity-50 disabled:cursor-not-allowed` | Obrigatório quando o botão pode ser desabilitado |
+| `style={{ borderRadius: 0 }}` | Sempre nos botões de ação inline (sem border-radius) |
 
 ---
 
@@ -3642,22 +3930,24 @@ Execute `grep` para confirmar cada item:
 | 8 | Queries cross-tenant de jobs nomeadas com `findAllTenants*` | Revisar `src/workers/` e jobs que chamam repositories sem `tenantId` |
 | 9 | Nenhum `enum` TypeScript (use union types ou const maps) | `grep -rn "^enum \|  enum " src/` |
 | 10 | `JsonValue` de `@/libs/utils/json` — nunca `Prisma.InputJsonValue` fora de repository | `grep -rn "Prisma\.InputJsonValue\|Prisma\.JsonValue" src/modules/ src/app/` |
+| 11 | Nenhum `<select>` nativo fora de `native-select.tsx` — usar sempre `NativeSelect` (§35) | `grep -rn "<select" src --include="*.tsx" \| grep -v "native-select.tsx"` |
+| 12 | Nenhum `?? ""` ou `: ""` em campos que serão persistidos no banco | `grep -rn '?? ""\|: ""' src/modules/ src/workers/ src/app/\(auth\)/ \| grep -v ".test.\|placeholder\|className"` |
 
 ### Verificações de domínio (obrigatórias para funcionalidades novas)
 
 | # | Verificação |
 |---|---|
-| 11 | Nova tabela com `tenant_id`? Todos os repositórios recebem `tenantId` como 1º parâmetro |
-| 12 | Nova integração externa? Existe interface em `libs/integrations/*/interface.ts` e adapter separado |
-| 13 | Novos tipos JSON? Usam `JsonValue` de `@/libs/utils/json`, não tipos do ORM |
-| 14 | Novo evento de billing? Mapeado em `webhook.handler.ts` e na tabela de eventos da §15 |
-| 15 | Novos valores de enum no banco? Mapeados em `LABELS` Record antes de renderizar na UI (§24) |
-| 16 | Nova rota com dados sensíveis? Tenant guard ativo no `proxy.ts` ou no layout |
-| 17 | Novo módulo? Segue estrutura `repository + service + schema + types` (§10) |
-| 18 | Novos erros de negócio? Usam `AppError` com mensagem em pt-BR |
-| 19 | Server Action nova? Chama `getSession()`, valida com Zod, chama `revalidatePath` após mutação |
-| 20 | `employee_consents` modificado? `ConsentRepository` ainda é append-only (sem `update`/`delete`) |
-| 21 | **Todo identificador novo passa na pergunta de validação de nomenclatura?** Função, tipo, componente, job, constante, arquivo — o nome carrega domínio + entidade + ação sem precisar abrir o arquivo? (§9) |
+| 13 | Nova tabela com `tenant_id`? Todos os repositórios recebem `tenantId` como 1º parâmetro |
+| 14 | Nova integração externa? Existe interface em `libs/integrations/*/interface.ts` e adapter separado |
+| 15 | Novos tipos JSON? Usam `JsonValue` de `@/libs/utils/json`, não tipos do ORM |
+| 16 | Novo evento de billing? Mapeado em `webhook.handler.ts` e na tabela de eventos da §15 |
+| 17 | Novos valores de enum no banco? Mapeados em `LABELS` Record antes de renderizar na UI (§24) |
+| 18 | Nova rota com dados sensíveis? Tenant guard ativo no `proxy.ts` ou no layout |
+| 19 | Novo módulo? Segue estrutura `repository + service + schema + types` (§10) |
+| 20 | Novos erros de negócio? Usam `AppError` com mensagem em pt-BR |
+| 21 | Server Action nova? Chama `getSession()`, valida com Zod, chama `revalidatePath` após mutação |
+| 22 | `employee_consents` modificado? `ConsentRepository` ainda é append-only (sem `update`/`delete`) |
+| 23 | **Todo identificador novo passa na pergunta de validação de nomenclatura?** Função, tipo, componente, job, constante, arquivo — o nome carrega domínio + entidade + ação sem precisar abrir o arquivo? (§9) |
 
 ### Quando o PR pode ser considerado pronto
 
@@ -4135,6 +4425,7 @@ Definidas em `:root` (light) e `.dark` em `src/app/globals.css`:
 | `--status-danger` | Vermelho — erro, crítico, falhou | texto, SVG fill |
 | `--status-danger-subtle` | Vermelho claro — fundo de badge/card | background |
 | `--status-danger-border` | Vermelho médio — borda de badge | border |
+| `--status-danger-foreground` | Branco (light) / escuro (dark) — texto sobre fundo danger | texto em botões com `bg-status-danger` |
 | `--status-info` | Azul — informativo, agendado | texto, SVG fill |
 | `--status-info-subtle` | Azul claro — fundo de badge/card | background |
 | `--status-info-border` | Azul médio — borda de badge | border |
@@ -4225,8 +4516,8 @@ fill={healthIndexChartColor(score)}  // retorna "var(--status-success/warning/da
 
 ### Ao adicionar nova cor de status
 
-1. Adicione as 3 variáveis em `:root` e `.dark` em `globals.css` (main + subtle + border)
-2. Registre as 3 variantes em `@theme inline`
+1. Adicione as variáveis em `:root` e `.dark` em `globals.css` (main + subtle + border; `foreground` se precisar de texto sobre fundo colorido)
+2. Registre as variantes em `@theme inline`
 3. Adicione a utilitária `.badge-novoStatus` em `@layer utilities`
 4. Se for cor de saúde/aderência/tendência: adicione a função em `health-index.ts`
 5. Se for cor de badge: adicione a constant em `alert-labels.ts`
@@ -4344,3 +4635,59 @@ grep -rn "process\.env\." \
 ```
 
 *Pulse — AGENTS.md | Documento interno | Maio de 2026*
+
+---
+
+## 35. Selects — Componente Padrão Obrigatório
+
+**`<select>` nativo é proibido em toda a aplicação.** Todo campo de seleção deve usar `NativeSelect` de `@/components/ui/native-select`.
+
+### Razão
+
+O `<select>` nativo do HTML não aplica o design system — borda, fundo, cor, chevron e focus ring precisariam ser replicados manualmente em cada uso, criando inconsistência visual e risco de divergência ao alterar o tema.
+
+### Padrão obrigatório
+
+```tsx
+// ❌ PROIBIDO — select HTML nativo com classes manuais
+<select
+  value={value}
+  onChange={(e) => setValue(e.target.value)}
+  className="w-full bg-input border border-input-border text-foreground ..."
+  style={{ borderRadius: 0 }}
+>
+  <option value="a">Opção A</option>
+</select>
+
+// ✅ CORRETO — NativeSelect do design system
+import { NativeSelect } from "@/components/ui/native-select"
+
+<NativeSelect value={value} onChange={(e) => setValue(e.target.value)}>
+  <option value="a">Opção A</option>
+</NativeSelect>
+```
+
+### O que `NativeSelect` aplica automaticamente
+
+- `bg-input` + `border border-border` — borda e fundo consistentes com o tema
+- `text-foreground` — cor de texto correta em light/dark
+- `focus:border-primary focus:ring-1 focus:ring-primary` — focus ring padronizado
+- `appearance-none` + `ChevronDown` posicionado — ícone de seta sempre visível
+- `border-radius: 0` — sem borda arredondada (padrão visual do produto)
+
+### Quando usar `NativeSelect` vs `Select` (shadcn/Base UI)
+
+| Situação | Componente |
+|---|---|
+| Filtros de listagem, selects em modais, campos de formulário simples | `NativeSelect` |
+| Selects com opções customizadas (ícones, grupos, busca) — casos raros | `Select` (shadcn/Base UI) |
+
+### Checklist do full-scan — adicionar ao item 29
+
+Antes de qualquer PR, verificar que não há `<select>` nativo fora de `native-select.tsx`:
+
+```bash
+grep -rn "<select" src --include="*.tsx" | grep -v "native-select.tsx"
+# Resultado esperado: nenhuma linha
+```
+

@@ -50,6 +50,7 @@ interface DayGroup {
   status: string
   statusCounts: Record<string, number>
   deptIds: Set<string>
+  deptNames: Set<string>
 }
 
 function groupDispatchesByDay(dispatches: HealthSurveyDispatchWithConfig[], timezone: string): DayGroup[] {
@@ -63,6 +64,7 @@ function groupDispatchesByDay(dispatches: HealthSurveyDispatchWithConfig[], time
       existing.totalRecipients += d.totalRecipients
       existing.totalResponses += d.totalResponses
       existing.deptIds.add(d.healthSurveyConfiguration.department.id)
+      existing.deptNames.add(d.healthSurveyConfiguration.department.name)
       existing.statusCounts[d.status] = (existing.statusCounts[d.status] ?? 0) + 1
       const currentPriority = STATUS_PRIORITY[existing.status] ?? 3
       const newPriority = STATUS_PRIORITY[d.status] ?? 3
@@ -78,6 +80,7 @@ function groupDispatchesByDay(dispatches: HealthSurveyDispatchWithConfig[], time
         status: d.status,
         statusCounts: { [d.status]: 1 },
         deptIds: new Set([d.healthSurveyConfiguration.department.id]),
+        deptNames: new Set([d.healthSurveyConfiguration.department.name]),
       })
     }
   }
@@ -95,6 +98,7 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
   const statusFilter = params["status"]
   const dateFromStr = params["dateFrom"]
   const dateToStr = params["dateTo"]
+  const configIdFilter = params["configId"]
   const pageParams = buildPaginationParams(params["page"], params["pageSize"])
 
   const org = await getOrganization(session.tenantId)
@@ -103,13 +107,14 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
   const dateFrom = dateFromStr !== undefined ? fromZonedTime(new Date(`${dateFromStr}T00:00:00`), timezone) : undefined
   const dateTo = dateToStr !== undefined ? fromZonedTime(new Date(`${dateToStr}T23:59:59`), timezone) : undefined
 
-  const dispatchQuery: { page: number; pageSize: number; status?: string; dateFrom?: Date; dateTo?: Date } = {
+  const dispatchQuery: { page: number; pageSize: number; status?: string; dateFrom?: Date; dateTo?: Date; configId?: string } = {
     page: pageParams.page,
     pageSize: pageParams.pageSize,
   }
   if (statusFilter !== undefined && statusFilter !== "all") dispatchQuery.status = statusFilter
   if (dateFrom !== undefined) dispatchQuery.dateFrom = dateFrom
   if (dateTo !== undefined) dispatchQuery.dateTo = dateTo
+  if (configIdFilter !== undefined && configIdFilter !== "all") dispatchQuery.configId = configIdFilter
 
   const [{ items: pageDispatches, total }, configs] = await Promise.all([
     getHealthSurveyDispatchesPaginatedByDay(session.tenantId, dispatchQuery),
@@ -161,7 +166,10 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
           >
             Configurar
           </Link>
-          <ScheduleHealthSurveyDispatchButton hasConfigs={configs.length > 0} />
+          <ScheduleHealthSurveyDispatchButton
+            hasConfigs={configs.length > 0}
+            configs={configs.map((c) => ({ id: c.id, name: c.name, departmentName: c.department.name }))}
+          />
         </div>
       </div>
 
@@ -183,11 +191,15 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
         )}
 
         {configs.length > 0 && (
-          <HealthSurveyListFilters filters={{
-            ...(statusFilter !== undefined ? { status: statusFilter } : {}),
-            ...(dateFromStr !== undefined ? { dateFrom: dateFromStr } : {}),
-            ...(dateToStr !== undefined ? { dateTo: dateToStr } : {}),
-          }} />
+          <HealthSurveyListFilters
+            filters={{
+              ...(configIdFilter !== undefined ? { configId: configIdFilter } : {}),
+              ...(statusFilter !== undefined ? { status: statusFilter } : {}),
+              ...(dateFromStr !== undefined ? { dateFrom: dateFromStr } : {}),
+              ...(dateToStr !== undefined ? { dateTo: dateToStr } : {}),
+            }}
+            configs={configs.map((c) => ({ id: c.id, name: c.name, departmentName: c.department.name }))}
+          />
         )}
 
         {!hasAnyDispatches && configs.length > 0 && (
@@ -200,12 +212,12 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
         {dayGroups.length > 0 && (
           <DataTable
             columns={[
-              { label: "Data" },
-              { label: "Setores" },
-              { label: "Status" },
-              { label: "Respostas" },
-              { label: "Adesão" },
-              { label: "Link de acesso", className: "text-center" },
+              { label: "Data", className: "w-28" },
+              { label: "Setores", className: "w-36" },
+              { label: "Status", className: "w-44" },
+              { label: "Respostas", className: "w-28" },
+              { label: "Adesão", className: "w-32" },
+              { label: "Link de acesso", className: "w-32 text-center" },
               { label: "", className: "w-8" },
             ]}
             total={total}
@@ -227,9 +239,18 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
                       {formatInTimeZone(g.scheduledAt, timezone, "dd/MM/yyyy")}
                     </Link>
                   </td>
-                  <td className="px-4 py-3">
-                    <Link href={`/health-surveys/${g.anchorId}`} className="block text-xs text-muted-foreground">
-                      {g.deptIds.size} {g.deptIds.size === 1 ? "setor" : "setores"}
+                  <td className="px-4 py-3 w-36">
+                    <Link href={`/health-surveys/${g.anchorId}`} className="block">
+                      <span className="text-xs text-muted-foreground">
+                        {g.deptIds.size} {g.deptIds.size === 1 ? "setor" : "setores"}
+                      </span>
+                      {g.deptNames.size > 0 && (
+                        <div className="mt-0.5">
+                          <span className="text-[9px] font-medium text-muted-foreground/70">
+                            {Array.from(g.deptNames).join(", ")}
+                          </span>
+                        </div>
+                      )}
                     </Link>
                   </td>
                   <td className="px-4 py-3">

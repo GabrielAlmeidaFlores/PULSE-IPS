@@ -16,6 +16,7 @@ import {
   findDispatchesForPgr,
   findPgrReviewByTenantAndPeriod,
   createPgrReviewAtomic,
+  replacePgrReviewAtomic,
   findAllTenantsUpcomingPgrReviews,
   findExistingPgrAlert,
   createPgrAlert,
@@ -34,6 +35,7 @@ const mockFindOrgWithDepts = vi.mocked(findOrgWithDepartmentsForPgr)
 const mockFindDispatches = vi.mocked(findDispatchesForPgr)
 const mockFindByTenantAndPeriod = vi.mocked(findPgrReviewByTenantAndPeriod)
 const mockCreatePgrReviewAtomic = vi.mocked(createPgrReviewAtomic)
+const mockReplacePgrReviewAtomic = vi.mocked(replacePgrReviewAtomic)
 const mockFindUpcomingReviews = vi.mocked(findAllTenantsUpcomingPgrReviews)
 const mockFindExistingPgrAlert = vi.mocked(findExistingPgrAlert)
 const mockCreatePgrAlert = vi.mocked(createPgrAlert)
@@ -98,6 +100,7 @@ beforeEach(() => {
   mockFindDispatches.mockResolvedValue([makeDispatch(4, 6)])
   mockFindByTenantAndPeriod.mockResolvedValue(null)
   mockCreatePgrReviewAtomic.mockResolvedValue({} as Awaited<ReturnType<typeof createPgrReviewAtomic>>)
+  mockReplacePgrReviewAtomic.mockResolvedValue({} as Awaited<ReturnType<typeof replacePgrReviewAtomic>>)
   mockFindUpcomingReviews.mockResolvedValue([])
   mockFindExistingPgrAlert.mockResolvedValue(null)
   mockCreatePgrAlert.mockResolvedValue(undefined)
@@ -129,7 +132,7 @@ describe("getPgrReviewsPaginated", () => {
   it("calcula skip corretamente e retorna items paginados com healthIndex", async () => {
     const result = await getPgrReviewsPaginated(TENANT_ID, { page: 2, pageSize: 5 })
 
-    expect(mockFindReviewsByTenantPaginated).toHaveBeenCalledWith(TENANT_ID, 5, 5)
+    expect(mockFindReviewsByTenantPaginated).toHaveBeenCalledWith(TENANT_ID, {}, 5, 5)
     expect(result.total).toBe(1)
     expect(result.items[0]).toHaveProperty("overallHealthIndex")
   })
@@ -179,6 +182,21 @@ describe("generatePgrReport", () => {
     await expect(generatePgrReport(TENANT_ID, "2026-04")).rejects.toMatchObject({
       code: "NO_DATA_FOR_PERIOD",
     })
+  })
+
+  it("substitui relatório existente atomicamente quando forceRegenerate é true", async () => {
+    const existingReview = { id: "pgr-existente" } as Awaited<ReturnType<typeof findPgrReviewByTenantAndPeriod>>
+    mockFindByTenantAndPeriod.mockResolvedValue(existingReview)
+
+    await generatePgrReport(TENANT_ID, PERIOD, true)
+
+    expect(mockReplacePgrReviewAtomic).toHaveBeenCalledWith(
+      "pgr-existente",
+      expect.objectContaining({ tenantId: TENANT_ID, period: PERIOD }),
+      expect.any(Array),
+      expect.any(Array),
+    )
+    expect(mockCreatePgrReviewAtomic).not.toHaveBeenCalled()
   })
 })
 
