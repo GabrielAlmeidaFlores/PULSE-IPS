@@ -18,6 +18,7 @@ import {
   PLAN_FEATURE_LABELS,
   type PlanFeature,
 } from "@/modules/plans/plan.types";
+import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
 const inputCls =
   "w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors";
@@ -101,6 +102,7 @@ export function PlanRowActions({ plan }: { plan: Plan }): React.ReactElement {
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [toggleActiveOpen, setToggleActiveOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const [name, setName] = useState(plan.name);
@@ -223,6 +225,7 @@ export function PlanRowActions({ plan }: { plan: Plan }): React.ReactElement {
         return;
       }
       toast.success(plan.isActive ? "Plano desativado" : "Plano ativado");
+      setToggleActiveOpen(false);
       router.refresh();
     });
   }
@@ -253,7 +256,7 @@ export function PlanRowActions({ plan }: { plan: Plan }): React.ReactElement {
           <Pencil className="h-3.5 w-3.5" />
         </button>
         <button
-          onClick={handleToggleActive}
+          onClick={() => setToggleActiveOpen(true)}
           disabled={isPending}
           title={plan.isActive ? "Desativar plano" : "Ativar plano"}
           className={`px-2.5 py-1.5 border border-border border-l-0 transition-colors disabled:opacity-50 ${plan.isActive ? "text-status-warning hover:text-status-warning hover:bg-status-warning-subtle" : "text-muted-foreground hover:text-status-success hover:bg-status-success-subtle"}`}
@@ -419,51 +422,31 @@ export function PlanRowActions({ plan }: { plan: Plan }): React.ReactElement {
         </div>
       )}
 
-      {deleteOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setDeleteOpen(false)}
-          />
-          <div
-            className="relative z-10 w-full max-w-sm border border-border bg-card shadow-xl"
-            style={{ borderRadius: 0 }}
-          >
-            <div className="border-b border-border px-5 py-3 border-l-4 border-l-destructive">
-              <span className="text-[11px] font-black tracking-widest uppercase text-foreground">
-                Excluir Plano
-              </span>
-            </div>
-            <div className="p-5 space-y-3">
-              <p className="text-[13px] text-foreground">
-                Tem certeza que deseja excluir o plano{" "}
-                <span className="font-bold">{plan.name}</span>?
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                O plano será desativado e ocultado do sistema. Assinaturas
-                existentes não são afetadas.
-              </p>
-            </div>
-            <div className="border-t border-border px-5 py-3 flex justify-end gap-2">
-              <button
-                onClick={() => setDeleteOpen(false)}
-                className="px-4 py-2 text-[11px] font-bold tracking-widest uppercase border border-border text-muted-foreground hover:bg-muted transition-colors"
-                style={{ borderRadius: 0 }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={isPending}
-                className="px-4 py-2 text-[11px] font-bold tracking-widest uppercase bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                style={{ borderRadius: 0 }}
-              >
-                {isPending ? "Excluindo..." : "Excluir"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmActionModal
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={handleDelete}
+        loading={isPending}
+        title="Excluir plano"
+        description={`Tem certeza que deseja excluir o plano "${plan.name}"? O plano será desativado e ocultado do sistema. Assinaturas existentes não são afetadas.`}
+        confirmLabel="Excluir"
+        variant="destructive"
+      />
+
+      <ConfirmActionModal
+        open={toggleActiveOpen}
+        onClose={() => setToggleActiveOpen(false)}
+        onConfirm={handleToggleActive}
+        loading={isPending}
+        title={plan.isActive ? "Desativar plano" : "Ativar plano"}
+        description={
+          plan.isActive
+            ? `Tem certeza que deseja desativar o plano "${plan.name}"? Ele ficará oculto para novos contratos.`
+            : `Tem certeza que deseja ativar o plano "${plan.name}"? Ele voltará a aparecer para novos contratos.`
+        }
+        confirmLabel={plan.isActive ? "Desativar" : "Ativar"}
+        variant={plan.isActive ? "destructive" : "warning"}
+      />
     </>
   );
 }

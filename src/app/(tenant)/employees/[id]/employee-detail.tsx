@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { NativeSelect } from "@/components/ui/native-select"
 import { updateEmployeeAction, deactivateEmployeeAction } from "@/app/(tenant)/employees/[id]/actions"
+import { ConfirmActionModal } from "@/components/confirm-action-modal"
 
 const schema = z.object({
   name: z.string().min(1, "Nome obrigatório"),
@@ -63,6 +64,7 @@ export function EmployeeDetail({ employee, departments }: Props): React.ReactEle
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [isDeactivating, setIsDeactivating] = useState(false)
+  const [showDeactivateModal, setShowDeactivateModal] = useState(false)
   const hasCustomSchedule = Boolean(employee.workStartTime) || employee.workDays.length > 0
   const [showSchedule, setShowSchedule] = useState(hasCustomSchedule)
   const [selectedDays, setSelectedDays] = useState<number[]>(employee.workDays.map((w) => w.dayOfWeek))
@@ -113,6 +115,7 @@ export function EmployeeDetail({ employee, departments }: Props): React.ReactEle
       toast.error(result.error)
       return
     }
+    setShowDeactivateModal(false)
     toast.success("Colaborador desativado.")
     router.push("/employees")
   }
@@ -228,14 +231,25 @@ export function EmployeeDetail({ employee, departments }: Props): React.ReactEle
           <p className="text-xs text-muted-foreground mb-4">Desativar o colaborador impedirá que ele receba pesquisas.</p>
           <Button
             variant="destructive"
-            onClick={handleDeactivate}
+            onClick={() => setShowDeactivateModal(true)}
             disabled={isDeactivating}
             className="rounded-none text-[11px] font-bold uppercase tracking-widest"
           >
-            {isDeactivating ? "Desativando..." : "Desativar colaborador"}
+            Desativar colaborador
           </Button>
         </div>
       )}
+
+      <ConfirmActionModal
+        open={showDeactivateModal}
+        onClose={() => setShowDeactivateModal(false)}
+        onConfirm={handleDeactivate}
+        loading={isDeactivating}
+        title="Desativar colaborador"
+        description={`Tem certeza que deseja desativar "${employee.name}"? O colaborador deixará de receber pesquisas.`}
+        confirmLabel="Desativar"
+        variant="destructive"
+      />
     </div>
   )
 }
