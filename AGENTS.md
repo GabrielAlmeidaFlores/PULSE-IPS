@@ -600,7 +600,7 @@ Funcionalidades incluídas em cada plano. Append por transação — ao atualiza
 | feature | varchar(30) | NOT NULL — `'action_plans'` \| `'documents'` \| `'anonymous_reports'` \| `'pgr'` \| `'messaging'` |
 | PK | (plan_id, feature) | |
 
-> Alterar `plan_features` **não afeta** clientes que já assinaram. As features vigentes ficam imutáveis em `subscription_features`.
+> Alterar `plan_features` **não afeta** clientes que já assinaram — as features vigentes ficam em `subscription_features`, que é atualizado apenas quando o cliente faz upgrade/downgrade de plano via Stripe.
 
 #### `subscription_features`
 
@@ -612,7 +612,7 @@ Snapshot imutável das funcionalidades no momento da contratação. Mesmo princ�
 | feature | varchar(30) | NOT NULL — mesmos valores de `plan_features` (inclui `'messaging'`) |
 | PK | (subscription_id, feature) | |
 
-> Inserido uma única vez na criação da assinatura (webhook `customer.subscription.created` ou via fake adapter em dev). Nunca alterado após isso.
+> Inserido na criação da assinatura e atualizado quando o cliente troca de plano (webhook `customer.subscription.updated`). Garante que as features refletem o plano **atualmente vigente** — não o plano original de contratação. Alterações feitas pelo Super Admin em `plan_features` de um plano **não afetam** assinantes existentes; apenas a troca de plano pelo cliente atualiza este snapshot.
 
 **Como checar se um tenant tem acesso a uma feature:**
 
@@ -834,6 +834,7 @@ Dias de trabalho do departamento em `department_work_days` (join table — ver a
 | status | varchar(20) | `'active'` \| `'inactive'` \| `'paused'` |
 | pause_start_at | date | |
 | pause_end_at | date | |
+| deleted_at | timestamptz | NULL = ativo; NOT NULL = soft-deleted (excluído da UI e de novos dispatches) |
 | created_at | timestamptz | NOT NULL |
 | updated_at | timestamptz | NOT NULL |
 | UNIQUE | (tenant_id, email) | |
@@ -1115,7 +1116,7 @@ Preservação de versões anteriores de documentos. Cada upload cria uma versão
 | id | uuid | PK |
 | tenant_id | uuid | NOT NULL |
 | department_id | uuid | NULL, FK → departments.id |
-| type | varchar(30) | `'score_drop'` \| `'negative_trend'` \| `'low_adherence'` \| `'crisis_report'` \| `'pgr_review_due'` |
+| type | varchar(30) | `'low_score'` \| `'score_drop'` \| `'negative_trend'` \| `'low_adherence'` \| `'crisis_report'` \| `'pgr_review_due'` \| `'consent_expired'` |
 | severity | varchar(10) | `'high'` \| `'medium'` \| `'low'` |
 | message | text | NOT NULL |
 | is_read | boolean | NOT NULL, default false |
@@ -1127,11 +1128,13 @@ Preservação de versões anteriores de documentos. Cada upload cria uma versão
 
 | Tipo | Quando dispara |
 |---|---|
+| `low_score` | Score do setor abaixo do limiar crítico |
 | `score_drop` | Score caiu >1 ponto em relação ao período anterior |
 | `negative_trend` | 3 períodos consecutivos abaixo da média histórica |
 | `low_adherence` | <80% de resposta após 48h do disparo |
 | `crisis_report` | Relato anônimo com palavras-chave de crise detectadas |
 | `pgr_review_due` | 30 dias antes de `pgr_reviews.next_review_at` |
+| `consent_expired` | Colaborador com token de consentimento expirado sem aceite |
 
 #### `audit_logs`
 
@@ -2201,7 +2204,7 @@ O arquivo `src/proxy.ts` com export `proxy` substitui o antigo `middleware.ts` n
 - Bloquear acesso de `org_user` ao `/super-admin/*`
 - Bloquear acesso de `super_admin` ao `/(tenant)/*`
 
-**Caminhos públicos** (sem autenticação): `/login`, `/forgot-password`, `/reset-password/*`, `/invite/*`, `/health-survey/*`, `/report/*`, `/accept-terms`, `/api/webhooks/*`, `/platform-terms`, `/privacy-policy`, `/consent-terms`
+**Caminhos públicos** (sem autenticação): `/login`, `/forgot-password`, `/reset-password/*`, `/invite/*`, `/health-survey/*`, `/report/*`, `/checkout`, `/accept-terms`, `/learn-more`, `/privacy-policy`, `/platform-terms`, `/consent-terms`, `/data-deletion`, `/api/webhooks/*`, `/api/health`
 
 ### Fluxo de login (tenant)
 
@@ -2569,7 +2572,7 @@ O componente shadcn `<Input>` já aplica `[color-scheme:light] dark:[color-schem
   └─ Insere novas plan_features atomicamente (transação)
 ```
 
-> Alterar `plan_features` **não afeta** clientes que já assinaram. As funcionalidades vigentes ficam imutáveis em `subscription_features` (snapshot criado uma única vez no primeiro evento de assinatura).
+> Alterar `plan_features` **não afeta** clientes que já assinaram. As funcionalidades vigentes ficam em `subscription_features`, atualizado apenas quando o cliente faz upgrade/downgrade de plano via Stripe.
 
 ### Funcionalidades disponíveis por plano
 
@@ -2904,7 +2907,7 @@ Processos recorrentes gerenciados pelo **BullMQ** com Redis como broker.
 |---|---|---|
 | `health-survey-dispatcher` | A cada 15min | Itera configurações ativas; verifica janela de horário de trabalho e intervalo de frequência (`shouldSkipDispatch`); cria dispatch + tokens + envia mensagens |
 | `health-survey-adherence-checker` | A cada hora | 48h após cada dispatch, calcula taxa de adesão e cria alertas `low_adherence` |
-| `health-survey-score-alert-detector` | Diário (03:00) | Calcula quedas de score; cria alertas `score_drop` e `negative_trend` |
+| `health-survey-score-alert-detector` | Diário (03:00) | Calcula quedas de score; cria alertas `low_score`, `score_drop`, `negative_trend` e `consent_expired` |
 | `employee-unpause` | Diário (01:00) | Reverte `status = 'active'` para colaboradores com `pause_end_at <= today` |
 | `pgr-review-reminder` | Diário (08:00) | 30 dias antes de `next_review_at`; cria alerta `pgr_review_due` |
 | `stripe-webhook-retry` | A cada hora | Reprocessa `billing_webhook_events` com `error IS NOT NULL` e `processed = false` |
