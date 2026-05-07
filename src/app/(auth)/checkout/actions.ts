@@ -40,7 +40,7 @@ export async function selfServiceCheckoutAction(input: {
     const successUrl = `${env.NEXT_PUBLIC_APP_URL}/checkout/success`
     const cancelUrl = `${env.NEXT_PUBLIC_APP_URL}/checkout?priceId=${parsed.data.priceId}`
 
-    const checkoutUrl = await createCheckoutSession(org.id, planPrice.externalPriceId ?? "", {
+    const checkoutUrl = await createCheckoutSession(org.id, planPrice.externalPriceId, {
       successUrl,
       cancelUrl,
     })

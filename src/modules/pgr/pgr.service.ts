@@ -1,6 +1,6 @@
 import { addDays } from "date-fns"
 import { MINIMUM_RESPONDENTS_FOR_DISPLAY } from "@/libs/utils/anonymity"
-import type { PgrReview, PgrQuestionResult, CreatePgrDeptResultInput, CreatePgrQuestionResultInput, PgrScoreDistribution } from "@/modules/pgr/pgr.types"
+import type { PgrReview, PgrQuestionResult, PgrDeptResultWithoutReviewId, PgrQuestionResultWithoutReviewId, PgrScoreDistribution } from "@/modules/pgr/pgr.types"
 import type { ScoreDirection } from "@/modules/health-surveys/health-survey.types"
 import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
 import { AppError } from "@/libs/errors/app-error"
@@ -104,20 +104,18 @@ function collectResponseScores(qMap: Map<string, QuestionMapEntry>, responses: D
 }
 
 function buildDeptQuestionResults(
-  reviewId: string,
   deptId: string,
   deptDispatches: DispatchLike[],
-): CreatePgrQuestionResultInput[] {
+): PgrQuestionResultWithoutReviewId[] {
   const qMap: Map<string, QuestionMapEntry> = new Map()
   for (const dispatch of deptDispatches) {
     registerQuestionsInMap(qMap, dispatch.healthSurveyConfiguration.questions ?? [])
     collectResponseScores(qMap, dispatch.responses)
   }
-  const results: CreatePgrQuestionResultInput[] = []
+  const results: PgrQuestionResultWithoutReviewId[] = []
   for (const [questionId, v] of qMap.entries()) {
     if (v.scores.length >= MINIMUM_RESPONDENTS_FOR_DISPLAY) {
       results.push({
-        pgrReviewId: reviewId,
         departmentId: deptId,
         questionId,
         questionText: v.text,
@@ -153,7 +151,7 @@ export async function generatePgrReport(tenantId: string, period: string, forceR
     }
   }
 
-  const deptResults: CreatePgrDeptResultInput[] = org.departments.map((dept) => {
+  const deptResults: PgrDeptResultWithoutReviewId[] = org.departments.map((dept) => {
     const deptDispatches = periodDispatches.filter(
       (d) => d.healthSurveyConfiguration.departmentId === dept.id,
     )
@@ -172,7 +170,6 @@ export async function generatePgrReport(tenantId: string, period: string, forceR
     const totalRecipients = deptDispatches.reduce((sum, d) => sum + d.totalRecipients, 0)
 
     return {
-      pgrReviewId: "",
       departmentId: dept.id,
       departmentName: dept.name,
       employeeCount: dept.employees.length,
@@ -184,7 +181,6 @@ export async function generatePgrReport(tenantId: string, period: string, forceR
 
   const questionResults = org.departments.flatMap((dept) =>
     buildDeptQuestionResults(
-      "",
       dept.id,
       periodDispatches.filter((d) => d.healthSurveyConfiguration.departmentId === dept.id),
     ),

@@ -6,7 +6,7 @@ export interface SendMessageParams {
 }
 
 export interface SendMessageResult {
-  externalId: string
+  externalId: string | null
   status: "queued" | "sent" | "failed"
   error?: string
 }

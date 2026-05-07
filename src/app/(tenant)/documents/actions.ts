@@ -63,7 +63,7 @@ export async function uploadDocumentVersionAction(
   const session = await getSession()
   if (!session) return { error: "Sessão expirada." }
 
-  const documentId = (formData.get("documentId") as string | null) ?? ""
+  const documentId = formData.get("documentId") as string | null
   const file = formData.get("file") as File | null
 
   if (!documentId) return { error: "Documento inválido." }

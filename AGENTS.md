@@ -1396,6 +1396,68 @@ const rows = await prisma.employee.findMany({
 const rows = await prisma.$queryRaw`SELECT * FROM employees WHERE tenant_id = ${tenantId}`
 ```
 
+### Strings vazias são proibidas em campos de banco de dados
+
+**Nunca use `""` (string vazia) como valor a ser persistido no banco.** Campos opcionais/nullable devem receber `null` ou `undefined`. Campos obrigatórios sem valor disponível devem lançar `AppError`. Nunca use `?? ""` ou `.default("")` como fallback para persistência.
+
+```typescript
+// ❌ PROIBIDO — armazena "" quando externalPriceId é null
+snapshotExternalPriceId: planPrice.externalPriceId ?? ""
+
+// ✅ CORRETO — lança erro explícito
+if (!planPrice.externalPriceId) {
+  throw new AppError("PLAN_PRICE_NOT_CONFIGURED", "Preço do plano sem ID externo configurado.")
+}
+snapshotExternalPriceId: planPrice.externalPriceId
+
+// ❌ PROIBIDO — armazena "" quando price.id é undefined
+const priceId = subscription.items.data[0]?.price.id ?? ""
+
+// ✅ CORRETO — early return explícito se dado obrigatório não existe
+const priceItem = subscription.items.data[0]
+if (!priceItem) return
+const priceId = priceItem.price.id
+```
+
+**Regras derivadas:**
+
+| Cenário | Solução correta |
+|---|---|
+| Campo nullable no banco, valor ausente | `null` — nunca `""` |
+| Campo não-nullable no banco, valor ausente | `AppError` — nunca `""` |
+| Campo opcional em interface TypeScript (`field?: string`) | Usar conditional spread `...(val ? { field: val } : {})` |
+| Resultado de adaptador externo sem ID | `externalId: null` no tipo, conditional spread no log |
+| Job sem ID ao registrar log | Pular o insert — nunca `jobId: ""` |
+| Tipo intermediário que será preenchido depois | Usar `Omit<T, 'field'>` como tipo intermediário |
+
+**`exactOptionalPropertyTypes` e conditional spread:**
+
+Com `exactOptionalPropertyTypes: true`, nunca atribua `string | undefined` a um campo `field?: string`:
+
+```typescript
+// ❌ PROIBIDO — tipo incompatível com exactOptionalPropertyTypes
+await createLog({ externalId: result.externalId ?? undefined })
+
+// ✅ CORRETO — conditional spread
+await createLog({
+  ...(result.externalId !== null ? { externalId: result.externalId } : {}),
+})
+```
+
+**Tipos intermediários sem o campo de ID (padrão para criação atômica):**
+
+Quando um repositório precisa receber objetos antes de conhecer o ID gerado pelo banco (ex: PGR), use `Omit<T, 'id'>` como tipo intermediário. O repositório adiciona o ID no `.map()` antes do `createMany`. Nunca passe `pgrReviewId: ""` ou `id: ""` como placeholder.
+
+```typescript
+// ❌ PROIBIDO — placeholder string vazia
+const deptResults: CreatePgrDeptResultInput[] = depts.map((d) => ({ pgrReviewId: "", ... }))
+
+// ✅ CORRETO — tipo intermediário sem o campo
+const deptResults: PgrDeptResultWithoutReviewId[] = depts.map((d) => ({ departmentId: d.id, ... }))
+// No repositório, o ID é adicionado atomicamente:
+const resultsWithId = deptResults.map((r) => ({ ...r, pgrReviewId: review.id }))
+```
+
 ### Tenant Guard obrigatório
 
 Toda query em tabela com `tenant_id` **deve** incluí-lo:
@@ -3817,22 +3879,23 @@ Execute `grep` para confirmar cada item:
 | 9 | Nenhum `enum` TypeScript (use union types ou const maps) | `grep -rn "^enum \|  enum " src/` |
 | 10 | `JsonValue` de `@/libs/utils/json` — nunca `Prisma.InputJsonValue` fora de repository | `grep -rn "Prisma\.InputJsonValue\|Prisma\.JsonValue" src/modules/ src/app/` |
 | 11 | Nenhum `<select>` nativo fora de `native-select.tsx` — usar sempre `NativeSelect` (§35) | `grep -rn "<select" src --include="*.tsx" \| grep -v "native-select.tsx"` |
+| 12 | Nenhum `?? ""` ou `: ""` em campos que serão persistidos no banco | `grep -rn '?? ""\|: ""' src/modules/ src/workers/ src/app/\(auth\)/ \| grep -v ".test.\|placeholder\|className"` |
 
 ### Verificações de domínio (obrigatórias para funcionalidades novas)
 
 | # | Verificação |
 |---|---|
-| 12 | Nova tabela com `tenant_id`? Todos os repositórios recebem `tenantId` como 1º parâmetro |
-| 13 | Nova integração externa? Existe interface em `libs/integrations/*/interface.ts` e adapter separado |
-| 14 | Novos tipos JSON? Usam `JsonValue` de `@/libs/utils/json`, não tipos do ORM |
-| 15 | Novo evento de billing? Mapeado em `webhook.handler.ts` e na tabela de eventos da §15 |
-| 16 | Novos valores de enum no banco? Mapeados em `LABELS` Record antes de renderizar na UI (§24) |
-| 17 | Nova rota com dados sensíveis? Tenant guard ativo no `proxy.ts` ou no layout |
-| 18 | Novo módulo? Segue estrutura `repository + service + schema + types` (§10) |
-| 19 | Novos erros de negócio? Usam `AppError` com mensagem em pt-BR |
-| 20 | Server Action nova? Chama `getSession()`, valida com Zod, chama `revalidatePath` após mutação |
-| 21 | `employee_consents` modificado? `ConsentRepository` ainda é append-only (sem `update`/`delete`) |
-| 22 | **Todo identificador novo passa na pergunta de validação de nomenclatura?** Função, tipo, componente, job, constante, arquivo — o nome carrega domínio + entidade + ação sem precisar abrir o arquivo? (§9) |
+| 13 | Nova tabela com `tenant_id`? Todos os repositórios recebem `tenantId` como 1º parâmetro |
+| 14 | Nova integração externa? Existe interface em `libs/integrations/*/interface.ts` e adapter separado |
+| 15 | Novos tipos JSON? Usam `JsonValue` de `@/libs/utils/json`, não tipos do ORM |
+| 16 | Novo evento de billing? Mapeado em `webhook.handler.ts` e na tabela de eventos da §15 |
+| 17 | Novos valores de enum no banco? Mapeados em `LABELS` Record antes de renderizar na UI (§24) |
+| 18 | Nova rota com dados sensíveis? Tenant guard ativo no `proxy.ts` ou no layout |
+| 19 | Novo módulo? Segue estrutura `repository + service + schema + types` (§10) |
+| 20 | Novos erros de negócio? Usam `AppError` com mensagem em pt-BR |
+| 21 | Server Action nova? Chama `getSession()`, valida com Zod, chama `revalidatePath` após mutação |
+| 22 | `employee_consents` modificado? `ConsentRepository` ainda é append-only (sem `update`/`delete`) |
+| 23 | **Todo identificador novo passa na pergunta de validação de nomenclatura?** Função, tipo, componente, job, constante, arquivo — o nome carrega domínio + entidade + ação sem precisar abrir o arquivo? (§9) |
 
 ### Quando o PR pode ser considerado pronto
 

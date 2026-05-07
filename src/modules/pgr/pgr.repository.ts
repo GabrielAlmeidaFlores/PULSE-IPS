@@ -1,6 +1,6 @@
 import { prisma } from "@/libs/db"
 import type { Prisma, PgrReview, PgrDeptResult, PgrQuestionResult, Organization, Department, Employee, HealthSurveyDispatch, HealthSurveyResponse, HealthSurveyResponseItem, HealthSurveyConfiguration, HealthSurveyQuestion, Alert } from "@prisma/client"
-import type { CreatePgrReviewInput, CreatePgrDeptResultInput, CreatePgrQuestionResultInput, CreatePgrAlertInput } from "@/modules/pgr/pgr.types"
+import type { CreatePgrReviewInput, CreatePgrDeptResultInput, CreatePgrQuestionResultInput, PgrDeptResultWithoutReviewId, PgrQuestionResultWithoutReviewId, CreatePgrAlertInput } from "@/modules/pgr/pgr.types"
 
 export type PgrReviewListItem = PgrReview & {
   deptResults: { avgScore: number; responseCount: number }[]
@@ -137,8 +137,8 @@ export function findPgrReviewByTenantAndPeriod(tenantId: string, period: string)
 
 export function createPgrReviewAtomic(
   reviewData: CreatePgrReviewInput,
-  deptResults: CreatePgrDeptResultInput[],
-  questionResults: CreatePgrQuestionResultInput[],
+  deptResults: PgrDeptResultWithoutReviewId[],
+  questionResults: PgrQuestionResultWithoutReviewId[],
 ): Promise<PgrReview> {
   return prisma.$transaction(async (tx) => {
     const review = await tx.pgrReview.create({
@@ -162,8 +162,8 @@ export function createPgrReviewAtomic(
 export function replacePgrReviewAtomic(
   existingId: string,
   reviewData: CreatePgrReviewInput,
-  deptResults: CreatePgrDeptResultInput[],
-  questionResults: CreatePgrQuestionResultInput[],
+  deptResults: PgrDeptResultWithoutReviewId[],
+  questionResults: PgrQuestionResultWithoutReviewId[],
 ): Promise<PgrReview> {
   return prisma.$transaction(async (tx) => {
     await tx.pgrReview.delete({ where: { id: existingId, tenantId: reviewData.tenantId } })
