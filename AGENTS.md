@@ -1699,6 +1699,45 @@ export async function createEmployeeAction(...) {
 }
 ```
 
+### UUID validation obrigatória em IDs recebidos por Server Actions
+
+**Toda Server Action que recebe um ID como parâmetro string deve validá-lo como UUID antes de usá-lo.** IDs vindos de props de Client Components podem ser manipulados — validar com Zod garante que não cheguem valores inválidos ao banco.
+
+```typescript
+// ✅ CORRETO — validação UUID antes de usar
+import { z } from "zod"
+
+export async function deactivateEntityAction(entityId: string): Promise<ActionResult> {
+  const session = await getSession()
+  if (!session) return { error: "Sessão expirada." }
+
+  const parsedId = z.string().uuid().safeParse(entityId)
+  if (!parsedId.success) return { error: "Registro inválido." }
+
+  await entityService.deactivate(session.tenantId, parsedId.data)
+  revalidatePath("/entities")
+  return {}
+}
+
+// ❌ PROIBIDO — ID não validado
+export async function deactivateEntityAction(entityId: string): Promise<ActionResult> {
+  await entityService.deactivate(session.tenantId, entityId)  // vulnerável
+}
+```
+
+### Campos derivados de frequência — enforcement server-side obrigatório
+
+**Campos que dependem da frequência selecionada devem ser normalizados no servidor**, independentemente do que o cliente enviou. Nunca confiar em contrato de UI para garantir consistência de dados.
+
+```typescript
+// ✅ CORRETO — server enforces nulling scheduledDayOfMonth for non-monthly
+const scheduledDayOfMonth = frequency === "monthly" ? rawScheduledDay : null
+
+// ❌ PROIBIDO — confiar que o cliente enviou null para frequências não-mensais
+const { scheduledDayOfMonth } = parsed.data  // pode vir com valor residual
+```
+
+
 ### Regras do `yarn lint` (ESLint — `eslint.config.mjs`)
 
 O comando `yarn lint` executa o ESLint sobre todos os arquivos `**/*.ts` e `**/*.tsx` (exceto `.next/`, `out/`, `build/`, `node_modules/`, `prisma/`, `src/cli/`). **Todo PR deve passar com zero erros e zero warnings.**
@@ -3041,6 +3080,18 @@ Job health-survey-dispatcher (a cada 15min) — runHealthSurveyAutoDispatchSched
             → Atualiza dispatch: total_recipients
 ```
 
+**Frequência mensal sem `scheduledDayOfMonth`:** quando `frequency = "monthly"` e `scheduledDayOfMonth = null`, `shouldSkipDispatch` cai no path de intervalo fixo (28 dias), disparando no primeiro dia de trabalho qualificado após o cooldown. Esse é o comportamento intencional para configs mensais sem dia fixo.
+
+**Criação idempotente de configurações (`createHealthSurveyForDepartments`):** ao criar configs para múltiplos setores (incluindo `departmentIds: "all"`), a função busca via `findDepartmentIdsWithActiveHealthSurveyConfigs` quais setores já possuem config ativa e **pula silenciosamente** os que já têm. Isso evita duplicatas sem lançar erro. Se todos os setores já possuem config ativa, a função retorna sem criar nada.
+
+```typescript
+// Padrão de criação idempotente
+const deptsWithExistingConfig = await findDepartmentIdsWithActiveHealthSurveyConfigs(tenantId, targetDeptIds)
+const existingSet = new Set(deptsWithExistingConfig)
+const deptsWithoutConfig = targetDeptIds.filter((id) => !existingSet.has(id))
+if (deptsWithoutConfig.length === 0) return  // nada a criar
+```
+
 ### 20.4 Resposta ao formulário (anonimato garantido)
 
 ```
@@ -4374,6 +4425,7 @@ Definidas em `:root` (light) e `.dark` em `src/app/globals.css`:
 | `--status-danger` | Vermelho — erro, crítico, falhou | texto, SVG fill |
 | `--status-danger-subtle` | Vermelho claro — fundo de badge/card | background |
 | `--status-danger-border` | Vermelho médio — borda de badge | border |
+| `--status-danger-foreground` | Branco (light) / escuro (dark) — texto sobre fundo danger | texto em botões com `bg-status-danger` |
 | `--status-info` | Azul — informativo, agendado | texto, SVG fill |
 | `--status-info-subtle` | Azul claro — fundo de badge/card | background |
 | `--status-info-border` | Azul médio — borda de badge | border |
@@ -4464,8 +4516,8 @@ fill={healthIndexChartColor(score)}  // retorna "var(--status-success/warning/da
 
 ### Ao adicionar nova cor de status
 
-1. Adicione as 3 variáveis em `:root` e `.dark` em `globals.css` (main + subtle + border)
-2. Registre as 3 variantes em `@theme inline`
+1. Adicione as variáveis em `:root` e `.dark` em `globals.css` (main + subtle + border; `foreground` se precisar de texto sobre fundo colorido)
+2. Registre as variantes em `@theme inline`
 3. Adicione a utilitária `.badge-novoStatus` em `@layer utilities`
 4. Se for cor de saúde/aderência/tendência: adicione a função em `health-index.ts`
 5. Se for cor de badge: adicione a constant em `alert-labels.ts`

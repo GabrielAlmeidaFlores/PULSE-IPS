@@ -1,5 +1,6 @@
 "use server"
 
+import { z } from "zod"
 import { revalidatePath } from "next/cache"
 import { AppError } from "@/libs/errors/app-error"
 import type { ActionResult } from "@/libs/utils/action-result"
@@ -9,8 +10,12 @@ import { deactivateHealthSurveyConfig } from "@/modules/health-surveys/health-su
 export async function deactivateHealthSurveyConfigAction(configId: string): Promise<ActionResult> {
   const session = await getSession()
   if (!session) return { error: "Sessão expirada." }
+
+  const parsedConfigId = z.string().uuid().safeParse(configId)
+  if (!parsedConfigId.success) return { error: "Pesquisa inválida." }
+
   try {
-    await deactivateHealthSurveyConfig(session.tenantId, configId)
+    await deactivateHealthSurveyConfig(session.tenantId, parsedConfigId.data)
     revalidatePath("/health-surveys/configure")
     return {}
   } catch (err) {

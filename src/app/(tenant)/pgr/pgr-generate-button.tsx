@@ -48,7 +48,7 @@ export function PgrGenerateButton(): React.ReactElement {
         <button
           onClick={handleConfirmReplace}
           disabled={isPending}
-          className="px-3 py-2 text-[11px] font-bold uppercase tracking-wider bg-status-danger text-white hover:bg-status-danger/90 transition-colors disabled:opacity-50"
+          className="px-3 py-2 text-[11px] font-bold uppercase tracking-wider bg-status-danger text-status-danger-foreground hover:bg-status-danger/90 transition-colors disabled:opacity-50"
           style={{ borderRadius: 0 }}
         >
           {isPending ? "Substituindo..." : "Sim, substituir"}

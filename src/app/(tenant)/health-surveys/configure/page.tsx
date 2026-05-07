@@ -98,7 +98,7 @@ export default async function ConfigureHealthSurveyListPage({ searchParams }: Co
               <tr key={config.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors group">
                 <td className="px-4 py-3">
                   <span className="text-[13px] font-semibold text-foreground">{config.name}</span>
-                  {config.description !== null && config.description !== "" && (
+                  {config.description !== null && (
                     <p className="text-[11px] text-muted-foreground mt-0.5 truncate max-w-xs">{config.description}</p>
                   )}
                 </td>

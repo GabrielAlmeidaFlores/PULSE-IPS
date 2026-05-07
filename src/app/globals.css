@@ -16,6 +16,7 @@
   --color-status-danger:         var(--status-danger);
   --color-status-danger-subtle:  var(--status-danger-subtle);
   --color-status-danger-border:  var(--status-danger-border);
+  --color-status-danger-foreground: var(--status-danger-foreground);
   --color-status-info:           var(--status-info);
   --color-status-info-subtle:    var(--status-info-subtle);
   --color-status-info-border:    var(--status-info-border);
@@ -100,6 +101,7 @@
   --status-danger:         oklch(0.540 0.255 22);
   --status-danger-subtle:  oklch(0.965 0.048 20);
   --status-danger-border:  oklch(0.740 0.195 20);
+  --status-danger-foreground: oklch(1 0 0);
   --status-info:           oklch(0.450 0.170 256);
   --status-info-subtle:    oklch(0.964 0.035 256);
   --status-info-border:    oklch(0.785 0.130 256);
@@ -157,6 +159,7 @@
   --status-danger:         oklch(0.680 0.200 17.6);
   --status-danger-subtle:  oklch(0.255 0.045 20);
   --status-danger-border:  oklch(0.415 0.125 18);
+  --status-danger-foreground: oklch(0.130 0.020 20);
   --status-info:           oklch(0.700 0.165 256);
   --status-info-subtle:    oklch(0.250 0.050 256);
   --status-info-border:    oklch(0.385 0.105 256);

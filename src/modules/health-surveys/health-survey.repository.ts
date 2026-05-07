@@ -35,13 +35,13 @@ export async function findHealthSurveyConfigsByTenantPaginated(
   take: number,
 ): Promise<{ items: HealthSurveyConfigWithDetails[]; total: number }> {
   const where: Prisma.HealthSurveyConfigurationWhereInput = { tenantId, isActive: true }
-  if (filters.q !== undefined && filters.q !== "") {
+  if (filters.q !== undefined) {
     where.name = { contains: filters.q, mode: "insensitive" }
   }
-  if (filters.frequency !== undefined && filters.frequency !== "") {
+  if (filters.frequency !== undefined) {
     where.frequency = filters.frequency
   }
-  if (filters.departmentId !== undefined && filters.departmentId !== "") {
+  if (filters.departmentId !== undefined) {
     where.departmentId = filters.departmentId
   }
   const include = {

@@ -33,10 +33,14 @@ export async function updateHealthSurveyConfigAction(configId: string, input: un
   const session = await getSession()
   if (!session) return { error: "Sessão expirada." }
 
+  const parsedConfigId = z.string().uuid().safeParse(configId)
+  if (!parsedConfigId.success) return { error: "Pesquisa inválida." }
+
   const parsed = updateHealthSurveyConfigSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
 
-  const { name, description, frequency, scheduledDayOfMonth, workStartTime, workEndTime, workDays, questions, departmentIds } = parsed.data
+  const { name, description, frequency, scheduledDayOfMonth: rawScheduledDay, workStartTime, workEndTime, workDays, questions, departmentIds } = parsed.data
+  const scheduledDayOfMonth = frequency === "monthly" ? rawScheduledDay : null
 
   if (frequency === "monthly" && scheduledDayOfMonth === null) {
     return { error: "Selecione o dia do mês para o envio mensal." }
@@ -48,16 +52,16 @@ export async function updateHealthSurveyConfigAction(configId: string, input: un
   }
 
   try {
-    const currentConfig = await getHealthSurveyConfig(session.tenantId, configId)
+    const currentConfig = await getHealthSurveyConfig(session.tenantId, parsedConfigId.data)
     if (!currentConfig) return { error: "Pesquisa não encontrada." }
 
     const currentDeptId = currentConfig.department.id
     const configUpdate = { name, description, frequency, scheduledDayOfMonth, workStartTime, workEndTime, workDays, questions }
 
     if (departmentIds === "all" || selectedDeptIds.includes(currentDeptId)) {
-      await updateHealthSurveyConfig(session.tenantId, configId, configUpdate)
+      await updateHealthSurveyConfig(session.tenantId, parsedConfigId.data, configUpdate)
     } else {
-      await deactivateHealthSurveyConfig(session.tenantId, configId)
+      await deactivateHealthSurveyConfig(session.tenantId, parsedConfigId.data)
     }
 
     const newDeptIds = departmentIds === "all" ? null : selectedDeptIds.filter((id) => id !== currentDeptId)
