@@ -216,7 +216,7 @@ Processa os jobs agendados pelo cron. Cada job é identificado por nome:
 |---|---|
 | `health-survey-dispatcher` | Dispara pesquisas para funcionários ativos (automático e manual) |
 | `health-survey-adherence-checker` | Verifica aderência de dispatches com mais de 48h |
-| `health-survey-score-alert-detector` | Detecta scores baixos e gera alertas de bem-estar |
+| `health-survey-score-alert-detector` | Detecta scores baixos, quedas, tendências negativas e consentimentos expirados; gera alertas `low_score`, `score_drop`, `negative_trend` e `consent_expired` |
 | `employee-unpause` | Despausa funcionários após o período de pausa expirar |
 | `pgr-review-reminder` | Cria alerta de revisão do PGR quando vence em até 30 dias |
 | `stripe-webhook-retry` | Reprocessa webhooks do Stripe que falharam |
@@ -264,7 +264,7 @@ Todos os endpoints exigem o header `x-cron-secret: <CRON_SECRET>`.
 |---|---|---|
 | `/api/jobs/health-survey-dispatcher` | POST | Dispara pesquisas agendadas |
 | `/api/jobs/health-survey-adherence-checker` | POST | Verifica aderência de respostas |
-| `/api/jobs/health-survey-score-alert-detector` | POST | Gera alertas de scores baixos |
+| `/api/jobs/health-survey-score-alert-detector` | POST | Gera alertas `low_score`, `score_drop`, `negative_trend` e `consent_expired` |
 | `/api/jobs/employee-unpause` | POST | Despausa funcionários com data vencida |
 | `/api/jobs/pgr-review-reminder` | POST | Cria alerta de revisão do PGR |
 | `/api/jobs/stripe-webhook-retry` | POST | Reprocessa webhooks Stripe com falha |

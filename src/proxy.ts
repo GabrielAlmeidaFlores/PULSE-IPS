@@ -21,6 +21,7 @@ const PUBLIC_PATHS = [
   "/consent-terms",
   "/api/webhooks",
   "/api/health",
+  "/data-deletion",
   SUPER_ADMIN_LOGIN_PATH,
 ]
 
