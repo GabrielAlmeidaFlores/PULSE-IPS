@@ -358,7 +358,7 @@ export default function LearnMorePage(): React.ReactElement {
               { actor: "voce", icon: <ClipboardList className="w-5 h-5" />, title: "Você cria os departamentos", desc: "Cadastra os setores da empresa com os horários de expediente e dias de trabalho de cada equipe." },
               { actor: "voce", icon: <Clock className="w-5 h-5" />, title: "Você configura as pesquisas por setor", desc: "Cria uma ou mais pesquisas por setor, cada uma com nome, perguntas e frequência próprios — diariamente, duas vezes por semana, semanalmente, quinzenalmente ou mensalmente." },
               { actor: "voce", icon: <Users className="w-5 h-5" />, title: "Você cadastra sua equipe", desc: "Registra os colaboradores por setor — um a um ou importando uma planilha Excel. Leva minutos." },
-              { actor: "pulse", icon: <Zap className="w-5 h-5" />, title: "Pulse dispara as pesquisas automaticamente", desc: "Dentro do horário de expediente e nos dias configurados, o Pulse envia o link da pesquisa para cada colaborador cadastrado." },
+              { actor: "pulse", icon: <Zap className="w-5 h-5" />, title: "Pulse dispara as pesquisas automaticamente", desc: "Dentro do horário de expediente e nos dias configurados, o Pulse dispara as pesquisas. Nos planos com Envio de Mensagens, cada colaborador recebe o link individualmente. Nos demais, o RH distribui o link compartilhado pelo canal de sua escolha." },
               { actor: "colaborador", icon: <UserCheck className="w-5 h-5" />, title: "Colaborador abre o link — e consente no primeiro acesso", desc: "Na primeira vez, o colaborador lê os Termos de Consentimento (TCLE) direto no link. Aceita ou recusa com um clique. O registro é imutável. Nas próximas pesquisas, vai direto para o formulário." },
               { actor: "colaborador", icon: <EyeOff className="w-5 h-5" />, title: "Colaborador responde — com total anonimato", desc: "Sem login, sem identificação. Só as respostas. Ninguém na empresa sabe quem disse o quê." },
               { actor: "pulse", icon: <BarChart3 className="w-5 h-5" />, title: "Pulse analisa e atualiza o painel", desc: "Os indicadores de cada setor são calculados automaticamente. Você vê tudo no painel em tempo real." },
@@ -639,8 +639,8 @@ export default function LearnMorePage(): React.ReactElement {
                 q: "Os colaboradores precisam criar uma conta ou instalar algum aplicativo?",
                 a: (
                   <span>
-                    <strong className="text-foreground">Não.</strong> O colaborador recebe um link pela mensagem e responde diretamente no navegador do celular. Não é necessário criar conta, fazer login ou instalar nada.{"\n\n"}
-                    O link funciona em qualquer smartphone, sem dependência de sistema operacional ou versão de app.
+                    <strong className="text-foreground">Não.</strong> O colaborador acessa um link e responde diretamente no navegador do celular. Não é necessário criar conta, fazer login ou instalar nada.{"\n\n"}
+                    O link pode chegar individualmente por mensagem automática (planos com Envio de Mensagens) ou ser distribuído pelo RH por qualquer canal — grupo, e-mail, intranet ou QR code. Funciona em qualquer smartphone.
                   </span>
                 ),
               },
@@ -683,7 +683,7 @@ export default function LearnMorePage(): React.ReactElement {
                 a: (
                   <span>
                     É o documento oficial do <strong className="text-foreground">Programa de Gerenciamento de Riscos (PGR)</strong> — exigido pela legislação trabalhista para comprovar o monitoramento de fatores de risco psicossocial.{"\n\n"}
-                    O relatório consolida, para o período escolhido: métricas por setor, histórico de alertas, planos de ação registrados, lista de colaboradores que aceitaram o TCLE e a data de revisão do PGR.{"\n\n"}
+                    O relatório consolida, para o período escolhido: o índice de saúde global da organização, a taxa de adesão, as métricas detalhadas de cada setor (score médio, respostas, adesão, número de colaboradores) e o breakdown por pergunta — com classificação em saudável, atenção ou crítico. Também exibe a data da próxima revisão programada do PGR.{"\n\n"}
                     <strong className="text-foreground">Você escolhe o período, clica em gerar e baixa o arquivo em segundos.</strong> Pronto para apresentar a diretores, auditores ou qualquer parte interessada.
                   </span>
                 ),

@@ -3074,25 +3074,20 @@ Job health-survey-dispatcher (a cada 15min) — runHealthSurveyAutoDispatchSched
                 → skip se hoje não é um dia de trabalho da config (isWorkDay)
                 → skip se o último dispatch foi há menos de FREQUENCY_INTERVAL_DAYS dias
         [PASS] → fireDispatch:
-            → Cria health_survey_dispatch (status='available', dispatchedAt=now)
-            → Gera health_survey_response_token por employee elegível (expires_at = +48h)
-            → [GATE FEATURE] hasTenantPlanFeature(tenantId, "messaging")
-                ├─ SEM feature: tokens criados, nenhuma mensagem enviada → RH usa link assinado
-                └─ COM feature: messagingService.sendBulk → Registra em message_logs
-            → Atualiza dispatch: total_recipients
+            → Cria health_survey_dispatch (status='scheduled')
+            → sendDispatchTokensAndMessages:
+                → Filtra colaboradores elegíveis por consentimento
+                → Busca tokens existentes (reenvio anterior ou link assinado)
+                → Cria novos tokens para colaboradores sem token válido (expires_at = +48h)
+                → Atualiza dispatch: status='available', dispatchedAt=now, total_recipients
+                → [GATE FEATURE] hasTenantPlanFeature(tenantId, "messaging")
+                    ├─ SEM feature: tokens criados, nenhuma mensagem enviada → RH usa link assinado
+                    └─ COM feature: messagingService.sendBulk → Registra em message_logs
 ```
 
-**Frequência mensal sem `scheduledDayOfMonth`:** quando `frequency = "monthly"` e `scheduledDayOfMonth = null`, `shouldSkipDispatch` cai no path de intervalo fixo (28 dias), disparando no primeiro dia de trabalho qualificado após o cooldown. Esse é o comportamento intencional para configs mensais sem dia fixo.
+**Frequência mensal sem `scheduledDayOfMonth`:** quando `frequency = "monthly"` e `scheduledDayOfMonth = null`, `shouldSkipDispatch` cai no path de intervalo fixo (28 dias), disparando no primeiro dia de trabalho qualificado após o cooldown. **Nota:** a UI e a Server Action (`createHealthSurveyConfigAction`) **obrigam** a seleção de um dia do mês para frequência mensal — esse path de fallback existe apenas para configs legadas criadas sem dia fixo.
 
-**Criação idempotente de configurações (`createHealthSurveyForDepartments`):** ao criar configs para múltiplos setores (incluindo `departmentIds: "all"`), a função busca via `findDepartmentIdsWithActiveHealthSurveyConfigs` quais setores já possuem config ativa e **pula silenciosamente** os que já têm. Isso evita duplicatas sem lançar erro. Se todos os setores já possuem config ativa, a função retorna sem criar nada.
-
-```typescript
-// Padrão de criação idempotente
-const deptsWithExistingConfig = await findDepartmentIdsWithActiveHealthSurveyConfigs(tenantId, targetDeptIds)
-const existingSet = new Set(deptsWithExistingConfig)
-const deptsWithoutConfig = targetDeptIds.filter((id) => !existingSet.has(id))
-if (deptsWithoutConfig.length === 0) return  // nada a criar
-```
+**Criação de configurações para múltiplos setores (`createHealthSurveyForDepartments`):** a função cria configurações para todos os setores selecionados (ou todos os setores ativos quando `departmentIds = "all"`). **Múltiplas configurações por setor são permitidas** — não há deduplicação. Cada configuração é independente e identificada pelo nome. Se o setor já tiver uma config ativa, uma nova é criada lado a lado.
 
 ### 20.4 Resposta ao formulário (anonimato garantido)
 
