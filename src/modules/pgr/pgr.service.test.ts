@@ -129,7 +129,7 @@ describe("getPgrReviewsPaginated", () => {
   it("calcula skip corretamente e retorna items paginados com healthIndex", async () => {
     const result = await getPgrReviewsPaginated(TENANT_ID, { page: 2, pageSize: 5 })
 
-    expect(mockFindReviewsByTenantPaginated).toHaveBeenCalledWith(TENANT_ID, 5, 5)
+    expect(mockFindReviewsByTenantPaginated).toHaveBeenCalledWith(TENANT_ID, {}, 5, 5)
     expect(result.total).toBe(1)
     expect(result.items[0]).toHaveProperty("overallHealthIndex")
   })
