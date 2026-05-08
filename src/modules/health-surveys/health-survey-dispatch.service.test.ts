@@ -89,8 +89,7 @@ function makePendingDispatch(workDays = [1, 2, 3, 4, 5]): PendingDispatch {
     organization: { timezone: "America/Sao_Paulo" },
     healthSurveyConfiguration: {
       id: "config-1",
-      workStartTime: "09:00",
-      workEndTime: "18:00",
+      dispatchTime: "12:00",
       workDays: workDays.map((d) => ({ dayOfWeek: d })),
       department: DEPARTMENT,
     },
@@ -103,8 +102,7 @@ function makeAutoDispatchConfig(overrides?: Partial<ActiveHealthSurveyConfigForD
     tenantId: TENANT_ID,
     frequency: "daily",
     scheduledDayOfMonth: null,
-    workStartTime: "09:00",
-    workEndTime: "18:00",
+    dispatchTime: "12:00",
     workDays: [1, 2, 3, 4, 5],
     lastDispatchedAt: null,
     organization: { timezone: "America/Sao_Paulo" },
@@ -136,15 +134,16 @@ describe("runHealthSurveyDispatcher", () => {
     expect(result).toEqual({ dispatched: 0, errors: 0 })
   })
 
-  it("skips dispatch when today is not a work day for the config", async () => {
+  it("fires manual dispatch even when today is not a config work day — marks as dispatched with 0 recipients", async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2024-01-14T12:00:00-03:00"))
 
     mockFindPendingDispatches.mockResolvedValue([makePendingDispatch([2, 3, 4, 5])])
 
     const result = await runHealthSurveyDispatcher()
-    expect(result).toEqual({ dispatched: 0, errors: 0 })
+    expect(result).toEqual({ dispatched: 1, errors: 0 })
     expect(mockCreateDispatch).not.toHaveBeenCalled()
+    expect(mockMarkDispatchDispatched).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID, 0)
 
     vi.useRealTimers()
   })
@@ -164,7 +163,7 @@ describe("runHealthSurveyDispatcher", () => {
     vi.useRealTimers()
   })
 
-  it("skips fireDispatch when all employees filtered by work day", async () => {
+  it("marks dispatch as dispatched with 0 recipients when all employees filtered by work day", async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2024-01-14T12:00:00-03:00"))
 
@@ -175,7 +174,8 @@ describe("runHealthSurveyDispatcher", () => {
     mockFindPendingDispatches.mockResolvedValue([dispatch])
 
     const result = await runHealthSurveyDispatcher()
-    expect(result).toEqual({ dispatched: 0, errors: 0 })
+    expect(result).toEqual({ dispatched: 1, errors: 0 })
+    expect(mockMarkDispatchDispatched).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID, 0)
 
     vi.useRealTimers()
   })
@@ -189,6 +189,19 @@ describe("runHealthSurveyDispatcher", () => {
 
     const result = await runHealthSurveyDispatcher()
     expect(result).toEqual({ dispatched: 0, errors: 1 })
+
+    vi.useRealTimers()
+  })
+
+  it("fires manual dispatch even when current time is outside dispatchTime window", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2024-01-15T08:00:00-03:00"))
+
+    mockFindPendingDispatches.mockResolvedValue([makePendingDispatch()])
+
+    const result = await runHealthSurveyDispatcher()
+    expect(result).toEqual({ dispatched: 1, errors: 0 })
+    expect(mockMarkDispatchDispatched).toHaveBeenCalledOnce()
 
     vi.useRealTimers()
   })
@@ -215,11 +228,11 @@ describe("runHealthSurveyAutoDispatchScheduler", () => {
     vi.useRealTimers()
   })
 
-  it("pula quando horário atual está fora da janela de trabalho da org", async () => {
+  it("pula quando horário atual não é o horário de disparo configurado", async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2024-01-15T22:00:00-03:00"))
 
-    mockFindActiveConfigs.mockResolvedValue([makeAutoDispatchConfig({ workStartTime: "09:00", workEndTime: "18:00" })])
+    mockFindActiveConfigs.mockResolvedValue([makeAutoDispatchConfig({ dispatchTime: "12:00" })])
 
     const result = await runHealthSurveyAutoDispatchScheduler()
     expect(result.skipped).toBe(1)
@@ -426,8 +439,7 @@ describe("runHealthSurveyDispatcher — token work hours fallback chain", () => 
       tenantId: TENANT_ID,
       healthSurveyConfiguration: {
         id: "config-1",
-        workStartTime: "09:00",
-        workEndTime: "18:00",
+        dispatchTime: "12:00",
         workDays: [{ dayOfWeek: 1 }],
         department: deptWithEmployee,
       },
@@ -445,21 +457,20 @@ describe("runHealthSurveyDispatcher — token work hours fallback chain", () => 
     vi.useRealTimers()
   })
 
-  it("falls back to config work hours when both employee and department hours are null", async () => {
+  it("falls back to department work hours when employee has null hours", async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
 
     const employeeNoHours = { ...EMPLOYEE, workStartTime: null, workEndTime: null }
-    const deptNoHours = { ...DEPARTMENT, workStartTime: null, workEndTime: null, employees: [employeeNoHours] }
+    const deptWithHours = { ...DEPARTMENT, workStartTime: "08:00", workEndTime: "17:00", employees: [employeeNoHours] }
     const dispatch = {
       ...makePendingDispatch(),
       tenantId: TENANT_ID,
       healthSurveyConfiguration: {
         id: "config-1",
-        workStartTime: "08:00",
-        workEndTime: "17:00",
+        dispatchTime: "12:00",
         workDays: [{ dayOfWeek: 1 }],
-        department: deptNoHours,
+        department: deptWithHours,
       },
     } as unknown as PendingDispatch
     mockFindPendingDispatches.mockResolvedValue([dispatch])
@@ -549,8 +560,7 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
       ...makePendingDispatch(),
       healthSurveyConfiguration: {
         id: "config-1",
-        workStartTime: "09:00",
-        workEndTime: "18:00",
+        dispatchTime: "12:00",
         workDays: [{ dayOfWeek: 1 }],
         department: dept,
       },

@@ -143,8 +143,8 @@ export async function unlockHealthSurveyViaIdentifier(
     currentConsent?.consentTermVersionId === activeTermVersion?.id
 
   const config = dispatch.healthSurveyConfiguration
-  const workStartTime = employee.workStartTime ?? config.department.workStartTime ?? config.workStartTime
-  const workEndTime = employee.workEndTime ?? config.department.workEndTime ?? config.workEndTime
+  const workStartTime = employee.workStartTime ?? config.department.workStartTime
+  const workEndTime = employee.workEndTime ?? config.department.workEndTime
   const nowInTimezone = toZonedTime(new Date(), timezone)
   const currentTime = format(nowInTimezone, "HH:mm")
 

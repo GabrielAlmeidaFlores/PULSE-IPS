@@ -32,8 +32,7 @@ export interface HealthSurveyConfigurationType {
   description: string | null
   frequency: string
   scheduledDayOfMonth: number | null
-  workStartTime: string
-  workEndTime: string
+  dispatchTime: string
   workDays: number[]
   isActive: boolean
   createdAt: Date
@@ -81,8 +80,7 @@ export interface CreateHealthSurveyConfigInput {
   description: string | undefined
   frequency: "daily" | "twice_weekly" | "weekly" | "biweekly" | "monthly"
   scheduledDayOfMonth: number | null
-  workStartTime: string
-  workEndTime: string
+  dispatchTime: string
   workDays: number[]
   questions: { text: string; order: number; scoreDirection: ScoreDirection }[]
 }
@@ -92,8 +90,7 @@ export interface UpdateHealthSurveyConfigInput {
   description: string | undefined
   frequency: "daily" | "twice_weekly" | "weekly" | "biweekly" | "monthly"
   scheduledDayOfMonth: number | null
-  workStartTime: string
-  workEndTime: string
+  dispatchTime: string
   workDays: number[]
   questions: { text: string; order: number; scoreDirection: ScoreDirection }[]
 }

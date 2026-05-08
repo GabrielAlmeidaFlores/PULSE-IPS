@@ -599,7 +599,7 @@ const color = healthIndexAccent(hi)          // → classe CSS de cor
    - **Frequência**: `daily`, `twice_weekly`, `weekly`, `biweekly`, `monthly`
    - **Dia do mês** (obrigatório para `monthly`): seleciona o dia exato (1–28) em que o disparo deve ocorrer; máximo 28 para compatibilidade com fevereiro
    - **Dias da semana**: seleção dos dias em que o Pulse deve disparar (0=Dom … 6=Sáb), armazenados na tabela relacional `health_survey_config_work_days` — nunca como string separada por vírgula
-   - **Horário de expediente**: `workStartTime` e `workEndTime` (formato `HH:mm`)
+   - **Horário de disparo**: `dispatchTime` (formato `HH:mm`) — hora exata em que o scheduler vai disparar a pesquisa naquele dia; a janela de validade do link usa o horário de expediente do setor/colaborador
    - **Perguntas**: lista de questões com score de 1 a 5, cada uma com `scoreDirection` (`higher_is_better` ou `lower_is_better`). Perguntas de estresse e carga de trabalho usam `lower_is_better` (1 = ótimo). O sistema normaliza automaticamente antes de calcular métricas e gerar alertas.
 3. **Múltiplas configurações são permitidas para o mesmo departamento** — não há deduplicação. Cada configuração é independente e identificada pelo nome. Se o mesmo setor for selecionado em duas criações distintas, duas configs independentes são geradas lado a lado.
 
@@ -615,7 +615,7 @@ Este é o fluxo central da plataforma. Ocorre de duas formas:
 A cada 15 min → job health-survey-dispatcher
   ├── runHealthSurveyAutoDispatchScheduler()
   │     ├── Busca configs ativas com employees (billing ativo)
-  │     ├── [GATE 1] isWithinWorkHours → skip se fora do expediente
+  │     ├── [GATE 1] isAtDispatchTime → skip se não estamos na janela de 15 min do horário configurado
   │     ├── [GATE 2] shouldSkipDispatch → skip se dia/intervalo não elegível
   │     └── Para cada config elegível:
   │           ├── Cria HealthSurveyDispatch (status: scheduled)
@@ -628,7 +628,10 @@ A cada 15 min → job health-survey-dispatcher
   │
   └── runHealthSurveyDispatcher()
         ├── Busca dispatches com status: scheduled e scheduledAt <= now() (disparos manuais)
-        └── sendDispatchTokensAndMessages() para cada um
+        ├── ⚠️ NÃO verifica isAtDispatchTime nem isWorkDay (config) — o admin escolheu quando disparar
+        ├── Filtra employees que trabalham hoje (employee_work_days → department_work_days)
+        ├── Se 0 employees trabalham hoje → marca dispatch como dispatched (0 recipients) e avança
+        └── sendDispatchTokensAndMessages() para employees elegíveis
 ```
 
 **`sendDispatchTokensAndMessages` — lógica de envio inteligente:**
@@ -1015,18 +1018,18 @@ O super admin acessa `/super-admin` com credenciais separadas e tem controle tot
 - Configurável em `/settings`.
 
 **Horário de expediente:**
-- Configurado em 3 níveis com herança:
-  1. `HealthSurveyConfiguration` — janela de disparo da pesquisa (`workStartTime`, `workEndTime`, `health_survey_config_work_days`)
-  2. `Department` — expediente padrão do setor (`workStartTime`, `workEndTime`, `department_work_days`) — fallback do colaborador
-  3. `Employee` — override individual (`workStartTime`, `workEndTime`, `employee_work_days`) — tem **precedência** sobre o departamento
-- **Cadeia de herança para horários**: `employee → department → healthSurveyConfig`
+- Configurado em 2 níveis com herança:
+  1. `Department` — expediente padrão do setor (`workStartTime`, `workEndTime`, `department_work_days`)
+  2. `Employee` — override individual (`workStartTime`, `workEndTime`, `employee_work_days`) — tem **precedência** sobre o departamento
+- **Cadeia de herança para horários**: `employee → department`
 - **Cadeia de herança para dias de trabalho**: `employee_work_days` (se preenchido) → `department_work_days`
-- O horário do colaborador tem precedência sobre o departamento; o departamento tem precedência sobre a config da pesquisa.
+- O horário do colaborador tem precedência sobre o departamento.
+- **Nota:** `HealthSurveyConfiguration` **não** tem horário de expediente — apenas `dispatchTime` (hora de disparo). Os horários de expediente pertencem ao setor e ao colaborador.
 
 **No disparo de pesquisas:**
-1. O worker verifica se o dia atual (no timezone da organização) está nos dias configurados em `health_survey_config_work_days`.
-2. Verifica se a hora atual (no timezone da organização) está dentro do expediente (`workStartTime` ≤ agora ≤ `workEndTime`).
-3. Se fora do expediente, o disparo é adiado para a próxima execução do job (a cada 15 min).
+1. O worker verifica se o horário atual (no timezone da organização) corresponde à janela de 15 minutos a partir de `dispatchTime` (`isAtDispatchTime`).
+2. Verifica se o dia atual está nos dias configurados em `health_survey_config_work_days` e se o intervalo de frequência foi respeitado.
+3. Se fora do horário de disparo, o disparo é adiado para a próxima execução do job (a cada 15 min).
 
 **Na resposta do formulário:**
 - O token de resposta armazena o snapshot de `workStartTime`/`workEndTime` no momento do disparo.

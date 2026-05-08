@@ -829,8 +829,8 @@ Dias de trabalho do departamento em `department_work_days` (join table — ver a
 | email | varchar(255) | |
 | phone | varchar(20) | NOT NULL |
 | document | varchar(50) | NULL — número do documento do colaborador (opcional); usado para identificação no link assinado |
-| work_start_time | varchar(5) | `"HH:MM"` — horário de início do turno (ex: `"09:00"`). NULL = usa config do setor |
-| work_end_time | varchar(5) | `"HH:MM"` — horário de fim do turno. NULL = usa config do setor |
+| work_start_time | varchar(5) | `"HH:MM"` — horário de início do turno (ex: `"09:00"`). NULL = usa horário do setor |
+| work_end_time | varchar(5) | `"HH:MM"` — horário de fim do turno. NULL = usa horário do setor |
 | status | varchar(20) | `'active'` \| `'inactive'` \| `'paused'` |
 | pause_start_at | date | |
 | pause_end_at | date | |
@@ -839,7 +839,7 @@ Dias de trabalho do departamento em `department_work_days` (join table — ver a
 | updated_at | timestamptz | NOT NULL |
 | UNIQUE | (tenant_id, email) | |
 
-> `work_start_time` e `work_end_time` do colaborador sobrepõem os valores do departamento quando preenchidos (cadeia: `employee → department → healthSurveyConfig`). Dias de trabalho opcionais em `employee_work_days` (join table — ver abaixo); quando vazio, herda de `department_work_days`. Todos avaliados no `organizations.timezone` no momento do dispatch.
+> `work_start_time` e `work_end_time` do colaborador sobrepõem os valores do departamento quando preenchidos (cadeia: `employee → department`). Dias de trabalho opcionais em `employee_work_days` (join table — ver abaixo); quando vazio, herda de `department_work_days`. Todos avaliados no `organizations.timezone` no momento do dispatch.
 
 #### `employee_consents`
 
@@ -873,19 +873,18 @@ Múltiplas configurações por tenant/setor são permitidas (sem unicidade em `(
 | description | text | NULL — descrição opcional |
 | frequency | varchar(20) | `'daily'` \| `'twice_weekly'` \| `'weekly'` \| `'biweekly'` \| `'monthly'` |
 | scheduled_day_of_month | integer | NULL — dia do mês (1–28) para frequência `'monthly'`; quando NULL e frequência mensal, usa intervalo de 28 dias |
-| work_start_time | varchar(5) | `"HH:MM"` — início do expediente configurado para esta pesquisa (ex: `"09:00"`) |
-| work_end_time | varchar(5) | `"HH:MM"` — fim do expediente configurado para esta pesquisa (ex: `"18:00"`) |
+| dispatch_time | varchar(5) | NOT NULL, default `'09:00'` — `"HH:MM"` — horário exato em que a pesquisa será disparada |
 | is_active | boolean | NOT NULL |
 | INDEX | (tenant_id) | |
 | INDEX | (tenant_id, department_id) | |
 
 Dias de trabalho da pesquisa em `health_survey_config_work_days` (join table — ver abaixo). Armazenados como `day_of_week INT` (0=Dom … 6=Sáb).
 
-> `work_start_time`, `work_end_time` e `work_days` (via join table) definem a janela de disparo da pesquisa. **Cadeia de herança no disparo:** `employee.workStartTime/workEndTime → department.workStartTime/workEndTime → healthSurveyConfig.workStartTime/workEndTime`. Para dias de trabalho por funcionário: `employee_work_days` (se não vazio) → `department_work_days`. Todos avaliados no `organizations.timezone`.
+> `dispatch_time` define o horário exato de disparo da pesquisa (avaliado no fuso da organização). O scheduler dispara quando o horário atual está dentro de uma janela de 15 minutos a partir de `dispatch_time` (ex: `dispatchTime = "09:00"` → dispara entre 09:00 e 09:14). **Horários de expediente pertencem ao setor e ao colaborador — não à configuração de pesquisa.** Cadeia de herança de horário de expediente para snapshot do token: `employee.workStartTime/workEndTime → department.workStartTime/workEndTime`. Para dias de trabalho por funcionário: `employee_work_days` (se não vazio) → `department_work_days`. Todos avaliados no `organizations.timezone`.
 
 > **Frequência mensal com `scheduled_day_of_month`:** quando preenchido, o scheduler dispara apenas no dia exato do mês (avaliado no fuso da organização) e impede reenvio se o último disparo foi há menos de 25 dias. Dias 29–31 são excluídos da UI — o valor máximo é 28 para garantir compatibilidade com fevereiro.
 
-> Não existe mais `send_days` (jsonb) nem `send_time` (time) separados — o disparo ocorre automaticamente pelo scheduler ao detectar que estamos dentro do expediente configurado.
+> Não existe mais `send_days` (jsonb) nem `send_time` (time) separados — o disparo ocorre automaticamente pelo scheduler ao detectar que estamos no horário configurado (`dispatch_time`).
 
 #### `department_work_days`
 
@@ -1162,7 +1161,7 @@ Registro de todas as mensagens enviadas. Fonte dos dados de métricas do Super A
 | id | uuid | PK |
 | tenant_id | uuid | NOT NULL, FK → organizations.id ON DELETE CASCADE |
 | employee_id | uuid | NULL — ID do colaborador destinatário (sem vínculo obrigatório para preservar o anonimato) |
-| type | varchar(30) | NOT NULL — `'survey_dispatch'` \| `'survey_resend'` |
+| type | varchar(30) | NOT NULL — `'survey_dispatch'` |
 | provider | varchar(50) | NOT NULL — nome do provedor utilizado (ex: `'whatsapp_cloud'`, `'twilio_message'`, `'console'`) |
 | external_id | varchar(255) | ID retornado pelo provedor |
 | status | varchar(20) | NOT NULL — `'sent'` \| `'failed'` |
@@ -1598,7 +1597,8 @@ Isso inclui:
   const day = new Date().getDay()
   ```
 - `workDays` é armazenado em tabelas de join relacionais (`department_work_days`, `employee_work_days`, `health_survey_config_work_days`) — nunca como string separada por vírgula. Em TypeScript, `workDays: number[]` (0=Dom … 6=Sáb) — avaliado no timezone da organização
-- `workStartTime`/`workEndTime` como `"HH:MM"` — avaliados no timezone da organização no momento do dispatch
+- `workStartTime`/`workEndTime` como `"HH:MM"` — presentes em departamentos, colaboradores e tokens de resposta; avaliados no timezone da organização. **Configurações de pesquisa não têm horário de expediente** — apenas `dispatchTime` (horário de disparo)
+- `dispatchTime` em `health_survey_configurations` define **quando** a pesquisa será disparada, não uma janela de expediente. O scheduler dispara na janela de 15 minutos a partir desse horário.
 
 **Settings:** O RH configura o fuso horário em `/settings` → campo `Fuso horário`. O valor salvo é um IANA timezone string (ex: `"America/Sao_Paulo"`).
 
@@ -3083,28 +3083,46 @@ Employee cadastrado (sem convite separado)
 
 ### 20.3 Envio de pesquisa
 
+O job `health-survey-dispatcher` (a cada 15 min) executa em paralelo **duas funções distintas**:
+
+**Fluxo 1 — `runHealthSurveyAutoDispatchScheduler` (criação automática de dispatches):**
+
 ```
-Job health-survey-dispatcher (a cada 15min) — runHealthSurveyAutoDispatchScheduler
-  → Busca todas as configurações ativas com billing ativo (findAllTenantsActiveHealthSurveyConfigsForAutoDispatch)
-    → Para cada configuração:
-        [GATE 1] isWithinWorkHours(workStartTime, workEndTime, timezone) → skip se fora do expediente
-        [GATE 2] shouldSkipDispatch(config, timezone):
-            - Para frequência 'monthly' com scheduledDayOfMonth (condições independentes — OR):
-                → skip se hoje NÃO é o dia do mês configurado (getDayOfMonthInTimezone ≠ scheduledDayOfMonth)
-                → skip se o último dispatch foi há menos de 25 dias (cooldown anti-duplicata)
-            - Para outras frequências (condições independentes — OR):
-                → skip se hoje não é um dia de trabalho da config (isWorkDay)
-                → skip se o último dispatch foi há menos de FREQUENCY_INTERVAL_DAYS dias
-        [PASS] → fireDispatch:
-            → Cria health_survey_dispatch (status='scheduled')
-            → sendDispatchTokensAndMessages:
-                → Filtra colaboradores elegíveis por consentimento
-                → Busca tokens existentes (reenvio anterior ou link assinado)
-                → Cria novos tokens para colaboradores sem token válido (expires_at = +48h)
-                → Atualiza dispatch: status='available', dispatchedAt=now, total_recipients
-                → [GATE FEATURE] hasTenantPlanFeature(tenantId, "messaging")
-                    ├─ SEM feature: tokens criados, nenhuma mensagem enviada → RH usa link assinado
-                    └─ COM feature: messagingService.sendBulk → Registra em message_logs
+Busca todas as configurações ativas com billing ativo (findAllTenantsActiveHealthSurveyConfigsForAutoDispatch)
+  → Para cada configuração:
+      [GATE 1] isAtDispatchTime(dispatchTime, timezone) → skip se não estamos na janela de 15 minutos a partir do horário configurado
+      [GATE 2] shouldSkipDispatch(config, timezone):
+          - Para frequência 'monthly' com scheduledDayOfMonth (condições independentes — OR):
+              → skip se hoje NÃO é o dia do mês configurado (getDayOfMonthInTimezone ≠ scheduledDayOfMonth)
+              → skip se o último dispatch foi há menos de 25 dias (cooldown anti-duplicata)
+          - Para outras frequências (condições independentes — OR):
+              → skip se hoje não é um dia de trabalho da config (isWorkDay)
+              → skip se o último dispatch foi há menos de FREQUENCY_INTERVAL_DAYS dias
+      [PASS] → fireDispatch:
+          → Filtra employees que trabalham hoje (employee_work_days → department_work_days)
+          → Se nenhum employee trabalha hoje → retorna false (config pulada)
+          → Cria health_survey_dispatch (status='scheduled')
+          → sendDispatchTokensAndMessages:
+              → Filtra colaboradores elegíveis por consentimento
+              → Busca tokens existentes (link assinado)
+              → Cria novos tokens para colaboradores sem token válido (expires_at = +48h)
+              → Atualiza dispatch: status='available', dispatchedAt=now, total_recipients
+              → [GATE FEATURE] hasTenantPlanFeature(tenantId, "messaging")
+                  ├─ SEM feature: tokens criados, nenhuma mensagem enviada → RH usa link assinado
+                  └─ COM feature: messagingService.sendBulk → Registra em message_logs
+```
+
+**Fluxo 2 — `runHealthSurveyDispatcher` (processamento de dispatches manuais):**
+
+```
+Busca dispatches com status='scheduled' e scheduledAt <= now() (findAllTenantsPendingHealthSurveyDispatches)
+  → Para cada dispatch:
+      ⚠️ NÃO verifica isAtDispatchTime nem isWorkDay no nível da config
+         (o admin escolheu explicitamente quando disparar — esses checks não se aplicam)
+      → Filtra employees do setor que trabalham hoje (employee_work_days → department_work_days)
+      → Se nenhum employee trabalha hoje → marca como dispatched com 0 recipients e continua
+      → Se eligibleEmployees está vazio → marca como dispatched com 0 recipients e continua
+      → sendDispatchTokensAndMessages (mesmo fluxo do auto-dispatch)
 ```
 
 **Frequência mensal sem `scheduledDayOfMonth`:** quando `frequency = "monthly"` e `scheduledDayOfMonth = null`, `shouldSkipDispatch` cai no path de intervalo fixo (28 dias), disparando no primeiro dia de trabalho qualificado após o cooldown. **Nota:** a UI e a Server Action (`createHealthSurveyConfigAction`) **obrigam** a seleção de um dia do mês para frequência mensal — esse path de fallback existe apenas para configs legadas criadas sem dia fixo.
@@ -3210,15 +3228,9 @@ Super Admin publica nova versão do TCLE (is_current = true)
 
 ### 20.8 Reenvio para não-respondentes
 
-```
-RH aciona "Reenviar" em setor com adesão crítica (<60%)
-  └─→ Server Action: healthSurveyService.resendToNonRespondents(tenantId, dispatchId)
-        ├─ Busca health_survey_response_tokens onde used_at IS NULL e expires_at > now()
-        ├─ Para cada token não usado: gera novo token (expires_at = +48h), invalida o anterior
-        ├─ Chama messagingService.sendBulk
-        ├─ Registra em message_logs com type='survey_resend'
-        └─ Cria novo dispatch com status='available' vinculado ao original
-```
+> **Funcionalidade não implementada.** O fluxo de reenvio automático para não-respondentes está planejado mas ainda não foi desenvolvido. Não existe `resendToNonRespondents` no service nem o tipo `'survey_resend'` no `MessageLogType` da aplicação atual.
+
+O canal disponível hoje para atingir não-respondentes é o **link assinado** (seção 20.9) — o RH pode redistribuir o link manualmente pelo canal de sua preferência.
 
 ### 20.9 Acesso via Link Assinado (sem mensagem)
 

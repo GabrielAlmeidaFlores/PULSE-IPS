@@ -22,8 +22,7 @@ const updateHealthSurveyConfigSchema = z.object({
   description: z.string().max(500).optional().transform((v) => (v?.trim() ? v.trim() : undefined)),
   frequency: z.enum(["daily", "twice_weekly", "weekly", "biweekly", "monthly"]),
   scheduledDayOfMonth: z.number().int().min(1).max(28).nullable(),
-  workStartTime: z.string().regex(TIME_REGEX),
-  workEndTime: z.string().regex(TIME_REGEX),
+  dispatchTime: z.string().regex(TIME_REGEX),
   workDays: z.array(z.number().int().min(0).max(6)).min(1).max(7),
   questions: z.array(questionSchema).min(1, "Adicione ao menos uma pergunta").max(20),
   departmentIds: z.union([z.array(z.string().uuid()).min(1, "Selecione ao menos um setor."), z.literal("all")]),
@@ -39,7 +38,7 @@ export async function updateHealthSurveyConfigAction(configId: string, input: un
   const parsed = updateHealthSurveyConfigSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
 
-  const { name, description, frequency, scheduledDayOfMonth: rawScheduledDay, workStartTime, workEndTime, workDays, questions, departmentIds } = parsed.data
+  const { name, description, frequency, scheduledDayOfMonth: rawScheduledDay, dispatchTime, workDays, questions, departmentIds } = parsed.data
   const scheduledDayOfMonth = frequency === "monthly" ? rawScheduledDay : null
 
   if (frequency === "monthly" && scheduledDayOfMonth === null) {
@@ -53,7 +52,7 @@ export async function updateHealthSurveyConfigAction(configId: string, input: un
     const groupConfigs = await getHealthSurveyConfigGroupByName(session.tenantId, currentConfig.name)
 
     const selectedDeptIds = departmentIds === "all" ? null : new Set(departmentIds)
-    const configUpdate = { name, description, frequency, scheduledDayOfMonth, workStartTime, workEndTime, workDays, questions }
+    const configUpdate = { name, description, frequency, scheduledDayOfMonth, dispatchTime, workDays, questions }
 
     const existingDeptIds = new Set(groupConfigs.map((c) => c.departmentId))
     const keptDeptIds = selectedDeptIds === null ? existingDeptIds : new Set([...existingDeptIds].filter((id) => selectedDeptIds.has(id)))
@@ -79,8 +78,7 @@ export async function updateHealthSurveyConfigAction(configId: string, input: un
         ...(description !== undefined && { description }),
         frequency,
         scheduledDayOfMonth,
-        workStartTime,
-        workEndTime,
+        dispatchTime,
         workDays,
         questions,
       })

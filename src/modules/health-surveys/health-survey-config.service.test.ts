@@ -45,12 +45,11 @@ function makeConfig(overrides: { id: string; name: string; departmentId?: string
     description: null,
     frequency: "weekly",
     scheduledDayOfMonth: null,
-    workStartTime: "09:00",
-    workEndTime: "18:00",
     isActive: true,
     createdAt: new Date(),
     updatedAt: new Date(),
     departmentId: deptId,
+    dispatchTime: "09:00",
     workDays: [{ configId: overrides.id, dayOfWeek: 1 }, { configId: overrides.id, dayOfWeek: 2 }, { configId: overrides.id, dayOfWeek: 3 }, { configId: overrides.id, dayOfWeek: 4 }, { configId: overrides.id, dayOfWeek: 5 }],
     department: {
       id: deptId,
@@ -73,8 +72,7 @@ const BASE_CONFIG_INPUT = {
   name: "Pesquisa Teste",
   frequency: "weekly" as const,
   scheduledDayOfMonth: null,
-  workStartTime: "09:00",
-  workEndTime: "18:00",
+  dispatchTime: "09:00",
   workDays: [1, 2, 3, 4, 5],
   questions: BASE_QUESTIONS,
 }
