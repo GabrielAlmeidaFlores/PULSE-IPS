@@ -11,11 +11,13 @@ import {
   markHealthSurveyDispatchDispatched,
   createHealthSurveyDispatch,
   findAllTenantsHealthSurveyDispatches48hAgo,
-  countHealthSurveyResponsesForDispatch,
   createHealthSurveyAdherenceAlert,
   markHealthSurveyDispatchAdherenceChecked,
   findExistingTokensForDispatch,
+  upsertHealthSurveyDeptDispatch,
+  countHealthSurveyResponsesByDispatchAndDept,
   type HealthSurveyDispatchEmployee,
+  type HealthSurveyDispatchDepartment,
 } from "@/modules/health-surveys/health-survey.repository"
 import { hasOpenAlertOfType } from "@/modules/alerts/alert.repository"
 import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
@@ -87,12 +89,14 @@ function isAtDispatchTime(dispatchTime: string, timezone: string): boolean {
   return currentMinutes >= targetMinutes && currentMinutes < targetMinutes + 15
 }
 
-async function sendDispatchTokensAndMessages(
+async function sendDispatchTokensAndMessagesForDepartment(
   dispatchId: string,
   tenantId: string,
+  departmentId: string,
   eligibleEmployees: HealthSurveyDispatchEmployee[],
   department: { workStartTime: string; workEndTime: string },
-): Promise<void> {
+  hasMessaging: boolean,
+): Promise<number> {
   const allEmployeeIds = eligibleEmployees.map((e) => e.id)
   const eligibleForDispatchIds = new Set(await findEmployeeIdsEligibleForDispatch(tenantId, allEmployeeIds))
   const dispatchTargetEmployees = eligibleEmployees.filter((e) => eligibleForDispatchIds.has(e.id))
@@ -128,7 +132,6 @@ async function sendDispatchTokensAndMessages(
     await createHealthSurveyTokens(newTokenInputs)
   }
 
-  const hasMessaging = await hasTenantPlanFeature(tenantId, "messaging")
   if (hasMessaging) {
     const messageQueue = getMessageQueue()
     const bulkJobs = toSendEmployees
@@ -157,33 +160,45 @@ async function sendDispatchTokensAndMessages(
     }
   }
 
-  await markHealthSurveyDispatchDispatched(tenantId, dispatchId, dispatchTargetEmployees.length)
+  await upsertHealthSurveyDeptDispatch(dispatchId, departmentId, dispatchTargetEmployees.length)
+  return dispatchTargetEmployees.length
 }
 
 async function fireDispatch(
   configId: string,
   tenantId: string,
-  employees: HealthSurveyDispatchEmployee[],
-  department: { workStartTime: string; workEndTime: string; workDays: number[] },
+  departments: HealthSurveyDispatchDepartment[],
   timezone: string,
 ): Promise<boolean> {
   const today = getDayOfWeekInTimezone(timezone)
 
-  const workDayFiltered = employees.filter((emp) => {
-    const effectiveDays = emp.workDays.length > 0 ? emp.workDays : department.workDays
-    return effectiveDays.includes(today)
-  })
+  const departmentsWithEmployees = departments.map((dept) => ({
+    ...dept,
+    employees: dept.employees.filter((emp) => {
+      const effectiveDays = emp.workDays.length > 0 ? emp.workDays : dept.workDays
+      return effectiveDays.includes(today)
+    }),
+  })).filter((dept) => dept.employees.length > 0)
 
-  if (workDayFiltered.length === 0) return false
+  if (departmentsWithEmployees.length === 0) return false
 
-  const dispatch = await createHealthSurveyDispatch(tenantId, configId, new Date(), randomUUID())
+  const signedLinkToken = randomUUID()
+  const dispatch = await createHealthSurveyDispatch(tenantId, configId, new Date(), signedLinkToken)
 
-  await sendDispatchTokensAndMessages(
-    dispatch.id,
-    tenantId,
-    workDayFiltered,
-    department,
-  )
+  const hasMessaging = await hasTenantPlanFeature(tenantId, "messaging")
+
+  for (const dept of departmentsWithEmployees) {
+    await sendDispatchTokensAndMessagesForDepartment(
+      dispatch.id,
+      tenantId,
+      dept.id,
+      dept.employees,
+      dept,
+      hasMessaging,
+    )
+  }
+
+  await markHealthSurveyDispatchDispatched(tenantId, dispatch.id)
 
   return true
 }
@@ -198,24 +213,20 @@ export async function runHealthSurveyDispatcher(): Promise<{ dispatched: number;
     const timezone = dispatch.organization.timezone
 
     try {
-      const dept = config.department
-      const deptWorkDays = dept.workDays.map((w) => w.dayOfWeek)
       const today = getDayOfWeekInTimezone(timezone)
+      const hasMessaging = await hasTenantPlanFeature(dispatch.tenantId, "messaging")
 
-      const workDayFiltered = dept.employees.filter((emp) => {
-        const effectiveDays = emp.workDays.map((w) => w.dayOfWeek)
-        const activeDays = effectiveDays.length > 0 ? effectiveDays : deptWorkDays
-        return activeDays.includes(today)
-      })
+      for (const cd of config.configDepartments) {
+        const dept = cd.department
+        const deptWorkDays = dept.workDays.map((w) => w.dayOfWeek)
 
-      if (workDayFiltered.length === 0) {
-        await markHealthSurveyDispatchDispatched(dispatch.tenantId, dispatch.id, 0)
-        dispatched++
-        continue
-      }
+        const workDayFiltered = dept.employees.filter((emp) => {
+          const effectiveDays = emp.workDays.map((w) => w.dayOfWeek)
+          const activeDays = effectiveDays.length > 0 ? effectiveDays : deptWorkDays
+          return activeDays.includes(today)
+        })
 
-      const eligibleEmployees: HealthSurveyDispatchEmployee[] = workDayFiltered
-        .map((emp) => ({
+        const eligibleEmployees: HealthSurveyDispatchEmployee[] = workDayFiltered.map((emp) => ({
           id: emp.id,
           name: emp.name,
           phone: emp.phone,
@@ -224,23 +235,25 @@ export async function runHealthSurveyDispatcher(): Promise<{ dispatched: number;
           workDays: emp.workDays.map((w) => w.dayOfWeek),
         }))
 
-      if (eligibleEmployees.length === 0) {
-        await markHealthSurveyDispatchDispatched(dispatch.tenantId, dispatch.id, 0)
-        dispatched++
-        continue
+        if (eligibleEmployees.length > 0) {
+          await sendDispatchTokensAndMessagesForDepartment(
+            dispatch.id,
+            dispatch.tenantId,
+            dept.id,
+            eligibleEmployees,
+            { workStartTime: dept.workStartTime, workEndTime: dept.workEndTime },
+            hasMessaging,
+          )
+        } else {
+          await upsertHealthSurveyDeptDispatch(dispatch.id, dept.id, 0)
+        }
       }
 
-      await sendDispatchTokensAndMessages(
-        dispatch.id,
-        dispatch.tenantId,
-        eligibleEmployees,
-        { workStartTime: dept.workStartTime, workEndTime: dept.workEndTime },
-      )
-
+      await markHealthSurveyDispatchDispatched(dispatch.tenantId, dispatch.id)
       dispatched++
     } catch (err) {
       errors++
-      logger.error("health-survey-dispatcher: error processing dispatch", { err, dispatchId: dispatch.id })
+      logger.error("health-survey-dispatcher: erro ao processar dispatch", { err, dispatchId: dispatch.id })
     }
   }
 
@@ -269,14 +282,13 @@ export async function runHealthSurveyAutoDispatchScheduler(): Promise<{ triggere
       const fired = await fireDispatch(
         config.id,
         config.tenantId,
-        config.department.employees,
-        config.department,
+        config.departments,
         timezone,
       )
       if (fired) triggered++
     } catch (err) {
       skipped++
-      logger.error("auto-dispatcher: error triggering dispatch", { err, configId: config.id })
+      logger.error("auto-dispatcher: erro ao disparar pesquisa", { err, configId: config.id })
     }
   }
 
@@ -290,33 +302,31 @@ export async function checkHealthSurveyDispatchAdherence(): Promise<{ processed:
 
   for (const dispatch of dispatches) {
     try {
-      if (dispatch.totalRecipients === 0) {
-        await markHealthSurveyDispatchAdherenceChecked(dispatch.tenantId, dispatch.id, 0)
-        continue
-      }
+      for (const deptDispatch of dispatch.deptDispatches) {
+        if (deptDispatch.totalRecipients === 0) continue
 
-      const responseCount = await countHealthSurveyResponsesForDispatch(dispatch.tenantId, dispatch.id)
-      const adherenceRate = Math.min(1.0, responseCount / dispatch.totalRecipients)
+        const actualResponseCount = await countHealthSurveyResponsesByDispatchAndDept(dispatch.id, deptDispatch.departmentId)
+        const adherenceRate = Math.min(1.0, actualResponseCount / deptDispatch.totalRecipients)
 
-      if (adherenceRate < ALERT_ADHERENCE_THRESHOLD) {
-        const departmentId = dispatch.healthSurveyConfiguration.departmentId
-        const alreadyOpenNoResponse = await hasOpenAlertOfType(dispatch.tenantId, "no_response", departmentId)
-        const alreadyOpenLowAdherence = await hasOpenAlertOfType(dispatch.tenantId, "low_adherence", departmentId)
-        if (!alreadyOpenNoResponse && !alreadyOpenLowAdherence) {
-          await createHealthSurveyAdherenceAlert({
-            tenantId: dispatch.tenantId,
-            departmentId,
-            adherenceRate,
-            responseCount,
-            totalRecipients: dispatch.totalRecipients,
-          })
-          alertsCreated++
+        if (adherenceRate < ALERT_ADHERENCE_THRESHOLD) {
+          const alreadyOpenNoResponse = await hasOpenAlertOfType(dispatch.tenantId, "no_response", deptDispatch.departmentId)
+          const alreadyOpenLowAdherence = await hasOpenAlertOfType(dispatch.tenantId, "low_adherence", deptDispatch.departmentId)
+          if (!alreadyOpenNoResponse && !alreadyOpenLowAdherence) {
+            await createHealthSurveyAdherenceAlert({
+              tenantId: dispatch.tenantId,
+              departmentId: deptDispatch.departmentId,
+              adherenceRate,
+              responseCount: actualResponseCount,
+              totalRecipients: deptDispatch.totalRecipients,
+            })
+            alertsCreated++
+          }
         }
       }
 
-      await markHealthSurveyDispatchAdherenceChecked(dispatch.tenantId, dispatch.id, responseCount)
+      await markHealthSurveyDispatchAdherenceChecked(dispatch.tenantId, dispatch.id)
     } catch (err) {
-      logger.error("adherence-checker: error processing dispatch", { err, dispatchId: dispatch.id, tenantId: dispatch.tenantId })
+      logger.error("adherence-checker: erro ao processar dispatch", { err, dispatchId: dispatch.id, tenantId: dispatch.tenantId })
     }
   }
 

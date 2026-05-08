@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache"
 import { AppError } from "@/libs/errors/app-error"
 import type { ActionResult } from "@/libs/utils/action-result"
 import { getSession } from "@/modules/auth/session"
-import { updateHealthSurveyConfig, createHealthSurveyForDepartments, deactivateHealthSurveyConfig, getHealthSurveyConfigGroupByName, getHealthSurveyConfig } from "@/modules/health-surveys/health-survey-config.service"
+import { updateHealthSurveyConfig } from "@/modules/health-surveys/health-survey-config.service"
 
 const questionSchema = z.object({
   text: z.string().min(1).max(500),
@@ -25,7 +25,7 @@ const updateHealthSurveyConfigSchema = z.object({
   dispatchTime: z.string().regex(TIME_REGEX),
   workDays: z.array(z.number().int().min(0).max(6)).min(1).max(7),
   questions: z.array(questionSchema).min(1, "Adicione ao menos uma pergunta").max(20),
-  departmentIds: z.union([z.array(z.string().uuid()).min(1, "Selecione ao menos um setor."), z.literal("all")]),
+  departmentIds: z.array(z.string().uuid()).min(1, "Selecione ao menos um setor."),
 })
 
 export async function updateHealthSurveyConfigAction(configId: string, input: unknown): Promise<ActionResult> {
@@ -46,43 +46,16 @@ export async function updateHealthSurveyConfigAction(configId: string, input: un
   }
 
   try {
-    const currentConfig = await getHealthSurveyConfig(session.tenantId, parsedConfigId.data)
-    if (!currentConfig) return { error: "Pesquisa não encontrada." }
-
-    const groupConfigs = await getHealthSurveyConfigGroupByName(session.tenantId, currentConfig.name)
-
-    const selectedDeptIds = departmentIds === "all" ? null : new Set(departmentIds)
-    const configUpdate = { name, description, frequency, scheduledDayOfMonth, dispatchTime, workDays, questions }
-
-    const existingDeptIds = new Set(groupConfigs.map((c) => c.departmentId))
-    const keptDeptIds = selectedDeptIds === null ? existingDeptIds : new Set([...existingDeptIds].filter((id) => selectedDeptIds.has(id)))
-    const removedDeptIds = selectedDeptIds === null ? new Set<string>() : new Set([...existingDeptIds].filter((id) => !selectedDeptIds.has(id)))
-    const newDeptIds = selectedDeptIds === null ? [] : [...selectedDeptIds].filter((id) => !existingDeptIds.has(id))
-
-    await Promise.all(
-      groupConfigs
-        .filter((c) => keptDeptIds.has(c.departmentId))
-        .map((c) => updateHealthSurveyConfig(session.tenantId, c.id, configUpdate)),
-    )
-
-    await Promise.all(
-      groupConfigs
-        .filter((c) => removedDeptIds.has(c.departmentId))
-        .map((c) => deactivateHealthSurveyConfig(session.tenantId, c.id)),
-    )
-
-    if (newDeptIds.length > 0) {
-      await createHealthSurveyForDepartments(session.tenantId, {
-        departmentIds: newDeptIds,
-        name,
-        ...(description !== undefined && { description }),
-        frequency,
-        scheduledDayOfMonth,
-        dispatchTime,
-        workDays,
-        questions,
-      })
-    }
+    await updateHealthSurveyConfig(session.tenantId, parsedConfigId.data, {
+      name,
+      description,
+      frequency,
+      scheduledDayOfMonth,
+      dispatchTime,
+      workDays,
+      questions,
+      departmentIds,
+    })
 
     revalidatePath("/health-surveys/configure")
     redirect("/health-surveys/configure")

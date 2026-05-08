@@ -1,7 +1,7 @@
 import { redirect, notFound } from "next/navigation"
 import Link from "next/link"
 import { getSession } from "@/modules/auth/session"
-import { getHealthSurveyConfigGroup } from "@/modules/health-surveys/health-survey-config.service"
+import { getHealthSurveyConfig } from "@/modules/health-surveys/health-survey-config.service"
 import { getActiveDepartments } from "@/modules/departments/department.service"
 import { EditHealthSurveyConfigForm } from "@/app/(tenant)/health-surveys/configure/[configId]/edit-health-survey-config-form"
 
@@ -14,13 +14,13 @@ export default async function EditHealthSurveyConfigPage({ params }: Props): Pro
   if (!session) redirect("/login")
 
   const { configId } = await params
-  const [group, departments] = await Promise.all([
-    getHealthSurveyConfigGroup(session.tenantId, configId),
+  const [config, departments] = await Promise.all([
+    getHealthSurveyConfig(session.tenantId, configId),
     getActiveDepartments(session.tenantId),
   ])
-  if (group?.representative === undefined || group.representative === null) notFound()
+  if (!config) notFound()
 
-  const { representative: config, allDeptIds } = group
+  const initialDeptIds = config.configDepartments.map((cd) => cd.department.id)
 
   return (
     <div className="flex flex-col h-full">
@@ -35,7 +35,7 @@ export default async function EditHealthSurveyConfigPage({ params }: Props): Pro
         <EditHealthSurveyConfigForm
           configId={configId}
           initialConfig={config}
-          initialDeptIds={allDeptIds}
+          initialDeptIds={initialDeptIds}
           departments={departments.map((d) => ({ id: d.id, name: d.name }))}
         />
       </div>

@@ -49,8 +49,7 @@ interface DayGroup {
   totalResponses: number
   status: string
   statusCounts: Record<string, number>
-  deptIds: Set<string>
-  deptNames: Set<string>
+  deptNames: string[]
 }
 
 function groupDispatchesByDay(dispatches: HealthSurveyDispatchWithConfig[], timezone: string): DayGroup[] {
@@ -58,29 +57,33 @@ function groupDispatchesByDay(dispatches: HealthSurveyDispatchWithConfig[], time
 
   for (const d of dispatches) {
     const dayKey = formatInTimeZone(new Date(d.scheduledAt), timezone, "yyyy-MM-dd")
-    const existing = buckets.get(dayKey)
+    const dispatchTotalRecipients = d.deptDispatches.reduce((sum, dd) => sum + dd.totalRecipients, 0)
+    const dispatchTotalResponses = d.deptDispatches.reduce((sum, dd) => sum + dd.totalResponses, 0)
+    const dispatchDeptNames = d.healthSurveyConfiguration.configDepartments.map((cd) => cd.department.name)
 
+    const existing = buckets.get(dayKey)
     if (existing) {
-      existing.totalRecipients += d.totalRecipients
-      existing.totalResponses += d.totalResponses
-      existing.deptIds.add(d.healthSurveyConfiguration.department.id)
-      existing.deptNames.add(d.healthSurveyConfiguration.department.name)
+      existing.totalRecipients += dispatchTotalRecipients
+      existing.totalResponses += dispatchTotalResponses
       existing.statusCounts[d.status] = (existing.statusCounts[d.status] ?? 0) + 1
       const currentPriority = STATUS_PRIORITY[existing.status] ?? 3
       const newPriority = STATUS_PRIORITY[d.status] ?? 3
       if (newPriority < currentPriority) existing.status = d.status
+      if (existing.signedLinkToken === null && d.signedLinkToken !== null) existing.signedLinkToken = d.signedLinkToken
+      for (const name of dispatchDeptNames) {
+        if (!existing.deptNames.includes(name)) existing.deptNames.push(name)
+      }
     } else {
       buckets.set(dayKey, {
         dayKey,
         scheduledAt: new Date(d.scheduledAt),
         anchorId: d.id,
-        signedLinkToken: d.signedLinkToken,
-        totalRecipients: d.totalRecipients,
-        totalResponses: d.totalResponses,
+        signedLinkToken: d.signedLinkToken ?? null,
+        totalRecipients: dispatchTotalRecipients,
+        totalResponses: dispatchTotalResponses,
         status: d.status,
         statusCounts: { [d.status]: 1 },
-        deptIds: new Set([d.healthSurveyConfiguration.department.id]),
-        deptNames: new Set([d.healthSurveyConfiguration.department.name]),
+        deptNames: [...dispatchDeptNames],
       })
     }
   }
@@ -124,6 +127,12 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
   const dayGroups = groupDispatchesByDay(pageDispatches, timezone)
   const hasAnyDispatches = total > 0
 
+  const configOptions = configs.map((c) => ({
+    id: c.id,
+    name: c.name,
+    departmentName: c.configDepartments.map((cd) => cd.department.name).join(", "),
+  }))
+
   return (
     <div className="flex flex-col h-full">
       <div className="border-b border-border bg-card px-6 py-4 flex items-center justify-between shrink-0">
@@ -157,7 +166,8 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
             {total} {total === 1 ? "disparo" : "disparos"}
-          </p>        </div>
+          </p>
+        </div>
         <div className="flex gap-0">
           <Link
             href="/health-surveys/configure"
@@ -168,7 +178,7 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
           </Link>
           <ScheduleHealthSurveyDispatchButton
             hasConfigs={configs.length > 0}
-            configs={configs.map((c) => ({ id: c.id, name: c.name, departmentName: c.department.name }))}
+            configs={configOptions}
             orgTimezone={timezone}
           />
         </div>
@@ -199,7 +209,7 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
               ...(dateFromStr !== undefined ? { dateFrom: dateFromStr } : {}),
               ...(dateToStr !== undefined ? { dateTo: dateToStr } : {}),
             }}
-            configs={configs.map((c) => ({ id: c.id, name: c.name, departmentName: c.department.name }))}
+            configs={configOptions}
           />
         )}
 
@@ -243,12 +253,12 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
                   <td className="px-4 py-3 w-36">
                     <Link href={`/health-surveys/${g.anchorId}`} className="block">
                       <span className="text-xs text-muted-foreground">
-                        {g.deptIds.size} {g.deptIds.size === 1 ? "setor" : "setores"}
+                        {g.deptNames.length} {g.deptNames.length === 1 ? "setor" : "setores"}
                       </span>
-                      {g.deptNames.size > 0 && (
+                      {g.deptNames.length > 0 && (
                         <div className="mt-0.5">
                           <span className="text-[9px] font-medium text-muted-foreground/70">
-                            {Array.from(g.deptNames).join(", ")}
+                            {g.deptNames.join(", ")}
                           </span>
                         </div>
                       )}
@@ -298,11 +308,11 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
                     </Link>
                   </td>
                   <td className="px-3 py-3 text-center">
-                    {g.signedLinkToken !== null && (
+                    {g.signedLinkToken !== null ? (
                       <CopyDispatchLinkButton
-                        signedLink={`${env.NEXT_PUBLIC_APP_URL}/health-survey/link/${g.signedLinkToken}`}
+                        groupLink={`${env.NEXT_PUBLIC_APP_URL}/health-survey/link/${g.signedLinkToken}`}
                       />
-                    )}
+                    ) : null}
                   </td>
                   <td className="px-3 py-3 text-right">
                     <Link href={`/health-surveys/${g.anchorId}`} className="block">

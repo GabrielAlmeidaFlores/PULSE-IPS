@@ -49,7 +49,6 @@ const DEPT_FIXTURE = {
 const CONFIG_FIXTURE = {
   id: "config-1",
   tenantId: TENANT_ID,
-  departmentId: DEPT_ID,
   name: "Pesquisa de Saúde",
   description: null,
   frequency: "weekly",
@@ -58,13 +57,14 @@ const CONFIG_FIXTURE = {
   isActive: true,
   createdAt: BASE_DATE,
   updatedAt: BASE_DATE,
-  department: DEPT_FIXTURE,
+  configDepartments: [{ department: DEPT_FIXTURE }],
 }
 
 function makeResponse(dispatchId: string, index: number): DispatchWithData["responses"][number] {
   return {
     id: `response-${index}`,
     tenantId: TENANT_ID,
+    departmentId: DEPT_ID,
     dispatchId,
     createdAt: BASE_DATE,
     items: [
@@ -92,11 +92,10 @@ function makeDispatch(daysAgo: number, responseCount: number): DispatchWithData 
     dispatchedAt,
     adherenceCheckedAt: null,
     status: "available",
-    totalRecipients: 10,
-    totalResponses: responseCount,
     signedLinkToken: null,
     createdAt: dispatchedAt,
     healthSurveyConfiguration: CONFIG_FIXTURE,
+    deptDispatches: [{ departmentId: DEPT_ID, totalRecipients: 10 }],
     responses: Array.from({ length: responseCount }, (_, i) => makeResponse(dispatchId, i)),
   }
 }
@@ -275,14 +274,14 @@ describe("getDashboardData — trend down", () => {
       dispatchedAt: prevDispatchedAt,
       adherenceCheckedAt: null,
       status: "available",
-      totalRecipients: 10,
-      totalResponses: 6,
       signedLinkToken: null,
       createdAt: prevDispatchedAt,
       healthSurveyConfiguration: CONFIG_FIXTURE,
+      deptDispatches: [{ departmentId: DEPT_ID, totalRecipients: 10 }],
       responses: Array.from({ length: 6 }, (_, i) => ({
         id: `prev-response-${i}`,
         tenantId: TENANT_ID,
+        departmentId: DEPT_ID,
         dispatchId: "prev-month",
         createdAt: prevDispatchedAt,
         items: [

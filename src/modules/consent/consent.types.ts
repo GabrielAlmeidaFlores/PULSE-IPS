@@ -1,4 +1,4 @@
-export type ConsentEvent = "accepted" | "refused" | "opted_out" | "revoked" | "invited"
+export type ConsentEvent = "accepted" | "refused" | "opted_out" | "revoked"
 export type ConsentSource = "message_link" | "admin" | "import" | "health_survey_form"
 
 export interface ConsentTermVersion {
@@ -18,8 +18,6 @@ export interface ConsentRecord {
   event: ConsentEvent
   source: ConsentSource
   documentHash: string | null
-  token: string | null
-  tokenExpiresAt: Date | null
   createdAt: Date
 }
 
@@ -35,7 +33,5 @@ export interface CreateConsentRecordInput {
   event: ConsentEvent
   source: ConsentSource
   documentHash?: string | undefined
-  token?: string | undefined
-  tokenExpiresAt?: Date | undefined
 }
 

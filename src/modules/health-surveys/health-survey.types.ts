@@ -2,12 +2,12 @@ export type ScoreDirection = "higher_is_better" | "lower_is_better"
 
 export interface HealthSurveyDispatchDashboardStats {
   id: string
-  departmentId: string
   status: string
   scheduledAt: Date
   dispatchedAt: Date | null
-  departmentName: string
+  configName: string
   frequency: string
+  departments: { id: string; name: string }[]
   totalRecipients: number
   totalResponses: number
   notResponded: number
@@ -27,7 +27,7 @@ export interface HealthSurveyDispatchDashboardStats {
 export interface HealthSurveyConfigurationType {
   id: string
   tenantId: string
-  departmentId: string
+  departments: { id: string; name: string }[]
   name: string
   description: string | null
   frequency: string
@@ -54,8 +54,6 @@ export interface HealthSurveyDispatchType {
   scheduledAt: Date
   dispatchedAt: Date | null
   status: "scheduled" | "available" | "failed" | "cancelled"
-  totalRecipients: number
-  totalResponses: number
   createdAt: Date
 }
 
@@ -75,7 +73,7 @@ export type HealthSurveyTokenValidation =
   | { valid: false; error: string }
 
 export interface CreateHealthSurveyConfigInput {
-  departmentId: string
+  departmentIds: string[]
   name: string
   description: string | undefined
   frequency: "daily" | "twice_weekly" | "weekly" | "biweekly" | "monthly"
@@ -92,6 +90,7 @@ export interface UpdateHealthSurveyConfigInput {
   scheduledDayOfMonth: number | null
   dispatchTime: string
   workDays: number[]
+  departmentIds: string[]
   questions: { text: string; order: number; scoreDirection: ScoreDirection }[]
 }
 
@@ -103,6 +102,7 @@ export interface SubmitHealthSurveyInput {
 export interface CreateHealthSurveyResponseInput {
   tenantId: string
   dispatchId: string
+  departmentId: string | null
   tokenId: string
   answers: { questionId: string; score: number }[]
 }

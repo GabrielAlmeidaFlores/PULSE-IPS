@@ -11,7 +11,10 @@ import type {
 export type ItemWithQuestion = HealthSurveyResponseItem & { question: Pick<HealthSurveyQuestion, "id" | "order" | "text" | "scoreDirection"> }
 
 export type DispatchWithData = HealthSurveyDispatch & {
-  healthSurveyConfiguration: HealthSurveyConfiguration & { department: Department }
+  healthSurveyConfiguration: HealthSurveyConfiguration & {
+    configDepartments: { department: Department }[]
+  }
+  deptDispatches: { departmentId: string; totalRecipients: number }[]
   responses: (HealthSurveyResponse & { items: ItemWithQuestion[] })[]
 }
 
@@ -48,7 +51,8 @@ export function findDispatchesWithData(tenantId: string, since: Date): Promise<D
       dispatchedAt: { gte: since },
     },
     include: {
-      healthSurveyConfiguration: { include: { department: true } },
+      healthSurveyConfiguration: { include: { configDepartments: { include: { department: true } } } },
+      deptDispatches: { select: { departmentId: true, totalRecipients: true } },
       responses: {
         include: {
           items: { include: { question: { select: { id: true, order: true, text: true, scoreDirection: true } } } },
@@ -56,7 +60,7 @@ export function findDispatchesWithData(tenantId: string, since: Date): Promise<D
       },
     },
     orderBy: { dispatchedAt: "asc" },
-  })
+  }) as unknown as Promise<DispatchWithData[]>
 }
 
 export function findUniqueQuestions(tenantId: string): Promise<UniqueQuestion[]> {
@@ -91,11 +95,12 @@ export function findDeptDispatchesWithData(tenantId: string, deptId: string, sin
   return prisma.healthSurveyDispatch.findMany({
     where: {
       tenantId,
-      healthSurveyConfiguration: { departmentId: deptId },
+      healthSurveyConfiguration: { configDepartments: { some: { departmentId: deptId } } },
       dispatchedAt: { gte: since },
     },
     include: {
-      healthSurveyConfiguration: { include: { department: true } },
+      healthSurveyConfiguration: { include: { configDepartments: { include: { department: true } } } },
+      deptDispatches: { select: { departmentId: true, totalRecipients: true } },
       responses: {
         include: {
           items: { include: { question: { select: { id: true, order: true, text: true, scoreDirection: true } } } },
@@ -103,7 +108,7 @@ export function findDeptDispatchesWithData(tenantId: string, deptId: string, sin
       },
     },
     orderBy: { dispatchedAt: "asc" },
-  })
+  }) as unknown as Promise<DispatchWithData[]>
 }
 
 export function findDeptActiveAlerts(tenantId: string, deptId: string): Promise<DeptActiveAlert[]> {

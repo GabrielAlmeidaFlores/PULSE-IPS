@@ -7,7 +7,10 @@ export function buildDispatchSuggestion(
 ): ActionPlanSuggestion | null {
   const topDispatch = lowAdherenceDispatches[0]
   if (!topDispatch || topDispatch.totalRecipients === 0) return null
-  const deptName = topDispatch.healthSurveyConfiguration?.department?.name ?? "geral"
+  const deptNames = (topDispatch.healthSurveyConfiguration?.configDepartments ?? [])
+    .map((cd) => cd.department?.name)
+    .filter((n): n is string => n !== null && n !== undefined)
+  const deptName = deptNames.length > 0 ? deptNames.join(", ") : "geral"
   const title = `Aumentar adesão às pesquisas — ${deptName}`
   if (existingTitles.has(title.toLowerCase())) return null
 

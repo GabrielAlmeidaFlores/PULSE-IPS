@@ -108,6 +108,7 @@ export async function submitHealthSurveyResponse(input: SubmitHealthSurveyInput)
   await createHealthSurveyResponseWithItems({
     tenantId: tokenRecord.tenantId,
     dispatchId: tokenRecord.dispatchId,
+    departmentId: tokenRecord.employee.departmentId,
     tokenId: tokenRecord.id,
     answers: input.answers,
   })
@@ -126,15 +127,33 @@ export async function unlockHealthSurveyViaIdentifier(
   if (dispatch.status !== "available") throw new AppError("DISPATCH_NOT_AVAILABLE", "Esta pesquisa não está disponível no momento.")
 
   const tenantId = dispatch.tenantId
-  const timezone = dispatch.healthSurveyConfiguration.organization.timezone ?? "America/Sao_Paulo"
 
   const employee = await findEmployeeByPhoneOrDocument(tenantId, identifier.trim())
   if (!employee) throw new AppError("EMPLOYEE_NOT_FOUND", "Colaborador não encontrado. Verifique o número de telefone ou documento.")
 
-  const dispatchDepartmentId = dispatch.healthSurveyConfiguration.departmentId
-  if (employee.departmentId !== dispatchDepartmentId) {
+  const configDeptIds = new Set(dispatch.healthSurveyConfiguration.configDepartments.map((cd) => cd.department.id))
+  if (!configDeptIds.has(employee.departmentId)) {
     throw new AppError("EMPLOYEE_NOT_IN_DEPARTMENT", "Esta pesquisa não está disponível para o seu setor.")
   }
+
+  const matchedDept = dispatch.healthSurveyConfiguration.configDepartments.find(
+    (cd) => cd.department.id === employee.departmentId,
+  )
+
+  const deptWorkStartTime = matchedDept?.department.workStartTime ?? "09:00"
+  const deptWorkEndTime = matchedDept?.department.workEndTime ?? "18:00"
+
+  return resolveDispatchUnlock(dispatch, employee, deptWorkStartTime, deptWorkEndTime)
+}
+
+async function resolveDispatchUnlock(
+  dispatch: NonNullable<Awaited<ReturnType<typeof findHealthSurveyDispatchBySignedLinkToken>>>,
+  employee: { id: string; name: string; workStartTime: string | null; workEndTime: string | null; departmentId: string },
+  deptWorkStartTime: string,
+  deptWorkEndTime: string,
+): Promise<SignedLinkUnlockResult> {
+  const tenantId = dispatch.tenantId
+  const timezone = dispatch.healthSurveyConfiguration.organization.timezone ?? "America/Sao_Paulo"
 
   const currentConsent = await getCurrentConsent(tenantId, employee.id)
   const activeTermVersion = await getActiveConsentTermVersion()
@@ -142,9 +161,8 @@ export async function unlockHealthSurveyViaIdentifier(
     currentConsent?.event === "accepted" &&
     currentConsent?.consentTermVersionId === activeTermVersion?.id
 
-  const config = dispatch.healthSurveyConfiguration
-  const workStartTime = employee.workStartTime ?? config.department.workStartTime
-  const workEndTime = employee.workEndTime ?? config.department.workEndTime
+  const workStartTime = employee.workStartTime ?? deptWorkStartTime
+  const workEndTime = employee.workEndTime ?? deptWorkEndTime
   const nowInTimezone = toZonedTime(new Date(), timezone)
   const currentTime = format(nowInTimezone, "HH:mm")
 

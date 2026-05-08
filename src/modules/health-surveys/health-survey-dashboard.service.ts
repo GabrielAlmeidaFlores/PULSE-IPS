@@ -8,6 +8,7 @@ import {
   findHealthSurveyDispatchDaysPaginated,
   findHealthSurveyDispatchesForDates,
   type HealthSurveyDispatchListingFilters,
+  type HealthSurveyDispatchDashboardData,
 } from "@/modules/health-surveys/health-survey.repository"
 import { findOrganizationById } from "@/modules/organizations/organization.repository"
 import type { HealthSurveyDispatchDashboardStats, ScoreDirection } from "@/modules/health-surveys/health-survey.types"
@@ -50,34 +51,23 @@ function calcOverallAvgScore(
   return allNormalized.length > 0 ? allNormalized.reduce((a, b) => a + b, 0) / allNormalized.length : null
 }
 
-function buildDispatchStats(data: {
-  id: string
-  departmentId: string
-  status: string
-  scheduledAt: Date
-  dispatchedAt: Date | null
-  departmentName: string
-  frequency: string
-  totalRecipients: number
-  totalResponses: number
-  signedLinkToken: string | null
-  questions: { id: string; text: string; order: number; scoreDirection: string }[]
-  responseItems: { questionId: string; score: number }[]
-}): HealthSurveyDispatchDashboardStats {
+function buildDispatchStats(data: HealthSurveyDispatchDashboardData): HealthSurveyDispatchDashboardStats {
   const hasEnoughRespondents = data.totalResponses >= MINIMUM_RESPONDENTS_FOR_DISPLAY
-  const questions = hasEnoughRespondents ? buildQuestionStats(data.questions, data.responseItems) : buildQuestionStats(data.questions, [])
+  const questions = hasEnoughRespondents
+    ? buildQuestionStats(data.questions, data.responseItems)
+    : buildQuestionStats(data.questions, [])
   const avgScore = hasEnoughRespondents ? calcOverallAvgScore(questions, data.responseItems) : null
   const notResponded = Math.max(0, data.totalRecipients - data.totalResponses)
   const adherenceRate = data.totalRecipients > 0 ? data.totalResponses / data.totalRecipients : 0
 
   return {
     id: data.id,
-    departmentId: data.departmentId,
     status: data.status,
     scheduledAt: data.scheduledAt,
     dispatchedAt: data.dispatchedAt,
-    departmentName: data.departmentName,
+    configName: data.configName,
     frequency: data.frequency,
+    departments: data.departments,
     totalRecipients: data.totalRecipients,
     totalResponses: data.totalResponses,
     notResponded,
@@ -139,11 +129,19 @@ export async function getHealthSurveyDispatchesPaginatedByDay(
   return { items, total }
 }
 
-export function scheduleHealthSurveyDispatch(tenantId: string, configId: string, scheduledAt: Date): ReturnType<typeof createHealthSurveyDispatch> {
-  return createHealthSurveyDispatch(tenantId, configId, scheduledAt, randomUUID())
+export function scheduleHealthSurveyDispatch(
+  tenantId: string,
+  configId: string,
+  scheduledAt: Date,
+): ReturnType<typeof createHealthSurveyDispatch> {
+  const token = randomUUID()
+  return createHealthSurveyDispatch(tenantId, configId, scheduledAt, token)
 }
 
-export async function getHealthSurveyDispatchDashboard(tenantId: string, dispatchId: string): Promise<HealthSurveyDispatchDashboardStats | null> {
+export async function getHealthSurveyDispatchDashboard(
+  tenantId: string,
+  dispatchId: string,
+): Promise<HealthSurveyDispatchDashboardStats | null> {
   const data = await findHealthSurveyDispatchWithDashboard(tenantId, dispatchId)
   if (!data) return null
   return buildDispatchStats(data)

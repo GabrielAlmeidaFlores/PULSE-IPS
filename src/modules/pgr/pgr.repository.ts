@@ -73,19 +73,29 @@ export function findOrgWithDepartmentsForPgr(tenantId: string): Promise<Organiza
   })
 }
 
-export function findDispatchesForPgr(tenantId: string, startDate: Date, endDate: Date): Promise<(HealthSurveyDispatch & { responses: (HealthSurveyResponse & { items: HealthSurveyResponseItem[] })[]; healthSurveyConfiguration: HealthSurveyConfiguration & { department: Department; departmentId: string; questions: HealthSurveyQuestion[] } })[]> {
+export type PgrDispatchWithConfig = HealthSurveyDispatch & {
+  responses: (HealthSurveyResponse & { items: HealthSurveyResponseItem[] })[]
+  deptDispatches: { departmentId: string; totalRecipients: number }[]
+  healthSurveyConfiguration: HealthSurveyConfiguration & {
+    configDepartments: { departmentId: string; department: Department }[]
+    questions: HealthSurveyQuestion[]
+  }
+}
+
+export function findDispatchesForPgr(tenantId: string, startDate: Date, endDate: Date): Promise<PgrDispatchWithConfig[]> {
   return prisma.healthSurveyDispatch.findMany({
     where: { tenantId, status: "available", dispatchedAt: { gte: startDate, lt: endDate } },
     include: {
       responses: { include: { items: true } },
+      deptDispatches: { select: { departmentId: true, totalRecipients: true } },
       healthSurveyConfiguration: {
         include: {
-          department: true,
+          configDepartments: { include: { department: true } },
           questions: { orderBy: { order: "asc" } },
         },
       },
     },
-  })
+  }) as unknown as Promise<PgrDispatchWithConfig[]>
 }
 
 export function createPgrReview(data: CreatePgrReviewInput): Promise<PgrReview> {
@@ -208,16 +218,14 @@ export async function findItemScoresForPeriod(
       score: true,
       healthSurveyResponse: {
         select: {
-          dispatch: {
-            select: { healthSurveyConfiguration: { select: { departmentId: true } } },
-          },
+          departmentId: true,
         },
       },
     },
   })
-  return items.map((item) => ({
-    questionId: item.questionId,
-    score: item.score,
-    departmentId: item.healthSurveyResponse.dispatch.healthSurveyConfiguration.departmentId,
-  }))
+  return items.flatMap((item) => {
+    const deptId = item.healthSurveyResponse.departmentId
+    if (deptId === null) return []
+    return [{ questionId: item.questionId, score: item.score, departmentId: deptId }]
+  })
 }

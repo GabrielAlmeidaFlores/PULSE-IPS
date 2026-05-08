@@ -25,7 +25,6 @@ const EMPLOYEE_STATUS_OPTIONS = [
 
 const EMPLOYEE_CONSENT_OPTIONS = [
   { value: "accepted", label: "Aceito" },
-  { value: "invited", label: "Enviado" },
   { value: "refused", label: "Recusado" },
   { value: "opt_out", label: "Opt-out" },
   { value: "not_sent", label: "Não enviado" },

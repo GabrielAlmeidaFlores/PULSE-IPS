@@ -5,12 +5,13 @@ import {
   findAllTenantsActiveHealthSurveyConfigsForAutoDispatch,
   createHealthSurveyTokens,
   markHealthSurveyDispatchDispatched,
+  upsertHealthSurveyDeptDispatch,
   createHealthSurveyDispatch,
   findAllTenantsHealthSurveyDispatches48hAgo,
-  countHealthSurveyResponsesForDispatch,
   createHealthSurveyAdherenceAlert,
   markHealthSurveyDispatchAdherenceChecked,
   findExistingTokensForDispatch,
+  countHealthSurveyResponsesByDispatchAndDept,
   type ActiveHealthSurveyConfigForDispatch,
 } from "@/modules/health-surveys/health-survey.repository"
 import { hasOpenAlertOfType } from "@/modules/alerts/alert.repository"
@@ -41,15 +42,16 @@ const mockFindPendingDispatches = vi.mocked(findAllTenantsPendingHealthSurveyDis
 const mockFindActiveConfigs = vi.mocked(findAllTenantsActiveHealthSurveyConfigsForAutoDispatch)
 const mockCreateHealthSurveyTokens = vi.mocked(createHealthSurveyTokens)
 const mockMarkDispatchDispatched = vi.mocked(markHealthSurveyDispatchDispatched)
+const mockUpsertDeptDispatch = vi.mocked(upsertHealthSurveyDeptDispatch)
 const mockCreateDispatch = vi.mocked(createHealthSurveyDispatch)
 const mockFindDispatches48hAgo = vi.mocked(findAllTenantsHealthSurveyDispatches48hAgo)
-const mockCountResponses = vi.mocked(countHealthSurveyResponsesForDispatch)
 const mockCreateAdherenceAlert = vi.mocked(createHealthSurveyAdherenceAlert)
 const mockMarkDispatchAdherenceChecked = vi.mocked(markHealthSurveyDispatchAdherenceChecked)
 const mockHasOpenAlertOfType = vi.mocked(hasOpenAlertOfType)
 const mockHasTenantPlanFeature = vi.mocked(hasTenantPlanFeature)
 const mockFindEmployeeIdsEligibleForDispatch = vi.mocked(findEmployeeIdsEligibleForDispatch)
 const mockFindExistingTokensForDispatch = vi.mocked(findExistingTokensForDispatch)
+const mockCountResponsesByDispatchAndDept = vi.mocked(countHealthSurveyResponsesByDispatchAndDept)
 
 const TENANT_ID = "tenant-1"
 const DISPATCH_ID = "dispatch-1"
@@ -91,7 +93,7 @@ function makePendingDispatch(workDays = [1, 2, 3, 4, 5]): PendingDispatch {
       id: "config-1",
       dispatchTime: "12:00",
       workDays: workDays.map((d) => ({ dayOfWeek: d })),
-      department: DEPARTMENT,
+      configDepartments: [{ department: DEPARTMENT }],
     },
   } as unknown as PendingDispatch
 }
@@ -106,7 +108,7 @@ function makeAutoDispatchConfig(overrides?: Partial<ActiveHealthSurveyConfigForD
     workDays: [1, 2, 3, 4, 5],
     lastDispatchedAt: null,
     organization: { timezone: "America/Sao_Paulo" },
-    department: { ...AUTO_DISPATCH_DEPT },
+    departments: [{ ...AUTO_DISPATCH_DEPT }],
     questions: [],
     ...overrides,
   } as ActiveHealthSurveyConfigForDispatch
@@ -118,12 +120,14 @@ beforeEach(() => {
   mockCreateDispatch.mockResolvedValue({ id: "new-dispatch-1" } as Awaited<ReturnType<typeof createHealthSurveyDispatch>>)
   mockCreateHealthSurveyTokens.mockResolvedValue(undefined)
   mockMarkDispatchDispatched.mockResolvedValue(undefined)
+  mockUpsertDeptDispatch.mockResolvedValue(undefined)
   mockCreateAdherenceAlert.mockResolvedValue(undefined)
   mockMarkDispatchAdherenceChecked.mockResolvedValue(undefined)
   mockHasOpenAlertOfType.mockResolvedValue(false)
   mockHasTenantPlanFeature.mockResolvedValue(true)
   mockFindEmployeeIdsEligibleForDispatch.mockResolvedValue(["emp-1"])
   mockFindExistingTokensForDispatch.mockResolvedValue([])
+  mockCountResponsesByDispatchAndDept.mockResolvedValue(0)
 })
 
 describe("runHealthSurveyDispatcher", () => {
@@ -143,7 +147,7 @@ describe("runHealthSurveyDispatcher", () => {
     const result = await runHealthSurveyDispatcher()
     expect(result).toEqual({ dispatched: 1, errors: 0 })
     expect(mockCreateDispatch).not.toHaveBeenCalled()
-    expect(mockMarkDispatchDispatched).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID, 0)
+    expect(mockMarkDispatchDispatched).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID)
 
     vi.useRealTimers()
   })
@@ -169,13 +173,13 @@ describe("runHealthSurveyDispatcher", () => {
 
     const mondayEmployee = { ...EMPLOYEE, workDays: [{ dayOfWeek: 1 }] }
     const dept = { ...DEPARTMENT, workDays: [{ dayOfWeek: 1 }], employees: [mondayEmployee] }
-    const dispatch = { ...makePendingDispatch([0, 1, 2, 3, 4, 5]), healthSurveyConfiguration: { ...(makePendingDispatch().healthSurveyConfiguration as Record<string, unknown>), department: dept, workDays: [{ dayOfWeek: 0 }] } } as unknown as PendingDispatch
+    const dispatch = { ...makePendingDispatch([0, 1, 2, 3, 4, 5]), healthSurveyConfiguration: { ...(makePendingDispatch().healthSurveyConfiguration as Record<string, unknown>), configDepartments: [{ department: dept }], workDays: [{ dayOfWeek: 0 }] } } as unknown as PendingDispatch
 
     mockFindPendingDispatches.mockResolvedValue([dispatch])
 
     const result = await runHealthSurveyDispatcher()
     expect(result).toEqual({ dispatched: 1, errors: 0 })
-    expect(mockMarkDispatchDispatched).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID, 0)
+    expect(mockMarkDispatchDispatched).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID)
 
     vi.useRealTimers()
   })
@@ -376,11 +380,10 @@ describe("checkHealthSurveyDispatchAdherence", () => {
     const dispatch = {
       id: "d-1",
       tenantId: TENANT_ID,
-      totalRecipients: 10,
-      healthSurveyConfiguration: { departmentId: "dept-1" },
+      deptDispatches: [{ departmentId: "dept-1", totalRecipients: 10 }],
     }
-    mockFindDispatches48hAgo.mockResolvedValue([dispatch])
-    mockCountResponses.mockResolvedValue(5)
+    mockFindDispatches48hAgo.mockResolvedValue([dispatch] as Awaited<ReturnType<typeof findAllTenantsHealthSurveyDispatches48hAgo>>)
+    mockCountResponsesByDispatchAndDept.mockResolvedValue(5)
 
     const result = await checkHealthSurveyDispatchAdherence()
 
@@ -388,18 +391,17 @@ describe("checkHealthSurveyDispatchAdherence", () => {
     expect(mockCreateAdherenceAlert).toHaveBeenCalledWith(
       expect.objectContaining({ tenantId: TENANT_ID, adherenceRate: 0.5, responseCount: 5 }),
     )
-    expect(mockMarkDispatchAdherenceChecked).toHaveBeenCalledWith(TENANT_ID, "d-1", 5)
+    expect(mockMarkDispatchAdherenceChecked).toHaveBeenCalledWith(TENANT_ID, "d-1")
   })
 
   it("does not create alert when adherence is at or above threshold", async () => {
     const dispatch = {
       id: "d-1",
       tenantId: TENANT_ID,
-      totalRecipients: 10,
-      healthSurveyConfiguration: { departmentId: "dept-1" },
+      deptDispatches: [{ departmentId: "dept-1", totalRecipients: 10 }],
     }
-    mockFindDispatches48hAgo.mockResolvedValue([dispatch])
-    mockCountResponses.mockResolvedValue(9)
+    mockFindDispatches48hAgo.mockResolvedValue([dispatch] as Awaited<ReturnType<typeof findAllTenantsHealthSurveyDispatches48hAgo>>)
+    mockCountResponsesByDispatchAndDept.mockResolvedValue(9)
 
     const result = await checkHealthSurveyDispatchAdherence()
 
@@ -411,15 +413,13 @@ describe("checkHealthSurveyDispatchAdherence", () => {
     const dispatch = {
       id: "d-1",
       tenantId: TENANT_ID,
-      totalRecipients: 0,
-      healthSurveyConfiguration: { departmentId: "dept-1" },
+      deptDispatches: [{ departmentId: "dept-1", totalRecipients: 0 }],
     }
-    mockFindDispatches48hAgo.mockResolvedValue([dispatch])
-    mockCountResponses.mockResolvedValue(0)
+    mockFindDispatches48hAgo.mockResolvedValue([dispatch] as Awaited<ReturnType<typeof findAllTenantsHealthSurveyDispatches48hAgo>>)
 
     const result = await checkHealthSurveyDispatchAdherence()
     expect(result.alertsCreated).toBe(0)
-    expect(mockMarkDispatchAdherenceChecked).toHaveBeenCalledWith(TENANT_ID, "d-1", 0)
+    expect(mockMarkDispatchAdherenceChecked).toHaveBeenCalledWith(TENANT_ID, "d-1")
   })
 })
 
@@ -441,7 +441,7 @@ describe("runHealthSurveyDispatcher — token work hours fallback chain", () => 
         id: "config-1",
         dispatchTime: "12:00",
         workDays: [{ dayOfWeek: 1 }],
-        department: deptWithEmployee,
+        configDepartments: [{ department: deptWithEmployee }],
       },
     } as unknown as PendingDispatch
     mockFindPendingDispatches.mockResolvedValue([dispatch])
@@ -470,7 +470,7 @@ describe("runHealthSurveyDispatcher — token work hours fallback chain", () => 
         id: "config-1",
         dispatchTime: "12:00",
         workDays: [{ dayOfWeek: 1 }],
-        department: deptWithHours,
+        configDepartments: [{ department: deptWithHours }],
       },
     } as unknown as PendingDispatch
     mockFindPendingDispatches.mockResolvedValue([dispatch])
@@ -494,7 +494,7 @@ describe("runHealthSurveyAutoDispatchScheduler — edge cases", () => {
 
     const weekendEmployee = { ...EMPLOYEE, workDays: [0, 6] }
     const configWithWeekendEmployees = makeAutoDispatchConfig({
-      department: { ...AUTO_DISPATCH_DEPT, employees: [weekendEmployee] },
+      departments: [{ ...AUTO_DISPATCH_DEPT, employees: [weekendEmployee] }],
     })
     mockFindActiveConfigs.mockResolvedValue([configWithWeekendEmployees])
 
@@ -544,7 +544,7 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
 
     expect(result).toEqual({ dispatched: 1, errors: 0 })
     expect(mockCreateHealthSurveyTokens).not.toHaveBeenCalled()
-    expect(mockMarkDispatchDispatched).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID, 0)
+    expect(mockMarkDispatchDispatched).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID)
     expect(mockAddBulk).not.toHaveBeenCalled()
 
     vi.useRealTimers()
@@ -562,7 +562,7 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
         id: "config-1",
         dispatchTime: "12:00",
         workDays: [{ dayOfWeek: 1 }],
-        department: dept,
+        configDepartments: [{ department: dept }],
       },
     } as unknown as Awaited<ReturnType<typeof findAllTenantsPendingHealthSurveyDispatches>>[number]
     mockFindPendingDispatches.mockResolvedValue([dispatch])
@@ -621,7 +621,7 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
     await runHealthSurveyDispatcher()
 
     expect(mockCreateHealthSurveyTokens).not.toHaveBeenCalled()
-    expect(mockMarkDispatchDispatched).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID, 1)
+    expect(mockMarkDispatchDispatched).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID)
     expect(mockAddBulk).not.toHaveBeenCalled()
 
     vi.useRealTimers()
@@ -640,7 +640,7 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
     await runHealthSurveyDispatcher()
 
     expect(mockCreateHealthSurveyTokens).not.toHaveBeenCalled()
-    expect(mockMarkDispatchDispatched).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID, 1)
+    expect(mockMarkDispatchDispatched).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID)
     expect(mockAddBulk).toHaveBeenCalledOnce()
     const [jobs] = mockAddBulk.mock.calls[0] as [{ data: { body: string } }[]]
     expect(jobs[0]?.data.body).toContain(PREEXISTING_TOKEN)
@@ -660,7 +660,7 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
     await runHealthSurveyDispatcher()
 
     expect(mockCreateHealthSurveyTokens).toHaveBeenCalledOnce()
-    expect(mockMarkDispatchDispatched).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID, 1)
+    expect(mockMarkDispatchDispatched).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID)
     expect(mockAddBulk).toHaveBeenCalledOnce()
     const [jobs] = mockAddBulk.mock.calls[0] as [{ data: { body: string } }[]]
     expect(jobs[0]?.data.body).not.toContain("expired-old-token")

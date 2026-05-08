@@ -20,7 +20,6 @@ vi.mock("@/modules/consent/consent.repository", () => ({
   getCurrentConsent: vi.fn(),
   getActiveConsentTermVersion: vi.fn(),
   createConsentRecord: vi.fn(),
-  findConsentByToken: vi.fn(),
   findExistingConsentEvent: vi.fn(),
   findEmployeeForConsent: vi.fn(),
   getAllConsentTermVersions: vi.fn(),
@@ -234,8 +233,6 @@ describe("validateHealthSurveyToken", () => {
       consentTermVersionId: termId,
       event: "accepted",
       source: "message_link",
-      token: null,
-      tokenExpiresAt: null,
       documentHash: null,
       createdAt: new Date(),
       consentTermVersion: {
@@ -272,8 +269,6 @@ describe("validateHealthSurveyToken", () => {
       consentTermVersionId: "old-term-version",
       event: "accepted",
       source: "message_link",
-      token: null,
-      tokenExpiresAt: null,
       documentHash: null,
       createdAt: new Date(),
       consentTermVersion: {

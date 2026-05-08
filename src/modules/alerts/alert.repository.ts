@@ -110,13 +110,11 @@ export function resolveAlert(tenantId: string, alertId: string, resolvedBy: stri
 
 export interface HealthSurveyResponseWithItems {
   tenantId: string
+  departmentId: string | null
   items: { score: number; question: { scoreDirection: string } }[]
   dispatch: {
     healthSurveyConfiguration: {
-      department: {
-        id: string
-        name: string
-      }
+      configDepartments: { department: { id: string; name: string } }[]
     }
   }
 }
@@ -128,11 +126,11 @@ export function findAllTenantsRecentHealthSurveyResponsesForAlerts(since: Date):
       items: { include: { question: { select: { scoreDirection: true } } } },
       dispatch: {
         include: {
-          healthSurveyConfiguration: { include: { department: { select: { id: true, name: true } } } },
+          healthSurveyConfiguration: { include: { configDepartments: { include: { department: { select: { id: true, name: true } } } } } },
         },
       },
     },
-  })
+  }) as unknown as Promise<HealthSurveyResponseWithItems[]>
 }
 
 export function findAllTenantsResponsesInWindow(from: Date, to: Date): Promise<HealthSurveyResponseWithItems[]> {
@@ -142,11 +140,11 @@ export function findAllTenantsResponsesInWindow(from: Date, to: Date): Promise<H
       items: { include: { question: { select: { scoreDirection: true } } } },
       dispatch: {
         include: {
-          healthSurveyConfiguration: { include: { department: { select: { id: true, name: true } } } },
+          healthSurveyConfiguration: { include: { configDepartments: { include: { department: { select: { id: true, name: true } } } } } },
         },
       },
     },
-  })
+  }) as unknown as Promise<HealthSurveyResponseWithItems[]>
 }
 
 export interface DeptDispatchAvg {
@@ -183,9 +181,9 @@ function accumulateDayScores(
 export async function findAllTenantsDeptRecentDispatchAvgs(departmentId: string, limitPerDept: number): Promise<DeptDispatchAvg[]> {
   const DISPATCHES_PER_CONFIG_SAFETY_FACTOR = 3
   const configs = await prisma.healthSurveyConfiguration.findMany({
-    where: { departmentId },
+    where: { configDepartments: { some: { departmentId } } },
     include: {
-      department: { select: { id: true, name: true, tenantId: true } },
+      configDepartments: { where: { departmentId }, include: { department: { select: { id: true, name: true, tenantId: true } } } },
       organization: { select: { timezone: true } },
       dispatches: {
         where: { status: "available" },
@@ -193,6 +191,7 @@ export async function findAllTenantsDeptRecentDispatchAvgs(departmentId: string,
         take: limitPerDept * DISPATCHES_PER_CONFIG_SAFETY_FACTOR,
         include: {
           responses: {
+            where: { departmentId },
             include: {
               items: { include: { question: { select: { scoreDirection: true } } } },
             },
@@ -204,7 +203,7 @@ export async function findAllTenantsDeptRecentDispatchAvgs(departmentId: string,
 
   if (configs.length === 0) return []
 
-  const dept = configs[0]?.department
+  const dept = configs[0]?.configDepartments[0]?.department
   if (!dept) return []
 
   const dayMap = new Map<string, { scores: number[]; responseCount: number; effectiveDate: Date }>()
@@ -257,59 +256,4 @@ export async function findAllTenantsOpenAlertDepartmentIdsByType(type: AlertType
     select: { departmentId: true },
   })
   return new Set(alerts.map((a) => a.departmentId).filter((id): id is string => id !== null))
-}
-
-export interface EmployeeWithExpiredConsentToken {
-  tenantId: string
-  departmentId: string
-  departmentName: string
-  employeeId: string
-}
-
-export async function findAllTenantsEmployeesWithExpiredConsentTokens(): Promise<EmployeeWithExpiredConsentToken[]> {
-  const now = new Date()
-  const expiredInvites = await prisma.employeeConsent.findMany({
-    where: {
-      event: "invited",
-      tokenExpiresAt: { lt: now },
-    },
-    include: {
-      employee: {
-        include: {
-          department: { select: { id: true, name: true } },
-        },
-      },
-    },
-    orderBy: { createdAt: "desc" },
-    distinct: ["employeeId"],
-  })
-
-  const activeExpiredInvites = expiredInvites.filter((c) => c.employee.status === "active")
-  if (activeExpiredInvites.length === 0) return []
-
-  const employeeIds = activeExpiredInvites.map((c) => c.employeeId)
-
-  const laterResolutions = await prisma.employeeConsent.findMany({
-    where: {
-      employeeId: { in: employeeIds },
-      event: { in: ["accepted", "refused", "opted_out", "revoked"] },
-    },
-    select: { employeeId: true, createdAt: true },
-    orderBy: { createdAt: "desc" },
-    distinct: ["employeeId"],
-  })
-
-  const latestResolutionByEmployee = new Map(laterResolutions.map((r) => [r.employeeId, r.createdAt]))
-
-  return activeExpiredInvites
-    .filter((c) => {
-      const latestResolution = latestResolutionByEmployee.get(c.employeeId)
-      return latestResolution === undefined || latestResolution < c.createdAt
-    })
-    .map((c) => ({
-      tenantId: c.tenantId,
-      departmentId: c.employee.departmentId,
-      departmentName: c.employee.department.name,
-      employeeId: c.employeeId,
-    }))
 }

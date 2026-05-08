@@ -54,11 +54,6 @@ const ALERT_DETAILS: Record<string, AlertTypeDetail> = {
     actionWithMessaging: "Confirme que os colaboradores do setor têm número de telefone cadastrado e que a pesquisa está configurada e ativa. Se o problema persistir, entre em contato com o suporte.",
     actionNoMessaging: "Confirme que o link da pesquisa foi distribuído para os colaboradores do setor e que a pesquisa está configurada e ativa. Se o problema persistir, entre em contato com o suporte.",
   },
-  consent_expired: {
-    label: "Consentimento expirado",
-    description: "O termo de consentimento (TCLE) de um ou mais colaboradores está expirado ou ainda pendente de aceite.",
-    action: "Reenvie o convite de consentimento para os colaboradores pendentes para que possam voltar a participar das pesquisas.",
-  },
 }
 
 interface AlertTypeInfoProps {

@@ -101,15 +101,12 @@ function makeTokenRecord(overrides?: Partial<TokenRecord>): TokenRecord {
       scheduledAt: new Date(),
       dispatchedAt: new Date(),
       status: "available",
-      totalRecipients: 10,
-      totalResponses: 0,
       adherenceCheckedAt: null,
       signedLinkToken: null,
       createdAt: new Date(),
       healthSurveyConfiguration: {
         id: CONFIG_ID,
         tenantId: TENANT_ID,
-        departmentId: "dept-1",
         name: "Pesquisa de Saúde",
         description: null,
         frequency: "weekly",
@@ -167,8 +164,6 @@ const ACCEPTED_CONSENT: ConsentWithTermVersion = {
   event: "accepted",
   source: "message_link",
   documentHash: null,
-  token: null,
-  tokenExpiresAt: null,
   createdAt: new Date(),
   consentTermVersion: ACTIVE_TERM,
 }
@@ -396,6 +391,7 @@ describe("submitHealthSurveyResponse — happy path", () => {
     expect(mockCreateResponse).toHaveBeenCalledWith({
       tenantId: TENANT_ID,
       dispatchId: DISPATCH_ID,
+      departmentId: "dept-1",
       tokenId: "token-1",
       answers: SUBMIT_INPUT.answers,
     })
@@ -419,15 +415,12 @@ function makeDispatchRecord(overrides?: Partial<DispatchRecord>): DispatchRecord
     scheduledAt: new Date(),
     dispatchedAt: new Date(),
     status: "available",
-    totalRecipients: 10,
-    totalResponses: 0,
     adherenceCheckedAt: null,
     signedLinkToken: SIGNED_LINK_TOKEN,
     createdAt: new Date(),
     healthSurveyConfiguration: {
       id: CONFIG_ID,
       tenantId: TENANT_ID,
-      departmentId: "dept-1",
       name: "Pesquisa de Saúde",
       description: null,
       frequency: "weekly",
@@ -450,16 +443,20 @@ function makeDispatchRecord(overrides?: Partial<DispatchRecord>): DispatchRecord
         createdAt: new Date(),
         updatedAt: new Date(),
       },
-      department: {
-        id: "dept-1",
-        tenantId: TENANT_ID,
-        name: "Tecnologia",
-        isActive: true,
-        workStartTime: "09:00",
-        workEndTime: "18:00",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
+      configDepartments: [
+        {
+          department: {
+            id: "dept-1",
+            tenantId: TENANT_ID,
+            name: "Tecnologia",
+            isActive: true,
+            workStartTime: "09:00",
+            workEndTime: "18:00",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        },
+      ],
     },
   }
   return { ...base, ...overrides }
@@ -627,11 +624,20 @@ describe("unlockHealthSurveyViaIdentifier — retorno de token existente", () =>
       ...staleDispatch,
       healthSurveyConfiguration: {
         ...staleDispatch.healthSurveyConfiguration,
-        department: {
-          ...staleDispatch.healthSurveyConfiguration.department,
-          workStartTime: "05:00",
-          workEndTime: "22:00",
-        },
+        configDepartments: [
+          {
+            department: {
+              id: "dept-1",
+              tenantId: TENANT_ID,
+              name: "Tecnologia",
+              isActive: true,
+              workStartTime: "05:00",
+              workEndTime: "22:00",
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          },
+        ],
       },
     })
     mockFindUsedToken.mockResolvedValue(null)
@@ -706,11 +712,20 @@ describe("unlockHealthSurveyViaIdentifier — criação de novo token", () => {
       ...baseDispatch,
       healthSurveyConfiguration: {
         ...baseDispatch.healthSurveyConfiguration,
-        department: {
-          ...baseDispatch.healthSurveyConfiguration.department,
-          workStartTime: "07:00",
-          workEndTime: "16:00",
-        },
+        configDepartments: [
+          {
+            department: {
+              id: "dept-1",
+              tenantId: TENANT_ID,
+              name: "Tecnologia",
+              isActive: true,
+              workStartTime: "07:00",
+              workEndTime: "16:00",
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          },
+        ],
       },
     })
     mockFindEmployeeByPhoneOrDocument.mockResolvedValue(

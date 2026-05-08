@@ -30,14 +30,8 @@ export function createConsentRecord(data: CreateConsentRecordInput): Promise<Emp
       event: data.event,
       source: data.source,
       ...(data.documentHash !== undefined && { documentHash: data.documentHash }),
-      ...(data.token !== undefined && { token: data.token }),
-      ...(data.tokenExpiresAt !== undefined && { tokenExpiresAt: data.tokenExpiresAt }),
     },
   })
-}
-
-export function findConsentByToken(token: string): Promise<EmployeeConsent | null> {
-  return prisma.employeeConsent.findUnique({ where: { token } })
 }
 
 export function findExistingConsentEvent(

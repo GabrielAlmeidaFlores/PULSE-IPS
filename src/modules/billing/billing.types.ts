@@ -32,7 +32,7 @@ export interface SubscriptionUpsertInput {
   currentPeriodEnd: Date
   cancelAtPeriodEnd: boolean
   snapshotPlanName: string
-  snapshotMaxEmployees: number
+  snapshotMaxEmployees: number | null
   snapshotPriceInCents: number
   snapshotInterval: string
   snapshotExternalPriceId: string

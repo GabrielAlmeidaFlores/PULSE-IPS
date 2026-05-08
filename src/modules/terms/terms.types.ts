@@ -13,8 +13,8 @@ export interface PlatformTermsAcceptance {
   userId: string
   termsVersionId: string
   acceptedAt: Date
-  ipAddress: string
-  userAgent: string
+  ipAddress: string | null
+  userAgent: string | null
   createdAt: Date
 }
 
@@ -28,6 +28,6 @@ export interface CreateTermsVersionInput {
 export interface AcceptTermsInput {
   userId: string
   termsVersionId: string
-  ipAddress: string
-  userAgent: string
+  ipAddress: string | null
+  userAgent: string | null
 }

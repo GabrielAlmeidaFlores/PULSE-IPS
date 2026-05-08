@@ -7,7 +7,6 @@ import {
   findAllTenantsResponsesInWindow,
   findAllTenantsActiveDepartments,
   findAllTenantsDeptRecentDispatchAvgs,
-  findAllTenantsEmployeesWithExpiredConsentTokens,
   hasOpenAlertOfType,
   findAllTenantsOpenAlertDepartmentIdsByType,
   findAlertsByTenantPaginated,
@@ -73,20 +72,23 @@ export function calcAvgFromResponses(responses: { items: { score: number; questi
 
 interface ResponseWithDept {
   tenantId: string
+  departmentId: string | null
   items: { score: number; question: { scoreDirection: string } }[]
-  dispatch: { healthSurveyConfiguration: { department: { id: string; name: string } } }
+  dispatch: { healthSurveyConfiguration: { configDepartments: { department: { id: string; name: string } }[] } }
 }
 
 function groupByDept(responses: ResponseWithDept[]): Map<string, { tenantId: string; departmentId: string; departmentName: string; responses: ResponseWithDept[] }> {
   const map = new Map<string, { tenantId: string; departmentId: string; departmentName: string; responses: ResponseWithDept[] }>()
   for (const r of responses) {
-    const dept = r.dispatch.healthSurveyConfiguration.department
-    const key = `${r.tenantId}:${dept.id}`
+    if (r.departmentId === null) continue
+    const deptInfo = r.dispatch.healthSurveyConfiguration.configDepartments.find((cd) => cd.department.id === r.departmentId)?.department
+    if (!deptInfo) continue
+    const key = `${r.tenantId}:${deptInfo.id}`
     const existing = map.get(key)
     if (existing) {
       existing.responses.push(r)
     } else {
-      map.set(key, { tenantId: r.tenantId, departmentId: dept.id, departmentName: dept.name, responses: [r] })
+      map.set(key, { tenantId: r.tenantId, departmentId: deptInfo.id, departmentName: deptInfo.name, responses: [r] })
     }
   }
   return map
@@ -116,22 +118,6 @@ function isTrendNegative(lastN: { avgScore: number }[], historical: { avgScore: 
   if (historical.length === 0) return false
   const historicalAvg = averageOf(historical)
   return lastN.every((p) => p.avgScore < historicalAvg)
-}
-
-function groupEmployeesByDept(
-  employees: { tenantId: string; departmentId: string; departmentName: string }[],
-): Map<string, { tenantId: string; departmentId: string; departmentName: string; count: number }> {
-  const grouped = new Map<string, { tenantId: string; departmentId: string; departmentName: string; count: number }>()
-  for (const emp of employees) {
-    const key = `${emp.tenantId}:${emp.departmentId}`
-    const existing = grouped.get(key)
-    if (existing) {
-      existing.count += 1
-    } else {
-      grouped.set(key, { ...emp, count: 1 })
-    }
-  }
-  return grouped
 }
 
 export async function detectLowScoreAlerts(): Promise<void> {
@@ -223,24 +209,6 @@ export async function detectNegativeTrendAlerts(): Promise<void> {
       type: "negative_trend",
       severity: "warning",
       message: `O setor ${dept.name} apresenta tendência negativa por ${PERIODS_TO_CHECK} períodos consecutivos abaixo da média histórica. Índice atual: ${latestHi}%.`,
-    })
-  }
-}
-
-export async function detectConsentExpiredAlerts(): Promise<void> {
-  const expiredByDept = await findAllTenantsEmployeesWithExpiredConsentTokens()
-  const grouped = groupEmployeesByDept(expiredByDept)
-
-  for (const [, data] of Array.from(grouped.entries())) {
-    const alreadyOpen = await hasOpenAlertOfType(data.tenantId, "consent_expired", data.departmentId)
-    if (alreadyOpen) continue
-
-    await createAlert({
-      tenantId: data.tenantId,
-      departmentId: data.departmentId,
-      type: "consent_expired",
-      severity: "warning",
-      message: `${data.count} colaborador(es) do setor ${data.departmentName} com convite de consentimento expirado. Reenvie o convite para retomar a participação.`,
     })
   }
 }

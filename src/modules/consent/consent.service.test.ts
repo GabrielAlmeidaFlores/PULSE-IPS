@@ -60,7 +60,6 @@ const TENANT_ID = "tenant-1"
 const EMPLOYEE_ID = "employee-1"
 const TERM_VERSION_ID = "term-version-1"
 const TERMS_CONTENT = "<p>Termos</p>"
-const INVITE_TOKEN = "invite-token-abc"
 
 const activeTermVersion = {
   id: TERM_VERSION_ID,
@@ -71,15 +70,13 @@ const activeTermVersion = {
   createdAt: new Date(),
 }
 
-const baseConsentInvite = {
+const baseConsentRecord = {
   id: "consent-1",
   tenantId: TENANT_ID,
   employeeId: EMPLOYEE_ID,
   consentTermVersionId: TERM_VERSION_ID,
-  event: "invited",
-  source: "message_link",
-  token: INVITE_TOKEN,
-  tokenExpiresAt: new Date(Date.now() + 86400000),
+  event: "opted_out",
+  source: "health_survey_form",
   documentHash: null,
   createdAt: new Date(),
 }
@@ -88,7 +85,7 @@ describe("optOut — LGPD opt-out flow", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockGetActiveConsentTermVersion.mockResolvedValue(activeTermVersion)
-    mockCreateConsentRecord.mockResolvedValue(baseConsentInvite)
+    mockCreateConsentRecord.mockResolvedValue(baseConsentRecord)
   })
 
   it("creates an opted_out consent record with correct fields", async () => {
@@ -138,7 +135,7 @@ describe("optOutFromHealthSurveyToken — opt-out via health survey link", () =>
     vi.clearAllMocks()
     mockFindTokenByValue.mockResolvedValue(tokenRecord as Awaited<ReturnType<typeof findHealthSurveyTokenByValue>>)
     mockGetActiveConsentTermVersion.mockResolvedValue(activeTermVersion)
-    mockCreateConsentRecord.mockResolvedValue(baseConsentInvite)
+    mockCreateConsentRecord.mockResolvedValue(baseConsentRecord)
     mockMarkTokenUsed.mockResolvedValue(HEALTH_SURVEY_RESPONSE_TOKEN)
   })
 

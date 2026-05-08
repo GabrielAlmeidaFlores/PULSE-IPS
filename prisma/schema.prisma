@@ -21,7 +21,7 @@ model Plan {
   id                String    @id @default(uuid())
   name              String
   description       String?
-  maxEmployees      Int       @map("max_employees")
+  maxEmployees      Int?      @map("max_employees")
   externalProductId String?   @map("external_product_id")
   isActive          Boolean   @default(true) @map("is_active")
   deletedAt         DateTime? @map("deleted_at")
@@ -131,6 +131,9 @@ model OrganizationUser {
   termsAcceptances               PlatformTermsAcceptance[]
   dismissedActionPlanSuggestions ActionPlanSuggestion[]    @relation("ActionPlanSuggestionDismisser")
   uploadedDocumentVersions       DocumentVersion[]         @relation("DocumentVersionUploader")
+  assignedActionPlanTasks        ActionPlanTask[]          @relation("ActionPlanTaskAssignee")
+  resolvedAlerts                 Alert[]                   @relation("AlertResolver")
+  auditLogs                      AuditLog[]                @relation("AuditLogActor")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -178,7 +181,7 @@ model OrganizationSubscription {
   currentPeriodEnd        DateTime @map("current_period_end")
   cancelAtPeriodEnd       Boolean  @default(false) @map("cancel_at_period_end")
   snapshotPlanName        String   @map("snapshot_plan_name")
-  snapshotMaxEmployees    Int      @map("snapshot_max_employees")
+  snapshotMaxEmployees    Int?     @map("snapshot_max_employees")
   snapshotPriceInCents    Int      @map("snapshot_price_in_cents")
   snapshotInterval        String   @map("snapshot_interval")
   snapshotExternalPriceId String   @map("snapshot_external_price_id")
@@ -223,14 +226,16 @@ model Department {
   tenantId      String   @map("tenant_id")
   name          String
   isActive      Boolean  @default(true) @map("is_active")
-  workStartTime String   @default("09:00") @map("work_start_time")
-  workEndTime   String   @default("18:00") @map("work_end_time")
+  workStartTime String   @default("09:00") @db.VarChar(5) @map("work_start_time")
+  workEndTime   String   @default("18:00") @db.VarChar(5) @map("work_end_time")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
   organization         Organization          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   employees            Employee[]
-  healthSurveyConfigurations HealthSurveyConfiguration[]
+  healthSurveyConfigDepartments HealthSurveyConfigDepartment[]
+  healthSurveyDeptDispatches    HealthSurveyDeptDispatch[]
+  healthSurveyResponses         HealthSurveyResponse[] @relation("HealthSurveyResponseDepartment")
   alerts               Alert[]
   workDays             DepartmentWorkDay[]
   pgrDeptResults       PgrDeptResult[]
@@ -249,8 +254,8 @@ model Employee {
   email         String?
   document      String?   @db.VarChar(50)
   status        String    @default("active")
-  workStartTime String?   @map("work_start_time")
-  workEndTime   String?   @map("work_end_time")
+  workStartTime String?   @db.VarChar(5) @map("work_start_time")
+  workEndTime   String?   @db.VarChar(5) @map("work_end_time")
   pauseStartAt  DateTime? @map("pause_start_at")
   pauseEndAt    DateTime? @map("pause_end_at")
   deletedAt     DateTime? @map("deleted_at")
@@ -263,6 +268,7 @@ model Employee {
   healthSurveyResponseTokens HealthSurveyResponseToken[]
   workDays     EmployeeWorkDay[]
 
+  @@unique([tenantId, email])
   @@index([tenantId])
   @@index([tenantId, departmentId])
   @@map("employees")
@@ -303,8 +309,6 @@ model EmployeeConsent {
   event                String
   source               String
   documentHash         String?   @map("document_hash")
-  token                String?   @unique
-  tokenExpiresAt       DateTime? @map("token_expires_at")
   createdAt            DateTime  @default(now()) @map("created_at")
 
   organization       Organization       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -318,24 +322,22 @@ model EmployeeConsent {
 model HealthSurveyConfiguration {
   id                   String                @id @default(uuid())
   tenantId             String                @map("tenant_id")
-  departmentId         String                @map("department_id")
   name                 String                @default("Pesquisa de Saúde")
   description          String?
   frequency            String
   scheduledDayOfMonth  Int?                  @map("scheduled_day_of_month")
-  dispatchTime         String                @default("09:00") @map("dispatch_time")
+  dispatchTime         String                @default("09:00") @db.VarChar(5) @map("dispatch_time")
   workDays             HealthSurveyConfigWorkDay[]
   isActive             Boolean               @default(true) @map("is_active")
   createdAt            DateTime              @default(now()) @map("created_at")
   updatedAt            DateTime              @updatedAt @map("updated_at")
 
-  organization Organization     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  department   Department       @relation(fields: [departmentId], references: [id])
-  questions    HealthSurveyQuestion[]
-  dispatches   HealthSurveyDispatch[]
+  organization         Organization          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  configDepartments    HealthSurveyConfigDepartment[]
+  questions            HealthSurveyQuestion[]
+  dispatches           HealthSurveyDispatch[]
 
   @@index([tenantId])
-  @@index([tenantId, departmentId])
   @@map("health_survey_configurations")
 }
 
@@ -353,6 +355,7 @@ model HealthSurveyQuestion {
   responseItems       HealthSurveyResponseItem[]
 
   @@index([tenantId])
+  @@index([tenantId, healthSurveyConfigurationId])
   @@map("health_survey_questions")
 }
 
@@ -364,8 +367,6 @@ model HealthSurveyDispatch {
   dispatchedAt          DateTime? @map("dispatched_at")
   adherenceCheckedAt    DateTime? @map("adherence_checked_at")
   status                String    @default("scheduled")
-  totalRecipients       Int       @default(0) @map("total_recipients")
-  totalResponses        Int       @default(0) @map("total_responses")
   signedLinkToken       String?   @unique @db.VarChar(255) @map("signed_link_token")
   createdAt             DateTime  @default(now()) @map("created_at")
 
@@ -373,6 +374,7 @@ model HealthSurveyDispatch {
   healthSurveyConfiguration HealthSurveyConfiguration   @relation(fields: [healthSurveyConfigurationId], references: [id])
   tokens              HealthSurveyResponseToken[]
   responses           HealthSurveyResponse[]
+  deptDispatches      HealthSurveyDeptDispatch[]
 
   @@index([tenantId])
   @@index([tenantId, status, scheduledAt])
@@ -386,8 +388,8 @@ model HealthSurveyResponseToken {
   employeeId    String    @map("employee_id")
   token         String    @unique
   expiresAt     DateTime  @map("expires_at")
-  workStartTime String    @map("work_start_time")
-  workEndTime   String    @map("work_end_time")
+  workStartTime String    @db.VarChar(5) @map("work_start_time")
+  workEndTime   String    @db.VarChar(5) @map("work_end_time")
   usedAt        DateTime? @map("used_at")
   createdAt     DateTime  @default(now()) @map("created_at")
 
@@ -395,20 +397,24 @@ model HealthSurveyResponseToken {
   employee Employee        @relation(fields: [employeeId], references: [id])
 
   @@index([tenantId])
+  @@index([dispatchId, employeeId])
   @@map("health_survey_response_tokens")
 }
 
 model HealthSurveyResponse {
-  id         String   @id @default(uuid())
-  tenantId   String   @map("tenant_id")
-  dispatchId String   @map("dispatch_id")
-  createdAt  DateTime @default(now()) @map("created_at")
+  id           String   @id @default(uuid())
+  tenantId     String   @map("tenant_id")
+  dispatchId   String   @map("dispatch_id")
+  departmentId String?  @map("department_id")
+  createdAt    DateTime @default(now()) @map("created_at")
 
   organization Organization         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   dispatch     HealthSurveyDispatch       @relation(fields: [dispatchId], references: [id])
+  department   Department?               @relation("HealthSurveyResponseDepartment", fields: [departmentId], references: [id])
   items        HealthSurveyResponseItem[]
 
   @@index([tenantId])
+  @@index([dispatchId])
   @@map("health_survey_responses")
 }
 
@@ -421,7 +427,37 @@ model HealthSurveyResponseItem {
   healthSurveyResponse HealthSurveyResponse @relation(fields: [healthSurveyResponseId], references: [id], onDelete: Cascade)
   question       HealthSurveyQuestion @relation(fields: [questionId], references: [id])
 
+  @@index([healthSurveyResponseId])
   @@map("health_survey_response_items")
+}
+
+model HealthSurveyConfigDepartment {
+  configId     String @map("config_id")
+  departmentId String @map("department_id")
+
+  config     HealthSurveyConfiguration @relation(fields: [configId], references: [id], onDelete: Cascade)
+  department Department                @relation(fields: [departmentId], references: [id])
+
+  @@id([configId, departmentId])
+  @@index([departmentId])
+  @@map("health_survey_config_departments")
+}
+
+model HealthSurveyDeptDispatch {
+  id              String   @id @default(uuid())
+  dispatchId      String   @map("dispatch_id")
+  departmentId    String   @map("department_id")
+  totalRecipients Int      @default(0) @map("total_recipients")
+  totalResponses  Int      @default(0) @map("total_responses")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  dispatch   HealthSurveyDispatch @relation(fields: [dispatchId], references: [id], onDelete: Cascade)
+  department Department           @relation(fields: [departmentId], references: [id])
+
+  @@unique([dispatchId, departmentId])
+  @@index([departmentId])
+  @@map("health_survey_dept_dispatches")
 }
 
 model AnonymousReport {
@@ -439,6 +475,7 @@ model AnonymousReport {
   actionPlans  ActionPlan[] @relation("ActionPlanOriginReport")
 
   @@index([tenantId])
+  @@index([tenantId, status])
   @@map("anonymous_reports")
 }
 
@@ -478,6 +515,7 @@ model ActionPlanTask {
 
   organization Organization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   actionPlan   ActionPlan   @relation(fields: [actionPlanId], references: [id], onDelete: Cascade)
+  assignee     OrganizationUser? @relation("ActionPlanTaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
   @@index([actionPlanId])
@@ -568,8 +606,11 @@ model Alert {
   organization Organization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   department   Department?  @relation(fields: [departmentId], references: [id])
   actionPlans  ActionPlan[] @relation("ActionPlanOriginAlert")
+  resolver     OrganizationUser? @relation("AlertResolver", fields: [resolvedBy], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
+  @@index([tenantId, resolvedAt])
+  @@index([tenantId, isRead, severity])
   @@map("alerts")
 }
 
@@ -583,9 +624,12 @@ model AuditLog {
   metadata   Json?
   createdAt  DateTime @default(now()) @map("created_at")
 
-  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  organization Organization      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actor        OrganizationUser? @relation("AuditLogActor", fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
   @@map("audit_logs")
 }
 
@@ -680,8 +724,8 @@ model PlatformTermsAcceptance {
   userId         String   @map("user_id")
   termsVersionId String   @map("terms_version_id")
   acceptedAt     DateTime @default(now()) @map("accepted_at")
-  ipAddress      String   @map("ip_address")
-  userAgent      String   @map("user_agent")
+  ipAddress      String?  @map("ip_address")
+  userAgent      String?  @map("user_agent")
   createdAt      DateTime @default(now()) @map("created_at")
 
   user         OrganizationUser     @relation(fields: [userId], references: [id], onDelete: Cascade)

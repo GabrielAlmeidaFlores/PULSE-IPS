@@ -4,16 +4,16 @@ import { useState } from "react"
 import { Copy, Check } from "lucide-react"
 
 interface CopyDispatchLinkButtonProps {
-  signedLink: string
+  groupLink: string
 }
 
-export function CopyDispatchLinkButton({ signedLink }: CopyDispatchLinkButtonProps): React.ReactElement {
+export function CopyDispatchLinkButton({ groupLink }: CopyDispatchLinkButtonProps): React.ReactElement {
   const [copied, setCopied] = useState(false)
 
   function handleCopy(e: React.MouseEvent): void {
     e.preventDefault()
     e.stopPropagation()
-    void navigator.clipboard.writeText(signedLink).then(() => {
+    void navigator.clipboard.writeText(groupLink).then(() => {
       setCopied(true)
       setTimeout(() => { setCopied(false) }, 2000)
     })

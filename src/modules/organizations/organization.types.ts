@@ -62,7 +62,7 @@ export interface OrgFullDetail {
     id: string
     status: string
     snapshotPlanName: string
-    snapshotMaxEmployees: number
+    snapshotMaxEmployees: number | null
     snapshotPriceInCents: number
     snapshotInterval: string
     currentPeriodStart: Date

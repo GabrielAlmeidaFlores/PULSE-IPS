@@ -477,13 +477,17 @@ async function main(): Promise<void> {
     for (const configProfile of deptProfile.configs) {
       const config = await prisma.healthSurveyConfiguration.create({
         data: {
-          id: randomUUID(), tenantId, departmentId: dept.id,
+          id: randomUUID(), tenantId,
           name: configProfile.name,
           frequency: configProfile.frequency,
           dispatchTime: deptProfile.workStartTime,
           isActive: true,
           createdAt: deptCreatedAt,
         },
+      })
+
+      await prisma.healthSurveyConfigDepartment.create({
+        data: { configId: config.id, departmentId: dept.id },
       })
 
       await prisma.healthSurveyConfigWorkDay.createMany({
@@ -517,7 +521,12 @@ async function main(): Promise<void> {
   type DispatchRow = {
     id: string; tenantId: string; healthSurveyConfigurationId: string
     scheduledAt: Date; dispatchedAt: Date; adherenceCheckedAt: Date
-    status: string; totalRecipients: number; totalResponses: number; signedLinkToken: string
+    status: string; signedLinkToken: string
+  }
+
+  type DeptDispatchRow = {
+    id: string; dispatchId: string; departmentId: string; tenantId: string
+    totalRecipients: number; totalResponses: number
   }
 
   type TokenRow = {
@@ -530,6 +539,7 @@ async function main(): Promise<void> {
 
   const alertsToCreate: AlertRow[] = []
   const allDispatches: DispatchRow[] = []
+  const allDeptDispatches: DeptDispatchRow[] = []
   const allTokens: TokenRow[] = []
   const allResponses: ResponseRow[] = []
   const allItems: ItemRow[] = []
@@ -565,9 +575,16 @@ async function main(): Promise<void> {
           dispatchedAt: dispatchDate,
           adherenceCheckedAt: addDays(dispatchDate, 2),
           status: "available",
+          signedLinkToken: randomUUID(),
+        })
+
+        allDeptDispatches.push({
+          id: randomUUID(),
+          dispatchId,
+          departmentId: deptId,
+          tenantId,
           totalRecipients: empIds.length,
           totalResponses: respondents.length,
-          signedLinkToken: randomUUID(),
         })
 
         const scores: number[] = []
@@ -667,10 +684,13 @@ async function main(): Promise<void> {
     isRead: false, resolvedAt: null, createdAt: addDays(NOW, -3),
   })
 
-  logger.info(`📥 Inserindo ${allDispatches.length} dispatches, ${allTokens.length} tokens, ${allResponses.length} respostas, ${allItems.length} itens...`)
+  logger.info(`📥 Inserindo ${allDispatches.length} dispatches, ${allDeptDispatches.length} dept-dispatches, ${allTokens.length} tokens, ${allResponses.length} respostas, ${allItems.length} itens...`)
 
   const BATCH = 500
   await prisma.healthSurveyDispatch.createMany({ data: allDispatches })
+  for (let i = 0; i < allDeptDispatches.length; i += BATCH) {
+    await prisma.healthSurveyDeptDispatch.createMany({ data: allDeptDispatches.slice(i, i + BATCH) })
+  }
   for (let i = 0; i < allTokens.length; i += BATCH) {
     await prisma.healthSurveyResponseToken.createMany({ data: allTokens.slice(i, i + BATCH) })
   }
