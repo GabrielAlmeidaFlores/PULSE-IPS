@@ -32,8 +32,7 @@ export interface HealthSurveyConfigFormData {
   departmentIds: string[] | "all"
   frequency: "daily" | "twice_weekly" | "weekly" | "biweekly" | "monthly"
   scheduledDayOfMonth: number | null
-  workStartTime: string
-  workEndTime: string
+  dispatchTime: string
   workDays: number[]
   questions: { text: string; order: number; scoreDirection: ScoreDirection }[]
 }
@@ -121,8 +120,7 @@ export function HealthSurveyConfigForm({ mode, departments, initialConfig, initi
   const initialFreq = (initialConfig?.frequency as "daily" | "twice_weekly" | "weekly" | "biweekly" | "monthly") ?? "weekly"
   const [frequency, setFrequency] = useState<"daily" | "twice_weekly" | "weekly" | "biweekly" | "monthly">(initialFreq)
   const [scheduledDayOfMonth, setScheduledDayOfMonth] = useState<number | null>(initialConfig?.scheduledDayOfMonth ?? null)
-  const [workStartTime, setWorkStartTime] = useState(initialConfig?.workStartTime ?? "09:00")
-  const [workEndTime, setWorkEndTime] = useState(initialConfig?.workEndTime ?? "18:00")
+  const [dispatchTime, setDispatchTime] = useState(initialConfig?.dispatchTime ?? "09:00")
   const [workDays, setWorkDays] = useState(() => {
     if (initialConfig !== null && initialConfig !== undefined) {
       return new Set(initialConfig.workDays.map((w) => w.dayOfWeek))
@@ -218,8 +216,7 @@ export function HealthSurveyConfigForm({ mode, departments, initialConfig, initi
         departmentIds,
         frequency,
         scheduledDayOfMonth: frequency === "monthly" ? scheduledDayOfMonth : null,
-        workStartTime,
-        workEndTime,
+        dispatchTime,
         workDays: Array.from(workDays).sort((a, b) => a - b),
         questions,
       })
@@ -414,30 +411,18 @@ export function HealthSurveyConfigForm({ mode, departments, initialConfig, initi
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Início do expediente</label>
-              <input
-                type="time"
-                value={workStartTime}
-                onChange={(e) => setWorkStartTime(e.target.value)}
-                className={inputCls}
-                style={{ borderRadius: 0 }}
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Fim do expediente</label>
-              <input
-                type="time"
-                value={workEndTime}
-                onChange={(e) => setWorkEndTime(e.target.value)}
-                className={inputCls}
-                style={{ borderRadius: 0 }}
-              />
-            </div>
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Horário de disparo</label>
+            <input
+              type="time"
+              value={dispatchTime}
+              onChange={(e) => setDispatchTime(e.target.value)}
+              className={inputCls}
+              style={{ borderRadius: 0 }}
+            />
           </div>
           <p className="text-[11px] text-muted-foreground">
-            Colaboradores com horário personalizado usam seu próprio horário; os demais herdam o horário acima.
+            Horário em que a mensagem será enviada aos colaboradores. O horário de expediente de cada colaborador é configurado no setor.
           </p>
         </div>
       </div>

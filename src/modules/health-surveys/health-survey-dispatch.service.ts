@@ -79,17 +79,12 @@ function shouldSkipDispatch(config: SchedulingCheckConfig, timezone: string): bo
   return false
 }
 
-function isWithinWorkHours(workStartTime: string, workEndTime: string, timezone: string): boolean {
+function isAtDispatchTime(dispatchTime: string, timezone: string): boolean {
   const nowInTimezone = toZonedTime(new Date(), timezone)
   const currentMinutes = nowInTimezone.getHours() * 60 + nowInTimezone.getMinutes()
-  const [startH, startM] = workStartTime.split(":").map(Number)
-  const [endH, endM] = workEndTime.split(":").map(Number)
-  const startMinutes = (startH ?? 0) * 60 + (startM ?? 0)
-  const endMinutes = (endH ?? 0) * 60 + (endM ?? 0)
-  if (startMinutes <= endMinutes) {
-    return currentMinutes >= startMinutes && currentMinutes <= endMinutes
-  }
-  return currentMinutes >= startMinutes || currentMinutes <= endMinutes
+  const [h, m] = dispatchTime.split(":").map(Number)
+  const targetMinutes = (h ?? 0) * 60 + (m ?? 0)
+  return currentMinutes >= targetMinutes && currentMinutes < targetMinutes + 15
 }
 
 async function sendDispatchTokensAndMessages(
@@ -97,8 +92,6 @@ async function sendDispatchTokensAndMessages(
   tenantId: string,
   eligibleEmployees: HealthSurveyDispatchEmployee[],
   department: { workStartTime: string; workEndTime: string },
-  configWorkStartTime: string,
-  configWorkEndTime: string,
 ): Promise<void> {
   const allEmployeeIds = eligibleEmployees.map((e) => e.id)
   const eligibleForDispatchIds = new Set(await findEmployeeIdsEligibleForDispatch(tenantId, allEmployeeIds))
@@ -125,8 +118,8 @@ async function sendDispatchTokensAndMessages(
       employeeId: emp.id,
       token: randomUUID(),
       expiresAt: addHours(new Date(), 48),
-      workStartTime: emp.workStartTime ?? department.workStartTime ?? configWorkStartTime,
-      workEndTime: emp.workEndTime ?? department.workEndTime ?? configWorkEndTime,
+      workStartTime: emp.workStartTime ?? department.workStartTime,
+      workEndTime: emp.workEndTime ?? department.workEndTime,
     }))
 
   const newTokenMap = new Map(newTokenInputs.map((t) => [t.employeeId, t.token]))
@@ -172,8 +165,6 @@ async function fireDispatch(
   tenantId: string,
   employees: HealthSurveyDispatchEmployee[],
   department: { workStartTime: string; workEndTime: string; workDays: number[] },
-  configWorkStartTime: string,
-  configWorkEndTime: string,
   timezone: string,
 ): Promise<boolean> {
   const today = getDayOfWeekInTimezone(timezone)
@@ -192,8 +183,6 @@ async function fireDispatch(
     tenantId,
     workDayFiltered,
     department,
-    configWorkStartTime,
-    configWorkEndTime,
   )
 
   return true
@@ -208,15 +197,6 @@ export async function runHealthSurveyDispatcher(): Promise<{ dispatched: number;
     const config = dispatch.healthSurveyConfiguration
     const timezone = dispatch.organization.timezone
 
-    const isMonthlyWithFixedDay = config.frequency === "monthly" && config.scheduledDayOfMonth !== null
-    if (!isMonthlyWithFixedDay && !isWorkDay(config.workDays.map((w) => w.dayOfWeek), timezone)) {
-      continue
-    }
-
-    if (!isWithinWorkHours(config.workStartTime, config.workEndTime, timezone)) {
-      continue
-    }
-
     try {
       const dept = config.department
       const deptWorkDays = dept.workDays.map((w) => w.dayOfWeek)
@@ -228,7 +208,11 @@ export async function runHealthSurveyDispatcher(): Promise<{ dispatched: number;
         return activeDays.includes(today)
       })
 
-      if (workDayFiltered.length === 0) continue
+      if (workDayFiltered.length === 0) {
+        await markHealthSurveyDispatchDispatched(dispatch.tenantId, dispatch.id, 0)
+        dispatched++
+        continue
+      }
 
       const eligibleEmployees: HealthSurveyDispatchEmployee[] = workDayFiltered
         .map((emp) => ({
@@ -240,15 +224,17 @@ export async function runHealthSurveyDispatcher(): Promise<{ dispatched: number;
           workDays: emp.workDays.map((w) => w.dayOfWeek),
         }))
 
-      if (eligibleEmployees.length === 0) continue
+      if (eligibleEmployees.length === 0) {
+        await markHealthSurveyDispatchDispatched(dispatch.tenantId, dispatch.id, 0)
+        dispatched++
+        continue
+      }
 
       await sendDispatchTokensAndMessages(
         dispatch.id,
         dispatch.tenantId,
         eligibleEmployees,
         { workStartTime: dept.workStartTime, workEndTime: dept.workEndTime },
-        config.workStartTime,
-        config.workEndTime,
       )
 
       dispatched++
@@ -270,7 +256,7 @@ export async function runHealthSurveyAutoDispatchScheduler(): Promise<{ triggere
     try {
       const timezone = config.organization.timezone
 
-      if (!isWithinWorkHours(config.workStartTime, config.workEndTime, timezone)) {
+      if (!isAtDispatchTime(config.dispatchTime, timezone)) {
         skipped++
         continue
       }
@@ -285,8 +271,6 @@ export async function runHealthSurveyAutoDispatchScheduler(): Promise<{ triggere
         config.tenantId,
         config.department.employees,
         config.department,
-        config.workStartTime,
-        config.workEndTime,
         timezone,
       )
       if (fired) triggered++

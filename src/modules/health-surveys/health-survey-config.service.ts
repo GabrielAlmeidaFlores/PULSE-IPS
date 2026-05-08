@@ -45,8 +45,7 @@ export interface HealthSurveyConfigGroup {
   description: string | null
   frequency: string
   scheduledDayOfMonth: number | null
-  workStartTime: string
-  workEndTime: string
+  dispatchTime: string
   workDays: number[]
   questionCount: number
   departments: { id: string; name: string }[]
@@ -74,8 +73,7 @@ export async function getHealthSurveyConfigsGrouped(
         description: config.description,
         frequency: config.frequency,
         scheduledDayOfMonth: config.scheduledDayOfMonth,
-        workStartTime: config.workStartTime,
-        workEndTime: config.workEndTime,
+        dispatchTime: config.dispatchTime,
         workDays: config.workDays.map((w) => w.dayOfWeek),
         questionCount: config.questions.length,
         departments: config.department.isActive ? [{ id: config.department.id, name: config.department.name }] : [],
@@ -115,8 +113,7 @@ export interface CreateHealthSurveyForDepartmentsInput {
   description?: string
   frequency: "daily" | "twice_weekly" | "weekly" | "biweekly" | "monthly"
   scheduledDayOfMonth: number | null
-  workStartTime: string
-  workEndTime: string
+  dispatchTime: string
   workDays: number[]
   questions: { text: string; order: number; scoreDirection: ScoreDirection }[]
 }
@@ -145,8 +142,7 @@ export async function createHealthSurveyForDepartments(tenantId: string, input: 
     description: input.description,
     frequency: input.frequency,
     scheduledDayOfMonth: input.scheduledDayOfMonth,
-    workStartTime: input.workStartTime,
-    workEndTime: input.workEndTime,
+    dispatchTime: input.dispatchTime,
     workDays: input.workDays,
     questions: input.questions,
   }

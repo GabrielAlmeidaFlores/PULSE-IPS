@@ -119,9 +119,12 @@ function WorkScheduleFields({ form, onChange }: WorkScheduleFieldsProps): React.
         </div>
       </div>
       <div>
-        <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
-          Horário de trabalho
+        <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">
+          Horário de trabalho <span className="text-status-danger">*</span>
         </label>
+        <p className="text-[10px] text-muted-foreground mb-2">
+          Usado para validar se o colaborador está em horário de trabalho ao responder a pesquisa.
+        </p>
         <div className="flex items-center gap-3">
           <div className="flex-1">
             <label className="block text-[10px] text-muted-foreground mb-1">Início</label>
@@ -234,11 +237,11 @@ export function DepartmentControls({ departments, total }: Props): React.ReactEl
                 </div>
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Horário de trabalho padrão</p>
-                  <p className="text-[12px] text-foreground leading-relaxed">Cada setor tem um horário padrão (ex: 09:00–18:00, seg–sex). Esse horário define <strong>quando as pesquisas podem ser enviadas</strong> aos colaboradores daquele setor. Colaboradores com horário próprio têm prioridade sobre o do setor.</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">Cada setor tem um horário padrão (ex: 09:00–18:00, seg–sex). Esse horário define <strong>quando o link de resposta é válido</strong> — colaboradores só conseguem responder dentro do expediente. Colaboradores com horário próprio têm prioridade sobre o do setor.</p>
                 </div>
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Cadeia de herança de horário</p>
-                  <p className="text-[12px] text-foreground leading-relaxed">Na ordem de prioridade: <strong>colaborador → setor → configuração da pesquisa</strong>. O sistema sempre usa o horário mais específico disponível para garantir que o envio ocorre durante o expediente real de cada pessoa.</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">Na ordem de prioridade: <strong>colaborador → setor</strong>. O sistema sempre usa o horário mais específico disponível para validar o expediente real de cada pessoa.</p>
                 </div>
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Configuração de pesquisa por setor</p>

@@ -661,7 +661,7 @@ export default function LearnMorePage(): React.ReactElement {
                     <strong className="text-foreground">Frequência:</strong> diária, duas vezes por semana, semanal, quinzenal ou mensal.{"\n"}
                     <strong className="text-foreground">Dia do mês:</strong> para frequência mensal, você escolhe o dia exato (1 a 28) em que o disparo deve ocorrer.{"\n"}
                     <strong className="text-foreground">Dias da semana:</strong> você escolhe em quais dias o Pulse deve enviar.{"\n"}
-                    <strong className="text-foreground">Horário de expediente:</strong> o envio só acontece dentro da janela configurada.{"\n\n"}
+                    <strong className="text-foreground">Horário de disparo:</strong> você escolhe a hora exata em que o Pulse vai enviar a pesquisa naquele dia (ex: 09:00). O formulário fica acessível durante o horário de expediente do setor.{"\n\n"}
                     Para colaboradores com turnos especiais, é possível configurar horário individual por colaborador — substituindo a configuração do setor.
                   </span>
                 ),

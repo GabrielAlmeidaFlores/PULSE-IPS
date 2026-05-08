@@ -114,8 +114,7 @@ function makeTokenRecord(overrides?: Partial<TokenRecord>): TokenRecord {
         description: null,
         frequency: "weekly",
         scheduledDayOfMonth: null,
-        workStartTime: "09:00",
-        workEndTime: "18:00",
+        dispatchTime: "09:00",
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -433,8 +432,7 @@ function makeDispatchRecord(overrides?: Partial<DispatchRecord>): DispatchRecord
       description: null,
       frequency: "weekly",
       scheduledDayOfMonth: null,
-      workStartTime: "09:00",
-      workEndTime: "18:00",
+      dispatchTime: "09:00",
       isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -629,8 +627,6 @@ describe("unlockHealthSurveyViaIdentifier — retorno de token existente", () =>
       ...staleDispatch,
       healthSurveyConfiguration: {
         ...staleDispatch.healthSurveyConfiguration,
-        workStartTime: "09:00",
-        workEndTime: "18:00",
         department: {
           ...staleDispatch.healthSurveyConfiguration.department,
           workStartTime: "05:00",
@@ -704,14 +700,12 @@ describe("unlockHealthSurveyViaIdentifier — criação de novo token", () => {
     )
   })
 
-  it("usa workStartTime e workEndTime do departamento mesmo quando são diferentes da configuração da pesquisa", async () => {
+  it("usa workStartTime e workEndTime do departamento no snapshot do token", async () => {
     const baseDispatch = makeDispatchRecord()
     mockFindDispatchBySignedLink.mockResolvedValue({
       ...baseDispatch,
       healthSurveyConfiguration: {
         ...baseDispatch.healthSurveyConfiguration,
-        workStartTime: "09:00",
-        workEndTime: "18:00",
         department: {
           ...baseDispatch.healthSurveyConfiguration.department,
           workStartTime: "07:00",

@@ -82,8 +82,7 @@ export function createNewHealthSurveyConfigEntry(tenantId: string, input: Create
       description: input.description ?? null,
       frequency: input.frequency,
       scheduledDayOfMonth: input.scheduledDayOfMonth ?? null,
-      workStartTime: input.workStartTime,
-      workEndTime: input.workEndTime,
+      dispatchTime: input.dispatchTime,
       workDays: {
         createMany: { data: input.workDays.map((d) => ({ dayOfWeek: d })) },
       },
@@ -109,8 +108,7 @@ export function createManyHealthSurveyConfigEntries(
           description: input.description ?? null,
           frequency: input.frequency,
           scheduledDayOfMonth: input.scheduledDayOfMonth ?? null,
-          workStartTime: input.workStartTime,
-          workEndTime: input.workEndTime,
+          dispatchTime: input.dispatchTime,
           workDays: {
             createMany: { data: input.workDays.map((d) => ({ dayOfWeek: d })) },
           },
@@ -153,8 +151,7 @@ export async function updateExistingHealthSurveyConfigEntry(tenantId: string, co
         description: input.description ?? null,
         frequency: input.frequency,
         scheduledDayOfMonth: input.scheduledDayOfMonth ?? null,
-        workStartTime: input.workStartTime,
-        workEndTime: input.workEndTime,
+        dispatchTime: input.dispatchTime,
         workDays: {
           deleteMany: {},
           createMany: { data: input.workDays.map((d) => ({ dayOfWeek: d })) },
@@ -641,8 +638,7 @@ export interface ActiveHealthSurveyConfigForDispatch {
   tenantId: string
   frequency: string
   scheduledDayOfMonth: number | null
-  workStartTime: string
-  workEndTime: string
+  dispatchTime: string
   workDays: number[]
   organization: { timezone: string }
   department: HealthSurveyDispatchDepartment
@@ -680,8 +676,7 @@ export async function findAllTenantsActiveHealthSurveyConfigsForAutoDispatch(): 
       tenantId: c.tenantId,
       frequency: c.frequency,
       scheduledDayOfMonth: c.scheduledDayOfMonth,
-      workStartTime: c.workStartTime,
-      workEndTime: c.workEndTime,
+      dispatchTime: c.dispatchTime,
       workDays: c.workDays.map((w) => w.dayOfWeek),
       organization: { timezone: c.organization.timezone },
       department: {
