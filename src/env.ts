@@ -12,7 +12,7 @@ export const env = createEnv({
     STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_").optional(),
 
     MESSAGING_PROVIDER: z
-      .enum(["twilio_message", "whatsapp_cloud", "console"])
+      .enum(["twilio_message", "whatsapp_cloud", "smsdev", "console"])
       .default("console"),
     TWILIO_ACCOUNT_SID: z.string().startsWith("AC").optional(),
     TWILIO_AUTH_TOKEN: z.string().min(1).optional(),
@@ -22,6 +22,7 @@ export const env = createEnv({
         message: "TWILIO_FROM_NUMBER deve ser um número de telefone (+...) ou Messaging Service SID (MG...)",
       })
       .optional(),
+    SMSDEV_API_KEY: z.string().min(1).optional(),
     WHATSAPP_PHONE_NUMBER_ID: z.string().min(1).optional(),
     WHATSAPP_ACCESS_TOKEN: z.string().min(1).optional(),
     WHATSAPP_API_VERSION: z.string().default("v20.0"),
@@ -104,6 +105,7 @@ export const env = createEnv({
     TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID,
     TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN,
     TWILIO_FROM_NUMBER: process.env.TWILIO_FROM_NUMBER,
+    SMSDEV_API_KEY: process.env.SMSDEV_API_KEY,
     WHATSAPP_PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID,
     WHATSAPP_ACCESS_TOKEN: process.env.WHATSAPP_ACCESS_TOKEN,
     WHATSAPP_API_VERSION: process.env.WHATSAPP_API_VERSION ?? "v20.0",
