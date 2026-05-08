@@ -1187,7 +1187,7 @@ Registro de todas as mensagens enviadas. Fonte dos dados de métricas do Super A
 | tenant_id | uuid | NOT NULL, FK → organizations.id ON DELETE CASCADE |
 | employee_id | uuid | NULL — ID do colaborador destinatário (sem vínculo obrigatório para preservar o anonimato) |
 | type | varchar(30) | NOT NULL — `'survey_dispatch'` |
-| provider | varchar(50) | NOT NULL — nome do provedor utilizado (ex: `'whatsapp_cloud'`, `'twilio_message'`, `'console'`) |
+| provider | varchar(50) | NOT NULL — nome do provedor utilizado (ex: `'whatsapp_cloud'`, `'twilio_message'`, `'smsdev'`, `'console'`) |
 | external_id | varchar(255) | ID retornado pelo provedor |
 | status | varchar(20) | NOT NULL — `'sent'` \| `'failed'` |
 | sent_at | timestamptz | NOT NULL |
@@ -2288,9 +2288,11 @@ export interface IMessagingService {
 
 **Implementação Twilio:** `MESSAGING_PROVIDER=twilio_message` → `TwilioMessageAdapter`  
 **Implementação Meta Cloud:** `MESSAGING_PROVIDER=whatsapp_cloud` → `MetaCloudMessageAdapter` ✅  
+**Implementação SMSDev:** `MESSAGING_PROVIDER=smsdev` → `SmsDevAdapter` ✅  
 **Desenvolvimento:** `MESSAGING_PROVIDER=console` → `ConsoleMessageAdapter` (imprime no terminal)  
 **Variáveis Twilio:** `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`  
-**Variáveis WhatsApp:** `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_API_VERSION` (default `"v20.0"`), `WHATSAPP_API_BASE_URL` (default `"https://graph.facebook.com"`)
+**Variáveis WhatsApp:** `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_API_VERSION` (default `"v20.0"`), `WHATSAPP_API_BASE_URL` (default `"https://graph.facebook.com"`)  
+**Variáveis SMSDev:** `SMSDEV_API_KEY` — chave de API gerada no painel SMSDev
 
 > **Regra de terminologia:** os termos "SMS", "WhatsApp" e "CPF" **nunca devem aparecer em código, banco de dados ou UI**. Substituições obrigatórias: SMS/WhatsApp → `mensagem`/`message`; CPF → `document`/`documento`. Essa proibição se aplica a nomes de arquivos, classes, funções, variáveis, campos de banco, labels de UI e mensagens de erro.
 ### Email
@@ -3398,6 +3400,9 @@ MESSAGING_PROVIDER=twilio_message
 TWILIO_ACCOUNT_SID=AC...
 TWILIO_AUTH_TOKEN=...
 TWILIO_FROM_NUMBER=+55...
+
+# SMSDev (quando MESSAGING_PROVIDER=smsdev)
+SMSDEV_API_KEY=DAK2ZW...                  # chave de API do painel SMSDev
 
 # Mensagem de pesquisa de saúde (template com {nome} e {link})
 SURVEY_MESSAGE_TEMPLATE="Olá {nome}, sua pesquisa de saúde ocupacional está disponível: {link}"
