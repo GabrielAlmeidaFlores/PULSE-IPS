@@ -47,15 +47,15 @@ const RESPONSE_ITEMS = [
 const DISPATCH_DATA = {
   id: "d-1",
   tenantId: TENANT_ID,
-  departmentId: "dept-1",
   status: "available",
   scheduledAt: new Date("2024-01-15"),
   dispatchedAt: new Date("2024-01-15T10:00:00"),
-  departmentName: "Vendas",
+  configName: "Pesquisa Saúde",
   frequency: "weekly",
   totalRecipients: 10,
   totalResponses: 7,
   signedLinkToken: null,
+  departments: [{ id: "dept-1", name: "Vendas" }],
   questions: QUESTIONS,
   responseItems: RESPONSE_ITEMS,
 }

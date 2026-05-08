@@ -6,7 +6,6 @@ export type AlertType =
   | "low_adherence"
   | "pgr_review_due"
   | "no_response"
-  | "consent_expired"
 
 export interface AlertRecord {
   id: string

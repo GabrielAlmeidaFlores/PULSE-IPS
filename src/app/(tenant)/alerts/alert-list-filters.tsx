@@ -16,7 +16,6 @@ const ALERT_TYPE_OPTIONS = [
   { value: "negative_trend", label: "Tendência de piora" },
   { value: "low_adherence", label: "Adesão baixa" },
   { value: "no_response", label: "Sem resposta" },
-  { value: "consent_expired", label: "Consentimento expirado" },
   { value: "pgr_review_due", label: "Revisão PGR pendente" },
 ]
 

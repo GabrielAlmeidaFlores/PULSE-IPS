@@ -167,23 +167,34 @@ function processDispatches(
   for (const dispatch of dispatches) {
     if (!dispatch.dispatchedAt) continue
 
-    const deptName = dispatch.healthSurveyConfiguration.department.name
-    const deptId = dispatch.healthSurveyConfiguration.department.id
     const key = monthLabel(dispatch.dispatchedAt, timezone)
     const monthDate = startOfMonth(toZonedTime(dispatch.dispatchedAt, timezone))
     const isRecent = dispatch.dispatchedAt >= thirtyDaysAgo
 
-    const info = deptInfo.get(deptId) ?? { deptId, deptName, monthMap: new Map<string, DeptMonthAgg>(), adherenceResponses: 0, adherenceRecipients: 0 }
-    info.adherenceResponses += dispatch.responses.length
-    info.adherenceRecipients += dispatch.totalRecipients
-    deptInfo.set(deptId, info)
+    for (const configDept of dispatch.healthSurveyConfiguration.configDepartments) {
+      const deptName = configDept.department.name
+      const deptId = configDept.department.id
+      const deptDispatchEntry = dispatch.deptDispatches.find((dd) => dd.departmentId === deptId)
+      const deptRecipients = deptDispatchEntry?.totalRecipients ?? 0
+      const deptResponseCount = dispatch.responses.filter((r) => r.departmentId === deptId).length
+
+      const info = deptInfo.get(deptId) ?? { deptId, deptName, monthMap: new Map<string, DeptMonthAgg>(), adherenceResponses: 0, adherenceRecipients: 0 }
+      info.adherenceResponses += deptResponseCount
+      info.adherenceRecipients += deptRecipients
+      deptInfo.set(deptId, info)
+    }
 
     const existingOverall = overallByMonth.get(key)
     const overall = existingOverall ?? { totalScore: 0, scoreCount: 0, responseCount: 0, monthDate, monthKey: key }
     const scoreCountBefore = overall.scoreCount
 
     for (const response of dispatch.responses) {
-      processResponseItems(response, { filterActive, orderSet, overall, info, key, monthDate, isRecent, recentScores, recentResponseCountRef })
+      const deptId = response.departmentId
+      if (!deptId) continue
+      const info = deptInfo.get(deptId)
+      if (info !== undefined) {
+        processResponseItems(response, { filterActive, orderSet, overall, info, key, monthDate, isRecent, recentScores, recentResponseCountRef })
+      }
     }
 
     if (existingOverall !== undefined || overall.scoreCount > scoreCountBefore) {
@@ -351,11 +362,12 @@ export interface DeptHealthSummary {
   totalRecipients: number
 }
 
-function aggregateDeptQuestionScores(dispatches: DispatchWithData[]): DeptQuestionScore[] {
+function aggregateDeptQuestionScores(dispatches: DispatchWithData[], deptId: string): DeptQuestionScore[] {
   const questionMap = new Map<string, { totalNormalized: number; itemCount: number; questionText: string }>()
 
   for (const dispatch of dispatches) {
     for (const response of dispatch.responses) {
+      if (response.departmentId !== deptId) continue
       for (const item of response.items) {
         const normalized = normalizeScore(item.score, item.question.scoreDirection)
         const existing = questionMap.get(item.question.id) ?? { totalNormalized: 0, itemCount: 0, questionText: item.question.text }
@@ -390,10 +402,13 @@ export async function getDeptHealthSummary(tenantId: string, deptId: string): Pr
     findDeptActiveAlerts(tenantId, deptId),
   ])
 
-  const questionScores = aggregateDeptQuestionScores(dispatches)
+  const questionScores = aggregateDeptQuestionScores(dispatches, deptId)
 
-  const totalRecipients = dispatches.reduce((sum, d) => sum + d.totalRecipients, 0)
-  const responseCount = dispatches.reduce((sum, d) => sum + d.responses.length, 0)
+  const totalRecipients = dispatches.reduce(
+    (sum, d) => sum + d.deptDispatches.filter((dd) => dd.departmentId === deptId).reduce((s, dd) => s + dd.totalRecipients, 0),
+    0,
+  )
+  const responseCount = dispatches.reduce((sum, d) => sum + d.responses.filter((r) => r.departmentId === deptId).length, 0)
   const adherenceRate =
     totalRecipients > 0 ? Math.round((responseCount / totalRecipients) * 1000) / 10 : null
 

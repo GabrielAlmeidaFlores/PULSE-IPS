@@ -118,7 +118,7 @@ export interface SuggestionContextData {
     totalRecipients: number
     totalResponses: number
     dispatchedAt: Date | null
-    healthSurveyConfiguration: { department: { name: string } }
+    healthSurveyConfiguration: { configDepartments: { department: { name: string } | null }[] } | null
   }[]
   deptNamesById: Map<string, string>
 }
@@ -172,13 +172,12 @@ export async function findSuggestionContextData(tenantId: string): Promise<Sugge
       orderBy: { createdAt: "desc" },
     }),
     prisma.healthSurveyDispatch.findMany({
-      where: { tenantId, status: "available", dispatchedAt: { gte: thirtyDaysAgo }, totalRecipients: { gt: 0 } },
+      where: { tenantId, status: "available", dispatchedAt: { gte: thirtyDaysAgo } },
       select: {
         id: true,
-        totalRecipients: true,
-        totalResponses: true,
         dispatchedAt: true,
-        healthSurveyConfiguration: { select: { department: { select: { name: true } } } },
+        deptDispatches: { select: { totalRecipients: true, totalResponses: true } },
+        healthSurveyConfiguration: { select: { configDepartments: { include: { department: { select: { name: true } } } } } },
       },
       orderBy: { dispatchedAt: "desc" },
       take: 10,
@@ -195,13 +194,23 @@ export async function findSuggestionContextData(tenantId: string): Promise<Sugge
       : []
   const deptNamesById = new Map(consentDepts.map((d) => [d.id, d.name]))
 
+  const mappedDispatches = recentDispatches.map((d) => ({
+    id: d.id,
+    dispatchedAt: d.dispatchedAt,
+    totalRecipients: d.deptDispatches.reduce((s, dd) => s + dd.totalRecipients, 0),
+    totalResponses: d.deptDispatches.reduce((s, dd) => s + dd.totalResponses, 0),
+    healthSurveyConfiguration: {
+      configDepartments: d.healthSurveyConfiguration?.configDepartments ?? [],
+    },
+  })).filter((d) => d.totalRecipients > 0)
+
   return {
     openAlerts,
     openReports,
     recentPlanTitles,
     consentPendingByDept,
     lastPgrReview,
-    recentDispatches,
+    recentDispatches: mappedDispatches,
     deptNamesById,
   }
 }

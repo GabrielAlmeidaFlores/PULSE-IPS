@@ -1,11 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { normalizeItemScore, calcAvgFromResponses, detectLowScoreAlerts, detectScoreDropAlerts, detectNegativeTrendAlerts, detectConsentExpiredAlerts, getAlerts, getAlertsPaginated, getAlertStats, markRead, resolve } from "@/modules/alerts/alert.service"
+import { normalizeItemScore, calcAvgFromResponses, detectLowScoreAlerts, detectScoreDropAlerts, detectNegativeTrendAlerts, getAlerts, getAlertsPaginated, getAlertStats, markRead, resolve } from "@/modules/alerts/alert.service"
 import {
   findAllTenantsRecentHealthSurveyResponsesForAlerts,
   findAllTenantsResponsesInWindow,
   findAllTenantsActiveDepartments,
   findAllTenantsDeptRecentDispatchAvgs,
-  findAllTenantsEmployeesWithExpiredConsentTokens,
   createAlert,
   hasOpenAlertOfType,
   findAllTenantsOpenAlertDepartmentIdsByType,
@@ -23,7 +22,6 @@ const mockFindRecentResponses = vi.mocked(findAllTenantsRecentHealthSurveyRespon
 const mockFindResponsesInWindow = vi.mocked(findAllTenantsResponsesInWindow)
 const mockFindActiveDepts = vi.mocked(findAllTenantsActiveDepartments)
 const mockFindDeptDispatchAvgs = vi.mocked(findAllTenantsDeptRecentDispatchAvgs)
-const mockFindExpiredConsent = vi.mocked(findAllTenantsEmployeesWithExpiredConsentTokens)
 const mockCreateAlert = vi.mocked(createAlert)
 const mockHasOpenAlert = vi.mocked(hasOpenAlertOfType)
 const mockFindOpenNegativeTrendDeptIds = vi.mocked(findAllTenantsOpenAlertDepartmentIdsByType)
@@ -35,14 +33,16 @@ const mockResolveAlert = vi.mocked(resolveAlert)
 
 interface ResponseShape {
   tenantId: string
-  dispatch: { healthSurveyConfiguration: { department: { id: string; name: string } } }
+  departmentId: string | null
+  dispatch: { healthSurveyConfiguration: { configDepartments: { department: { id: string; name: string } }[] } }
   items: { score: number; question: { scoreDirection: string } }[]
 }
 
 function makeResponse(scores: number[], scoreDirection = "higher_is_better"): ResponseShape {
   return {
     tenantId: "tenant-1",
-    dispatch: { healthSurveyConfiguration: { department: { id: "dept-1", name: "Vendas" } } },
+    departmentId: "dept-1",
+    dispatch: { healthSurveyConfiguration: { configDepartments: [{ department: { id: "dept-1", name: "Vendas" } }] } },
     items: scores.map((score) => ({ score, question: { scoreDirection } })),
   }
 }
@@ -316,49 +316,6 @@ describe("detectNegativeTrendAlerts", () => {
   })
 })
 
-describe("detectConsentExpiredAlerts", () => {
-  it("creates no alert when no expired tokens", async () => {
-    mockFindExpiredConsent.mockResolvedValue([])
-
-    await detectConsentExpiredAlerts()
-    expect(mockCreateAlert).not.toHaveBeenCalled()
-  })
-
-  it("creates alert per department with expired consents", async () => {
-    mockFindExpiredConsent.mockResolvedValue([
-      { tenantId: "tenant-1", departmentId: "dept-1", departmentName: "Vendas", employeeId: "emp-1" },
-      { tenantId: "tenant-1", departmentId: "dept-1", departmentName: "Vendas", employeeId: "emp-2" },
-    ])
-
-    await detectConsentExpiredAlerts()
-    expect(mockCreateAlert).toHaveBeenCalledOnce()
-    expect(mockCreateAlert).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "consent_expired", tenantId: "tenant-1", departmentId: "dept-1" }),
-    )
-  })
-
-  it("groups multiple employees in same dept into one alert", async () => {
-    mockFindExpiredConsent.mockResolvedValue([
-      { tenantId: "t1", departmentId: "d1", departmentName: "RH", employeeId: "emp-1" },
-      { tenantId: "t1", departmentId: "d1", departmentName: "RH", employeeId: "emp-2" },
-      { tenantId: "t1", departmentId: "d2", departmentName: "TI", employeeId: "emp-3" },
-    ])
-
-    await detectConsentExpiredAlerts()
-    expect(mockCreateAlert).toHaveBeenCalledTimes(2)
-  })
-
-  it("skips when open alert already exists", async () => {
-    mockFindExpiredConsent.mockResolvedValue([
-      { tenantId: "t1", departmentId: "d1", departmentName: "RH", employeeId: "emp-1" },
-    ])
-    mockHasOpenAlert.mockResolvedValue(true)
-
-    await detectConsentExpiredAlerts()
-    expect(mockCreateAlert).not.toHaveBeenCalled()
-  })
-})
-
 describe("normalizeItemScore", () => {
   it("returns score as-is for higher_is_better direction", () => {
     expect(normalizeItemScore(4, "higher_is_better")).toBe(4)
@@ -506,8 +463,9 @@ describe("detectLowScoreAlerts — groupByDept branch (multiple responses same d
   const makeGroupedResponses = (deptId: string): ResponseShape[] =>
     Array.from({ length: 5 }, (_, i) => ({
       tenantId: "t-1",
+      departmentId: deptId,
       items: [{ score: i % 2 === 0 ? 2 : 1, question: { scoreDirection: "higher_is_better" } }],
-      dispatch: { healthSurveyConfiguration: { department: { id: deptId, name: "TI" } } },
+      dispatch: { healthSurveyConfiguration: { configDepartments: [{ department: { id: deptId, name: "TI" } }] } },
     }))
 
   it("aggregates multiple responses for same department into one alert check", async () => {

@@ -47,31 +47,65 @@ const TENANT_ID = "tenant-1"
 const DEPT_ID = "dept-1"
 const PERIOD = "2026-04"
 
+const BASE_DATE = new Date("2026-01-01T00:00:00Z")
+
 const DEPT = {
   id: DEPT_ID,
+  tenantId: TENANT_ID,
   name: "Engenharia",
+  isActive: true,
+  workStartTime: "09:00",
+  workEndTime: "18:00",
+  createdAt: BASE_DATE,
+  updatedAt: BASE_DATE,
   employees: [{ id: "e1" }, { id: "e2" }],
 }
 
 const QUESTION = {
   id: "q-1",
+  tenantId: TENANT_ID,
+  healthSurveyConfigurationId: "config-1",
   text: "Como está seu nível de estresse?",
   order: 1,
   scoreDirection: "lower_is_better",
+  isActive: true,
 }
 
 type PgrDispatch = Awaited<ReturnType<typeof findDispatchesForPgr>>[number]
 
 function makeDispatch(month: number, responseCount: number): PgrDispatch {
-  const responses = Array.from({ length: responseCount }, () => ({
-    items: [{ questionId: "q-1", score: 3 }],
+  const dispatchedAt = new Date(`2026-0${month}-15T10:00:00Z`)
+  const responses = Array.from({ length: responseCount }, (_, ri) => ({
+    id: `r-${month}-${ri}`,
+    tenantId: TENANT_ID,
+    departmentId: DEPT_ID,
+    dispatchId: `d-${month}`,
+    createdAt: dispatchedAt,
+    items: [{ id: `item-${ri}`, healthSurveyResponseId: `r-${month}-${ri}`, questionId: "q-1", score: 3 }],
   }))
   return {
     id: `d-${month}`,
-    dispatchedAt: new Date(`2026-0${month}-15T10:00:00Z`),
-    totalRecipients: 10,
+    tenantId: TENANT_ID,
+    healthSurveyConfigurationId: "config-1",
+    scheduledAt: dispatchedAt,
+    dispatchedAt,
+    adherenceCheckedAt: null,
+    status: "available",
+    signedLinkToken: null,
+    createdAt: dispatchedAt,
+    deptDispatches: [{ departmentId: DEPT_ID, totalRecipients: 10 }],
     healthSurveyConfiguration: {
-      departmentId: DEPT_ID,
+      id: "config-1",
+      tenantId: TENANT_ID,
+      name: "Pesquisa de Saúde",
+      description: null,
+      frequency: "weekly",
+      scheduledDayOfMonth: null,
+      dispatchTime: "09:00",
+      isActive: true,
+      createdAt: dispatchedAt,
+      updatedAt: dispatchedAt,
+      configDepartments: [{ departmentId: DEPT_ID, department: DEPT }],
       questions: [QUESTION],
     },
     responses,

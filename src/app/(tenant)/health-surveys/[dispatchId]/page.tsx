@@ -90,12 +90,12 @@ function sortDeptRankingItems(a: DeptRankingItem, b: DeptRankingItem): number {
 
 interface MergedStatsBase {
   id: string;
-  departmentId: string;
+  configName: string;
+  departments: { id: string; name: string }[];
   status: string;
   scheduledAt: Date;
   dispatchedAt: Date | null;
   frequency: string;
-  departmentName: string;
 }
 
 function mergeDispatchStats(
@@ -107,6 +107,12 @@ function mergeDispatchStats(
   const notResponded = Math.max(0, totalRecipients - totalResponses);
   const adherenceRate =
     totalRecipients > 0 ? totalResponses / totalRecipients : 0;
+
+  const deptMap = new Map(base.departments.map((d) => [d.id, d]));
+  for (const s of statsArray) {
+    for (const d of s.departments) deptMap.set(d.id, d);
+  }
+  const departments = Array.from(deptMap.values());
 
   const questionsByText = new Map<
     string,
@@ -178,6 +184,7 @@ function mergeDispatchStats(
 
   return {
     ...base,
+    departments,
     totalRecipients,
     totalResponses,
     notResponded,
@@ -189,15 +196,13 @@ function mergeDispatchStats(
 }
 
 function computeMergedLabel(
-  selectedIds: string[],
   aggrStats: HealthSurveyDispatchDashboardStats[],
 ): string {
-  if (selectedIds.length === 0) return "Todos os departamentos";
-  if (aggrStats.length === 1) {
-    const first = aggrStats[0];
-    return first?.departmentName ?? "Departamento";
-  }
-  return `${aggrStats.length} departamentos`;
+  if (aggrStats.length === 0) return "Todos os departamentos";
+  const allDepts = aggrStats.flatMap((s) => s.departments);
+  const uniqueDepts = [...new Map(allDepts.map((d) => [d.id, d])).values()];
+  if (uniqueDepts.length === 1) return uniqueDepts[0]?.name ?? "Todos os departamentos";
+  return `${uniqueDepts.length} departamentos`;
 }
 
 function scoreAccentClass(avg: number | null): string {
@@ -214,12 +219,15 @@ function DeptChartSection({
 }: DeptChartSectionProps): React.ReactElement {
   const hasResponses = deptStats.totalResponses > 0;
   const deptAdherence = Math.round(deptStats.adherenceRate * 100);
+  const deptLabel = deptStats.departments.length > 0
+    ? deptStats.departments.map((d) => d.name).join(", ")
+    : deptStats.configName;
 
   return (
     <div className="border border-border bg-card overflow-hidden">
       <div className="px-5 py-3 border-b border-border bg-muted/30 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h2 className="text-sm font-bold">{deptStats.departmentName}</h2>
+          <h2 className="text-sm font-bold">{deptLabel}</h2>
         </div>
         <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
           <span>
@@ -348,7 +356,7 @@ interface HistoryBucket {
   dispatchId: string;
 }
 
-function buildSameDayPerDept(
+function buildSameDayConfigMap(
   allDispatches: HealthSurveyDispatchWithConfig[],
   anchorDay: string,
   timezone: string,
@@ -356,10 +364,10 @@ function buildSameDayPerDept(
   const map = new Map<string, HealthSurveyDispatchWithConfig>();
   for (const d of allDispatches) {
     if (formatInTimeZone(new Date(d.scheduledAt), timezone, DAY_FORMAT) !== anchorDay) continue;
-    const deptId = d.healthSurveyConfiguration.departmentId;
-    const existing = map.get(deptId);
+    const configId = d.healthSurveyConfiguration.id;
+    const existing = map.get(configId);
     if (!existing || new Date(d.scheduledAt) > new Date(existing.scheduledAt)) {
-      map.set(deptId, d);
+      map.set(configId, d);
     }
   }
   return map;
@@ -372,16 +380,18 @@ function buildHistoryBucketMap(
   const map = new Map<string, HistoryBucket>();
   for (const d of relevantDispatches) {
     const dayKey = formatInTimeZone(new Date(d.scheduledAt), timezone, DAY_FORMAT);
+    const totalRecipients = d.deptDispatches.reduce((s, dd) => s + dd.totalRecipients, 0);
+    const totalResponses = d.deptDispatches.reduce((s, dd) => s + dd.totalResponses, 0);
     const existing = map.get(dayKey);
     if (existing !== undefined) {
-      existing.totalRecipients += d.totalRecipients;
-      existing.totalResponses += d.totalResponses;
+      existing.totalRecipients += totalRecipients;
+      existing.totalResponses += totalResponses;
     } else {
       map.set(dayKey, {
         dayKey,
         scheduledAt: new Date(d.scheduledAt),
-        totalRecipients: d.totalRecipients,
-        totalResponses: d.totalResponses,
+        totalRecipients,
+        totalResponses,
         dispatchId: d.id,
       });
     }
@@ -438,12 +448,12 @@ async function buildDispatchComparisonData(
       );
       const base: MergedStatsBase = {
         id: ids[0] ?? "",
-        departmentId: firstStat.departmentId,
+        configName: firstStat.configName,
+        departments: firstStat.departments,
         status: "available",
         scheduledAt: firstDispatch ? new Date(firstDispatch.scheduledAt) : new Date(),
         dispatchedAt: null,
         frequency: firstStat.frequency,
-        departmentName: firstStat.departmentName,
       };
       const dayMerged = mergeDispatchStats(dayStats, base);
       return {
@@ -489,14 +499,15 @@ export default async function HealthSurveyDispatchDetailPage({
 
   const anchorDay = formatInTimeZone(anchorStats.scheduledAt, timezone, DAY_FORMAT);
 
-  const sameDayPerDept = buildSameDayPerDept(allDispatches, anchorDay, timezone);
+  const sameDayConfigMap = buildSameDayConfigMap(allDispatches, anchorDay, timezone);
 
-  const allDeptOptions = Array.from(sameDayPerDept.entries()).map(
-    ([id, d]) => ({
-      id,
-      name: d.healthSurveyConfiguration.department.name,
-    }),
-  );
+  const allDeptOptions = Array.from(
+    new Map(
+      Array.from(sameDayConfigMap.values())
+        .flatMap((d) => d.healthSurveyConfiguration.configDepartments.map((cd) => cd.department))
+        .map((dept) => [dept.id, dept]),
+    ).values(),
+  ).map((dept) => ({ id: dept.id, name: dept.name }));
 
   const rawDepts = resolvedSearch.depts;
   const selectedIds = (
@@ -507,40 +518,46 @@ export default async function HealthSurveyDispatchDetailPage({
 
   const aggrDispatches =
     selectedIds.length > 0
-      ? Array.from(sameDayPerDept.entries())
-          .filter(([id]) => selectedIds.includes(id))
-          .map(([, d]) => d)
-      : Array.from(sameDayPerDept.values());
+      ? Array.from(sameDayConfigMap.values()).filter((d) =>
+          d.healthSurveyConfiguration.configDepartments.some((cd) =>
+            selectedIds.includes(cd.department.id),
+          ),
+        )
+      : Array.from(sameDayConfigMap.values());
 
   const aggrStats = await getHealthSurveyMultipleDispatchDashboards(
     session.tenantId,
     aggrDispatches.map((d) => d.id),
   );
 
-  const mergedLabel = computeMergedLabel(selectedIds, aggrStats);
+  const mergedLabel = computeMergedLabel(aggrStats);
   const mergedStatsBase: MergedStatsBase = {
     id: anchorStats.id,
-    departmentId: anchorStats.departmentId,
+    configName: anchorStats.configName,
+    departments: anchorStats.departments,
     status: anchorStats.status,
     scheduledAt: anchorStats.scheduledAt,
     dispatchedAt: anchorStats.dispatchedAt,
     frequency: anchorStats.frequency,
-    departmentName: mergedLabel,
   };
   const mergedStats = mergeDispatchStats(aggrStats, mergedStatsBase);
 
-  const showDeptBreakdown = sameDayPerDept.size > 1;
+  const showDeptBreakdown = sameDayConfigMap.size > 1;
 
-  const historyDeptName = computeMergedLabel(selectedIds, aggrStats);
+  const historyDeptName = mergedLabel;
 
-  const historyDeptIds =
-    selectedIds.length > 0 ? selectedIds : Array.from(sameDayPerDept.keys());
+  const historyConfigIds =
+    selectedIds.length > 0
+      ? Array.from(sameDayConfigMap.entries())
+          .filter(([, d]) =>
+            d.healthSurveyConfiguration.configDepartments.some((cd) =>
+              selectedIds.includes(cd.department.id),
+            ),
+          )
+          .map(([configId]) => configId)
+      : Array.from(sameDayConfigMap.keys());
 
-  const relevantConfigIds = new Set<string>(
-    Array.from(sameDayPerDept.entries())
-      .filter(([deptId]) => historyDeptIds.includes(deptId))
-      .map(([, d]) => d.healthSurveyConfiguration.id),
-  )
+  const relevantConfigIds = new Set(historyConfigIds);
 
   const relevantDispatches = allDispatches.filter((d: HealthSurveyDispatchWithConfig) =>
     relevantConfigIds.has(d.healthSurveyConfiguration.id),
@@ -553,17 +570,20 @@ export default async function HealthSurveyDispatchDetailPage({
       ? aggrStats
       : await getHealthSurveyMultipleDispatchDashboards(
           session.tenantId,
-          Array.from(sameDayPerDept.values()).map((d) => d.id),
+          Array.from(sameDayConfigMap.values()).map((d) => d.id),
         );
 
   const deptRanking = allDeptStatsForRanking
-    .map((d) => ({
-      id: d.departmentId,
-      name: d.departmentName,
-      healthIndex: d.avgScore !== null ? toHealthIndex(d.avgScore) : null,
-      adherence: Math.round(d.adherenceRate * 100),
-      responses: d.totalResponses,
-      recipients: d.totalRecipients,
+    .map((s) => ({
+      id: s.id,
+      name:
+        s.departments.length > 0
+          ? s.departments.map((d) => d.name).join(", ")
+          : s.configName,
+      healthIndex: s.avgScore !== null ? toHealthIndex(s.avgScore) : null,
+      adherence: Math.round(s.adherenceRate * 100),
+      responses: s.totalResponses,
+      recipients: s.totalRecipients,
     }))
     .sort(sortDeptRankingItems);
 
@@ -617,6 +637,17 @@ export default async function HealthSurveyDispatchDetailPage({
     comparisonTrendIcon = <TrendingDown className="w-3.5 h-3.5 text-status-danger" />;
   }
 
+  const headerSubtitle = [
+    anchorStats.departments.map((d) => d.name).join(", ") || anchorStats.configName,
+    formatInTimeZone(
+      new Date(anchorStats.scheduledAt),
+      timezone,
+      "dd 'de' MMMM 'de' yyyy 'às' HH:mm",
+      { locale: ptBR },
+    ),
+    FREQUENCY_LABELS[anchorStats.frequency] ?? anchorStats.frequency,
+  ].join(" · ");
+
   return (
     <div className="flex flex-col h-full">
         <div className="border-b border-border bg-card px-6 py-4 shrink-0">
@@ -634,17 +665,7 @@ export default async function HealthSurveyDispatchDetailPage({
                 </span>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {anchorStats.departmentName}
-                {" · "}
-                {formatInTimeZone(
-                  new Date(anchorStats.scheduledAt),
-                  timezone,
-                  "dd 'de' MMMM 'de' yyyy 'às' HH:mm",
-                  { locale: ptBR },
-                )}
-                {" · "}
-                {FREQUENCY_LABELS[anchorStats.frequency] ??
-                  anchorStats.frequency}
+                {headerSubtitle}
               </p>
             </div>
             {allDeptOptions.length > 1 && (
@@ -682,7 +703,7 @@ export default async function HealthSurveyDispatchDetailPage({
             </p>
             {showDeptBreakdown && (
               <p className="text-[10px] text-muted-foreground mt-0.5">
-                {aggrStats.length} departamentos
+                {aggrStats.length} pesquisas
               </p>
             )}
           </div>

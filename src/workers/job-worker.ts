@@ -2,7 +2,7 @@ import { createJobWorker, createMessageWorker, QUEUE_NAME, MESSAGE_QUEUE_NAME, t
 import { getMessagingService } from "@/libs/integrations"
 import { prisma } from "@/libs/db"
 import { runHealthSurveyDispatcher, checkHealthSurveyDispatchAdherence, runHealthSurveyAutoDispatchScheduler } from "@/modules/health-surveys/health-survey-dispatch.service"
-import { detectLowScoreAlerts, detectScoreDropAlerts, detectNegativeTrendAlerts, detectConsentExpiredAlerts } from "@/modules/alerts/alert.service"
+import { detectLowScoreAlerts, detectScoreDropAlerts, detectNegativeTrendAlerts } from "@/modules/alerts/alert.service"
 import { unpauseAllTenantsDueEmployees } from "@/modules/employees/employee.service"
 import { sendPgrReviewReminders } from "@/modules/pgr/pgr.service"
 import { retryFailedWebhookEvents } from "@/modules/billing/webhook.handler"
@@ -36,7 +36,6 @@ async function processJob(jobName: JobName): Promise<void> {
       await detectLowScoreAlerts()
       await detectScoreDropAlerts()
       await detectNegativeTrendAlerts()
-      await detectConsentExpiredAlerts()
       workerLogger.success("health-survey-score-alert-detector: done")
       break
     }

@@ -71,11 +71,12 @@ export function getPgrReviewById(tenantId: string, id: string): Promise<PgrRevie
 }
 
 interface DispatchLike {
+  deptDispatches: { departmentId: string; totalRecipients: number }[]
   healthSurveyConfiguration: {
-    departmentId: string
+    configDepartments: { departmentId: string }[]
     questions?: { id: string; text: string; order: number; scoreDirection?: string | null }[] | null
   }
-  responses: { items: { questionId: string; score: number }[] }[]
+  responses: { departmentId?: string | null; items: { questionId: string; score: number }[] }[]
 }
 
 interface QuestionMapEntry { text: string; order: number; scoreDirection: ScoreDirection; scores: number[] }
@@ -95,8 +96,9 @@ function registerQuestionsInMap(
   }
 }
 
-function collectResponseScores(qMap: Map<string, QuestionMapEntry>, responses: DispatchLike["responses"]): void {
+function collectResponseScores(qMap: Map<string, QuestionMapEntry>, responses: DispatchLike["responses"], deptId?: string): void {
   for (const response of responses) {
+    if (deptId !== undefined && response.departmentId !== deptId) continue
     for (const item of response.items) {
       const entry = qMap.get(item.questionId)
       if (entry) entry.scores.push(normalizeItemScore(item.score, entry.scoreDirection))
@@ -111,7 +113,7 @@ function buildDeptQuestionResults(
   const qMap: Map<string, QuestionMapEntry> = new Map()
   for (const dispatch of deptDispatches) {
     registerQuestionsInMap(qMap, dispatch.healthSurveyConfiguration.questions ?? [])
-    collectResponseScores(qMap, dispatch.responses)
+    collectResponseScores(qMap, dispatch.responses, deptId)
   }
   const results: PgrQuestionResultWithoutReviewId[] = []
   for (const [questionId, v] of qMap.entries()) {
@@ -166,9 +168,9 @@ export async function generatePgrReport(tenantId: string, period: string, forceR
 
   const deptResults: PgrDeptResultWithoutReviewId[] = org.departments.map((dept) => {
     const deptDispatches = periodDispatches.filter(
-      (d) => d.healthSurveyConfiguration.departmentId === dept.id,
+      (d) => d.healthSurveyConfiguration.configDepartments.some((cd) => cd.departmentId === dept.id),
     )
-    const allResponses = deptDispatches.flatMap((d) => d.responses)
+    const allResponses = deptDispatches.flatMap((d) => d.responses).filter((r) => r.departmentId === dept.id)
     const questionDirections = new Map(
       deptDispatches.flatMap((d) => d.healthSurveyConfiguration.questions.map((q) => [q.id, q.scoreDirection ?? "higher_is_better"])),
     )
@@ -180,7 +182,10 @@ export async function generatePgrReport(tenantId: string, period: string, forceR
             return sum + (dir === "lower_is_better" ? 6 - item.score : item.score)
           }, 0) / allItems.length
         : 0
-    const totalRecipients = deptDispatches.reduce((sum, d) => sum + d.totalRecipients, 0)
+    const totalRecipients = deptDispatches.reduce(
+      (sum, d) => sum + (d.deptDispatches.find((dd) => dd.departmentId === dept.id)?.totalRecipients ?? 0),
+      0,
+    )
 
     return {
       departmentId: dept.id,
@@ -195,7 +200,7 @@ export async function generatePgrReport(tenantId: string, period: string, forceR
   const questionResults = org.departments.flatMap((dept) =>
     buildDeptQuestionResults(
       dept.id,
-      periodDispatches.filter((d) => d.healthSurveyConfiguration.departmentId === dept.id),
+      periodDispatches.filter((d) => d.healthSurveyConfiguration.configDepartments.some((cd) => cd.departmentId === dept.id)),
     ),
   )
 

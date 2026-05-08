@@ -183,7 +183,7 @@ describe("buildDispatchSuggestion", () => {
     totalRecipients: 10,
     totalResponses: 5,
     dispatchedAt: new Date(DISPATCH_DATE),
-    healthSurveyConfiguration: { department: { name: DEPT_NAME_VENDAS } },
+    healthSurveyConfiguration: { configDepartments: [{ department: { name: DEPT_NAME_VENDAS } }] },
   }
 
   it("returns null when no dispatches", () => {
@@ -384,7 +384,7 @@ describe("computeRawSuggestions", () => {
           totalRecipients: 10,
           totalResponses: 5,
           dispatchedAt: new Date(DISPATCH_DATE),
-          healthSurveyConfiguration: { department: { name: DEPT_NAME_VENDAS } },
+          healthSurveyConfiguration: { configDepartments: [{ department: { name: DEPT_NAME_VENDAS } }] },
         },
       ],
     })
@@ -402,7 +402,7 @@ describe("computeRawSuggestions", () => {
           totalRecipients: 0,
           totalResponses: 0,
           dispatchedAt: new Date(DISPATCH_DATE),
-          healthSurveyConfiguration: { department: { name: DEPT_NAME_VENDAS } },
+          healthSurveyConfiguration: { configDepartments: [{ department: { name: DEPT_NAME_VENDAS } }] },
         },
       ],
     })

@@ -50,7 +50,6 @@ export const TYPE_LABELS: Record<string, string> = {
   negative_trend: "Tendência de piora persistente",
   low_adherence: "Adesão baixa",
   no_response: "Sem resposta",
-  consent_expired: "Consentimento expirado",
 }
 
 export const TYPE_STYLE: Record<string, string> = {
@@ -60,6 +59,5 @@ export const TYPE_STYLE: Record<string, string> = {
   negative_trend: BADGE_RED,
   low_adherence: BADGE_YELLOW,
   no_response: BADGE_RED,
-  consent_expired: BADGE_DEFAULT,
   crisis_report: BADGE_RED,
 }

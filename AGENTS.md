@@ -663,8 +663,8 @@ Registro imutável de cada aceite de termos por usuário admin de organização.
 | terms_version_id | uuid | NOT NULL, FK → platform_terms_versions.id |
 | user_id | uuid | NOT NULL, FK → organization_users.id |
 | accepted_at | timestamptz | NOT NULL |
-| ip_address | varchar(45) | |
-| user_agent | text | |
+| ip_address | varchar(45) | NULL — registrado quando disponível |
+| user_agent | text | NULL — registrado quando disponível |
 | created_at | timestamptz | NOT NULL |
 
 #### `consent_term_versions`
@@ -709,7 +709,6 @@ O tenant. `id` é o `tenant_id` de todas as demais tabelas.
 | id | uuid | PK |
 | slug | varchar(100) | NOT NULL, UNIQUE |
 | name | varchar(255) | NOT NULL |
-| cnpj | varchar(18) | |
 | timezone | varchar(50) | NOT NULL, default `'America/Sao_Paulo'` |
 | external_customer_id | varchar(255) | UNIQUE — ID do customer no provedor de billing |
 | billing_status | varchar(20) | `'pending'` \| `'active'` \| `'past_due'` \| `'suspended'` \| `'cancelled'` |
@@ -851,24 +850,21 @@ Dias de trabalho do departamento em `department_work_days` (join table — ver a
 | tenant_id | uuid | NOT NULL |
 | employee_id | uuid | NOT NULL, FK → employees.id |
 | consent_term_version_id | uuid | NOT NULL, FK → consent_term_versions.id |
-| event | varchar(20) | `'accepted'` \| `'refused'` \| `'revoked'` \| `'opted_out'` \| `'invited'` (legado — não criado pelo fluxo atual) |
+| event | varchar(20) | `'accepted'` \| `'refused'` \| `'revoked'` \| `'opted_out'` |
 | source | varchar(20) | `'message_link'` \| `'health_survey_form'` \| `'system'` |
 | document_hash | varchar(255) | SHA-256 do documento (ex: CPF) — apenas no evento `accepted` |
-| token | varchar(255) | UNIQUE |
-| token_expires_at | timestamptz | |
 | created_at | timestamptz | NOT NULL |
 
 > Documento nunca armazenado em texto puro. `ConsentRepository` não expõe `update()` nem `delete()`.
 
 #### `health_survey_configurations`
 
-Múltiplas configurações por tenant/setor são permitidas (sem unicidade em `(tenant_id, department_id)`). Cada configuração é identificada por nome e descrição opcionais.
+Uma configuração pode cobrir **N setores** via join table `health_survey_config_departments`. Cada configuração é identificada por nome e descrição opcionais.
 
 | Coluna | Tipo | Constraints |
 |---|---|---|
 | id | uuid | PK |
 | tenant_id | uuid | NOT NULL |
-| department_id | uuid | NOT NULL, FK → departments.id |
 | name | varchar(255) | NOT NULL, default `'Pesquisa de Saúde'` — nome de identificação da configuração |
 | description | text | NULL — descrição opcional |
 | frequency | varchar(20) | `'daily'` \| `'twice_weekly'` \| `'weekly'` \| `'biweekly'` \| `'monthly'` |
@@ -876,7 +872,6 @@ Múltiplas configurações por tenant/setor são permitidas (sem unicidade em `(
 | dispatch_time | varchar(5) | NOT NULL, default `'09:00'` — `"HH:MM"` — horário exato em que a pesquisa será disparada |
 | is_active | boolean | NOT NULL |
 | INDEX | (tenant_id) | |
-| INDEX | (tenant_id, department_id) | |
 
 Dias de trabalho da pesquisa em `health_survey_config_work_days` (join table — ver abaixo). Armazenados como `day_of_week INT` (0=Dom … 6=Sáb).
 
@@ -885,6 +880,18 @@ Dias de trabalho da pesquisa em `health_survey_config_work_days` (join table —
 > **Frequência mensal com `scheduled_day_of_month`:** quando preenchido, o scheduler dispara apenas no dia exato do mês (avaliado no fuso da organização) e impede reenvio se o último disparo foi há menos de 25 dias. Dias 29–31 são excluídos da UI — o valor máximo é 28 para garantir compatibilidade com fevereiro.
 
 > Não existe mais `send_days` (jsonb) nem `send_time` (time) separados — o disparo ocorre automaticamente pelo scheduler ao detectar que estamos no horário configurado (`dispatch_time`).
+
+#### `health_survey_config_departments`
+
+Join table que associa uma configuração a um ou mais setores. Uma configuração cobre todos os setores listados aqui.
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| config_id | uuid | NOT NULL, FK → health_survey_configurations.id ON DELETE CASCADE |
+| department_id | uuid | NOT NULL, FK → departments.id ON DELETE CASCADE |
+| PK | (config_id, department_id) | |
+
+> **Mudança de modelo:** a arquitetura anterior tinha `department_id` diretamente em `health_survey_configurations` (1 config por setor). A arquitetura atual usa esta join table para permitir que 1 configuração cubra N setores, reduzindo duplicação de perguntas e simplificando o gerenciamento.
 
 #### `department_work_days`
 
@@ -928,6 +935,8 @@ Dias de trabalho configurados para uma pesquisa. Define em quais dias o schedule
 | score_direction | varchar(30) | NOT NULL — `'higher_is_better'` \| `'lower_is_better'` (afeta cálculo de score) |
 | is_active | boolean | NOT NULL, default true |
 
+**Índice:** `(tenant_id, health_survey_configuration_id)` — queries frequentes de perguntas por configuração
+
 #### `health_survey_dispatches`
 
 | Coluna | Tipo | Constraints |
@@ -939,12 +948,26 @@ Dias de trabalho configurados para uma pesquisa. Define em quais dias o schedule
 | dispatched_at | timestamptz | NULL = ainda não disparado |
 | adherence_checked_at | timestamptz | NULL = ainda não verificado |
 | status | varchar(20) | `'scheduled'` \| `'available'` \| `'failed'` \| `'cancelled'` |
-| total_recipients | integer | |
-| total_responses | integer | NOT NULL, default 0 |
 | signed_link_token | varchar(255) | NOT NULL, UNIQUE — token do link assinado público (`/health-survey/link/[token]`) |
 | created_at | timestamptz | NOT NULL |
 
 **Índice:** `(tenant_id, health_survey_configuration_id, scheduled_at DESC)`
+
+> Totais de recipientes e respostas **não ficam** nesta tabela — estão em `health_survey_dept_dispatches` (por setor). Para obter os totais do dispatch inteiro, some os valores de `health_survey_dept_dispatches` para aquele `dispatch_id`.
+
+#### `health_survey_dept_dispatches`
+
+Rastreia totais de recipientes e respostas **por setor** dentro de um dispatch. Criada/atualizada por `upsertHealthSurveyDeptDispatch` durante o processo de disparo.
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| dispatch_id | uuid | NOT NULL, FK → health_survey_dispatches.id ON DELETE CASCADE |
+| department_id | uuid | NOT NULL, FK → departments.id |
+| total_recipients | integer | NOT NULL, default 0 |
+| total_responses | integer | NOT NULL, default 0 |
+| PK | (dispatch_id, department_id) | |
+
+> **Por que por setor?** Uma configuração agora cobre N setores. Rastrear os totais por setor permite calcular a taxa de adesão por setor sem cruzar dados de respondentes anônimos.
 
 #### `health_survey_response_tokens`
 
@@ -976,7 +999,10 @@ Após o uso, `used_at` é preenchido, mas **nenhum vínculo** é criado entre to
 | id | uuid | PK |
 | tenant_id | uuid | NOT NULL |
 | dispatch_id | uuid | NOT NULL, FK → health_survey_dispatches.id |
+| department_id | uuid | NULL, FK → departments.id — setor do respondente no momento da resposta (preenchido a partir de `employee.departmentId` via token, sem identificar o respondente) |
 | created_at | timestamptz | NOT NULL |
+
+> `department_id` é populado no momento da resposta a partir do setor do colaborador vinculado ao token. Mesmo sendo nulo (respostas via link assinado sem identificação prévia), o anonimato é preservado — não há vínculo entre `department_id` e o colaborador específico.
 
 #### `health_survey_response_items`
 
@@ -1115,7 +1141,7 @@ Preservação de versões anteriores de documentos. Cada upload cria uma versão
 | id | uuid | PK |
 | tenant_id | uuid | NOT NULL |
 | department_id | uuid | NULL, FK → departments.id |
-| type | varchar(30) | `'low_score'` \| `'score_drop'` \| `'negative_trend'` \| `'low_adherence'` \| `'crisis_report'` \| `'pgr_review_due'` \| `'consent_expired'` |
+| type | varchar(30) | `'low_score'` \| `'score_drop'` \| `'negative_trend'` \| `'low_adherence'` \| `'crisis_report'` \| `'pgr_review_due'` |
 | severity | varchar(10) | `'high'` \| `'medium'` \| `'low'` |
 | message | text | NOT NULL |
 | is_read | boolean | NOT NULL, default false |
@@ -1123,7 +1149,7 @@ Preservação de versões anteriores de documentos. Cada upload cria uma versão
 | resolved_by | uuid | FK → organization_users.id |
 | created_at | timestamptz | NOT NULL |
 
-**Índice:** `(tenant_id, is_read, severity)`
+**Índices:** `(tenant_id)`, `(tenant_id, resolved_at)`, `(tenant_id, is_read, severity)`
 
 | Tipo | Quando dispara |
 |---|---|
@@ -1133,7 +1159,6 @@ Preservação de versões anteriores de documentos. Cada upload cria uma versão
 | `low_adherence` | <80% de resposta após 48h do disparo |
 | `crisis_report` | Relato anônimo com palavras-chave de crise detectadas |
 | `pgr_review_due` | 30 dias antes de `pgr_reviews.next_review_at` |
-| `consent_expired` | Colaborador com token de consentimento expirado sem aceite |
 
 #### `audit_logs`
 
@@ -1143,7 +1168,7 @@ Preservação de versões anteriores de documentos. Cada upload cria uma versão
 |---|---|---|
 | id | uuid | PK |
 | tenant_id | uuid | NOT NULL, FK → organizations.id |
-| user_id | uuid | NOT NULL, FK → organization_users.id |
+| user_id | uuid | FK → organization_users.id ON DELETE SET NULL — NULL para ações do sistema |
 | action | varchar(100) | NOT NULL — ex: `'document.deleted'`, `'report.exported'` |
 | resource | varchar(100) | NOT NULL — tipo da entidade afetada (ex: `'document'`, `'employee'`) |
 | resource_id | uuid | — ID da entidade afetada |
@@ -1195,23 +1220,32 @@ Registro persistido de todas as execuções de jobs (completed/failed). **Append
 
 #### `request_logs`
 
-Registro de requests HTTP recebidos pela aplicação. **Append-only — sem update/delete.** Inserido pelo proxy (`proxy.ts`) ou middleware de logging.
+Registro de requests HTTP recebidos pela aplicação. **Append-only — sem update/delete.** Inserido pelo `instrumentation.ts` e `proxy.ts`.
 
 | Coluna | Tipo | Constraints |
 |---|---|---|
 | id | uuid | PK |
 | method | varchar(10) | NOT NULL — `'GET'`, `'POST'`, etc. |
 | path | varchar(500) | NOT NULL |
-| status_code | integer | NOT NULL |
-| duration_ms | integer | Duração total da request |
-| ip_address | varchar(45) | IP do cliente |
-| user_agent | text | |
+| query | text | NULL — query string da URL (ex: `?page=1&status=open`) |
+| ip | varchar(45) | NULL — IP do cliente |
+| user_agent | text | NULL |
+| request_headers | jsonb | NOT NULL |
+| request_body | jsonb | NULL |
+| response_status | integer | NULL — código de status HTTP da resposta |
+| response_headers | jsonb | NULL |
+| response_body | jsonb | NULL |
+| duration_ms | integer | NULL — duração total da request |
 | tenant_id | uuid | FK → organizations.id — NULL para requests do super admin ou públicas |
-| user_id | uuid | ID do usuário autenticado (se houver) |
-| user_type | varchar(20) | `'org_user'` \| `'super_admin'` — NULL para requests públicas |
+| user_id | uuid | NULL — ID do usuário autenticado (se houver) |
+| user_type | varchar(20) | NULL — `'org_user'` \| `'super_admin'` |
+| is_redirect | boolean | NOT NULL, default false |
+| redirect_to | varchar(500) | NULL — URL de destino se for redirect |
+| error_message | text | NULL |
+| error_stack | text | NULL |
 | created_at | timestamptz | NOT NULL |
 
-**Índices:** `(tenant_id, created_at DESC)`, `(created_at DESC)` — para listagem no Super Admin
+**Índices:** `(created_at DESC)`, `(tenant_id)`, `(user_id)`, `(method)`, `(response_status)` — para listagem e filtragem no Super Admin
 
 #### `pgr_dept_results`
 
@@ -1241,7 +1275,7 @@ Resultado por pergunta gerado na revisão PGR. Permite análise de tendência po
 | question_id | uuid | NOT NULL, FK → health_survey_questions.id |
 | question_text | text | NOT NULL — snapshot do texto da pergunta no momento da revisão |
 | question_order | integer | NOT NULL |
-| score_direction | varchar(10) | NOT NULL — `'higher_better'` \| `'lower_better'` |
+| score_direction | varchar(30) | NOT NULL — `'higher_is_better'` \| `'lower_is_better'` |
 | avg_score | float | NOT NULL |
 | response_count | integer | NOT NULL |
 | created_at | timestamptz | NOT NULL |
@@ -1258,7 +1292,7 @@ Resultado por pergunta gerado na revisão PGR. Permite análise de tendência po
 | **Termos da plataforma** | `platform_terms_versions`, `platform_terms_acceptances` |
 | **Tenant — estrutura** | `organizations`, `organization_subscriptions`, `organization_users`, `departments` |
 | **Tenant — colaboradores** | `employees`, `employee_consents` |
-| **Tenant — pesquisas** | `health_survey_configurations`, `health_survey_questions`, `health_survey_dispatches`, `health_survey_response_tokens`, `health_survey_responses`, `health_survey_response_items` |
+| **Tenant — pesquisas** | `health_survey_configurations`, `health_survey_config_departments`, `health_survey_questions`, `health_survey_dispatches`, `health_survey_dept_dispatches`, `health_survey_response_tokens`, `health_survey_responses`, `health_survey_response_items` |
 | **Tenant — ocorrências** | `anonymous_reports`, `action_plans`, `action_tasks`, `action_plan_suggestions`, `action_plan_suggestion_tasks` |
 | **Tenant — documentos e PGR** | `documents`, `document_versions`, `pgr_reviews`, `pgr_dept_results`, `pgr_question_results` |
 | **Tenant — operacional** | `alerts`, `audit_logs` |
@@ -2157,7 +2191,7 @@ Link individual → GET /health-survey/[token]
 ```
 health_survey_dispatch enviado
   └─→ Job (adherence-checker, após 48h)
-        ├─ Calcula taxa de adesão: total_responses / total_recipients
+        ├─ Calcula taxa de adesão: soma(total_responses) / soma(total_recipients) em health_survey_dept_dispatches
         ├─ Se < 80%: cria alert (type: 'low_adherence')
         ├─ Calcula média do período por setor
         ├─ Compara com período anterior: queda > 1 ponto → alert (type: 'score_drop')
@@ -2730,7 +2764,6 @@ return (
 | `refused` | `message_link` | Recusou explicitamente na Consent Gate |
 | `revoked` | `message_link` | Revogou aceite anterior |
 | `opted_out` | `health_survey_form` | Pediu não-participação dentro do formulário |
-| `invited` | `system` | **Legado** — evento criado pelo fluxo anterior de convite separado. Não gerado pelo fluxo atual. Mantido no tipo para compatibilidade com alertas `consent_expired` existentes. |
 
 ### Estado atual do colaborador
 
@@ -2907,7 +2940,7 @@ Processos recorrentes gerenciados pelo **BullMQ** com Redis como broker.
 |---|---|---|
 | `health-survey-dispatcher` | A cada 15min | Itera configurações ativas; verifica janela de horário de trabalho e intervalo de frequência (`shouldSkipDispatch`); cria dispatch + tokens + envia mensagens |
 | `health-survey-adherence-checker` | A cada hora | 48h após cada dispatch, calcula taxa de adesão e cria alertas `low_adherence` |
-| `health-survey-score-alert-detector` | Diário (03:00) | Calcula quedas de score; cria alertas `low_score`, `score_drop`, `negative_trend` e `consent_expired` |
+| `health-survey-score-alert-detector` | Diário (03:00) | Calcula quedas de score; cria alertas `low_score`, `score_drop` e `negative_trend` |
 | `employee-unpause` | Diário (01:00) | Reverte `status = 'active'` para colaboradores com `pause_end_at <= today` |
 | `pgr-review-reminder` | Diário (08:00) | 30 dias antes de `next_review_at`; cria alerta `pgr_review_due` |
 | `stripe-webhook-retry` | A cada hora | Reprocessa `billing_webhook_events` com `error IS NOT NULL` e `processed = false` |
@@ -3099,17 +3132,17 @@ Busca todas as configurações ativas com billing ativo (findAllTenantsActiveHea
               → skip se hoje não é um dia de trabalho da config (isWorkDay)
               → skip se o último dispatch foi há menos de FREQUENCY_INTERVAL_DAYS dias
       [PASS] → fireDispatch:
-          → Filtra employees que trabalham hoje (employee_work_days → department_work_days)
-          → Se nenhum employee trabalha hoje → retorna false (config pulada)
+          → Filtra employees (por setor, por dia de trabalho) — se nenhum em nenhum setor: retorna false
           → Cria health_survey_dispatch (status='scheduled')
-          → sendDispatchTokensAndMessages:
+          → Para cada setor com employees elegíveis: sendDispatchTokensAndMessagesForDepartment
               → Filtra colaboradores elegíveis por consentimento
               → Busca tokens existentes (link assinado)
               → Cria novos tokens para colaboradores sem token válido (expires_at = +48h)
-              → Atualiza dispatch: status='available', dispatchedAt=now, total_recipients
+              → upsertHealthSurveyDeptDispatch(dispatchId, deptId, totalRecipients)
               → [GATE FEATURE] hasTenantPlanFeature(tenantId, "messaging")
                   ├─ SEM feature: tokens criados, nenhuma mensagem enviada → RH usa link assinado
                   └─ COM feature: messagingService.sendBulk → Registra em message_logs
+          → markHealthSurveyDispatchDispatched(tenantId, dispatchId) — status='available', dispatchedAt=now
 ```
 
 **Fluxo 2 — `runHealthSurveyDispatcher` (processamento de dispatches manuais):**
@@ -3119,60 +3152,35 @@ Busca dispatches com status='scheduled' e scheduledAt <= now() (findAllTenantsPe
   → Para cada dispatch:
       ⚠️ NÃO verifica isAtDispatchTime nem isWorkDay no nível da config
          (o admin escolheu explicitamente quando disparar — esses checks não se aplicam)
-      → Filtra employees do setor que trabalham hoje (employee_work_days → department_work_days)
-      → Se nenhum employee trabalha hoje → marca como dispatched com 0 recipients e continua
-      → Se eligibleEmployees está vazio → marca como dispatched com 0 recipients e continua
-      → sendDispatchTokensAndMessages (mesmo fluxo do auto-dispatch)
+      → Para cada setor na config (configDepartments):
+          → Filtra employees que trabalham hoje (employee_work_days → department_work_days)
+          → Se nenhum employee trabalha hoje → upsertHealthSurveyDeptDispatch(dispatchId, deptId, 0)
+          → Se eligibleEmployees não-vazio → sendDispatchTokensAndMessagesForDepartment
+      → markHealthSurveyDispatchDispatched(tenantId, dispatchId)
 ```
 
 **Frequência mensal sem `scheduledDayOfMonth`:** quando `frequency = "monthly"` e `scheduledDayOfMonth = null`, `shouldSkipDispatch` cai no path de intervalo fixo (28 dias), disparando no primeiro dia de trabalho qualificado após o cooldown. **Nota:** a UI e a Server Action (`createHealthSurveyConfigAction`) **obrigam** a seleção de um dia do mês para frequência mensal — esse path de fallback existe apenas para configs legadas criadas sem dia fixo.
 
-**Criação de configurações para múltiplos setores (`createHealthSurveyForDepartments`):** ao criar configs para múltiplos setores (incluindo `departmentIds: "all"`), a função verifica via `findDepartmentIdsWithActiveHealthSurveyConfigsByName` quais setores já possuem config ativa **com o mesmo nome** e pula silenciosamente os que já têm. Isso evita duplicatas sem lançar erro. Se todos os setores já possuem config ativa com aquele nome, a função retorna sem criar nada.
+**Criação de configuração para múltiplos setores (`createHealthSurveyForDepartments`):** ao criar uma config com `departmentIds: ["dept-1", "dept-2"]` ou `departmentIds: "all"`, cria-se **uma única `health_survey_configuration`** com múltiplas entradas em `health_survey_config_departments`. A função verifica via `findDepartmentIdsWithActiveHealthSurveyConfigs` quais setores já possuem config ativa e pula silenciosamente os que já têm. Se todos os setores já possuem config ativa, a função retorna sem criar nada.
 
-### 20.3.1 Agrupamento de pesquisas na listagem
+### 20.3.1 Listagem de pesquisas
 
-A listagem de pesquisas em `/health-surveys/configure` exibe configs com o **mesmo `name`** como uma única linha. Isso é um agrupamento visual em memória — não há coluna `group_id` no banco.
+A listagem em `/health-surveys/configure` exibe uma linha por `health_survey_configuration`. Cada config já cobre N setores via `configDepartments`. Não há agrupamento por nome — cada config é uma entidade individual.
 
-**Regras do agrupamento:**
+A coluna "Setores" exibe os departamentos ativos vinculados à config (via `health_survey_config_departments` → `departments.isActive = true`).
 
-| Aspecto | Comportamento |
-|---|---|
-| Chave de agrupamento | Campo `name` da `health_survey_configuration` — configs com nome idêntico formam um grupo |
-| Coluna "Setores" | Exibe apenas departamentos **ativos** (`department.isActive = true`) para cada config no grupo |
-| Coluna "Perguntas" | Contagem do representante do grupo (primeira config por `createdAt ASC`) |
-| Linha única por grupo | `total` do service retorna número de grupos, não de configs brutas |
-| Sem unicidade no banco | Múltiplas configs com mesmo nome e setores diferentes coexistem normalmente |
+**Edição de config (`updateHealthSurveyConfigAction`):**
 
-**Funções de serviço envolvidas:**
-
-```typescript
-// Listagem — agrupa em memória após carregar até 1000 configs
-getHealthSurveyConfigsGrouped(tenantId, filters, page, pageSize): Promise<{ items: ConfigGroup[], total: number }>
-
-// Detalhe de grupo — retorna representative + todos os deptIds ativos do grupo
-getHealthSurveyConfigGroup(tenantId, configId): Promise<{ representative, allDeptIds } | null>
-
-// Busca siblings pelo nome — usada internamente para montar allDeptIds
-getHealthSurveyConfigGroupByName(tenantId, name): Promise<ConfigGroup | null>
-```
-
-**Edição de grupo (`updateHealthSurveyConfigAction`):**
-
-Ao salvar a edição de uma pesquisa (adicionando/removendo setores), a Server Action em `configure/[configId]/actions.ts` orquestra:
+Ao salvar a edição de uma pesquisa, a Server Action em `configure/[configId]/actions.ts` atualiza a config e reconcilia os departamentos:
 
 ```
-Setores atuais (allDeptIds) vs setores enviados (deptIds do form)
-  ├─ keptDeptIds   → configs existentes: atualiza frequência/horário/perguntas
-  ├─ removedDeptIds → configs existentes: desativa (isActive = false)
-  └─ newDeptIds    → cria novas configs para os setores novos
+deptIds atuais (configDepartments) vs deptIds enviados pelo form
+  ├─ mantidos  → sem alteração em health_survey_config_departments
+  ├─ removidos → DELETE FROM health_survey_config_departments WHERE configId AND departmentId
+  └─ novos     → INSERT INTO health_survey_config_departments
 ```
 
-**Comportamento ao deletar setor (`departments`):**  
-Quando um setor é excluído/desativado, a coluna "Setores" da listagem filtra aquele setor automaticamente (via `department.isActive = true`). A config do setor inativo permanece no banco com `isActive = true` até que o grupo seja salvo novamente (quando `removedDeptIds` inclui o setor inativo e desativa a config).
-
-**Setores na página de edição:** o select de setores em `/configure/[configId]` exibe apenas setores com `isActive = true`. Setores deletados/inativos nunca aparecem como opção selecionável.
-
-**Carregamento:** `getHealthSurveyConfigsGrouped` usa `skip=0, take=1000` internamente — adequado para o volume esperado de pesquisas por tenant. Não usa `$queryRaw`.
+**Carregamento:** `getHealthSurveyConfigsWithDepartments` busca configs paginadas com seus departamentos via `include: { configDepartments: { include: { department: true } } }`. Não usa `$queryRaw`.
 
 ### 20.4 Resposta ao formulário (anonimato garantido)
 
@@ -3237,14 +3245,14 @@ O canal disponível hoje para atingir não-respondentes é o **link assinado** (
 Quando a organização **não possui** a feature `messaging`, ou o RH/Admin deseja distribuir a pesquisa manualmente em canais externos:
 
 ```
-RH acessa /health-surveys/[dispatchId]
-  └─ Painel exibe link assinado: https://app.pulse.com/health-survey/link/[signedLinkToken]
-       └─ RH distribui em canal externo (e-mail, grupo, intranet, etc.)
+RH acessa /health-surveys
+  └─ Painel exibe o link assinado por linha de dispatch (signed_link_token)
+       └─ RH distribui o link pelo canal de sua preferência (e-mail, grupo, intranet, etc.)
 
 Colaborador acessa /health-survey/link/[signedLinkToken]
   └─ Tela de identificação: campo único aceita telefone ou documento
        ├─ Colaborador não encontrado → erro "Colaborador não encontrado"
-       ├─ Colaborador pertence a outro setor → erro EMPLOYEE_NOT_IN_DEPARTMENT "Esta pesquisa não está disponível para o seu setor."
+       ├─ Colaborador pertence a setor não incluído na pesquisa → erro EMPLOYEE_NOT_IN_DEPARTMENT
        ├─ Sem consentimento aceito → exibe Consent Gate inline para o colaborador aceitar o TCLE
        ├─ Já respondeu → retorna { alreadyAnswered: true } → mensagem "Você já respondeu esta pesquisa"
        ├─ Fora da janela de trabalho → erro "Pesquisa disponível apenas entre HH:MM e HH:MM"
@@ -3252,15 +3260,16 @@ Colaborador acessa /health-survey/link/[signedLinkToken]
              └─ Resposta salva normalmente (sem employee_id) → aderência calculada corretamente
 ```
 
+O `signedLinkToken` é gerado por `randomUUID()` na criação do dispatch e armazenado em `health_survey_dispatches.signed_link_token`. Um único dispatch cobre todos os setores da config (via `health_survey_config_departments`), portanto um único link serve todos os colaboradores da pesquisa.
+
 **Guards executados em `unlockHealthSurveyViaIdentifier` (ordem):**
 1. Dispatch encontrado pelo `signedLinkToken` — se não encontrado: erro
-2. Colaborador encontrado por telefone ou documento no tenant — se não encontrado: erro
-3. `employee.departmentId === dispatch.healthSurveyConfiguration.departmentId` — se diferente: `EMPLOYEE_NOT_IN_DEPARTMENT`
-4. Consentimento ativo — se sem aceite: retorna `{ needsConsent: true }` → Consent Gate exibida inline
-5. Já respondeu — se `used_at IS NOT NULL`: retorna `{ alreadyAnswered: true }`
-6. Janela de trabalho — fora do horário configurado: erro
-
-O `signedLinkToken` é gerado pelo `randomUUID()` no momento da criação do dispatch e armazenado em `health_survey_dispatches.signed_link_token`. É permanente enquanto o dispatch existir — o mesmo link pode ser usado por múltiplos colaboradores.
+2. Dispatch com `status = 'available'` — se não disponível: `DISPATCH_NOT_AVAILABLE`
+3. Colaborador encontrado por telefone ou documento no tenant — se não encontrado: `EMPLOYEE_NOT_FOUND`
+4. `employee.departmentId` está entre os setores da config (`configDepartments`) — se não: `EMPLOYEE_NOT_IN_DEPARTMENT`
+5. Consentimento ativo — se sem aceite: retorna `{ needsConsent: true }` → Consent Gate inline
+6. Já respondeu — se `used_at IS NOT NULL`: retorna `{ alreadyAnswered: true }`
+7. Janela de trabalho — fora do horário configurado: `OUTSIDE_WORK_WINDOW`
 
 **Módulo de unlock:** `unlockHealthSurveyViaIdentifier(signedLinkToken, identifier)` em `health-survey-response.service.ts`.
 
@@ -3594,7 +3603,6 @@ O fallback `?? item.type` é permitido apenas como segurança (para tipos futuro
 | `negative_trend` | Tendência negativa |
 | `low_adherence` | Adesão baixa |
 | `no_response` | Sem resposta |
-| `consent_expired` | Consentimento expirado |
 | `billing` | Cobrança |
 | `system` | Sistema |
 
@@ -4881,5 +4889,29 @@ Para exclusões simples, o `ConfirmDeleteModal` (`src/components/confirm-delete-
 | 3 | `ConfirmActionModal` está renderizado no JSX com `open`, `onClose`, `onConfirm`, `title`, `description`, `confirmLabel` |
 | 4 | O `onConfirm` fecha o modal (`setShowModal(false)`) **após** a ação concluir com sucesso |
 | 5 | O `loading` é passado corretamente para desabilitar o botão durante a execução |
+
+---
+
+## 37. Histórico de Decisões Arquiteturais
+
+### 37.1 Modelo de Pesquisas de Saúde — Refatoração para N Setores por Config
+
+**Contexto:** a arquitetura anterior tinha `department_id` diretamente em `health_survey_configurations` (1 configuração por setor). Perguntas eram duplicadas em cada configuração, e dispatches de setores diferentes do mesmo run eram ligados por um `group_token` como patch.
+
+**Modelo implementado (atual):**
+
+```
+health_survey_configurations      → 1 configuração cobre N setores
+  └─ health_survey_config_departments  → join: quais setores participam (sem departmentId na config)
+health_survey_dispatches          → 1 dispatch por run de configuração (sem total_recipients / group_token)
+  └─ health_survey_dept_dispatches     → por setor: total_recipients, total_responses
+health_survey_responses           → sem employee_id + department_id nullable (setor inferido via token)
+```
+
+**Benefícios:**
+- Perguntas definidas uma única vez por configuração — sem duplicação entre setores
+- Totais por setor rastreados em `health_survey_dept_dispatches` sem agregar múltiplos dispatches
+- `group_token` removido — não é mais necessário para agrupar dispatches do mesmo run
+- 1 `signed_link_token` por dispatch — o link público serve para todos os setores cobertos pela config
 
 *Pulse — AGENTS.md | Documento interno | Maio de 2026*

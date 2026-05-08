@@ -113,7 +113,7 @@ export function HealthSurveyConfigForm({ mode, departments, initialConfig, initi
   const [description, setDescription] = useState(initialConfig?.description ?? "")
   const [selectedDeptIds, setSelectedDeptIds] = useState<Set<string>>(() => {
     if (initialDeptIds !== undefined && initialDeptIds.length > 0) return new Set(initialDeptIds)
-    if (initialConfig !== null && initialConfig !== undefined) return new Set([initialConfig.department.id])
+    if (initialConfig !== null && initialConfig !== undefined) return new Set(initialConfig.configDepartments.map((cd) => cd.department.id))
     return new Set()
   })
   const [allDepts, setAllDepts] = useState(false)
