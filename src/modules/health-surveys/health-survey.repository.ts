@@ -293,6 +293,7 @@ export async function findHealthSurveyDispatchesPaginated(
 export interface HealthSurveyDispatchResponseItem {
   questionId: string
   score: number
+  departmentId: string | null
 }
 
 export interface HealthSurveyDispatchDashboardData {
@@ -357,7 +358,7 @@ export async function findHealthSurveyDispatchWithDashboard(tenantId: string, di
   const questions = extractQuestionsFromResponses(dispatch.responses, configQuestions)
 
   const responseItems: HealthSurveyDispatchResponseItem[] = dispatch.responses.flatMap((r) =>
-    r.items.map((item) => ({ questionId: item.questionId, score: item.score })),
+    r.items.map((item) => ({ questionId: item.questionId, score: item.score, departmentId: r.departmentId })),
   )
 
   return {
@@ -414,7 +415,7 @@ export async function findHealthSurveyMultipleDispatchesWithDashboard(
       departments: dispatch.healthSurveyConfiguration.configDepartments.map((cd) => ({ id: cd.department.id, name: cd.department.name })),
       questions,
       responseItems: dispatch.responses.flatMap((r) =>
-        r.items.map((item) => ({ questionId: item.questionId, score: item.score })),
+        r.items.map((item) => ({ questionId: item.questionId, score: item.score, departmentId: r.departmentId })),
       ),
     }
   })

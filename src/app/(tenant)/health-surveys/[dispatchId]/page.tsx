@@ -528,6 +528,7 @@ export default async function HealthSurveyDispatchDetailPage({
   const aggrStats = await getHealthSurveyMultipleDispatchDashboards(
     session.tenantId,
     aggrDispatches.map((d) => d.id),
+    selectedIds.length > 0 ? selectedIds : undefined,
   );
 
   const allDayDispatches = Array.from(sameDayConfigMap.values());
