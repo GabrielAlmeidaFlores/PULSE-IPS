@@ -530,7 +530,42 @@ export default async function HealthSurveyDispatchDetailPage({
     aggrDispatches.map((d) => d.id),
   );
 
-  const mergedLabel = computeMergedLabel(aggrStats);
+  const allDayDispatches = Array.from(sameDayConfigMap.values());
+
+  const deptAdhMap = new Map<string, { name: string; totalRecipients: number; totalResponses: number }>()
+  for (const d of allDayDispatches) {
+    for (const cd of d.healthSurveyConfiguration.configDepartments) {
+      const deptId = cd.department.id
+      const deptName = cd.department.name
+      const dd = d.deptDispatches.find((r) => r.departmentId === deptId)
+      const entry = deptAdhMap.get(deptId) ?? { name: deptName, totalRecipients: 0, totalResponses: 0 }
+      deptAdhMap.set(deptId, {
+        name: deptName,
+        totalRecipients: entry.totalRecipients + (dd?.totalRecipients ?? 0),
+        totalResponses: entry.totalResponses + (dd?.totalResponses ?? 0),
+      })
+    }
+  }
+
+  const deptRanking = Array.from(deptAdhMap.entries())
+    .map(([id, { name, totalRecipients, totalResponses }]) => ({
+      id,
+      name,
+      healthIndex: null as number | null,
+      adherence: totalRecipients > 0 ? Math.round((totalResponses / totalRecipients) * 100) : 0,
+      responses: totalResponses,
+      recipients: totalRecipients,
+    }))
+    .sort(sortDeptRankingItems)
+
+  const filteredDeptRecipients = allDayDispatches
+    .flatMap((d) => d.deptDispatches.filter((dd) => selectedIds.length === 0 || selectedIds.includes(dd.departmentId)))
+    .reduce((sum, dd) => sum + dd.totalRecipients, 0)
+  const filteredDeptResponses = allDayDispatches
+    .flatMap((d) => d.deptDispatches.filter((dd) => selectedIds.length === 0 || selectedIds.includes(dd.departmentId)))
+    .reduce((sum, dd) => sum + dd.totalResponses, 0)
+  const filteredAdherenceRate = filteredDeptRecipients > 0 ? filteredDeptResponses / filteredDeptRecipients : 0
+
   const mergedStatsBase: MergedStatsBase = {
     id: anchorStats.id,
     configName: anchorStats.configName,
@@ -540,11 +575,23 @@ export default async function HealthSurveyDispatchDetailPage({
     dispatchedAt: anchorStats.dispatchedAt,
     frequency: anchorStats.frequency,
   };
-  const mergedStats = mergeDispatchStats(aggrStats, mergedStatsBase);
+  const mergedStats = {
+    ...mergeDispatchStats(aggrStats, mergedStatsBase),
+    totalRecipients: filteredDeptRecipients,
+    totalResponses: filteredDeptResponses,
+    notResponded: Math.max(0, filteredDeptRecipients - filteredDeptResponses),
+    adherenceRate: filteredAdherenceRate,
+  }
 
-  const showDeptBreakdown = sameDayConfigMap.size > 1;
+  const showDeptBreakdown = deptRanking.length > 1;
 
-  const historyDeptName = mergedLabel;
+  const historyDeptName =
+    selectedIds.length > 0
+      ? deptRanking
+          .filter((r) => selectedIds.includes(r.id))
+          .map((r) => r.name)
+          .join(", ") || computeMergedLabel(aggrStats)
+      : computeMergedLabel(aggrStats)
 
   const historyConfigIds =
     selectedIds.length > 0
@@ -564,28 +611,6 @@ export default async function HealthSurveyDispatchDetailPage({
   );
 
   const historyBucketMap = buildHistoryBucketMap(relevantDispatches, timezone);
-
-  const allDeptStatsForRanking: HealthSurveyDispatchDashboardStats[] =
-    selectedIds.length === 0
-      ? aggrStats
-      : await getHealthSurveyMultipleDispatchDashboards(
-          session.tenantId,
-          Array.from(sameDayConfigMap.values()).map((d) => d.id),
-        );
-
-  const deptRanking = allDeptStatsForRanking
-    .map((s) => ({
-      id: s.id,
-      name:
-        s.departments.length > 0
-          ? s.departments.map((d) => d.name).join(", ")
-          : s.configName,
-      healthIndex: s.avgScore !== null ? toHealthIndex(s.avgScore) : null,
-      adherence: Math.round(s.adherenceRate * 100),
-      responses: s.totalResponses,
-      recipients: s.totalRecipients,
-    }))
-    .sort(sortDeptRankingItems);
 
   const deptsQuery =
     selectedIds.length > 0

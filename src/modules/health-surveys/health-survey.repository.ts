@@ -14,7 +14,7 @@ export type HealthSurveyDispatchWithConfig = HealthSurveyDispatch & {
   healthSurveyConfiguration: HealthSurveyConfiguration & {
     configDepartments: { department: Department }[]
   }
-  deptDispatches: { totalRecipients: number; totalResponses: number }[]
+  deptDispatches: { departmentId: string; totalRecipients: number; totalResponses: number }[]
 }
 export type HealthSurveyDispatchWithDetails = HealthSurveyDispatch & {
   healthSurveyConfiguration: HealthSurveyConfiguration & { questions: HealthSurveyQuestion[] }
@@ -38,7 +38,7 @@ const CONFIG_WITH_DETAILS_INCLUDE = {
 
 const DISPATCH_WITH_CONFIG_INCLUDE = {
   healthSurveyConfiguration: { include: { configDepartments: { include: { department: true } } } },
-  deptDispatches: { select: { totalRecipients: true, totalResponses: true } },
+  deptDispatches: { select: { departmentId: true, totalRecipients: true, totalResponses: true } },
 } as const
 
 export function findHealthSurveyConfigsByTenant(tenantId: string): Promise<HealthSurveyConfigWithDetails[]> {
