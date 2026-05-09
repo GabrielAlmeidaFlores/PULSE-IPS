@@ -52,12 +52,20 @@ function calcOverallAvgScore(
   return allNormalized.length > 0 ? allNormalized.reduce((a, b) => a + b, 0) / allNormalized.length : null
 }
 
-function buildDispatchStats(data: HealthSurveyDispatchDashboardData): HealthSurveyDispatchDashboardStats {
-  const hasEnoughRespondents = data.totalResponses >= MINIMUM_RESPONDENTS_FOR_DISPLAY
+function buildDispatchStats(data: HealthSurveyDispatchDashboardData, filterDeptIds?: string[]): HealthSurveyDispatchDashboardStats {
+  const filteredItems =
+    filterDeptIds !== undefined && filterDeptIds.length > 0
+      ? data.responseItems.filter((i) => i.departmentId !== null && filterDeptIds.includes(i.departmentId))
+      : data.responseItems
+  const estimatedResponseCount =
+    filterDeptIds !== undefined && filterDeptIds.length > 0
+      ? Math.round(filteredItems.length / Math.max(data.questions.length, 1))
+      : data.totalResponses
+  const hasEnoughRespondents = estimatedResponseCount >= MINIMUM_RESPONDENTS_FOR_DISPLAY
   const questions = hasEnoughRespondents
-    ? buildQuestionStats(data.questions, data.responseItems)
+    ? buildQuestionStats(data.questions, filteredItems)
     : buildQuestionStats(data.questions, [])
-  const avgScore = hasEnoughRespondents ? calcOverallAvgScore(questions, data.responseItems) : null
+  const avgScore = hasEnoughRespondents ? calcOverallAvgScore(questions, filteredItems) : null
   const notResponded = Math.max(0, data.totalRecipients - data.totalResponses)
   const adherenceRate = data.totalRecipients > 0 ? data.totalResponses / data.totalRecipients : 0
 
@@ -155,16 +163,18 @@ export function scheduleHealthSurveyDispatch(
 export async function getHealthSurveyDispatchDashboard(
   tenantId: string,
   dispatchId: string,
+  filterDeptIds?: string[],
 ): Promise<HealthSurveyDispatchDashboardStats | null> {
   const data = await findHealthSurveyDispatchWithDashboard(tenantId, dispatchId)
   if (!data) return null
-  return buildDispatchStats(data)
+  return buildDispatchStats(data, filterDeptIds)
 }
 
 export async function getHealthSurveyMultipleDispatchDashboards(
   tenantId: string,
   dispatchIds: string[],
+  filterDeptIds?: string[],
 ): Promise<HealthSurveyDispatchDashboardStats[]> {
   const dataList = await findHealthSurveyMultipleDispatchesWithDashboard(tenantId, dispatchIds)
-  return dataList.map((data) => buildDispatchStats(data))
+  return dataList.map((data) => buildDispatchStats(data, filterDeptIds))
 }

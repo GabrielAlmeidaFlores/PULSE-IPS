@@ -6,6 +6,7 @@ import {
   getHealthSurveyMultipleDispatchDashboards,
   getHealthSurveyDispatchesFiltered,
   getHealthSurveyDispatchesPaginatedByDay,
+  getHealthSurveyDispatchesPaginated,
 } from "@/modules/health-surveys/health-survey-dashboard.service"
 import {
   findHealthSurveyDispatchesByTenant,
@@ -15,6 +16,7 @@ import {
   findHealthSurveyDispatchesByTenantFiltered,
   findHealthSurveyDispatchDaysPaginated,
   findHealthSurveyDispatchesForDates,
+  findHealthSurveyDispatchesPaginated,
 } from "@/modules/health-surveys/health-survey.repository"
 import { findOrganizationById } from "@/modules/organizations/organization.repository"
 
@@ -28,6 +30,7 @@ const mockFindDispatchesByTenantFiltered = vi.mocked(findHealthSurveyDispatchesB
 const mockFindDispatchDaysPaginated = vi.mocked(findHealthSurveyDispatchDaysPaginated)
 const mockFindDispatchesForDates = vi.mocked(findHealthSurveyDispatchesForDates)
 const mockFindOrganizationById = vi.mocked(findOrganizationById)
+const mockFindDispatchesPaginated = vi.mocked(findHealthSurveyDispatchesPaginated)
 
 const TENANT_ID = "tenant-1"
 const DATE_FROM_ISO = "2024-01-01"
@@ -39,9 +42,9 @@ const QUESTIONS = [
 ]
 
 const RESPONSE_ITEMS = [
-  { questionId: "q-1", score: 4 },
-  { questionId: "q-1", score: 2 },
-  { questionId: "q-2", score: 3 },
+  { questionId: "q-1", score: 4, departmentId: "dept-1" },
+  { questionId: "q-1", score: 2, departmentId: "dept-1" },
+  { questionId: "q-2", score: 3, departmentId: "dept-1" },
 ]
 
 const DISPATCH_DATA = {
@@ -204,6 +207,14 @@ describe("getHealthSurveyDispatchesFiltered", () => {
 
     expect(mockFindDispatchesByTenantFiltered).toHaveBeenCalledWith(TENANT_ID, { dateFrom, dateTo })
   })
+
+  it("repassa configId quando definido", async () => {
+    mockFindDispatchesByTenantFiltered.mockResolvedValue([])
+
+    await getHealthSurveyDispatchesFiltered(TENANT_ID, { configId: "config-xyz" })
+
+    expect(mockFindDispatchesByTenantFiltered).toHaveBeenCalledWith(TENANT_ID, { configId: "config-xyz" })
+  })
 })
 
 describe("getHealthSurveyDispatchesPaginatedByDay", () => {
@@ -246,5 +257,118 @@ describe("getHealthSurveyDispatchesPaginatedByDay", () => {
 
     expect(mockFindDispatchDaysPaginated).toHaveBeenCalledWith(TENANT_ID, { status: "available", dateFrom }, 0, 10, DEFAULT_TIMEZONE)
     expect(mockFindDispatchesForDates).toHaveBeenCalledWith(TENANT_ID, [DATE_FROM_ISO], { status: "available", dateFrom }, DEFAULT_TIMEZONE)
+  })
+
+  it("usa America/Sao_Paulo como timezone padrão quando org não é encontrada", async () => {
+    mockFindOrganizationById.mockResolvedValue(null)
+    mockFindDispatchDaysPaginated.mockResolvedValue({ dates: [], total: 0 })
+
+    await getHealthSurveyDispatchesPaginatedByDay(TENANT_ID, { page: 1, pageSize: 10 })
+
+    expect(mockFindDispatchDaysPaginated).toHaveBeenCalledWith(TENANT_ID, {}, 0, 10, "America/Sao_Paulo")
+  })
+
+  it("repassa filtros dateTo e configId quando definidos", async () => {
+    mockFindOrganizationById.mockResolvedValue({ timezone: DEFAULT_TIMEZONE } as Awaited<ReturnType<typeof findOrganizationById>>)
+    const dateTo = new Date("2024-01-31")
+    mockFindDispatchDaysPaginated.mockResolvedValue({ dates: [], total: 0 })
+
+    await getHealthSurveyDispatchesPaginatedByDay(TENANT_ID, {
+      page: 1,
+      pageSize: 10,
+      dateTo,
+      configId: "config-1",
+    })
+
+    expect(mockFindDispatchDaysPaginated).toHaveBeenCalledWith(
+      TENANT_ID,
+      { dateTo, configId: "config-1" },
+      0,
+      10,
+      DEFAULT_TIMEZONE,
+    )
+  })
+})
+
+describe("getHealthSurveyDispatchDashboard — filterDeptIds", () => {
+  it("filtra itens de resposta para o departamento selecionado", async () => {
+    const mixedItems = [
+      { questionId: "q-1", score: 5, departmentId: "dept-1" },
+      { questionId: "q-1", score: 5, departmentId: "dept-1" },
+      { questionId: "q-1", score: 5, departmentId: "dept-1" },
+      { questionId: "q-1", score: 5, departmentId: "dept-1" },
+      { questionId: "q-1", score: 5, departmentId: "dept-1" },
+      { questionId: "q-1", score: 1, departmentId: "dept-2" },
+    ]
+    mockFindDispatchWithDashboard.mockResolvedValue({
+      ...DISPATCH_DATA,
+      questions: [{ id: "q-1", text: "Como está?", order: 1, scoreDirection: "higher_is_better" }],
+      responseItems: mixedItems,
+      totalResponses: 6,
+    })
+
+    const result = await getHealthSurveyDispatchDashboard(TENANT_ID, "d-1", ["dept-1"])
+
+    const q1 = result?.questions.find((q) => q.id === "q-1")
+    expect(q1?.avgScore).toBeCloseTo(5.0)
+  })
+
+  it("oculta estatísticas quando respondentes filtrados são insuficientes (< 5)", async () => {
+    const sparseItems = [
+      { questionId: "q-1", score: 5, departmentId: "dept-1" },
+      { questionId: "q-1", score: 5, departmentId: "dept-1" },
+      { questionId: "q-1", score: 5, departmentId: "dept-2" },
+      { questionId: "q-1", score: 5, departmentId: "dept-2" },
+      { questionId: "q-1", score: 5, departmentId: "dept-2" },
+    ]
+    mockFindDispatchWithDashboard.mockResolvedValue({
+      ...DISPATCH_DATA,
+      questions: [{ id: "q-1", text: "Como está?", order: 1, scoreDirection: "higher_is_better" }],
+      responseItems: sparseItems,
+      totalResponses: 5,
+    })
+
+    const result = await getHealthSurveyDispatchDashboard(TENANT_ID, "d-1", ["dept-1"])
+
+    expect(result?.questions[0]?.avgScore).toBeNull()
+  })
+})
+
+describe("getHealthSurveyDispatchesPaginated", () => {
+  it("repassa filtros e skip para o repositório", async () => {
+    mockFindDispatchesPaginated.mockResolvedValue({ items: [], total: 0 } as Awaited<ReturnType<typeof findHealthSurveyDispatchesPaginated>>)
+    const dateFrom = new Date(DATE_FROM_ISO)
+    const dateTo = new Date("2024-01-31")
+
+    await getHealthSurveyDispatchesPaginated(TENANT_ID, {
+      page: 2,
+      pageSize: 10,
+      status: "available",
+      dateFrom,
+      dateTo,
+    })
+
+    expect(mockFindDispatchesPaginated).toHaveBeenCalledWith(
+      TENANT_ID,
+      { status: "available", dateFrom, dateTo },
+      10,
+      10,
+    )
+  })
+
+  it("não repassa filtros ausentes para o repositório", async () => {
+    mockFindDispatchesPaginated.mockResolvedValue({ items: [], total: 0 } as Awaited<ReturnType<typeof findHealthSurveyDispatchesPaginated>>)
+
+    await getHealthSurveyDispatchesPaginated(TENANT_ID, { page: 1, pageSize: 5 })
+
+    expect(mockFindDispatchesPaginated).toHaveBeenCalledWith(TENANT_ID, {}, 0, 5)
+  })
+
+  it("repassa configId quando definido", async () => {
+    mockFindDispatchesPaginated.mockResolvedValue({ items: [], total: 0 } as Awaited<ReturnType<typeof findHealthSurveyDispatchesPaginated>>)
+
+    await getHealthSurveyDispatchesPaginated(TENANT_ID, { page: 1, pageSize: 10, configId: "config-abc" })
+
+    expect(mockFindDispatchesPaginated).toHaveBeenCalledWith(TENANT_ID, { configId: "config-abc" }, 0, 10)
   })
 })
