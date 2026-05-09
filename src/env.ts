@@ -19,7 +19,8 @@ export const env = createEnv({
     TWILIO_FROM_NUMBER: z
       .string()
       .refine((v) => v.startsWith("+") || v.startsWith("MG"), {
-        message: "TWILIO_FROM_NUMBER deve ser um número de telefone (+...) ou Messaging Service SID (MG...)",
+        message:
+          "TWILIO_FROM_NUMBER deve ser um número de telefone (+...) ou Messaging Service SID (MG...)",
       })
       .optional(),
     SMSDEV_API_KEY: z.string().min(1).optional(),
@@ -38,7 +39,7 @@ export const env = createEnv({
     SURVEY_MESSAGE_TEMPLATE: z
       .string()
       .default(
-        "Oi, {nome}! 👋 Tudo bem por aí? Sua opinião faz a diferença para a gente 🌱 Quando tiver um momento, aqui está o seu formulário de bem-estar: {link}",
+        "PULSE IPS\n\nOi, {nome}! 👋 Tudo bem por aí? Sua opinião faz a diferença para a gente 🌱 Quando tiver um momento, aqui está o seu formulário de bem-estar:\n\n{link}",
       ),
 
     EMAIL_PROVIDER: z.enum(["resend", "console"]).default("console"),
@@ -113,7 +114,8 @@ export const env = createEnv({
       process.env.WHATSAPP_API_BASE_URL ?? "https://graph.facebook.com",
     WHATSAPP_WEBHOOK_VERIFY_TOKEN: process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN,
     WHATSAPP_APP_SECRET: process.env.WHATSAPP_APP_SECRET,
-    WHATSAPP_TEMPLATE_LANGUAGE: process.env.WHATSAPP_TEMPLATE_LANGUAGE ?? "pt_BR",
+    WHATSAPP_TEMPLATE_LANGUAGE:
+      process.env.WHATSAPP_TEMPLATE_LANGUAGE ?? "pt_BR",
     WHATSAPP_SURVEY_TEMPLATE_NAME:
       process.env.WHATSAPP_SURVEY_TEMPLATE_NAME ?? "pulse_survey_dispatch",
 
