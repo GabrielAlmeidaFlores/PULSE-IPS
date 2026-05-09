@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { getSession } from "@/modules/auth/session"
-import { getHealthSurveyDispatchesPaginatedByDay, type HealthSurveyDispatchWithConfig } from "@/modules/health-surveys/health-survey-dashboard.service"
+import { getHealthSurveyDispatchesPaginated, type HealthSurveyDispatchWithConfig } from "@/modules/health-surveys/health-survey-dashboard.service"
 import { getHealthSurveyConfigs } from "@/modules/health-surveys/health-survey-config.service"
 import { buildPaginationParams } from "@/libs/utils/pagination"
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz"
@@ -19,13 +19,6 @@ interface HealthSurveysListPageProps {
   searchParams: Promise<Record<string, string | undefined>>
 }
 
-const STATUS_PRIORITY: Record<string, number> = {
-  failed: 0,
-  scheduled: 1,
-  available: 2,
-  cancelled: 3,
-}
-
 const STATUS_STYLE: Record<string, string> = {
   scheduled: "bg-muted text-muted-foreground border-border",
   available: "bg-primary/10 text-primary border-primary/20",
@@ -40,57 +33,16 @@ const STATUS_LABELS: Record<string, string> = {
   failed: "Falhou",
 }
 
-interface DayGroup {
-  dayKey: string
-  scheduledAt: Date
-  anchorId: string
-  signedLinkToken: string | null
+function buildDispatchRow(d: HealthSurveyDispatchWithConfig): {
   totalRecipients: number
   totalResponses: number
-  status: string
-  statusCounts: Record<string, number>
   deptNames: string[]
-}
-
-function groupDispatchesByDay(dispatches: HealthSurveyDispatchWithConfig[], timezone: string): DayGroup[] {
-  const buckets = new Map<string, DayGroup>()
-
-  for (const d of dispatches) {
-    const dayKey = formatInTimeZone(new Date(d.scheduledAt), timezone, "yyyy-MM-dd")
-    const dispatchTotalRecipients = d.deptDispatches.reduce((sum, dd) => sum + dd.totalRecipients, 0)
-    const dispatchTotalResponses = d.deptDispatches.reduce((sum, dd) => sum + dd.totalResponses, 0)
-    const dispatchDeptNames = d.healthSurveyConfiguration.configDepartments.map((cd) => cd.department.name)
-
-    const existing = buckets.get(dayKey)
-    if (existing) {
-      existing.totalRecipients += dispatchTotalRecipients
-      existing.totalResponses += dispatchTotalResponses
-      existing.statusCounts[d.status] = (existing.statusCounts[d.status] ?? 0) + 1
-      const currentPriority = STATUS_PRIORITY[existing.status] ?? 3
-      const newPriority = STATUS_PRIORITY[d.status] ?? 3
-      if (newPriority < currentPriority) existing.status = d.status
-      if (existing.signedLinkToken === null && d.signedLinkToken !== null) existing.signedLinkToken = d.signedLinkToken
-      for (const name of dispatchDeptNames) {
-        if (!existing.deptNames.includes(name)) existing.deptNames.push(name)
-      }
-    } else {
-      buckets.set(dayKey, {
-        dayKey,
-        scheduledAt: new Date(d.scheduledAt),
-        anchorId: d.id,
-        signedLinkToken: d.signedLinkToken ?? null,
-        totalRecipients: dispatchTotalRecipients,
-        totalResponses: dispatchTotalResponses,
-        status: d.status,
-        statusCounts: { [d.status]: 1 },
-        deptNames: [...dispatchDeptNames],
-      })
-    }
+} {
+  return {
+    totalRecipients: d.deptDispatches.reduce((sum, dd) => sum + dd.totalRecipients, 0),
+    totalResponses: d.deptDispatches.reduce((sum, dd) => sum + dd.totalResponses, 0),
+    deptNames: d.healthSurveyConfiguration.configDepartments.map((cd) => cd.department.name),
   }
-
-  return Array.from(buckets.values()).sort(
-    (a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime(),
-  )
 }
 
 export default async function HealthSurveysListPage({ searchParams }: HealthSurveysListPageProps): Promise<React.ReactElement> {
@@ -119,12 +71,11 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
   if (dateTo !== undefined) dispatchQuery.dateTo = dateTo
   if (configIdFilter !== undefined && configIdFilter !== "all") dispatchQuery.configId = configIdFilter
 
-  const [{ items: pageDispatches, total }, configs] = await Promise.all([
-    getHealthSurveyDispatchesPaginatedByDay(session.tenantId, dispatchQuery),
+  const [{ items: dispatches, total }, configs] = await Promise.all([
+    getHealthSurveyDispatchesPaginated(session.tenantId, dispatchQuery),
     getHealthSurveyConfigs(session.tenantId),
   ])
 
-  const dayGroups = groupDispatchesByDay(pageDispatches, timezone)
   const hasAnyDispatches = total > 0
 
   const configOptions = configs.map((c) => ({
@@ -220,12 +171,12 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
           </div>
         )}
 
-        {dayGroups.length > 0 && (
+        {dispatches.length > 0 && (
           <DataTable
             columns={[
               { label: "Data", className: "w-28" },
               { label: "Setores", className: "w-36" },
-              { label: "Status", className: "w-44" },
+              { label: "Status", className: "w-32" },
               { label: "Respostas", className: "w-28" },
               { label: "Adesão", className: "w-32" },
               { label: "Link de acesso", className: "w-32 text-center" },
@@ -235,51 +186,48 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
             pagination={<TablePagination total={total} />}
             minWidth={760}
           >
-            {dayGroups.map((g, i) => {
-              const notResponded = Math.max(0, g.totalRecipients - g.totalResponses)
-              const adherenceRate = g.totalRecipients > 0 ? g.totalResponses / g.totalRecipients : 0
+            {dispatches.map((d, i) => {
+              const { totalRecipients, totalResponses, deptNames } = buildDispatchRow(d)
+              const notResponded = Math.max(0, totalRecipients - totalResponses)
+              const adherenceRate = totalRecipients > 0 ? totalResponses / totalRecipients : 0
               const adhPct = Math.round(adherenceRate * 100)
 
               return (
                 <tr
-                  key={g.dayKey}
+                  key={d.id}
                   className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors group ${i % 2 !== 0 ? "bg-muted/10" : ""}`}
                 >
                   <td className="px-4 py-3">
-                    <Link href={`/health-surveys/${g.anchorId}`} className="block font-mono text-xs text-foreground">
-                      {formatInTimeZone(g.scheduledAt, timezone, "dd/MM/yyyy")}
+                    <Link href={`/health-surveys/${d.id}`} className="block font-mono text-xs text-foreground">
+                      {formatInTimeZone(new Date(d.scheduledAt), timezone, "dd/MM/yyyy")}
                     </Link>
                   </td>
                   <td className="px-4 py-3 w-36">
-                    <Link href={`/health-surveys/${g.anchorId}`} className="block">
+                    <Link href={`/health-surveys/${d.id}`} className="block">
                       <span className="text-xs text-muted-foreground">
-                        {g.deptNames.length} {g.deptNames.length === 1 ? "setor" : "setores"}
+                        {deptNames.length} {deptNames.length === 1 ? "setor" : "setores"}
                       </span>
-                      {g.deptNames.length > 0 && (
+                      {deptNames.length > 0 && (
                         <div className="mt-0.5">
                           <span className="text-[9px] font-medium text-muted-foreground/70">
-                            {g.deptNames.join(", ")}
+                            {deptNames.join(", ")}
                           </span>
                         </div>
                       )}
                     </Link>
                   </td>
                   <td className="px-4 py-3">
-                    <Link href={`/health-surveys/${g.anchorId}`} className="flex flex-wrap gap-1">
-                      {Object.entries(g.statusCounts)
-                        .sort(([a], [b]) => (STATUS_PRIORITY[a] ?? 3) - (STATUS_PRIORITY[b] ?? 3))
-                        .map(([status, count]) => (
-                          <span key={status} className={`inline-flex items-center px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider border ${STATUS_STYLE[status] ?? "bg-muted text-muted-foreground border-border"}`}>
-                            {STATUS_LABELS[status] ?? status}{count > 1 ? ` ×${count}` : ""}
-                          </span>
-                        ))}
+                    <Link href={`/health-surveys/${d.id}`} className="block">
+                      <span className={`inline-flex items-center px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider border ${STATUS_STYLE[d.status] ?? "bg-muted text-muted-foreground border-border"}`}>
+                        {STATUS_LABELS[d.status] ?? d.status}
+                      </span>
                     </Link>
                   </td>
                   <td className="px-4 py-3">
-                    <Link href={`/health-surveys/${g.anchorId}`} className="flex items-center gap-3 text-[11px]">
+                    <Link href={`/health-surveys/${d.id}`} className="flex items-center gap-3 text-[11px]">
                       <span className="flex items-center gap-1 text-muted-foreground">
                         <CheckCircle2 className="h-3 w-3 text-status-success" />
-                        <span className="font-bold text-foreground">{g.totalResponses}</span>
+                        <span className="font-bold text-foreground">{totalResponses}</span>
                       </span>
                       <span className="flex items-center gap-1 text-muted-foreground">
                         <XCircle className="h-3 w-3 text-status-danger" />
@@ -288,8 +236,8 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
                     </Link>
                   </td>
                   <td className="px-4 py-3">
-                    <Link href={`/health-surveys/${g.anchorId}`} className="block">
-                      {g.totalRecipients > 0 ? (
+                    <Link href={`/health-surveys/${d.id}`} className="block">
+                      {totalRecipients > 0 ? (
                         <div className="flex flex-col gap-1 w-24">
                           <div className="flex items-center justify-between">
                             <span className="text-[9px] text-muted-foreground uppercase tracking-wider">Adesão</span>
@@ -308,14 +256,14 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
                     </Link>
                   </td>
                   <td className="px-3 py-3 text-center">
-                    {g.signedLinkToken !== null ? (
+                    {d.signedLinkToken !== null ? (
                       <CopyDispatchLinkButton
-                        groupLink={`${env.NEXT_PUBLIC_APP_URL}/health-survey/link/${g.signedLinkToken}`}
+                        groupLink={`${env.NEXT_PUBLIC_APP_URL}/health-survey/link/${d.signedLinkToken}`}
                       />
                     ) : null}
                   </td>
                   <td className="px-3 py-3 text-right">
-                    <Link href={`/health-surveys/${g.anchorId}`} className="block">
+                    <Link href={`/health-surveys/${d.id}`} className="block">
                       <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
                     </Link>
                   </td>

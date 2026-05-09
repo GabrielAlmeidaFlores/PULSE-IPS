@@ -7,6 +7,7 @@ import {
   findHealthSurveyDispatchesByTenantFiltered,
   findHealthSurveyDispatchDaysPaginated,
   findHealthSurveyDispatchesForDates,
+  findHealthSurveyDispatchesPaginated,
   type HealthSurveyDispatchListingFilters,
   type HealthSurveyDispatchDashboardData,
 } from "@/modules/health-surveys/health-survey.repository"
@@ -127,6 +128,19 @@ export async function getHealthSurveyDispatchesPaginatedByDay(
   if (dates.length === 0) return { items: [], total }
   const items = await findHealthSurveyDispatchesForDates(tenantId, dates, filters, timezone)
   return { items, total }
+}
+
+export function getHealthSurveyDispatchesPaginated(
+  tenantId: string,
+  query: HealthSurveyDispatchDayPageQuery,
+): Promise<HealthSurveyDispatchDayPageResult> {
+  const skip = (query.page - 1) * query.pageSize
+  const filters: HealthSurveyDispatchListingFilters = {}
+  if (query.status !== undefined) filters.status = query.status
+  if (query.dateFrom !== undefined) filters.dateFrom = query.dateFrom
+  if (query.dateTo !== undefined) filters.dateTo = query.dateTo
+  if (query.configId !== undefined) filters.configId = query.configId
+  return findHealthSurveyDispatchesPaginated(tenantId, filters, skip, query.pageSize)
 }
 
 export function scheduleHealthSurveyDispatch(
