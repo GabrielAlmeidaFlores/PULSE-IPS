@@ -23,7 +23,7 @@ export function DeactivateHealthSurveyGroupButton({ configId, configName }: Deac
       if (result?.error) {
         toast.error(result.error)
       } else {
-        toast.success("Pesquisa desativada com sucesso")
+        toast.success("Pesquisa excluída com sucesso")
         router.refresh()
       }
       setOpen(false)
@@ -37,7 +37,7 @@ export function DeactivateHealthSurveyGroupButton({ configId, configName }: Deac
         className="p-1.5 text-muted-foreground hover:text-status-danger transition-colors"
         style={{ borderRadius: 0 }}
         type="button"
-        title={`Desativar pesquisa "${configName}"`}
+        title={`Excluir pesquisa "${configName}"`}
       >
         <Trash2 className="h-3.5 w-3.5" />
       </button>
@@ -47,9 +47,9 @@ export function DeactivateHealthSurveyGroupButton({ configId, configName }: Deac
         onClose={() => setOpen(false)}
         onConfirm={handleConfirm}
         loading={isPending}
-        title="Desativar pesquisa"
-        description={`Tem certeza que deseja desativar "${configName}"? Esta ação não pode ser desfeita.`}
-        confirmLabel="Desativar"
+        title="Excluir pesquisa"
+        description={`Tem certeza que deseja excluir "${configName}"? Esta ação não pode ser desfeita.`}
+        confirmLabel="Excluir"
         variant="destructive"
       />
     </>

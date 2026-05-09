@@ -270,6 +270,26 @@ export function findHealthSurveyDispatchesByTenantFiltered(
   })
 }
 
+export async function findHealthSurveyDispatchesPaginated(
+  tenantId: string,
+  filters: HealthSurveyDispatchListingFilters,
+  skip: number,
+  take: number,
+): Promise<{ items: HealthSurveyDispatchWithConfig[]; total: number }> {
+  const where = buildDispatchWhereInput(tenantId, filters)
+  const [items, total] = await prisma.$transaction([
+    prisma.healthSurveyDispatch.findMany({
+      where,
+      include: DISPATCH_WITH_CONFIG_INCLUDE,
+      orderBy: { scheduledAt: "desc" },
+      skip,
+      take,
+    }),
+    prisma.healthSurveyDispatch.count({ where }),
+  ])
+  return { items, total }
+}
+
 export interface HealthSurveyDispatchResponseItem {
   questionId: string
   score: number
