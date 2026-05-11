@@ -39,7 +39,7 @@ export const env = createEnv({
     SURVEY_MESSAGE_TEMPLATE: z
       .string()
       .default(
-        "PULSE IPS\n\nOi, {nome}! 👋 Tudo bem por aí? Sua opinião faz a diferença para a gente 🌱 Quando tiver um momento, aqui está o seu formulário de bem-estar:\n\n{link}",
+        "PULSE IPS\n\nOi {nome}! Tudo bem por aí? Sua opinião faz a diferença para a gente. Quando tiver um momento, aqui está o seu formulário de bem-estar:\n\n{link}",
       ),
 
     EMAIL_PROVIDER: z.enum(["resend", "console"]).default("console"),
