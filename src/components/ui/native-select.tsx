@@ -5,12 +5,13 @@ import { ChevronDown } from "lucide-react"
 
 interface NativeSelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   className?: string
+  containerClassName?: string
 }
 
 const NativeSelect = forwardRef<HTMLSelectElement, NativeSelectProps>(
-  ({ className, children, ...props }, ref) => {
+  ({ className, containerClassName, children, ...props }, ref) => {
     return (
-      <div className="relative w-full">
+      <div className={containerClassName !== undefined ? `relative ${containerClassName}` : "relative w-full"}>
         <select
           ref={ref}
           {...props}

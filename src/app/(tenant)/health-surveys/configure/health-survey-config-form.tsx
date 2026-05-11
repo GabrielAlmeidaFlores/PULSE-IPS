@@ -252,8 +252,8 @@ export function HealthSurveyConfigForm({ mode, departments, initialConfig, initi
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Descreva o objetivo desta pesquisa..."
-              rows={2}
-              className={`${inputCls} resize-none`}
+              rows={3}
+              className={`${inputCls} resize-y`}
               style={{ borderRadius: 0 }}
             />
           </div>

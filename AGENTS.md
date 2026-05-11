@@ -3535,6 +3535,7 @@ storage.remove(storage.KEYS.lastOrgSlug)     // apaga
 | Chave | Valor no localStorage | Descrição |
 |---|---|---|
 | `lastOrgSlug` | `pulse:last-org-slug` | Último slug de organização usado no login |
+| `surveyIdentifier` | `pulse:survey-identifier` | Identificador (telefone ou documento) usado no último acesso via link assinado de pesquisa |
 
 ### Regras obrigatórias
 
@@ -3562,9 +3563,55 @@ localStorage.setItem("pulse:last-org-slug", slug)
 
 | Componente | Evento | Operação |
 |---|---|---|
-| `src/app/(auth)/login/login-form.tsx` | `useEffect` (mount) | Lê `lastOrgSlug` → preenche campo "Organização" |
+| `src/app/(auth)/login/login-form.tsx` | `useEffect` (mount) | Lê `lastOrgSlug` → preenche campo "Organização" via `form.setValue` |
 | `src/app/(auth)/login/login-form.tsx` | Login bem-sucedido | Salva `lastOrgSlug` com o slug digitado |
 | `src/app/(auth)/checkout/checkout-form.tsx` | Submit bem-sucedido (antes do redirect Stripe) | Salva `lastOrgSlug` com o slug cadastrado |
+| `src/app/(public)/health-survey/link/[linkToken]/health-survey-unlock-form.tsx` | Mount (via `useSyncExternalStore`) | Lê `surveyIdentifier` → pré-preenche campo "Telefone ou documento" |
+| `src/app/(public)/health-survey/link/[linkToken]/health-survey-unlock-form.tsx` | Acesso bem-sucedido (sem erro) | Salva `surveyIdentifier` com o identificador validado |
+
+### Padrão para leitura de localStorage em Client Components
+
+**Use `useSyncExternalStore` para leitura de localStorage que inicializa estado de input.** Esta é a abordagem correta para evitar dois problemas simultaneamente:
+
+1. **Hydration mismatch** — o `getServerSnapshot` retorna `""` no SSR; o `getSnapshot` retorna o valor real no cliente
+2. **`react-hooks/set-state-in-effect`** — a regra ESLint proíbe chamar `setState` dentro de `useEffect`/`useLayoutEffect`
+
+```typescript
+function subscribeToSomeKey(_callback: () => void): () => void {
+  return () => {}  // no-op — localStorage não emite eventos observáveis no mesmo contexto
+}
+
+function getSomeKeySnapshot(): string {
+  return storage.get(storage.KEYS.someKey) ?? ""
+}
+
+function getSomeKeyServerSnapshot(): string {
+  return ""
+}
+
+// No componente:
+const savedValue = useSyncExternalStore(
+  subscribeToSomeKey,
+  getSomeKeySnapshot,
+  getSomeKeyServerSnapshot,
+)
+```
+
+**Para combinar com input controlado** (o usuário pode sobrescrever o valor salvo):
+
+```typescript
+const [typedValue, setTypedValue] = useState<string | null>(null)
+const savedValue = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
+
+const identifier = typedValue ?? savedValue  // null = usuário não digitou ainda → usa o salvo
+
+// Input:
+<Input value={identifier} onChange={(e) => { setTypedValue(e.target.value) }} />
+```
+
+`typedValue = null` → exibe o salvo; `typedValue = ""` → usuário limpou deliberadamente; `typedValue = "algum texto"` → usuário digitou.
+
+> **Exceção:** `login-form.tsx` usa `form.setValue` do react-hook-form dentro de `useEffect`, pois `form.setValue` não é um setter React (`setState`) e não dispara a regra ESLint. Para componentes sem react-hook-form, use sempre o padrão `useSyncExternalStore` acima.
 
 ---
 

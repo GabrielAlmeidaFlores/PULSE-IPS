@@ -1,6 +1,7 @@
 const KEYS = {
   lastOrgSlug: "pulse:last-org-slug",
   theme: "pulse:theme",
+  surveyIdentifier: "pulse:survey-identifier",
 } as const
 
 type StorageKey = (typeof KEYS)[keyof typeof KEYS]

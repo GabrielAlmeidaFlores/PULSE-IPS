@@ -1,11 +1,12 @@
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { getSession } from "@/modules/auth/session"
-import { getHealthSurveyConfigs } from "@/modules/health-surveys/health-survey-config.service"
+import { getHealthSurveyConfigsPaginated } from "@/modules/health-surveys/health-survey-config.service"
 import { getActiveDepartments } from "@/modules/departments/department.service"
 import { DeactivateHealthSurveyGroupButton } from "@/app/(tenant)/health-surveys/configure/deactivate-health-survey-group-button"
 import { HealthSurveyConfigListFilters } from "@/app/(tenant)/health-surveys/configure/health-survey-config-list-filters"
-import { DataTable } from "@/libs/design-system"
+import { DataTable, TablePagination } from "@/libs/design-system"
+import { buildPaginationParams } from "@/libs/utils/pagination"
 import { Plus, Settings2, Pencil } from "lucide-react"
 
 interface ConfigureHealthSurveyListPageProps {
@@ -34,15 +35,19 @@ export default async function ConfigureHealthSurveyListPage({ searchParams }: Co
   if (!session) redirect("/login")
 
   const params = await searchParams
+  const { page, pageSize } = buildPaginationParams(params["page"], params["pageSize"])
 
-  const [configs, departments] = await Promise.all([
-    getHealthSurveyConfigs(session.tenantId),
-    getActiveDepartments(session.tenantId),
-  ])
+  const query: { page: number; pageSize: number; q?: string; frequency?: string; departmentId?: string } = { page, pageSize }
+  if (params["q"] !== undefined) query.q = params["q"]
+  if (params["frequency"] !== undefined) query.frequency = params["frequency"]
+  if (params["departmentId"] !== undefined) query.departmentId = params["departmentId"]
 
   const hasFilters = params["q"] !== undefined || params["frequency"] !== undefined || params["departmentId"] !== undefined
 
-  const total = configs.length
+  const [{ items: configs, total }, departments] = await Promise.all([
+    getHealthSurveyConfigsPaginated(session.tenantId, query),
+    getActiveDepartments(session.tenantId),
+  ])
 
   return (
     <div className="flex flex-col h-full">
@@ -89,6 +94,7 @@ export default async function ConfigureHealthSurveyListPage({ searchParams }: Co
             columns={COLUMNS}
             total={total}
             emptyMessage="Nenhuma pesquisa encontrada com os filtros aplicados."
+            pagination={<TablePagination total={total} />}
           >
             {configs.map((config) => {
               const depts = config.configDepartments.map((cd) => cd.department)
