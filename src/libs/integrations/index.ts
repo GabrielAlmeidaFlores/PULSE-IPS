@@ -2,6 +2,7 @@ import { ConsoleMessageAdapter } from "@/libs/integrations/messaging/console-mes
 import { TwilioMessageAdapter } from "@/libs/integrations/messaging/twilio-message.adapter"
 import { MetaCloudMessageAdapter } from "@/libs/integrations/messaging/meta-cloud-message.adapter"
 import { SmsDevAdapter } from "@/libs/integrations/messaging/smsdev.adapter"
+import { SmsBaratoAdapter } from "@/libs/integrations/messaging/smsbarato.adapter"
 import { ConsoleEmailAdapter } from "@/libs/integrations/email/console-email.adapter"
 import { ResendAdapter } from "@/libs/integrations/email/resend.adapter"
 import { FakeBillingAdapter } from "@/libs/integrations/billing/fake-billing.adapter"
@@ -22,6 +23,8 @@ export function getMessagingService(): IMessagingService {
       return new TwilioMessageAdapter()
     case "smsdev":
       return new SmsDevAdapter()
+    case "smsbarato":
+      return new SmsBaratoAdapter()
     default:
       return new ConsoleMessageAdapter()
   }

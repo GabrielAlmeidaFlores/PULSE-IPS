@@ -12,7 +12,7 @@ export const env = createEnv({
     STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_").optional(),
 
     MESSAGING_PROVIDER: z
-      .enum(["twilio_message", "whatsapp_cloud", "smsdev", "console"])
+      .enum(["twilio_message", "whatsapp_cloud", "smsdev", "smsbarato", "console"])
       .default("console"),
     TWILIO_ACCOUNT_SID: z.string().startsWith("AC").optional(),
     TWILIO_AUTH_TOKEN: z.string().min(1).optional(),
@@ -24,6 +24,11 @@ export const env = createEnv({
       })
       .optional(),
     SMSDEV_API_KEY: z.string().min(1).optional(),
+    SMSBARATO_API_KEY: z.string().min(1).optional(),
+    SMSBARATO_BASE_URL: z
+      .string()
+      .url()
+      .default("https://sistema81.smsbarato.com.br/send"),
     WHATSAPP_PHONE_NUMBER_ID: z.string().min(1).optional(),
     WHATSAPP_ACCESS_TOKEN: z.string().min(1).optional(),
     WHATSAPP_API_VERSION: z.string().default("v20.0"),
@@ -39,7 +44,7 @@ export const env = createEnv({
     SURVEY_MESSAGE_TEMPLATE: z
       .string()
       .default(
-        "PULSE IPS\n\nOi {nome}! Tudo bem por aí? Sua opinião faz a diferença para a gente. Quando tiver um momento, aqui está o seu formulário de bem-estar:\n\n{link}",
+        "Oi {nome}! Tem 1 minutinho? Sua pesquisa de bem-estar está aqui: {link}",
       ),
 
     EMAIL_PROVIDER: z.enum(["resend", "console"]).default("console"),
@@ -107,6 +112,10 @@ export const env = createEnv({
     TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN,
     TWILIO_FROM_NUMBER: process.env.TWILIO_FROM_NUMBER,
     SMSDEV_API_KEY: process.env.SMSDEV_API_KEY,
+    SMSBARATO_API_KEY: process.env.SMSBARATO_API_KEY,
+    SMSBARATO_BASE_URL:
+      process.env.SMSBARATO_BASE_URL ??
+      "https://sistema81.smsbarato.com.br/send",
     WHATSAPP_PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID,
     WHATSAPP_ACCESS_TOKEN: process.env.WHATSAPP_ACCESS_TOKEN,
     WHATSAPP_API_VERSION: process.env.WHATSAPP_API_VERSION ?? "v20.0",
