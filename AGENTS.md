@@ -948,10 +948,15 @@ Dias de trabalho configurados para uma pesquisa. Define em quais dias o schedule
 | dispatched_at | timestamptz | NULL = ainda não disparado |
 | adherence_checked_at | timestamptz | NULL = ainda não verificado |
 | status | varchar(20) | `'scheduled'` \| `'available'` \| `'failed'` \| `'cancelled'` |
+| source | varchar(10) | NOT NULL, default `'auto'` — `'auto'` \| `'manual'` |
 | signed_link_token | varchar(255) | NOT NULL, UNIQUE — token do link assinado público (`/health-survey/link/[token]`) |
 | created_at | timestamptz | NOT NULL |
 
 **Índice:** `(tenant_id, health_survey_configuration_id, scheduled_at DESC)`
+
+**Dois tipos de dispatch:**
+- `source: 'auto'` — criado pelo auto-scheduler; usado no cálculo de `lastDispatchedAt` para evitar duplo-disparo semanal
+- `source: 'manual'` — criado pelo RH via botão "Agendar"; **não** conta para o cooldown do auto-scheduler, garantindo que o auto-scheduler dispare normalmente no próximo horário configurado
 
 > Totais de recipientes e respostas **não ficam** nesta tabela — estão em `health_survey_dept_dispatches` (por setor). Para obter os totais do dispatch inteiro, some os valores de `health_survey_dept_dispatches` para aquele `dispatch_id`.
 

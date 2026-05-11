@@ -177,7 +177,7 @@ describe("scheduleHealthSurveyDispatch", () => {
 
     const result = await scheduleHealthSurveyDispatch(TENANT_ID, "config-1", at)
     expect(result).toEqual({ id: "new-d" })
-    expect(mockCreate).toHaveBeenCalledWith(TENANT_ID, "config-1", at, expect.any(String))
+    expect(mockCreate).toHaveBeenCalledWith(TENANT_ID, "config-1", at, "manual", expect.any(String))
   })
 })
 

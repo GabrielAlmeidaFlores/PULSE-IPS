@@ -183,7 +183,7 @@ async function fireDispatch(
   if (departmentsWithEmployees.length === 0) return false
 
   const signedLinkToken = randomUUID()
-  const dispatch = await createHealthSurveyDispatch(tenantId, configId, new Date(), signedLinkToken)
+  const dispatch = await createHealthSurveyDispatch(tenantId, configId, new Date(), "auto", signedLinkToken)
 
   const hasMessaging = await hasTenantPlanFeature(tenantId, "messaging")
 

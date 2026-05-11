@@ -157,7 +157,7 @@ export function scheduleHealthSurveyDispatch(
   scheduledAt: Date,
 ): ReturnType<typeof createHealthSurveyDispatch> {
   const token = randomUUID()
-  return createHealthSurveyDispatch(tenantId, configId, scheduledAt, token)
+  return createHealthSurveyDispatch(tenantId, configId, scheduledAt, "manual", token)
 }
 
 export async function getHealthSurveyDispatchDashboard(
