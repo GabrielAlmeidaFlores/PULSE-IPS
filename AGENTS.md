@@ -4818,12 +4818,43 @@ import { NativeSelect } from "@/components/ui/native-select"
 | Filtros de listagem, selects em modais, campos de formulário simples | `NativeSelect` |
 | Selects com opções customizadas (ícones, grupos, busca) — casos raros | `Select` (shadcn/Base UI) |
 
+### `FilterBar` — usa `NativeSelect` internamente
+
+O componente `FilterBar` (`src/libs/design-system/components/data-display/FilterBar.tsx`) é o padrão para filtros de listagem em todo o painel. Internamente, seus campos do tipo `"select"` usam `NativeSelect` — nunca shadcn `Select`, Radix `Select` ou `<select>` nativo.
+
+**Nunca adicione imports de `@/components/ui/select` ao `FilterBar.tsx`.** Se precisar de um comportamento de seleção diferente (pesquisa, multi-seleção, ícones), crie um novo tipo de campo ou um componente separado — não quebre a padronização do `FilterBar`.
+
+```tsx
+// ❌ PROIBIDO em FilterBar.tsx
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
+// ✅ CORRETO em FilterBar.tsx
+import { NativeSelect } from "@/components/ui/native-select"
+```
+
+### `NativeSelect` — largura controlada por `containerClassName`
+
+O wrapper `<div>` do `NativeSelect` aplica `w-full` **apenas quando `containerClassName` não é passado**. Para controlar a largura, use `containerClassName`:
+
+```tsx
+// Em filtros inline (lado a lado) — usar containerClassName para largura
+<NativeSelect containerClassName="w-auto min-w-[160px]" ...>
+
+// Em formulários (campo ocupa toda a largura disponível) — omitir containerClassName
+<NativeSelect ...>  {/* w-full aplicado automaticamente */}
+```
+
 ### Checklist do full-scan — adicionar ao item 29
 
-Antes de qualquer PR, verificar que não há `<select>` nativo fora de `native-select.tsx`:
+Antes de qualquer PR, verificar que não há `<select>` nativo fora de `native-select.tsx` e que `FilterBar.tsx` não importa shadcn `Select`:
 
 ```bash
+# Nenhum <select> nativo fora do componente
 grep -rn "<select" src --include="*.tsx" | grep -v "native-select.tsx"
+# Resultado esperado: nenhuma linha
+
+# FilterBar não usa shadcn Select
+grep -n "from.*components/ui/select" src/libs/design-system/components/data-display/FilterBar.tsx
 # Resultado esperado: nenhuma linha
 ```
 

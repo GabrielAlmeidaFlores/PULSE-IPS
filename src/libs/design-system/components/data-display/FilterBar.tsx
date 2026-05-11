@@ -3,7 +3,7 @@
 import { useRouter, usePathname, useSearchParams, type ReadonlyURLSearchParams } from "next/navigation"
 import { useCallback } from "react"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { NativeSelect } from "@/components/ui/native-select"
 import { Button } from "@/components/ui/button"
 import { X } from "lucide-react"
 
@@ -104,26 +104,20 @@ export function FilterBar({ fields, values, title = "Filtros" }: FilterBarProps)
         {fields.map((field) => {
           if (field.type === "select") {
             const currentValue = values[field.key] ?? "all"
-            const displayLabel = currentValue === "all"
-              ? (field.allLabel ?? "Todos")
-              : (field.options.find((o) => o.value === currentValue)?.label ?? currentValue)
             return (
               <div key={field.key} className="flex flex-col gap-1">
                 <span className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">{field.label}</span>
-                <Select
+                <NativeSelect
                   value={currentValue}
-                  onValueChange={(v) => { updateFilter(field.key, v) }}
+                  onChange={(e) => { updateFilter(field.key, e.target.value) }}
+                  className="py-2 text-xs"
+                  containerClassName={field.width ?? "min-w-[130px]"}
                 >
-                  <SelectTrigger className={`h-8 text-xs ${field.width ?? "min-w-[130px]"}`} style={{ borderRadius: 0 }}>
-                    <SelectValue>{displayLabel}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="text-xs p-1" style={{ borderRadius: 4 }} align="start">
-                    <SelectItem value="all" className="text-xs py-1.5 px-2 rounded-sm whitespace-nowrap">{field.allLabel ?? "Todos"}</SelectItem>
-                    {field.options.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value} className="text-xs py-1.5 px-2 rounded-sm whitespace-nowrap">{opt.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <option value="all">{field.allLabel ?? "Todos"}</option>
+                  {field.options.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </NativeSelect>
               </div>
             )
           }

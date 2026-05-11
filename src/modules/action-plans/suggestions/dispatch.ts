@@ -21,8 +21,15 @@ export function buildDispatchSuggestion(
       ? `disponibilizada em ${formatDateAsBrazilian(topDispatch.dispatchedAt)}`
       : "pesquisa recente"
 
+  const sortedDeptKey = [...deptNames]
+    .sort()
+    .join("-")
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+  const deptKey = sortedDeptKey.length > 0 ? sortedDeptKey : "geral"
+
   return {
-    key: `dispatch-low-adherence-${topDispatch.id}`,
+    key: `dispatch-low-adherence-${deptKey}`,
     title,
     description:
       `Na pesquisa ${dateLabel} ao setor ${deptName}: ` +
