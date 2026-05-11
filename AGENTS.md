@@ -2294,10 +2294,13 @@ export interface IMessagingService {
 **Implementação Twilio:** `MESSAGING_PROVIDER=twilio_message` → `TwilioMessageAdapter`  
 **Implementação Meta Cloud:** `MESSAGING_PROVIDER=whatsapp_cloud` → `MetaCloudMessageAdapter` ✅  
 **Implementação SMSDev:** `MESSAGING_PROVIDER=smsdev` → `SmsDevAdapter` ✅  
+**Implementação SMS Barato:** `MESSAGING_PROVIDER=smsbarato` → `SmsBaratoAdapter` ✅  
 **Desenvolvimento:** `MESSAGING_PROVIDER=console` → `ConsoleMessageAdapter` (imprime no terminal)  
 **Variáveis Twilio:** `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`  
 **Variáveis WhatsApp:** `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_API_VERSION` (default `"v20.0"`), `WHATSAPP_API_BASE_URL` (default `"https://graph.facebook.com"`)  
-**Variáveis SMSDev:** `SMSDEV_API_KEY` — chave de API gerada no painel SMSDev
+**Variáveis SMSDev:** `SMSDEV_API_KEY` — chave de API gerada no painel SMSDev  
+**Variáveis SMS Barato:** `SMSBARATO_API_KEY` — chave de integração fornecida pelo suporte SMS Barato; `SMSBARATO_BASE_URL` (default `"https://sistema81.smsbarato.com.br/send"`) — endpoint da API  
+**Restrições SMS Barato:** texto máximo de 100 chars (sem contar a URL); acentos e quebras de linha removidos automaticamente pelo adapter; `dest` deve ser apenas dígitos com DDD (sem `+55`)
 
 > **Regra de terminologia:** os termos "SMS", "WhatsApp" e "CPF" **nunca devem aparecer em código, banco de dados ou UI**. Substituições obrigatórias: SMS/WhatsApp → `mensagem`/`message`; CPF → `document`/`documento`. Essa proibição se aplica a nomes de arquivos, classes, funções, variáveis, campos de banco, labels de UI e mensagens de erro.
 ### Email
@@ -3409,8 +3412,12 @@ TWILIO_FROM_NUMBER=+55...
 # SMSDev (quando MESSAGING_PROVIDER=smsdev)
 SMSDEV_API_KEY=DAK2ZW...                  # chave de API do painel SMSDev
 
+# SMS Barato (quando MESSAGING_PROVIDER=smsbarato)
+SMSBARATO_API_KEY=...                     # chave de integração fornecida pelo suporte SMS Barato
+SMSBARATO_BASE_URL=https://sistema81.smsbarato.com.br/send  # endpoint da API (opcional — tem default)
+
 # Mensagem de pesquisa de saúde (template com {nome} e {link})
-SURVEY_MESSAGE_TEMPLATE="Olá {nome}, sua pesquisa de saúde ocupacional está disponível: {link}"
+SURVEY_MESSAGE_TEMPLATE="Oi {nome}! Tem 1 minutinho? Sua pesquisa de bem-estar está aqui: {link}"
 
 # WhatsApp Cloud API (quando MESSAGING_PROVIDER=whatsapp_cloud)
 WHATSAPP_PHONE_NUMBER_ID=...
