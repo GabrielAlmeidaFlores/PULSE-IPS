@@ -64,6 +64,7 @@ export function HealthSurveyConfigListFilters({ departments }: HealthSurveyConfi
         value={frequency}
         onChange={(e) => updateParam("frequency", e.target.value)}
         className="py-1.5 text-[12px]"
+        containerClassName="w-auto min-w-[160px]"
       >
         {FREQUENCY_OPTIONS.map((opt) => (
           <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -75,6 +76,7 @@ export function HealthSurveyConfigListFilters({ departments }: HealthSurveyConfi
           value={departmentId}
           onChange={(e) => updateParam("departmentId", e.target.value)}
           className="py-1.5 text-[12px]"
+          containerClassName="w-auto min-w-[160px]"
         >
           <option value="">Todos os setores</option>
           {departments.map((d) => (

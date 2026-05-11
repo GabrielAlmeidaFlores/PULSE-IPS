@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useSyncExternalStore } from "react"
 import { useRouter } from "next/navigation"
 import { ClipboardList } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { unlockHealthSurveyAction } from "@/app/(public)/health-survey/link/[linkToken]/actions"
 import { HealthSurveyConsentGate } from "@/app/(public)/health-survey/[token]/health-survey-consent-gate"
+import { storage } from "@/libs/local-storage"
 
 interface ConsentGateState {
   token: string
@@ -18,12 +19,32 @@ interface HealthSurveyUnlockFormProps {
   linkToken: string
 }
 
+function subscribeSurveyIdentifier(_callback: () => void): () => void {
+  return () => {}
+}
+
+function getSurveyIdentifierSnapshot(): string {
+  return storage.get(storage.KEYS.surveyIdentifier) ?? ""
+}
+
+function getSurveyIdentifierServerSnapshot(): string {
+  return ""
+}
+
 export function HealthSurveyUnlockForm({ linkToken }: HealthSurveyUnlockFormProps): React.ReactElement {
   const router = useRouter()
-  const [identifier, setIdentifier] = useState("")
+  const [typedValue, setTypedValue] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const [consentGateState, setConsentGateState] = useState<ConsentGateState | null>(null)
+
+  const savedIdentifier = useSyncExternalStore(
+    subscribeSurveyIdentifier,
+    getSurveyIdentifierSnapshot,
+    getSurveyIdentifierServerSnapshot,
+  )
+
+  const identifier = typedValue ?? savedIdentifier
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>): void {
     e.preventDefault()
@@ -38,6 +59,7 @@ export function HealthSurveyUnlockForm({ linkToken }: HealthSurveyUnlockFormProp
         setError(result.error)
         return
       }
+      storage.set(storage.KEYS.surveyIdentifier, identifier.trim())
       if (result?.needsConsent === true && result.consentToken !== undefined && result.employeeName !== undefined) {
         if (result.consentTermContent === null || result.consentTermContent === undefined) {
           setError("Os termos de participação ainda não foram configurados. Tente novamente mais tarde.")
@@ -90,7 +112,7 @@ export function HealthSurveyUnlockForm({ linkToken }: HealthSurveyUnlockFormProp
                 type="text"
                 placeholder="Ex: (11) 99999-9999"
                 value={identifier}
-                onChange={(e) => { setIdentifier(e.target.value) }}
+                onChange={(e) => { setTypedValue(e.target.value) }}
                 autoComplete="off"
                 disabled={isPending}
               />

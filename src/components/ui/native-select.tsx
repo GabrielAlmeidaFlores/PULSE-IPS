@@ -2,19 +2,24 @@
 
 import { forwardRef } from "react"
 import { ChevronDown } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface NativeSelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   className?: string
+  containerClassName?: string
 }
 
 const NativeSelect = forwardRef<HTMLSelectElement, NativeSelectProps>(
-  ({ className, children, ...props }, ref) => {
+  ({ className, containerClassName, children, ...props }, ref) => {
     return (
-      <div className="relative w-full">
+      <div className={containerClassName !== undefined ? `relative ${containerClassName}` : "relative w-full"}>
         <select
           ref={ref}
           {...props}
-          className={`w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 pr-8 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors appearance-none ${className ?? ""}`}
+          className={cn(
+            "w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 pr-8 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors appearance-none",
+            className,
+          )}
           style={{ borderRadius: 0, ...props.style }}
         >
           {children}

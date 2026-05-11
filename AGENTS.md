@@ -3535,6 +3535,7 @@ storage.remove(storage.KEYS.lastOrgSlug)     // apaga
 | Chave | Valor no localStorage | Descrição |
 |---|---|---|
 | `lastOrgSlug` | `pulse:last-org-slug` | Último slug de organização usado no login |
+| `surveyIdentifier` | `pulse:survey-identifier` | Identificador (telefone ou documento) usado no último acesso via link assinado de pesquisa |
 
 ### Regras obrigatórias
 
@@ -3562,9 +3563,55 @@ localStorage.setItem("pulse:last-org-slug", slug)
 
 | Componente | Evento | Operação |
 |---|---|---|
-| `src/app/(auth)/login/login-form.tsx` | `useEffect` (mount) | Lê `lastOrgSlug` → preenche campo "Organização" |
+| `src/app/(auth)/login/login-form.tsx` | `useEffect` (mount) | Lê `lastOrgSlug` → preenche campo "Organização" via `form.setValue` |
 | `src/app/(auth)/login/login-form.tsx` | Login bem-sucedido | Salva `lastOrgSlug` com o slug digitado |
 | `src/app/(auth)/checkout/checkout-form.tsx` | Submit bem-sucedido (antes do redirect Stripe) | Salva `lastOrgSlug` com o slug cadastrado |
+| `src/app/(public)/health-survey/link/[linkToken]/health-survey-unlock-form.tsx` | Mount (via `useSyncExternalStore`) | Lê `surveyIdentifier` → pré-preenche campo "Telefone ou documento" |
+| `src/app/(public)/health-survey/link/[linkToken]/health-survey-unlock-form.tsx` | Acesso bem-sucedido (sem erro) | Salva `surveyIdentifier` com o identificador validado |
+
+### Padrão para leitura de localStorage em Client Components
+
+**Use `useSyncExternalStore` para leitura de localStorage que inicializa estado de input.** Esta é a abordagem correta para evitar dois problemas simultaneamente:
+
+1. **Hydration mismatch** — o `getServerSnapshot` retorna `""` no SSR; o `getSnapshot` retorna o valor real no cliente
+2. **`react-hooks/set-state-in-effect`** — a regra ESLint proíbe chamar `setState` dentro de `useEffect`/`useLayoutEffect`
+
+```typescript
+function subscribeToSomeKey(_callback: () => void): () => void {
+  return () => {}  // no-op — localStorage não emite eventos observáveis no mesmo contexto
+}
+
+function getSomeKeySnapshot(): string {
+  return storage.get(storage.KEYS.someKey) ?? ""
+}
+
+function getSomeKeyServerSnapshot(): string {
+  return ""
+}
+
+// No componente:
+const savedValue = useSyncExternalStore(
+  subscribeToSomeKey,
+  getSomeKeySnapshot,
+  getSomeKeyServerSnapshot,
+)
+```
+
+**Para combinar com input controlado** (o usuário pode sobrescrever o valor salvo):
+
+```typescript
+const [typedValue, setTypedValue] = useState<string | null>(null)
+const savedValue = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
+
+const identifier = typedValue ?? savedValue  // null = usuário não digitou ainda → usa o salvo
+
+// Input:
+<Input value={identifier} onChange={(e) => { setTypedValue(e.target.value) }} />
+```
+
+`typedValue = null` → exibe o salvo; `typedValue = ""` → usuário limpou deliberadamente; `typedValue = "algum texto"` → usuário digitou.
+
+> **Exceção:** `login-form.tsx` usa `form.setValue` do react-hook-form dentro de `useEffect`, pois `form.setValue` não é um setter React (`setState`) e não dispara a regra ESLint. Para componentes sem react-hook-form, use sempre o padrão `useSyncExternalStore` acima.
 
 ---
 
@@ -4771,12 +4818,43 @@ import { NativeSelect } from "@/components/ui/native-select"
 | Filtros de listagem, selects em modais, campos de formulário simples | `NativeSelect` |
 | Selects com opções customizadas (ícones, grupos, busca) — casos raros | `Select` (shadcn/Base UI) |
 
+### `FilterBar` — usa `NativeSelect` internamente
+
+O componente `FilterBar` (`src/libs/design-system/components/data-display/FilterBar.tsx`) é o padrão para filtros de listagem em todo o painel. Internamente, seus campos do tipo `"select"` usam `NativeSelect` — nunca shadcn `Select`, Radix `Select` ou `<select>` nativo.
+
+**Nunca adicione imports de `@/components/ui/select` ao `FilterBar.tsx`.** Se precisar de um comportamento de seleção diferente (pesquisa, multi-seleção, ícones), crie um novo tipo de campo ou um componente separado — não quebre a padronização do `FilterBar`.
+
+```tsx
+// ❌ PROIBIDO em FilterBar.tsx
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
+// ✅ CORRETO em FilterBar.tsx
+import { NativeSelect } from "@/components/ui/native-select"
+```
+
+### `NativeSelect` — largura controlada por `containerClassName`
+
+O wrapper `<div>` do `NativeSelect` aplica `w-full` **apenas quando `containerClassName` não é passado**. Para controlar a largura, use `containerClassName`:
+
+```tsx
+// Em filtros inline (lado a lado) — usar containerClassName para largura
+<NativeSelect containerClassName="w-auto min-w-[160px]" ...>
+
+// Em formulários (campo ocupa toda a largura disponível) — omitir containerClassName
+<NativeSelect ...>  {/* w-full aplicado automaticamente */}
+```
+
 ### Checklist do full-scan — adicionar ao item 29
 
-Antes de qualquer PR, verificar que não há `<select>` nativo fora de `native-select.tsx`:
+Antes de qualquer PR, verificar que não há `<select>` nativo fora de `native-select.tsx` e que `FilterBar.tsx` não importa shadcn `Select`:
 
 ```bash
+# Nenhum <select> nativo fora do componente
 grep -rn "<select" src --include="*.tsx" | grep -v "native-select.tsx"
+# Resultado esperado: nenhuma linha
+
+# FilterBar não usa shadcn Select
+grep -n "from.*components/ui/select" src/libs/design-system/components/data-display/FilterBar.tsx
 # Resultado esperado: nenhuma linha
 ```
 
