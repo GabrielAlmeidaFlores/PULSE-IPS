@@ -496,6 +496,7 @@ export function createHealthSurveyDispatch(
   tenantId: string,
   configId: string,
   scheduledAt: Date,
+  source: "auto" | "manual",
   signedLinkToken?: string,
 ): Promise<HealthSurveyDispatch> {
   return prisma.healthSurveyDispatch.create({
@@ -504,6 +505,7 @@ export function createHealthSurveyDispatch(
       healthSurveyConfigurationId: configId,
       scheduledAt,
       status: "scheduled",
+      source,
       ...(signedLinkToken !== undefined && { signedLinkToken }),
     },
   })
@@ -701,7 +703,7 @@ export async function findAllTenantsActiveHealthSurveyConfigsForAutoDispatch(): 
         },
       },
       dispatches: {
-        where: { status: "available" },
+        where: { status: "available", source: "auto" },
         orderBy: { dispatchedAt: "desc" },
         take: 1,
         select: { dispatchedAt: true },

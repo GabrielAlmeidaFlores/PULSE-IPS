@@ -367,6 +367,7 @@ model HealthSurveyDispatch {
   dispatchedAt          DateTime? @map("dispatched_at")
   adherenceCheckedAt    DateTime? @map("adherence_checked_at")
   status                String    @default("scheduled")
+  source                String    @default("auto") @map("source")
   signedLinkToken       String?   @unique @db.VarChar(255) @map("signed_link_token")
   createdAt             DateTime  @default(now()) @map("created_at")
 

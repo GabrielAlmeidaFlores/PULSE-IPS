@@ -91,6 +91,7 @@ function makeDispatch(month: number, responseCount: number): PgrDispatch {
     dispatchedAt,
     adherenceCheckedAt: null,
     status: "available",
+    source: "auto",
     signedLinkToken: null,
     createdAt: dispatchedAt,
     deptDispatches: [{ departmentId: DEPT_ID, totalRecipients: 10 }],
