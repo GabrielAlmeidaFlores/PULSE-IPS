@@ -86,7 +86,7 @@ function isAtDispatchTime(dispatchTime: string, timezone: string): boolean {
   const currentMinutes = nowInTimezone.getHours() * 60 + nowInTimezone.getMinutes()
   const [h, m] = dispatchTime.split(":").map(Number)
   const targetMinutes = (h ?? 0) * 60 + (m ?? 0)
-  return currentMinutes >= targetMinutes && currentMinutes < targetMinutes + 15
+  return currentMinutes >= targetMinutes && currentMinutes < targetMinutes + 60
 }
 
 async function sendDispatchTokensAndMessagesForDepartment(
