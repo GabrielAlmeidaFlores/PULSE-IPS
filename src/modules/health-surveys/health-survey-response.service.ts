@@ -4,6 +4,7 @@ import { toZonedTime } from "date-fns-tz"
 import { AppError } from "@/libs/errors/app-error"
 import {
   findHealthSurveyTokenByValue,
+  findHealthSurveyTokenByShortCode,
   deleteAllTenantsExpiredHealthSurveyTokens,
   createHealthSurveyResponseWithItems,
   findHealthSurveyDispatchBySignedLinkToken,
@@ -223,4 +224,12 @@ async function resolveDispatchUnlock(
   }])
 
   return { token: newToken, alreadyAnswered: false }
+}
+
+export async function resolveHealthSurveyShortCode(
+  orgSlug: string,
+  shortCode: string,
+): Promise<string | null> {
+  const record = await findHealthSurveyTokenByShortCode(orgSlug, shortCode)
+  return record?.token ?? null
 }

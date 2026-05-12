@@ -88,7 +88,7 @@ function makePendingDispatch(workDays = [1, 2, 3, 4, 5]): PendingDispatch {
   return {
     id: DISPATCH_ID,
     tenantId: TENANT_ID,
-    organization: { timezone: "America/Sao_Paulo" },
+    organization: { timezone: "America/Sao_Paulo", slug: "test-org" },
     healthSurveyConfiguration: {
       id: "config-1",
       dispatchTime: "12:00",
@@ -107,7 +107,7 @@ function makeAutoDispatchConfig(overrides?: Partial<ActiveHealthSurveyConfigForD
     dispatchTime: "12:00",
     workDays: [1, 2, 3, 4, 5],
     lastDispatchedAt: null,
-    organization: { timezone: "America/Sao_Paulo" },
+    organization: { timezone: "America/Sao_Paulo", slug: "test-org" },
     departments: [{ ...AUTO_DISPATCH_DEPT }],
     questions: [],
     ...overrides,
@@ -615,7 +615,7 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
 
     mockFindPendingDispatches.mockResolvedValue([makePendingDispatch()])
     mockFindExistingTokensForDispatch.mockResolvedValue([
-      { employeeId: "emp-1", token: "existing-token", usedAt: new Date(), expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000) },
+      { employeeId: "emp-1", token: "existing-token", shortCode: null, usedAt: new Date(), expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000) },
     ])
 
     await runHealthSurveyDispatcher()
@@ -634,7 +634,7 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
     const PREEXISTING_TOKEN = "preexisting-token-from-signed-link"
     mockFindPendingDispatches.mockResolvedValue([makePendingDispatch()])
     mockFindExistingTokensForDispatch.mockResolvedValue([
-      { employeeId: "emp-1", token: PREEXISTING_TOKEN, usedAt: null, expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000) },
+      { employeeId: "emp-1", token: PREEXISTING_TOKEN, shortCode: null, usedAt: null, expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000) },
     ])
 
     await runHealthSurveyDispatcher()
@@ -654,7 +654,7 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
 
     mockFindPendingDispatches.mockResolvedValue([makePendingDispatch()])
     mockFindExistingTokensForDispatch.mockResolvedValue([
-      { employeeId: "emp-1", token: "expired-old-token", usedAt: null, expiresAt: new Date(Date.now() - 1000) },
+      { employeeId: "emp-1", token: "expired-old-token", shortCode: null, usedAt: null, expiresAt: new Date(Date.now() - 1000) },
     ])
 
     await runHealthSurveyDispatcher()

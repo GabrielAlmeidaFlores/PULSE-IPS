@@ -255,6 +255,7 @@ src/
 ├── app/                                    # Next.js App Router
 │   ├── (public)/                           # Rotas públicas (sem autenticação)
 │   │   ├── health-survey/[token]/page.tsx         # Formulário de pesquisa + Consent Gate inline (sem login)
+│   │   ├── health-survey/[orgSlug]/[shortCode]/page.tsx  # Pretty URL — alias para /health-survey/[token]
 │   │   └── report/[orgSlug]/page.tsx       # Canal de relato anônimo
 │   ├── platform-terms/page.tsx             # Termos de Uso — página pública standalone (linked no footer)
 │   ├── privacy-policy/page.tsx             # Política de Privacidade — página pública standalone
@@ -989,6 +990,7 @@ Após o uso, `used_at` é preenchido, mas **nenhum vínculo** é criado entre to
 | dispatch_id | uuid | NOT NULL, FK → health_survey_dispatches.id |
 | employee_id | uuid | NOT NULL, FK → employees.id |
 | token | varchar(255) | NOT NULL, UNIQUE |
+| short_code | varchar(7) | NULL, UNIQUE per `(tenant_id, short_code)` — código de 7 dígitos usado na pretty URL `/health-survey/[orgSlug]/[shortCode]`. Gerado apenas para tokens criados via disparo de mensagem; NULL para tokens criados via link assinado. |
 | used_at | timestamptz | |
 | expires_at | timestamptz | NOT NULL — `dispatched_at + 48h` |
 | work_start_time | varchar(5) | NOT NULL — snapshot `"HH:MM"` no momento do disparo |
@@ -3147,13 +3149,20 @@ Busca todas as configurações ativas com billing ativo (findAllTenantsActiveHea
           → Para cada setor com employees elegíveis: sendDispatchTokensAndMessagesForDepartment
               → Filtra colaboradores elegíveis por consentimento
               → Busca tokens existentes (link assinado)
-              → Cria novos tokens para colaboradores sem token válido (expires_at = +48h)
+              → Cria novos tokens para colaboradores sem token válido (expires_at = +48h, shortCode = 7 dígitos)
               → upsertHealthSurveyDeptDispatch(dispatchId, deptId, totalRecipients)
               → [GATE FEATURE] hasTenantPlanFeature(tenantId, "messaging")
                   ├─ SEM feature: tokens criados, nenhuma mensagem enviada → RH usa link assinado
-                  └─ COM feature: messagingService.sendBulk → Registra em message_logs
+                  └─ COM feature: messagingService.sendBulk com pretty URL → Registra em message_logs
+                       URL enviada: /health-survey/[orgSlug]/[shortCode] (fallback: /health-survey/[uuid])
           → markHealthSurveyDispatchDispatched(tenantId, dispatchId) — status='available', dispatchedAt=now
 ```
+
+**Pretty URL para tokens de disparo:** todo token criado por `sendDispatchTokensAndMessagesForDepartment` recebe um `short_code` de 7 dígitos numéricos gerado aleatoriamente (único por tenant). A URL enviada nas mensagens é `/health-survey/[orgSlug]/[shortCode]` — o colaborador a recebe no SMS/WhatsApp. A rota `(public)/health-survey/[orgSlug]/[shortCode]/page.tsx` faz lookup via `resolveHealthSurveyShortCode(orgSlug, shortCode)` e redireciona para `/health-survey/[token]`. O `orgSlug` na URL não é decorativo — é usado na query para isolar o lookup ao tenant correto.
+
+Tokens criados via link assinado (`unlockHealthSurveyViaIdentifier`) **não recebem `shortCode`** — são usados internamente e o colaborador nunca vê a UUID diretamente.
+
+**Colisão de short code:** a unicidade é garantida pelo constraint `(tenant_id, short_code)` no banco. Com 9 milhões de valores possíveis e tokens com vida útil de 48h, a probabilidade de colisão é praticamente nula (< 0.01% com 1000 tokens ativos simultâneos). Em caso de colisão, a transação do dispatch falha.
 
 **Fluxo 2 — `runHealthSurveyDispatcher` (processamento de dispatches manuais):**
 

@@ -388,6 +388,7 @@ model HealthSurveyResponseToken {
   dispatchId    String    @map("dispatch_id")
   employeeId    String    @map("employee_id")
   token         String    @unique
+  shortCode     String?   @map("short_code") @db.VarChar(7)
   expiresAt     DateTime  @map("expires_at")
   workStartTime String    @db.VarChar(5) @map("work_start_time")
   workEndTime   String    @db.VarChar(5) @map("work_end_time")
@@ -397,6 +398,7 @@ model HealthSurveyResponseToken {
   dispatch HealthSurveyDispatch  @relation(fields: [dispatchId], references: [id], onDelete: Cascade)
   employee Employee        @relation(fields: [employeeId], references: [id])
 
+  @@unique([tenantId, shortCode])
   @@index([tenantId])
   @@index([dispatchId, employeeId])
   @@map("health_survey_response_tokens")

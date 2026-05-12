@@ -444,7 +444,7 @@ export function findAllTenantsPendingHealthSurveyDispatches(): Promise<
         }
       }[]
     }
-    organization: { timezone: string; billingStatus: string }
+    organization: { timezone: string; billingStatus: string; slug: string }
   })[]
 > {
   return prisma.healthSurveyDispatch.findMany({
@@ -470,7 +470,7 @@ export function findAllTenantsPendingHealthSurveyDispatches(): Promise<
           },
         },
       },
-      organization: { select: { timezone: true, billingStatus: true } },
+      organization: { select: { timezone: true, billingStatus: true, slug: true } },
     },
   })
 }
@@ -549,6 +549,7 @@ export function findEmployeeByPhoneOrDocument(
 export interface ExistingDispatchToken {
   employeeId: string
   token: string
+  shortCode: string | null
   usedAt: Date | null
   expiresAt: Date
 }
@@ -561,7 +562,20 @@ export function findExistingTokensForDispatch(
   if (employeeIds.length === 0) return Promise.resolve([])
   return prisma.healthSurveyResponseToken.findMany({
     where: { tenantId, dispatchId, employeeId: { in: employeeIds } },
-    select: { employeeId: true, token: true, usedAt: true, expiresAt: true },
+    select: { employeeId: true, token: true, shortCode: true, usedAt: true, expiresAt: true },
+  })
+}
+
+export function findHealthSurveyTokenByShortCode(
+  orgSlug: string,
+  shortCode: string,
+): Promise<{ token: string } | null> {
+  return prisma.healthSurveyResponseToken.findFirst({
+    where: {
+      shortCode,
+      dispatch: { organization: { slug: orgSlug } },
+    },
+    select: { token: true },
   })
 }
 
@@ -677,7 +691,7 @@ export interface ActiveHealthSurveyConfigForDispatch {
   scheduledDayOfMonth: number | null
   dispatchTime: string
   workDays: number[]
-  organization: { timezone: string }
+  organization: { timezone: string; slug: string }
   departments: HealthSurveyDispatchDepartment[]
   questions: HealthSurveyQuestion[]
   lastDispatchedAt: Date | null
@@ -689,7 +703,7 @@ export async function findAllTenantsActiveHealthSurveyConfigsForAutoDispatch(): 
   const configs = await prisma.healthSurveyConfiguration.findMany({
     where: { isActive: true },
     include: {
-      organization: { select: { timezone: true, billingStatus: true } },
+      organization: { select: { timezone: true, billingStatus: true, slug: true } },
       questions: { orderBy: { order: "asc" } },
       workDays: true,
       configDepartments: {
@@ -722,7 +736,7 @@ export async function findAllTenantsActiveHealthSurveyConfigsForAutoDispatch(): 
       scheduledDayOfMonth: c.scheduledDayOfMonth,
       dispatchTime: c.dispatchTime,
       workDays: c.workDays.map((w) => w.dayOfWeek),
-      organization: { timezone: c.organization.timezone },
+      organization: { timezone: c.organization.timezone, slug: c.organization.slug },
       departments: c.configDepartments.map((cd) => ({
         id: cd.department.id,
         workStartTime: cd.department.workStartTime,
