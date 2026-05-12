@@ -21,6 +21,7 @@ const JOB_LOG_FILTER_FIELDS: FilterField[] = [
       { value: "stripe-webhook-retry",            label: "Reprocessamento de Webhooks" },
       { value: "health-survey-response-token-cleanup",   label: "Limpeza de Tokens de Resposta" },
       { value: "action-plan-suggestion-generator", label: "Gerador de Sugestões de Plano" },
+      { value: "organization-deletion-executor",  label: "Exclusão de Organizações" },
       { value: "send-message",                    label: "Envio de Mensagem" },
     ],
   },
