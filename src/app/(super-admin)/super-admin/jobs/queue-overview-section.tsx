@@ -49,6 +49,18 @@ const JOB_NAME_LABELS: Record<string, string> = {
   "send-message":                    "Envio de Mensagem",
 }
 
+const JOB_DESCRIPTIONS: Record<string, string> = {
+  "health-survey-dispatcher":             "Verifica quais pesquisas devem ser disparadas agora com base na frequência configurada, cria os tokens individuais por colaborador e envia as mensagens.",
+  "health-survey-adherence-checker":      "48h após cada disparo, calcula a taxa de adesão por setor. Se menos de 80% responderam, cria um alerta de baixa adesão.",
+  "health-survey-score-alert-detector":   "Analisa os scores de cada setor e cria alertas de queda de score, score baixo ou tendência negativa em 3 períodos consecutivos.",
+  "employee-unpause":                     "Reativa automaticamente colaboradores cujo período de pausa encerrou (pause_end_at ≤ hoje).",
+  "pgr-review-reminder":                  "30 dias antes da próxima revisão agendada do PGR, cria um alerta para lembrar o time de gerar o relatório.",
+  "stripe-webhook-retry":                 "Reprocessa eventos do Stripe que falharam na primeira tentativa e ainda não foram processados.",
+  "health-survey-response-token-cleanup": "Remove tokens de resposta de pesquisa que já expiraram e não foram utilizados, mantendo o banco limpo.",
+  "action-plan-suggestion-generator":     "Analisa as métricas de cada organização e gera sugestões automáticas de planos de ação com base em scores baixos e alertas recentes.",
+  "organization-deletion-executor":       "Exclui permanentemente as organizações que agendaram exclusão de conta e cujo prazo de carência de 30 dias já encerrou.",
+}
+
 function formatTimestamp(ts: number): string {
   return new Date(ts).toLocaleString("pt-BR", {
     day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit",
@@ -58,6 +70,43 @@ function formatTimestamp(ts: number): string {
 function formatDurationMs(ms: number): string {
   if (ms < 1_000) return `${ms}ms`
   return `${(ms / 1_000).toFixed(1)}s`
+}
+
+function getScheduledExecuteAt(job: LiveJobSummary): number | null {
+  if (job.status !== "delayed") return null
+  if (job.delay !== undefined && job.delay > 0) return job.timestamp + job.delay
+  const parts = job.id.split(":")
+  const last = parts[parts.length - 1]
+  if (last !== undefined) {
+    const ts = parseInt(last, 10)
+    if (!isNaN(ts) && ts > 1_000_000_000_000) return ts
+  }
+  return null
+}
+
+function describeCron(expression: string): string {
+  const parts = expression.trim().split(/\s+/)
+  if (parts.length !== 5) return expression
+  const [minute, hour, dayOfMonth, , dayOfWeek] = parts
+  if (minute === undefined || hour === undefined || dayOfMonth === undefined || dayOfWeek === undefined) return expression
+
+  if (minute.startsWith("*/") && hour === "*" && dayOfMonth === "*" && dayOfWeek === "*") {
+    const interval = parseInt(minute.replace("*/", ""), 10)
+    if (!isNaN(interval)) {
+      if (interval === 1) return "A cada minuto"
+      return `A cada ${interval} minutos`
+    }
+  }
+  if (minute === "0" && hour === "*" && dayOfMonth === "*" && dayOfWeek === "*") return "A cada hora"
+  if (hour === "*" || dayOfMonth !== "*" || dayOfWeek !== "*") return expression
+  const h = parseInt(hour, 10)
+  const m = parseInt(minute, 10)
+  if (!isNaN(h) && !isNaN(m)) {
+    const hStr = String(h).padStart(2, "0")
+    const mStr = String(m).padStart(2, "0")
+    return `Todos os dias às ${hStr}:${mStr}`
+  }
+  return expression
 }
 
 function LiveJobsTable({ jobs }: { jobs: LiveJobSummary[] }): React.ReactElement {
@@ -116,7 +165,11 @@ function LiveJobsTable({ jobs }: { jobs: LiveJobSummary[] }): React.ReactElement
                       {job.id}
                     </td>
                     <td className="px-3 py-2 font-mono text-[11px] text-muted-foreground truncate">
-                      {formatTimestamp(job.timestamp)}
+                      {(() => {
+                        const executeAt = getScheduledExecuteAt(job)
+                        if (executeAt !== null) return `executa ${formatTimestamp(executeAt)}`
+                        return formatTimestamp(job.timestamp)
+                      })()}
                     </td>
                     <td className="px-3 py-2 text-muted-foreground">
                       {job.attemptsMade}/{job.maxAttempts}
@@ -141,6 +194,12 @@ function LiveJobsTable({ jobs }: { jobs: LiveJobSummary[] }): React.ReactElement
                             <span className="font-semibold text-foreground">Adicionado em:</span>{" "}
                             {formatTimestamp(job.timestamp)}
                           </div>
+                          {getScheduledExecuteAt(job) !== null && (
+                            <div>
+                              <span className="font-semibold text-foreground">Executa em:</span>{" "}
+                              {formatTimestamp(getScheduledExecuteAt(job) as number)}
+                            </div>
+                          )}
                           {job.processedOn !== undefined && (
                             <div>
                               <span className="font-semibold text-foreground">Processando desde:</span>{" "}
@@ -247,18 +306,27 @@ export function QueueOverviewSection({ queue }: Props): React.ReactElement {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Agendamentos recorrentes</CardTitle>
+            <p className="text-xs text-muted-foreground/70 mt-1">
+              Jobs automáticos registrados no Redis. Cada entrada mostra a frequência de execução e o próximo disparo previsto no fuso UTC-3.
+            </p>
           </CardHeader>
           <CardContent className="pt-0">
             <div className="space-y-0">
               {queue.repeatableJobs.map((r) => (
-                <div key={r.key} className="flex items-center gap-3 py-2 text-sm" style={{ borderBottom: "1px solid var(--border)" }}>
-                  <span className="font-mono font-medium w-48">{JOB_NAME_LABELS[r.name] ?? r.name}</span>
-                  <span className="text-muted-foreground font-mono text-xs">{r.cron}</span>
-                  {r.nextRunAt !== null && (
-                    <span className="text-muted-foreground text-xs ml-auto">
-                      próximo: {formatTimestamp(r.nextRunAt)}
-                    </span>
+                <div key={r.key} className="py-2.5" style={{ borderBottom: "1px solid var(--border)" }}>
+                  <span className="block font-medium text-sm">{JOB_NAME_LABELS[r.name] ?? r.name}</span>
+                  {JOB_DESCRIPTIONS[r.name] !== undefined && (
+                    <span className="block text-xs text-muted-foreground/80 mt-0.5 mb-1">{JOB_DESCRIPTIONS[r.name]}</span>
                   )}
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-muted-foreground text-xs">{describeCron(r.cron)}</span>
+                    <span className="font-mono text-[10px] text-muted-foreground/60">({r.cron})</span>
+                    {r.nextRunAt !== null && (
+                      <span className="text-muted-foreground text-xs ml-auto">
+                        próximo: {formatTimestamp(r.nextRunAt)}
+                      </span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
