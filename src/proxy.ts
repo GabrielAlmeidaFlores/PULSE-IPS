@@ -41,7 +41,7 @@ const TENANT_PATHS = [
 
 const SUPER_ADMIN_PREFIX = "/super-admin"
 const SUPER_ADMIN_API_PREFIX = "/api/super-admin"
-const SKIP_LOG_PREFIXES = ["/api/internal/", "/api/jobs/", "/api/auth/", "/_next/", "/favicon"]
+const SKIP_LOG_PREFIXES = ["/api/internal/", "/api/jobs/", "/api/auth/", "/api/health", "/_next/", "/favicon"]
 
 function isPublicPath(pathname: string): boolean {
   if (pathname === "/") return true

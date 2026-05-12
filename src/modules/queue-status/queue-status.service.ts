@@ -48,14 +48,16 @@ async function buildQueueStatus(queue: Queue, queueName: string): Promise<QueueS
     endDate: r.endDate ?? null,
   })
 
+  const defined = <T>(arr: (T | null | undefined)[]): T[] => arr.filter((x): x is T => x !== null && x !== undefined)
+
   return {
     name: queueName,
     counts: typedCounts,
-    activeJobs: activeJobs.map(toSummary("active")),
-    waitingJobs: waitingJobs.map(toSummary("waiting")),
-    delayedJobs: delayedJobs.map(toSummary("delayed")),
-    failedJobs: failedJobs.map(toSummary("failed")),
-    repeatableJobs: repeatableJobs.map(toRepeatableInfo),
+    activeJobs: defined(activeJobs).map(toSummary("active")),
+    waitingJobs: defined(waitingJobs).map(toSummary("waiting")),
+    delayedJobs: defined(delayedJobs).map(toSummary("delayed")),
+    failedJobs: defined(failedJobs).map(toSummary("failed")),
+    repeatableJobs: defined(repeatableJobs).map(toRepeatableInfo),
   }
 }
 
