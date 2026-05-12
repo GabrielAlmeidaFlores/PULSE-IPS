@@ -2367,7 +2367,7 @@ export interface IBillingService {
 ```
 
 **Implementação atual:** `StripeAdapter`  
-**Variáveis necessárias:** `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
+**Variáveis necessárias:** `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
 
 > **Regra:** os campos do banco usam `external_product_id` e `external_price_id` — o prefixo `external_` abstrai o provedor. O Stripe é mencionado apenas nos adapters e variáveis de ambiente.
 
@@ -3400,7 +3400,6 @@ EMAIL_FROM=noreply@pulse.com
 BILLING_PROVIDER=stripe
 STRIPE_SECRET_KEY=sk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
 
 # Messaging
 MESSAGING_PROVIDER=smsbarato

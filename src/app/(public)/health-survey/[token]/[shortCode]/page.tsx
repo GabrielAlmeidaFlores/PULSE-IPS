@@ -2,17 +2,17 @@ import { notFound, redirect } from "next/navigation"
 import { resolveHealthSurveyShortCode } from "@/modules/health-surveys/health-survey-response.service"
 
 interface Props {
-  params: Promise<{ orgSlug: string; shortCode: string }>
+  params: Promise<{ token: string; shortCode: string }>
 }
 
 export default async function HealthSurveyShortCodePage({ params }: Props): Promise<never> {
-  const { orgSlug, shortCode } = await params
+  const { token: orgSlug, shortCode } = await params
 
-  const token = await resolveHealthSurveyShortCode(orgSlug, shortCode)
+  const resolvedToken = await resolveHealthSurveyShortCode(orgSlug, shortCode)
 
-  if (!token) {
+  if (!resolvedToken) {
     notFound()
   }
 
-  redirect(`/health-survey/${token}`)
+  redirect(`/health-survey/${resolvedToken}`)
 }

@@ -413,7 +413,6 @@ RESEND_API_KEY="re_..."
 BILLING_PROVIDER="stripe"
 STRIPE_SECRET_KEY="sk_test_..."
 STRIPE_WEBHOOK_SECRET="whsec_..."
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_test_..."
 
 # ─── WhatsApp do consultor (exibido na landing page) ───────────────
 NEXT_PUBLIC_CONSULTANT_WHATSAPP="5511999999999"

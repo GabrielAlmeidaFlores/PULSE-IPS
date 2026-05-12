@@ -59,7 +59,7 @@ jobs:
         run: |
           ENVS='${{ vars.PRD_ENVS }}'
           echo "app_url=$(echo "$ENVS" | grep -E '^NEXT_PUBLIC_APP_URL=' | head -1 | cut -d= -f2- | tr -d '"')" >> $GITHUB_OUTPUT
-          echo "stripe_key=$(echo "$ENVS" | grep -E '^NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=' | head -1 | cut -d= -f2- | tr -d '"')" >> $GITHUB_OUTPUT
+          echo "app_version=$(echo "$ENVS" | grep -E '^NEXT_PUBLIC_APP_VERSION=' | head -1 | cut -d= -f2- | tr -d '"')" >> $GITHUB_OUTPUT
           echo "whatsapp=$(echo "$ENVS" | grep -E '^NEXT_PUBLIC_CONSULTANT_WHATSAPP=' | head -1 | cut -d= -f2- | tr -d '"')" >> $GITHUB_OUTPUT
 
       - name: Configure AWS credentials
@@ -84,7 +84,7 @@ jobs:
           push: true
           build-args: |
             NEXT_PUBLIC_APP_URL=${{ steps.build-args.outputs.app_url }}
-            NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ steps.build-args.outputs.stripe_key }}
+            NEXT_PUBLIC_APP_VERSION=${{ steps.build-args.outputs.app_version }}
             NEXT_PUBLIC_CONSULTANT_WHATSAPP=${{ steps.build-args.outputs.whatsapp }}
           tags: |
             ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_APP_REPO }}:latest
