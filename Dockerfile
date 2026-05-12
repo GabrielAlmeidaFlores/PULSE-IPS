@@ -45,8 +45,7 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/assets ./assets
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/scripts ./scripts
-RUN node scripts/fix-turbopack-externals.js
+
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
