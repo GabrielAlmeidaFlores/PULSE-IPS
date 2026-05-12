@@ -37,6 +37,10 @@ function buildMessageFromTemplate(template: string, employeeName: string, survey
   return template.replace("{nome}", employeeName).replace("{link}", surveyUrl)
 }
 
+function generateHealthSurveyTokenShortCode(): string {
+  return Math.floor(1000000 + Math.random() * 9000000).toString()
+}
+
 function getDayOfWeekInTimezone(timezone: string): number {
   const dayName = new Intl.DateTimeFormat("en-US", { timeZone: timezone, weekday: "short" }).format(new Date())
   const dayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
@@ -92,6 +96,7 @@ function isAtDispatchTime(dispatchTime: string, timezone: string): boolean {
 async function sendDispatchTokensAndMessagesForDepartment(
   dispatchId: string,
   tenantId: string,
+  orgSlug: string,
   departmentId: string,
   eligibleEmployees: HealthSurveyDispatchEmployee[],
   department: { workStartTime: string; workEndTime: string },
@@ -109,7 +114,9 @@ async function sendDispatchTokensAndMessagesForDepartment(
   const respondedEmployeeIds = new Set(existingTokens.filter((t) => t.usedAt !== null).map((t) => t.employeeId))
   const now = new Date()
   const existingUnusedTokenMap = new Map(
-    existingTokens.filter((t) => t.usedAt === null && t.expiresAt > now).map((t) => [t.employeeId, t.token]),
+    existingTokens
+      .filter((t) => t.usedAt === null && t.expiresAt > now)
+      .map((t) => [t.employeeId, { token: t.token, shortCode: t.shortCode }]),
   )
 
   const toSendEmployees = dispatchTargetEmployees.filter((e) => !respondedEmployeeIds.has(e.id))
@@ -121,12 +128,13 @@ async function sendDispatchTokensAndMessagesForDepartment(
       dispatchId,
       employeeId: emp.id,
       token: randomUUID(),
+      shortCode: generateHealthSurveyTokenShortCode(),
       expiresAt: addHours(new Date(), 48),
       workStartTime: emp.workStartTime ?? department.workStartTime,
       workEndTime: emp.workEndTime ?? department.workEndTime,
     }))
 
-  const newTokenMap = new Map(newTokenInputs.map((t) => [t.employeeId, t.token]))
+  const newTokenMap = new Map(newTokenInputs.map((t) => [t.employeeId, { token: t.token, shortCode: t.shortCode }]))
 
   if (newTokenInputs.length > 0) {
     await createHealthSurveyTokens(newTokenInputs)
@@ -136,9 +144,11 @@ async function sendDispatchTokensAndMessagesForDepartment(
     const messageQueue = getMessageQueue()
     const bulkJobs = toSendEmployees
       .map((emp) => {
-        const tokenValue = existingUnusedTokenMap.get(emp.id) ?? newTokenMap.get(emp.id)
-        if (!tokenValue) return null
-        const healthSurveyUrl = `${env.NEXT_PUBLIC_APP_URL}/health-survey/${tokenValue}`
+        const tokenEntry = existingUnusedTokenMap.get(emp.id) ?? newTokenMap.get(emp.id)
+        if (!tokenEntry) return null
+        const healthSurveyUrl = tokenEntry.shortCode
+          ? `${env.NEXT_PUBLIC_APP_URL}/health-survey/${orgSlug}/${tokenEntry.shortCode}`
+          : `${env.NEXT_PUBLIC_APP_URL}/health-survey/${tokenEntry.token}`
         return {
           name: "send-message" as const,
           data: {
@@ -148,8 +158,6 @@ async function sendDispatchTokensAndMessagesForDepartment(
             employeeId: emp.id,
             provider: env.MESSAGING_PROVIDER,
             type: "survey_dispatch" as const,
-            templateName: env.WHATSAPP_SURVEY_TEMPLATE_NAME,
-            templateVariables: [emp.name, healthSurveyUrl],
           },
         }
       })
@@ -167,6 +175,7 @@ async function sendDispatchTokensAndMessagesForDepartment(
 async function fireDispatch(
   configId: string,
   tenantId: string,
+  orgSlug: string,
   departments: HealthSurveyDispatchDepartment[],
   timezone: string,
 ): Promise<boolean> {
@@ -191,6 +200,7 @@ async function fireDispatch(
     await sendDispatchTokensAndMessagesForDepartment(
       dispatch.id,
       tenantId,
+      orgSlug,
       dept.id,
       dept.employees,
       dept,
@@ -211,6 +221,7 @@ export async function runHealthSurveyDispatcher(): Promise<{ dispatched: number;
   for (const dispatch of pendingDispatches) {
     const config = dispatch.healthSurveyConfiguration
     const timezone = dispatch.organization.timezone
+    const orgSlug = dispatch.organization.slug
 
     try {
       const today = getDayOfWeekInTimezone(timezone)
@@ -239,6 +250,7 @@ export async function runHealthSurveyDispatcher(): Promise<{ dispatched: number;
           await sendDispatchTokensAndMessagesForDepartment(
             dispatch.id,
             dispatch.tenantId,
+            orgSlug,
             dept.id,
             eligibleEmployees,
             { workStartTime: dept.workStartTime, workEndTime: dept.workEndTime },
@@ -282,6 +294,7 @@ export async function runHealthSurveyAutoDispatchScheduler(): Promise<{ triggere
       const fired = await fireDispatch(
         config.id,
         config.tenantId,
+        config.organization.slug,
         config.departments,
         timezone,
       )

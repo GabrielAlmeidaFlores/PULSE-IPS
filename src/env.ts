@@ -12,34 +12,13 @@ export const env = createEnv({
     STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_").optional(),
 
     MESSAGING_PROVIDER: z
-      .enum(["twilio_message", "whatsapp_cloud", "smsdev", "smsbarato", "console"])
+      .enum(["smsbarato", "console"])
       .default("console"),
-    TWILIO_ACCOUNT_SID: z.string().startsWith("AC").optional(),
-    TWILIO_AUTH_TOKEN: z.string().min(1).optional(),
-    TWILIO_FROM_NUMBER: z
-      .string()
-      .refine((v) => v.startsWith("+") || v.startsWith("MG"), {
-        message:
-          "TWILIO_FROM_NUMBER deve ser um número de telefone (+...) ou Messaging Service SID (MG...)",
-      })
-      .optional(),
-    SMSDEV_API_KEY: z.string().min(1).optional(),
     SMSBARATO_API_KEY: z.string().min(1).optional(),
     SMSBARATO_BASE_URL: z
       .string()
       .url()
       .default("https://sistema81.smsbarato.com.br/send"),
-    WHATSAPP_PHONE_NUMBER_ID: z.string().min(1).optional(),
-    WHATSAPP_ACCESS_TOKEN: z.string().min(1).optional(),
-    WHATSAPP_API_VERSION: z.string().default("v20.0"),
-    WHATSAPP_API_BASE_URL: z
-      .string()
-      .url()
-      .default("https://graph.facebook.com"),
-    WHATSAPP_WEBHOOK_VERIFY_TOKEN: z.string().min(1).optional(),
-    WHATSAPP_APP_SECRET: z.string().min(1).optional(),
-    WHATSAPP_TEMPLATE_LANGUAGE: z.string().default("pt_BR"),
-    WHATSAPP_SURVEY_TEMPLATE_NAME: z.string().default("pulse_survey_dispatch"),
 
     SURVEY_MESSAGE_TEMPLATE: z
       .string()
@@ -108,25 +87,10 @@ export const env = createEnv({
     STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
 
     MESSAGING_PROVIDER: process.env.MESSAGING_PROVIDER ?? "console",
-    TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID,
-    TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN,
-    TWILIO_FROM_NUMBER: process.env.TWILIO_FROM_NUMBER,
-    SMSDEV_API_KEY: process.env.SMSDEV_API_KEY,
     SMSBARATO_API_KEY: process.env.SMSBARATO_API_KEY,
     SMSBARATO_BASE_URL:
       process.env.SMSBARATO_BASE_URL ??
       "https://sistema81.smsbarato.com.br/send",
-    WHATSAPP_PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID,
-    WHATSAPP_ACCESS_TOKEN: process.env.WHATSAPP_ACCESS_TOKEN,
-    WHATSAPP_API_VERSION: process.env.WHATSAPP_API_VERSION ?? "v20.0",
-    WHATSAPP_API_BASE_URL:
-      process.env.WHATSAPP_API_BASE_URL ?? "https://graph.facebook.com",
-    WHATSAPP_WEBHOOK_VERIFY_TOKEN: process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN,
-    WHATSAPP_APP_SECRET: process.env.WHATSAPP_APP_SECRET,
-    WHATSAPP_TEMPLATE_LANGUAGE:
-      process.env.WHATSAPP_TEMPLATE_LANGUAGE ?? "pt_BR",
-    WHATSAPP_SURVEY_TEMPLATE_NAME:
-      process.env.WHATSAPP_SURVEY_TEMPLATE_NAME ?? "pulse_survey_dispatch",
 
     SURVEY_MESSAGE_TEMPLATE: process.env.SURVEY_MESSAGE_TEMPLATE,
 

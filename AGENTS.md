@@ -233,7 +233,6 @@ Todo o projeto usa `"strict": true` mais flags adicionais (ver seção 9). `any`
 | `@react-pdf/renderer` | Geração de PDFs (relatório PGR) |
 | `stripe` | SDK Stripe (billing) |
 | `resend` | SDK Resend (e-mail) |
-| `twilio` | SDK Twilio (mensagem) |
 | `bullmq` + `ioredis` | Fila de jobs com Redis |
 | `@base-ui/react` | Componentes primitivos de UI (Select usa Base UI, não Radix) |
 | `pino` + `pino-pretty` | Logger estruturado para a aplicação principal (`src/libs/logger.ts`) |
@@ -255,6 +254,7 @@ src/
 ├── app/                                    # Next.js App Router
 │   ├── (public)/                           # Rotas públicas (sem autenticação)
 │   │   ├── health-survey/[token]/page.tsx         # Formulário de pesquisa + Consent Gate inline (sem login)
+│   │   ├── health-survey/[orgSlug]/[shortCode]/page.tsx  # Pretty URL — alias para /health-survey/[token]
 │   │   └── report/[orgSlug]/page.tsx       # Canal de relato anônimo
 │   ├── platform-terms/page.tsx             # Termos de Uso — página pública standalone (linked no footer)
 │   ├── privacy-policy/page.tsx             # Política de Privacidade — página pública standalone
@@ -342,7 +342,6 @@ src/
 │   │
 │   └── api/
 │       ├── webhooks/stripe/route.ts        # POST — recebe eventos Stripe (assinado)
-│       ├── webhooks/meta-cloud/route.ts    # GET (verificação) + POST (eventos) Meta Cloud API
 │       ├── jobs/[job-name]/route.ts        # Manual trigger de jobs (x-cron-secret)
 │       ├── auth/logout/route.ts            # GET/POST — logout via rota de API
 │       ├── health/route.ts                 # GET — health check do banco de dados
@@ -447,8 +446,7 @@ src/
 │   ├── integrations/
 │   │   ├── messaging/
 │   │   │   ├── messaging.interface.ts      # IMessagingService
-│   │   │   ├── twilio-message.adapter.ts   # ✅ Implementação Twilio
-│   │   │   ├── whatsapp.adapter.ts         # ✅ Implementação WhatsApp Cloud API
+│   │   │   ├── smsbarato.adapter.ts        # ✅ Implementação SMS Barato
 │   │   │   └── console-message.adapter.ts  # Desenvolvimento local
 │   │   ├── email/
 │   │   │   ├── email.interface.ts          # IEmailService
@@ -989,6 +987,7 @@ Após o uso, `used_at` é preenchido, mas **nenhum vínculo** é criado entre to
 | dispatch_id | uuid | NOT NULL, FK → health_survey_dispatches.id |
 | employee_id | uuid | NOT NULL, FK → employees.id |
 | token | varchar(255) | NOT NULL, UNIQUE |
+| short_code | varchar(7) | NULL, UNIQUE per `(tenant_id, short_code)` — código de 7 dígitos usado na pretty URL `/health-survey/[orgSlug]/[shortCode]`. Gerado apenas para tokens criados via disparo de mensagem; NULL para tokens criados via link assinado. |
 | used_at | timestamptz | |
 | expires_at | timestamptz | NOT NULL — `dispatched_at + 48h` |
 | work_start_time | varchar(5) | NOT NULL — snapshot `"HH:MM"` no momento do disparo |
@@ -1192,7 +1191,7 @@ Registro de todas as mensagens enviadas. Fonte dos dados de métricas do Super A
 | tenant_id | uuid | NOT NULL, FK → organizations.id ON DELETE CASCADE |
 | employee_id | uuid | NULL — ID do colaborador destinatário (sem vínculo obrigatório para preservar o anonimato) |
 | type | varchar(30) | NOT NULL — `'survey_dispatch'` |
-| provider | varchar(50) | NOT NULL — nome do provedor utilizado (ex: `'whatsapp_cloud'`, `'twilio_message'`, `'smsdev'`, `'console'`) |
+| provider | varchar(50) | NOT NULL — nome do provedor utilizado (ex: `'smsbarato'`, `'console'`) |
 | external_id | varchar(255) | ID retornado pelo provedor |
 | status | varchar(20) | NOT NULL — `'sent'` \| `'failed'` |
 | sent_at | timestamptz | NOT NULL |
@@ -2085,9 +2084,8 @@ await messaging.send({ to: employee.phone, body: healthSurveyLink })
 // libs/integrations/index.ts
 export function getMessagingService(): IMessagingService {
   switch (env.MESSAGING_PROVIDER) {
-    case "whatsapp_cloud":  return new MetaCloudMessageAdapter()
-    case "twilio_message":  return new TwilioMessageAdapter()
-    default:                return new ConsoleMessageAdapter()
+    case "smsbarato":   return new SmsBaratoAdapter()
+    default:            return new ConsoleMessageAdapter()
   }
 }
 
@@ -2279,7 +2277,7 @@ O Super Admin **não possui** mecanismo de "login como organização". Não exis
 
 ## 13. Contratos de Integrações Externas
 
-> **Princípio:** nenhum service do domínio conhece a implementação concreta. Trocar de provedor exige apenas criar novo adapter e atualizar a variável `*_PROVIDER` no `.env`. Zero alteração em código de negócio. **Nomes de provedores externos (Stripe, Twilio, Resend) nunca aparecem na UI** — apenas nos adapters e variáveis de ambiente.
+> **Princípio:** nenhum service do domínio conhece a implementação concreta. Trocar de provedor exige apenas criar novo adapter e atualizar a variável `*_PROVIDER` no `.env`. Zero alteração em código de negócio. **Nomes de provedores externos (Stripe, Resend) nunca aparecem na UI** — apenas nos adapters e variáveis de ambiente.
 
 ### Messaging
 
@@ -2291,16 +2289,10 @@ export interface IMessagingService {
 }
 ```
 
-**Implementação Twilio:** `MESSAGING_PROVIDER=twilio_message` → `TwilioMessageAdapter`  
-**Implementação Meta Cloud:** `MESSAGING_PROVIDER=whatsapp_cloud` → `MetaCloudMessageAdapter` ✅  
-**Implementação SMSDev:** `MESSAGING_PROVIDER=smsdev` → `SmsDevAdapter` ✅  
 **Implementação SMS Barato:** `MESSAGING_PROVIDER=smsbarato` → `SmsBaratoAdapter` ✅  
 **Desenvolvimento:** `MESSAGING_PROVIDER=console` → `ConsoleMessageAdapter` (imprime no terminal)  
-**Variáveis Twilio:** `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`  
-**Variáveis WhatsApp:** `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_API_VERSION` (default `"v20.0"`), `WHATSAPP_API_BASE_URL` (default `"https://graph.facebook.com"`)  
-**Variáveis SMSDev:** `SMSDEV_API_KEY` — chave de API gerada no painel SMSDev  
 **Variáveis SMS Barato:** `SMSBARATO_API_KEY` — chave de integração fornecida pelo suporte SMS Barato; `SMSBARATO_BASE_URL` (default `"https://sistema81.smsbarato.com.br/send"`) — endpoint da API  
-**Restrições SMS Barato:** texto máximo de 100 chars (sem contar a URL); acentos e quebras de linha removidos automaticamente pelo adapter; `dest` deve ser apenas dígitos com DDD (sem `+55`)
+**Restrições SMS Barato:** texto máximo de 150 chars (sem contar a URL); acentos e quebras de linha removidos automaticamente pelo adapter; `dest` deve ser apenas dígitos com DDD (sem `+55`)
 
 > **Regra de terminologia:** os termos "SMS", "WhatsApp" e "CPF" **nunca devem aparecer em código, banco de dados ou UI**. Substituições obrigatórias: SMS/WhatsApp → `mensagem`/`message`; CPF → `document`/`documento`. Essa proibição se aplica a nomes de arquivos, classes, funções, variáveis, campos de banco, labels de UI e mensagens de erro.
 ### Email
@@ -3147,13 +3139,20 @@ Busca todas as configurações ativas com billing ativo (findAllTenantsActiveHea
           → Para cada setor com employees elegíveis: sendDispatchTokensAndMessagesForDepartment
               → Filtra colaboradores elegíveis por consentimento
               → Busca tokens existentes (link assinado)
-              → Cria novos tokens para colaboradores sem token válido (expires_at = +48h)
+              → Cria novos tokens para colaboradores sem token válido (expires_at = +48h, shortCode = 7 dígitos)
               → upsertHealthSurveyDeptDispatch(dispatchId, deptId, totalRecipients)
               → [GATE FEATURE] hasTenantPlanFeature(tenantId, "messaging")
                   ├─ SEM feature: tokens criados, nenhuma mensagem enviada → RH usa link assinado
-                  └─ COM feature: messagingService.sendBulk → Registra em message_logs
+                  └─ COM feature: messagingService.sendBulk com pretty URL → Registra em message_logs
+                       URL enviada: /health-survey/[orgSlug]/[shortCode] (fallback: /health-survey/[uuid])
           → markHealthSurveyDispatchDispatched(tenantId, dispatchId) — status='available', dispatchedAt=now
 ```
+
+**Pretty URL para tokens de disparo:** todo token criado por `sendDispatchTokensAndMessagesForDepartment` recebe um `short_code` de 7 dígitos numéricos gerado aleatoriamente (único por tenant). A URL enviada nas mensagens é `/health-survey/[orgSlug]/[shortCode]` — o colaborador a recebe via mensagem de texto. A rota `(public)/health-survey/[orgSlug]/[shortCode]/page.tsx` faz lookup via `resolveHealthSurveyShortCode(orgSlug, shortCode)` e redireciona para `/health-survey/[token]`. O `orgSlug` na URL não é decorativo — é usado na query para isolar o lookup ao tenant correto.
+
+Tokens criados via link assinado (`unlockHealthSurveyViaIdentifier`) **não recebem `shortCode`** — são usados internamente e o colaborador nunca vê a UUID diretamente.
+
+**Colisão de short code:** a unicidade é garantida pelo constraint `(tenant_id, short_code)` no banco. Com 9 milhões de valores possíveis e tokens com vida útil de 48h, a probabilidade de colisão é praticamente nula (< 0.01% com 1000 tokens ativos simultâneos). Em caso de colisão, a transação do dispatch falha.
 
 **Fluxo 2 — `runHealthSurveyDispatcher` (processamento de dispatches manuais):**
 
@@ -3404,30 +3403,12 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
 
 # Messaging
-MESSAGING_PROVIDER=twilio_message
-TWILIO_ACCOUNT_SID=AC...
-TWILIO_AUTH_TOKEN=...
-TWILIO_FROM_NUMBER=+55...
-
-# SMSDev (quando MESSAGING_PROVIDER=smsdev)
-SMSDEV_API_KEY=DAK2ZW...                  # chave de API do painel SMSDev
-
-# SMS Barato (quando MESSAGING_PROVIDER=smsbarato)
+MESSAGING_PROVIDER=smsbarato
 SMSBARATO_API_KEY=...                     # chave de integração fornecida pelo suporte SMS Barato
 SMSBARATO_BASE_URL=https://sistema81.smsbarato.com.br/send  # endpoint da API (opcional — tem default)
 
 # Mensagem de pesquisa de saúde (template com {nome} e {link})
 SURVEY_MESSAGE_TEMPLATE="Oi {nome}! Tem 1 minutinho? Sua pesquisa de bem-estar está aqui: {link}"
-
-# WhatsApp Cloud API (quando MESSAGING_PROVIDER=whatsapp_cloud)
-WHATSAPP_PHONE_NUMBER_ID=...
-WHATSAPP_ACCESS_TOKEN=...
-WHATSAPP_API_VERSION=v20.0
-WHATSAPP_API_BASE_URL=https://graph.facebook.com
-WHATSAPP_WEBHOOK_VERIFY_TOKEN=...         # token de verificação do webhook Meta
-WHATSAPP_APP_SECRET=...                   # segredo do app Meta (validação de assinatura do webhook)
-WHATSAPP_TEMPLATE_LANGUAGE=pt_BR         # idioma do template (default: pt_BR)
-WHATSAPP_SURVEY_TEMPLATE_NAME=pulse_survey_dispatch  # nome do template aprovado no Meta
 
 # Storage
 STORAGE_PROVIDER=s3                       # "s3" | "console" (default: "console")
@@ -3909,7 +3890,7 @@ modules/*/types.ts         ← qualquer camada pode importar (tipos puros)
 | `src/app/**` | services, schemas, types, libs/utils, libs/auth | Prisma diretamente, repositories, SDKs externos |
 | `src/modules/*/service.ts` | repositories, libs/integrations (via factory), libs/auth, libs/utils, types, schemas | Prisma diretamente, SDKs externos diretamente |
 | `src/modules/*/repository.ts` | libs/db (Prisma), libs/utils, types | services, SDKs externos que não sejam o ORM |
-| `src/libs/integrations/**` | SDKs externos (Twilio, Resend, Stripe), libs/utils | Prisma, modules |
+| `src/libs/integrations/**` | SDKs externos (Resend, Stripe), libs/utils | Prisma, modules |
 | `src/modules/*/types.ts` | libs/utils/json, outros types | `@prisma/client`, SDKs externos |
 
 ### Exemplos práticos
@@ -3976,7 +3957,7 @@ export interface Employee {
 
 ## 27. Abstração de SDKs e ORM
 
-O código de domínio (services, types, schemas) deve ser completamente agnóstico ao provedor. Stripe, Twilio, Resend e Prisma são detalhes de infraestrutura — **nenhum tipo, constante ou referência desses SDKs pode aparecer fora da camada de adaptação**.
+O código de domínio (services, types, schemas) deve ser completamente agnóstico ao provedor. Stripe, Resend e Prisma são detalhes de infraestrutura — **nenhum tipo, constante ou referência desses SDKs pode aparecer fora da camada de adaptação**.
 
 ### Regras
 
@@ -3984,7 +3965,6 @@ O código de domínio (services, types, schemas) deve ser completamente agnósti
 |---|---|---|
 | `Prisma.*` (InputJsonValue, JsonValue, etc.) | `*.repository.ts` | Qualquer outro arquivo |
 | `Stripe.*` (Event, Subscription, Invoice, etc.) | `libs/integrations/billing/stripe.adapter.ts` | Qualquer outro arquivo |
-| `Twilio.*` | `libs/integrations/messaging/twilio-sms.adapter.ts` | Qualquer outro arquivo |
 | `Resend.*` | `libs/integrations/email/resend.adapter.ts` | Qualquer outro arquivo |
 | Constantes de URL/versão de SDK | `src/env.ts` ou o adapter correspondente | Qualquer outro arquivo |
 
@@ -4009,12 +3989,10 @@ Toda configuração de SDK (API version, base URL, region) vem do `.env` via `sr
 
 ```typescript
 // ❌ PROIBIDO — hardcoded no adapter
-const WHATSAPP_API_VERSION = "v20.0"
-const WHATSAPP_API_BASE = "https://graph.facebook.com"
+const SMSBARATO_BASE_URL = "https://sistema81.smsbarato.com.br/send"
 
 // ✅ CORRETO — via env
-const apiVersion = env.WHATSAPP_API_VERSION
-const apiBase = env.WHATSAPP_API_BASE_URL
+const baseUrl = env.SMSBARATO_BASE_URL
 ```
 
 ---

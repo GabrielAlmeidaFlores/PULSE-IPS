@@ -112,6 +112,7 @@ export interface CreateHealthSurveyTokenInput {
   dispatchId: string
   employeeId: string
   token: string
+  shortCode?: string
   expiresAt: Date
   workStartTime: string
   workEndTime: string

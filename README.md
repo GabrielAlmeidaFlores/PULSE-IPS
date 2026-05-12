@@ -304,15 +304,17 @@ REDIS_PORT="6379"
 CRON_SECRET="coloque-aqui-um-segredo-para-os-crons"
 
 # ─── Provedor de mensagens ─────────────────────────────────────────
-# Opções: console | twilio_message | whatsapp_cloud
+# Opções: console | smsbarato
 MESSAGING_PROVIDER="console"
-TWILIO_ACCOUNT_SID="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-TWILIO_AUTH_TOKEN="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-TWILIO_FROM_NUMBER="+5511999999999"
+
+# SMS Barato (quando MESSAGING_PROVIDER=smsbarato)
+SMSBARATO_API_KEY="sua-chave-smsbarato"
+SMSBARATO_BASE_URL="https://sistema81.smsbarato.com.br/send"
 
 # Template da mensagem enviada ao funcionário com o link da pesquisa
 # {nome} é substituído pelo primeiro nome do colaborador; {link} pelo link único da pesquisa
-SURVEY_MESSAGE_TEMPLATE="Oi, {nome}! 👋 Tudo bem por aí? Sua opinião faz a diferença para a gente 🌱 Quando tiver um momento, aqui está o seu formulário de bem-estar: {link}"
+# O link enviado usa a URL amigável /health-survey/[orgSlug]/[shortCode] quando disponível
+SURVEY_MESSAGE_TEMPLATE="Oi {nome}! Tem 1 minutinho? Sua pesquisa de bem-estar esta aqui: {link}"
 
 # ─── Provedor de e-mail ────────────────────────────────────────────
 # Opções: console | resend
@@ -354,8 +356,7 @@ NEXT_PUBLIC_EMAIL_LEGAL="legal@pulseips.com.br"
 | `MESSAGING_PROVIDER` | Descrição |
 |---|---|
 | `console` | Imprime no terminal (dev) |
-| `twilio_message` | Envia mensagem via Twilio |
-| `whatsapp_cloud` | Envia via WhatsApp Cloud API |
+| `smsbarato` | Envia via SMS Barato (gateway nacional) |
 
 ### E-mail
 
@@ -577,7 +578,7 @@ const color = healthIndexAccent(hi)          // → classe CSS de cor
 
 **Importação por planilha Excel:**
 1. Usuário faz upload de um arquivo `.xlsx` em `/employees/import`.
-2. O serviço detecta automaticamente os cabeçalhos da planilha (case-insensitive, suporta variações em português: "nome", "telefone", "whatsapp", "setor", etc.).
+2. O serviço detecta automaticamente os cabeçalhos da planilha (case-insensitive, suporta variações em português: "nome", "telefone", "mensagem", "setor", etc.).
 3. Cada linha é validada via Zod. O resultado é exibido em `/employees/import/preview` com duas listas: linhas válidas e inválidas (com motivo do erro).
 4. O usuário confirma o import. A action `importEmployeesAction` lê `tenantId` da sessão (nunca do cliente).
 5. Para cada linha válida: vincula ao departamento informado (por nome, case-insensitive) e cria o funcionário. Duplicatas de e-mail no mesmo tenant são ignoradas silenciosamente.
@@ -669,10 +670,22 @@ Fila pulse:messages
 O texto da mensagem é configurado via `SURVEY_MESSAGE_TEMPLATE` no `.env`. Os placeholders `{nome}` e `{link}` são substituídos automaticamente antes do envio:
 
 ```
-Oi, {nome}! 👋 Tudo bem por aí? Sua opinião faz a diferença para a gente 🌱 Quando tiver um momento, aqui está o seu formulário de bem-estar: {link}
+Oi {nome}! Tem 1 minutinho? Sua pesquisa de bem-estar esta aqui: {link}
 ```
 
-O link aponta para `/health-survey/[token]`, que também serve como ponto de entrada para o consentimento (ver seção 6).
+**URL da pesquisa na mensagem:**
+
+Cada token individual recebe um **shortcode numérico de 7 dígitos** único por tenant. A URL enviada usa o formato amigável:
+
+```
+https://app.pulseips.com.br/health-survey/[orgSlug]/[shortCode]
+# Exemplo: https://app.pulseips.com.br/health-survey/demo/3468762
+```
+
+A página `/health-survey/[orgSlug]/[shortCode]` resolve o shortcode para o token UUID e redireciona para `/health-survey/[token]`, onde o formulário é exibido. O `orgSlug` na URL é utilizado na query do banco (não é decorativo) — provê isolamento de tenant por design.
+
+- O shortcode só é gerado para tokens individuais (disparados por mensagem). Tokens do link assinado geral não recebem shortcode.
+- Se um token reutilizável já existente não tiver shortcode (tokens criados antes da migração), a URL cai de volta para `/health-survey/[uuid]`.
 
 ---
 
@@ -680,7 +693,7 @@ O link aponta para `/health-survey/[token]`, que também serve como ponto de ent
 
 O funcionário pode acessar o formulário de duas formas:
 
-**Via mensagem individual (padrão):** o link `/health-survey/[token]` é enviado por mensagem após o disparo. Cada link é de uso único e expira em 48h.
+**Via mensagem individual (padrão):** o link é enviado por mensagem após o disparo. Cada colaborador recebe uma URL amigável no formato `/health-survey/[orgSlug]/[shortCode]` (ex: `pulseips.com.br/health-survey/demo/3468762`), que redireciona internamente para o token UUID. Cada link é de uso único e expira em 48h.
 
 **Via link assinado (sem mensagem):** o RH distribui manualmente o link `/health-survey/link/[signedLinkToken]` para o setor (e-mail, intranet, grupo). Ao acessar, o colaborador informa seu telefone ou documento para identificação. O sistema cria ou reutiliza um token individual e redireciona para `/health-survey/[token]`. Esta modalidade também permite **responder antes do disparo ser processado** — o dispatcher identificará os pré-respondentes e os ignorará no envio de mensagens.
 

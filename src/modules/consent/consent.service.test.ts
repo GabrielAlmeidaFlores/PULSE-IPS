@@ -124,6 +124,7 @@ describe("optOutFromHealthSurveyToken — opt-out via health survey link", () =>
     dispatchId: "dispatch-1",
     employeeId: EMPLOYEE_ID,
     token: healthSurveyToken,
+    shortCode: null,
     usedAt: new Date(),
     expiresAt: new Date(),
     workStartTime: "09:00",
