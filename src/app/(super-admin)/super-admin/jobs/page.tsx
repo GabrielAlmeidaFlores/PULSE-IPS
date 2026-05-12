@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { LoadingSpinner } from "@/libs/design-system";
+import { logger } from "@/libs/logger";
 import { queueStatusService } from "@/modules/queue-status/queue-status.service";
 import { jobLogService } from "@/modules/job-logs/job-log.service";
 import type { JobLogFilters } from "@/modules/job-logs/job-log.types";
@@ -22,7 +23,8 @@ async function QueueStatusView(): Promise<React.ReactElement> {
 
   try {
     overview = await queueStatusService.getQueueOverview();
-  } catch {
+  } catch (err) {
+    logger.error({ err }, "Falha ao obter status das filas");
     return (
       <div className="rounded-md border border-status-warning-border bg-status-warning-subtle px-4 py-3 text-sm text-status-warning">
         Não foi possível conectar ao serviço de fila. Verifique se o serviço
