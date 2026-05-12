@@ -49,10 +49,14 @@ jobs:
     needs: [quality]
     timeout-minutes: 30
     outputs:
-      image-tag: ${{ github.sha }}
+      image-tag: ${{ steps.tag.outputs.value }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Generate image tag
+        id: tag
+        run: echo "value=$(date -u +'%Y.%m.%d.%H%M')" >> $GITHUB_OUTPUT
 
       - name: Extract public build args
         id: build-args
@@ -88,7 +92,7 @@ jobs:
             NEXT_PUBLIC_CONSULTANT_WHATSAPP=${{ steps.build-args.outputs.whatsapp }}
           tags: |
             ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_APP_REPO }}:latest
-            ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_APP_REPO }}:${{ github.sha }}
+            ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_APP_REPO }}:${{ steps.tag.outputs.value }}
           cache-from: type=gha,scope=app
           cache-to: type=gha,mode=max,scope=app
 
@@ -101,7 +105,7 @@ jobs:
           push: true
           tags: |
             ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_WORKER_REPO }}:latest
-            ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_WORKER_REPO }}:${{ github.sha }}
+            ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_WORKER_REPO }}:${{ steps.tag.outputs.value }}
           cache-from: type=gha,scope=worker
           cache-to: type=gha,mode=max,scope=worker
 
