@@ -35,7 +35,7 @@ const TERMS_V1 = {
 <p>A plataforma Pulse IPS disponibiliza os seguintes recursos:</p>
 <ul>
   <li>Gestão de cadastro de colaboradores e departamentos;</li>
-  <li>Envio e coleta de questionários de saúde ocupacional via SMS ou WhatsApp;</li>
+  <li>Envio e coleta de questionários de saúde ocupacional via mensagem de texto;</li>
   <li>Registro e gerenciamento de consentimento de participação dos colaboradores, conforme LGPD;</li>
   <li>Detecção e disparo automático de alertas de saúde com base nas respostas coletadas;</li>
   <li>Criação, acompanhamento e gestão de planos de ação corretivos e preventivos;</li>
@@ -158,7 +158,7 @@ const CONSENT_TERM = {
   <li><strong>Pulse Tecnologia em Saúde Ocupacional Ltda.</strong> — a operadora dos dados, que processa as informações exclusivamente conforme instruções da sua empresa e nos limites deste termo.</li>
 </ul>
 <h2>2. O que é o Pulse IPS e como ele funciona na prática</h2>
-<p>O Pulse IPS envia periodicamente uma pesquisa rápida para o seu celular, via link por SMS ou WhatsApp. Ela tem entre 5 e 10 perguntas e leva menos de 2 minutos para responder. As perguntas abordam temas como:</p>
+<p>O Pulse IPS envia periodicamente uma pesquisa rápida para o seu celular, via link por mensagem de texto. Ela tem entre 5 e 10 perguntas e leva menos de 2 minutos para responder. As perguntas abordam temas como:</p>
 <ul>
   <li>Como você está se sentindo no trabalho ultimamente;</li>
   <li>Se a carga de trabalho está equilibrada;</li>
@@ -322,7 +322,7 @@ const CONSENT_TERM = {
 <h2>14. Atualizações deste termo</h2>
 <p>Este termo pode ser atualizado para refletir mudanças no serviço ou na legislação. Quando isso ocorrer:</p>
 <ul>
-  <li>Você será notificado por SMS ou WhatsApp com um link para o novo termo;</li>
+  <li>Você será notificado por mensagem de texto com um link para o novo termo;</li>
   <li>A participação nas pesquisas ficará temporariamente suspensa até que você aceite ou recuse a nova versão;</li>
   <li>Recusar o novo termo tem o mesmo efeito que revogar o consentimento, sem qualquer penalidade.</li>
 </ul>
@@ -386,7 +386,7 @@ const PRIVACY_POLICY_V1 = {
 <p>Os dados são usados exclusivamente para:</p>
 <ul>
   <li>Operar e manter a plataforma e seus recursos;</li>
-  <li>Enviar pesquisas de bem-estar aos colaboradores via SMS ou WhatsApp;</li>
+  <li>Enviar pesquisas de bem-estar aos colaboradores via mensagem de texto;</li>
   <li>Calcular indicadores agregados e anônimos por setor para exibição ao RH;</li>
   <li>Gerar alertas automáticos quando indicadores caem abaixo de limiares configurados;</li>
   <li>Registrar e comprovar o consentimento de cada colaborador conforme exigência da LGPD;</li>
@@ -407,7 +407,7 @@ const PRIVACY_POLICY_V1 = {
 <p>Compartilhamos dados apenas nas seguintes situações:</p>
 <ul>
   <li><strong>Organizações contratantes:</strong> têm acesso exclusivamente a indicadores anônimos e agregados por setor — nunca a respostas individuais identificáveis;</li>
-  <li><strong>Parceiros de infraestrutura:</strong> provedores de hospedagem, banco de dados e envio de mensagens (SMS/WhatsApp), vinculados por contratos de processamento de dados (DPA) em conformidade com a LGPD;</li>
+  <li><strong>Parceiros de infraestrutura:</strong> provedores de hospedagem, banco de dados e envio de mensagens, vinculados por contratos de processamento de dados (DPA) em conformidade com a LGPD;</li>
   <li><strong>Autoridades competentes:</strong> quando exigido por lei, decisão judicial ou determinação de autoridade regulatória.</li>
 </ul>
 <h2>6. Segurança dos dados</h2>
@@ -573,7 +573,7 @@ const PLANS = [
   },
   {
     name: "Professional",
-    description: "Para empresas em expansão. Até 150 colaboradores, todos os recursos do Starter mais exportação de relatórios PGR em PDF e integrações via WhatsApp.",
+    description: "Para empresas em expansão. Até 150 colaboradores, todos os recursos do Starter mais exportação de relatórios PGR em PDF e envio de mensagens.",
     maxEmployees: 150,
     externalProductId: "prod_professional_pulse",
     features: ["action_plans", "documents", "anonymous_reports", "pgr", "messaging"] as const,

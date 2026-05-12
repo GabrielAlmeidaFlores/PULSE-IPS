@@ -1,7 +1,4 @@
 import { ConsoleMessageAdapter } from "@/libs/integrations/messaging/console-message.adapter"
-import { TwilioMessageAdapter } from "@/libs/integrations/messaging/twilio-message.adapter"
-import { MetaCloudMessageAdapter } from "@/libs/integrations/messaging/meta-cloud-message.adapter"
-import { SmsDevAdapter } from "@/libs/integrations/messaging/smsdev.adapter"
 import { SmsBaratoAdapter } from "@/libs/integrations/messaging/smsbarato.adapter"
 import { ConsoleEmailAdapter } from "@/libs/integrations/email/console-email.adapter"
 import { ResendAdapter } from "@/libs/integrations/email/resend.adapter"
@@ -17,12 +14,6 @@ import { env } from "@/env"
 
 export function getMessagingService(): IMessagingService {
   switch (env.MESSAGING_PROVIDER) {
-    case "whatsapp_cloud":
-      return new MetaCloudMessageAdapter()
-    case "twilio_message":
-      return new TwilioMessageAdapter()
-    case "smsdev":
-      return new SmsDevAdapter()
     case "smsbarato":
       return new SmsBaratoAdapter()
     default:

@@ -29,8 +29,6 @@ export interface SendMessageJobData {
   employeeId: string
   provider: string
   type: "survey_dispatch"
-  templateName?: string
-  templateVariables?: string[]
 }
 
 export function createJobQueue(): Queue<Record<string, never>, void, JobName> {
