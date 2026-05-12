@@ -263,7 +263,7 @@ Processa os jobs agendados. Concorrência: **1** (jobs rodam sequencialmente par
 
 | Job | Cron | Frequência | Descrição |
 |---|---|---|---|
-| `health-survey-dispatcher` | `*/15 * * * *` | A cada 15 min | Dispara pesquisas para funcionários ativos (automático e manual) |
+| `health-survey-dispatcher` | `*/5 * * * *` | A cada 5 min | Dispara pesquisas para funcionários ativos (automático e manual) |
 | `health-survey-adherence-checker` | `0 * * * *` | A cada hora | Verifica aderência de dispatches com mais de 48h |
 | `health-survey-score-alert-detector` | `0 3 * * *` | 03:00 diário | Detecta scores baixos, quedas e tendências negativas; gera alertas |
 | `employee-unpause` | `0 1 * * *` | 01:00 diário | Reverte status `paused → active` de funcionários com pausa vencida |
@@ -698,7 +698,7 @@ Este é o fluxo central da plataforma. Ocorre de duas formas:
 **Auto-disparo (automático via cron):**
 
 ```
-A cada 15 min → job health-survey-dispatcher
+A cada 5 min → job health-survey-dispatcher
   ├── runHealthSurveyAutoDispatchScheduler()
   │     ├── Busca configs ativas com employees (billing ativo)
   │     ├── [GATE 1] isAtDispatchTime → skip se não estamos na janela de 15 min do horário configurado
@@ -736,7 +736,7 @@ sendDispatchTokensAndMessages(dispatch)
 **Disparo manual:**
 1. Usuário clica em "Disparar agora" na tela `/health-surveys`.
 2. A action cria um `HealthSurveyDispatch` com `status = "scheduled"` e `scheduledAt = now()`.
-3. O job `health-survey-dispatcher` (próxima execução em até 15 min) o processa.
+3. O job `health-survey-dispatcher` (próxima execução em até 5 min) o processa.
 
 **Envio das mensagens (BullMQ):**
 
@@ -1127,7 +1127,7 @@ O super admin acessa `/super-admin` com credenciais separadas e tem controle tot
 **No disparo de pesquisas:**
 1. O worker verifica se o horário atual (no timezone da organização) corresponde à janela de 15 minutos a partir de `dispatchTime` (`isAtDispatchTime`).
 2. Verifica se o dia atual está nos dias configurados em `health_survey_config_work_days` e se o intervalo de frequência foi respeitado.
-3. Se fora do horário de disparo, o disparo é adiado para a próxima execução do job (a cada 15 min).
+3. Se fora do horário de disparo, o disparo é adiado para a próxima execução do job (a cada 5 min).
 
 **Na resposta do formulário:**
 - O token de resposta armazena o snapshot de `workStartTime`/`workEndTime` no momento do disparo.

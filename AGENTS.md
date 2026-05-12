@@ -2940,7 +2940,7 @@ Processos recorrentes gerenciados pelo **BullMQ** com Redis como broker.
 
 | Job | Frequência | Responsabilidade |
 |---|---|---|
-| `health-survey-dispatcher` | A cada 15min | Itera configurações ativas; verifica janela de horário de trabalho e intervalo de frequência (`shouldSkipDispatch`); cria dispatch + tokens + envia mensagens |
+| `health-survey-dispatcher` | A cada 5min | Itera configurações ativas; verifica janela de horário de trabalho e intervalo de frequência (`shouldSkipDispatch`); cria dispatch + tokens + envia mensagens |
 | `health-survey-adherence-checker` | A cada hora | 48h após cada dispatch, calcula taxa de adesão e cria alertas `low_adherence` |
 | `health-survey-score-alert-detector` | Diário (03:00) | Calcula quedas de score; cria alertas `low_score`, `score_drop` e `negative_trend` |
 | `employee-unpause` | Diário (01:00) | Reverte `status = 'active'` para colaboradores com `pause_end_at <= today` |
@@ -3118,7 +3118,7 @@ Employee cadastrado (sem convite separado)
 
 ### 20.3 Envio de pesquisa
 
-O job `health-survey-dispatcher` (a cada 15 min) executa em paralelo **duas funções distintas**:
+O job `health-survey-dispatcher` (a cada 5 min) executa em paralelo **duas funções distintas**:
 
 **Fluxo 1 — `runHealthSurveyAutoDispatchScheduler` (criação automática de dispatches):**
 

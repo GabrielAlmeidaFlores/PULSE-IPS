@@ -4,7 +4,7 @@ import { createLogger } from "@/libs/utils/logger"
 const logger = createLogger("register-schedules")
 
 const REPEAT_SCHEDULES: Record<JobName, string> = {
-  "health-survey-dispatcher":              "*/15 * * * *",
+  "health-survey-dispatcher":              "*/5 * * * *",
   "health-survey-adherence-checker":       "0 * * * *",
   "health-survey-score-alert-detector":    "0 3 * * *",
   "employee-unpause":               "0 1 * * *",

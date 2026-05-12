@@ -36,6 +36,7 @@ const JOB_NAME_LABELS: Record<string, string> = {
   "stripe-webhook-retry":            "Reprocessamento de Webhooks",
   "health-survey-response-token-cleanup":   "Limpeza de Tokens de Resposta",
   "action-plan-suggestion-generator": "Gerador de Sugestões de Plano",
+  "organization-deletion-executor":  "Exclusão de Organizações",
   "send-message":                    "Envio de Mensagem",
 }
 
