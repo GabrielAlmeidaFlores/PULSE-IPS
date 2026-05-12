@@ -13,7 +13,6 @@ Plataforma SaaS multi-tenant de gestão de saúde e bem-estar ocupacional voltad
 - [Comandos do banco de dados](#comandos-do-banco-de-dados)
 - [Seed](#seed)
 - [Workers e filas](#workers-e-filas)
-- [Jobs agendados (Cron)](#jobs-agendados-cron)
 - [Variáveis de ambiente](#variáveis-de-ambiente)
 - [Provedores de integração](#provedores-de-integração)
 - [Arquitetura do projeto](#arquitetura-do-projeto)
@@ -206,73 +205,160 @@ O seed é **idempotente via upsert**: se os dados já existirem, o conteúdo é 
 
 ## Workers e filas
 
-A plataforma usa **BullMQ** com Redis para processar jobs assíncronos. Existem duas filas:
+A plataforma usa **BullMQ** com Redis para processar jobs assíncronos. Existem dois processos distintos e três componentes principais:
 
-### Fila de jobs (`pulse:jobs`)
+```
+┌─────────────────────────────────────────────────────────┐
+│                        Redis                            │
+│  • Armazena schedules (crons)                          │
+│  • Armazena a fila de jobs pendentes                   │
+│  • Armazena a fila de mensagens pendentes              │
+└──────────────────┬──────────────────────────────────────┘
+                   │
+       ┌───────────┴────────────┐
+       ▼                        ▼
+┌──────────────┐      ┌─────────────────────────────────┐
+│  register-   │      │         job-worker              │
+│  schedules   │      │                                 │
+│              │      │  • Scheduler embutido BullMQ    │
+│  Roda 1x     │      │    (polling no Redis ~1s)        │
+│  no startup  │      │  • Coloca jobs na fila quando   │
+│  e morre     │      │    o horário chega              │
+│              │      │  • Consome e executa os jobs    │
+└──────────────┘      │  • Processa fila de mensagens   │
+                      └─────────────────────────────────┘
+```
 
-Processa os jobs agendados pelo cron. Cada job é identificado por nome:
+### Como funciona o ciclo completo
 
-| Job | Descrição |
-|---|---|
-| `health-survey-dispatcher` | Dispara pesquisas para funcionários ativos (automático e manual) |
-| `health-survey-adherence-checker` | Verifica aderência de dispatches com mais de 48h |
-| `health-survey-score-alert-detector` | Detecta scores baixos, quedas, tendências negativas e consentimentos expirados; gera alertas `low_score`, `score_drop`, `negative_trend` e `consent_expired` |
-| `employee-unpause` | Despausa funcionários após o período de pausa expirar |
-| `pgr-review-reminder` | Cria alerta de revisão do PGR quando vence em até 30 dias |
-| `stripe-webhook-retry` | Reprocessa webhooks do Stripe que falharam |
-| `health-survey-response-token-cleanup` | Remove tokens de resposta expirados e não utilizados |
-| `action-plan-suggestion-generator` | Gera sugestões de plano de ação com base em alertas ativos e dados da plataforma |
-| `organization-deletion-executor` | Exclui permanentemente organizações com exclusão agendada cuja data já expirou |
+**1. Registro dos schedules (`register-schedules.ts`)**
 
-### Fila de mensagens (`pulse:messages`)
+Ao iniciar, o script conecta no Redis, chama `upsertJobScheduler` para cada um dos 9 jobs com seu respectivo cron, fecha a conexão e termina. É **idempotente** — rodar múltiplas vezes apenas atualiza os schedules existentes, nunca duplica.
 
-Processa o envio de cada mensagem individualmente para o funcionário. Cada item da fila contém: `to` (telefone), `body` (texto), `tenantId`, `employeeId`, `provider` e `type`.
+```bash
+yarn worker:schedules  # roda 1x e encerra
+```
+
+**2. O worker assume tudo a partir daí (`job-worker.ts`)**
+
+O `job-worker.ts` fica em execução contínua e tem **duas responsabilidades simultâneas**:
+
+- **Scheduler interno:** o BullMQ verifica o Redis periodicamente (~1s). Quando o horário de um schedule chega, o próprio BullMQ insere o job na fila e agenda a próxima execução automaticamente. Nenhum processo externo é necessário.
+- **Consumer:** assim que um job aparece na fila, o worker pega, executa e registra o resultado em `job_logs`.
+
+```
+Redis: "health-survey-dispatcher → próxima execução em 09:15"
+  │
+  └─ 09:15 chega
+       └─ BullMQ (dentro do worker) insere job na fila pulse:jobs
+            └─ worker pega o job e executa
+                 └─ agenda próxima execução: 09:30
+```
+
+### Filas
+
+#### Fila de jobs (`pulse-jobs`)
+
+Processa os jobs agendados. Concorrência: **1** (jobs rodam sequencialmente para evitar condições de corrida entre tenants).
+
+| Job | Cron | Frequência | Descrição |
+|---|---|---|---|
+| `health-survey-dispatcher` | `*/15 * * * *` | A cada 15 min | Dispara pesquisas para funcionários ativos (automático e manual) |
+| `health-survey-adherence-checker` | `0 * * * *` | A cada hora | Verifica aderência de dispatches com mais de 48h |
+| `health-survey-score-alert-detector` | `0 3 * * *` | 03:00 diário | Detecta scores baixos, quedas e tendências negativas; gera alertas |
+| `employee-unpause` | `0 1 * * *` | 01:00 diário | Reverte status `paused → active` de funcionários com pausa vencida |
+| `pgr-review-reminder` | `0 8 * * *` | 08:00 diário | Cria alerta de revisão do PGR quando vence em até 30 dias |
+| `stripe-webhook-retry` | `0 * * * *` | A cada hora | Reprocessa webhooks do Stripe que falharam |
+| `health-survey-response-token-cleanup` | `0 2 * * *` | 02:00 diário | Remove tokens de resposta expirados e não utilizados |
+| `action-plan-suggestion-generator` | `0 6 * * *` | 06:00 diário | Gera sugestões de plano de ação com base em métricas de cada tenant |
+| `organization-deletion-executor` | `30 3 * * *` | 03:30 diário | Exclui permanentemente organizações com exclusão agendada vencida |
+
+#### Fila de mensagens (`pulse-messages`)
+
+Processa o envio de mensagens individualmente. Concorrência: **10** (10 mensagens simultâneas). Cada item contém: `to`, `body`, `tenantId`, `employeeId`, `provider` e `type`. Retentativas automáticas: 3x com backoff exponencial de 5s.
 
 ### Iniciando os workers
 
 ```bash
-# Worker principal (processa ambas as filas)
-yarn worker:dev
-
-# Registrar os schedules no Redis (executar uma vez ao iniciar)
+# 1. Registrar schedules no Redis (apenas uma vez por ambiente)
 yarn worker:schedules
+
+# 2. Iniciar o worker (fica rodando continuamente)
+yarn worker:dev
 ```
 
-### Schedules (frequência dos jobs)
-
-| Job | Cron | Frequência |
-|---|---|---|
-| `health-survey-dispatcher` | `*/15 * * * *` | A cada 15 minutos |
-| `health-survey-adherence-checker` | `0 * * * *` | A cada hora |
-| `health-survey-score-alert-detector` | `0 3 * * *` | Diariamente às 03:00 |
-| `employee-unpause` | `0 1 * * *` | Diariamente às 01:00 |
-| `pgr-review-reminder` | `0 8 * * *` | Diariamente às 08:00 |
-| `stripe-webhook-retry` | `0 * * * *` | A cada hora |
-| `health-survey-response-token-cleanup` | `0 2 * * *` | Diariamente às 02:00 |
-| `action-plan-suggestion-generator` | `0 6 * * *` | Diariamente às 06:00 |
-| `organization-deletion-executor` | `30 3 * * *` | Diariamente às 03:30 |
+Em produção, o `register-schedules` é executado automaticamente como um container separado a cada deploy (ver [Rodando com Docker](#rodando-com-docker)).
 
 ---
 
-## Jobs agendados (Cron)
+### Escalando horizontalmente
 
-Os endpoints abaixo são chamados pelo próprio scheduler interno (via BullMQ). Em produção, os schedules são registrados no Redis e o worker os consome. Em ambientes sem worker, eles também podem ser chamados diretamente por um agendador externo (GitHub Actions, etc.) com o header de autenticação.
+O BullMQ foi projetado para escalonamento horizontal nativo. Redis é a fonte única de verdade — múltiplos workers competem pelos jobs sem duplicação.
 
-Todos os endpoints exigem o header `x-cron-secret: <CRON_SECRET>`.
+#### O que pode ser escalado
 
-| Endpoint | Método | Descrição |
+| Componente | Pode escalar? | Observação |
 |---|---|---|
-| `/api/jobs/health-survey-dispatcher` | POST | Dispara pesquisas agendadas |
-| `/api/jobs/health-survey-adherence-checker` | POST | Verifica aderência de respostas |
-| `/api/jobs/health-survey-score-alert-detector` | POST | Gera alertas `low_score`, `score_drop`, `negative_trend` e `consent_expired` |
-| `/api/jobs/employee-unpause` | POST | Despausa funcionários com data vencida |
-| `/api/jobs/pgr-review-reminder` | POST | Cria alerta de revisão do PGR |
-| `/api/jobs/stripe-webhook-retry` | POST | Reprocessa webhooks Stripe com falha |
-| `/api/jobs/health-survey-response-token-cleanup` | POST | Remove tokens expirados do banco |
-| `/api/jobs/action-plan-suggestion-generator` | POST | Gera sugestões de plano de ação |
-| `/api/jobs/organization-deletion-executor` | POST | Executa exclusão permanente de orgs agendadas |
+| `job-worker` (fila `pulse-jobs`) | ✅ Sim | BullMQ garante que cada job é processado por exatamente 1 worker |
+| `job-worker` (fila `pulse-messages`) | ✅ Sim | Ideal para aumentar throughput de envio de mensagens |
+| `register-schedules` | ❌ Apenas 1 instância | Rodar múltiplas instâncias é seguro (upsert idempotente), mas desnecessário |
+| Next.js app | ✅ Sim | Stateless — escala normalmente atrás de um load balancer |
 
-**Exemplo de chamada manual:**
+#### Regra fundamental
+
+> **Um único `register-schedules`, N workers.**
+
+O Redis armazena os schedules. Quando o horário chega, o BullMQ coloca o job na fila uma única vez. O primeiro worker disponível pega e processa — os demais ignoram. Não há risco de execução duplicada.
+
+```
+Redis (fila)
+   ▲
+   │  register-schedules (1 instância)
+   │
+   ├── worker instância 1 ──┐
+   ├── worker instância 2 ──┼── concorrem pelo job, apenas 1 processa
+   └── worker instância 3 ──┘
+```
+
+#### Como escalar na prática (Docker Compose)
+
+Para aumentar o número de workers de mensagens sem alterar o `docker-compose.yml`:
+
+```bash
+docker compose up -d --scale worker=3
+```
+
+Ou adicionar um serviço dedicado para mensagens no `docker-compose.yml`:
+
+```yaml
+worker-messages:
+  image: pulse-worker:latest
+  restart: unless-stopped
+  env_file: .env
+  environment:
+    REDIS_HOST: redis
+  command: ["node_modules/.bin/tsx", "--tsconfig", "tsconfig.json", "src/workers/job-worker.ts"]
+  deploy:
+    replicas: 3
+```
+
+> **Nota:** a fila `pulse-jobs` usa `concurrency: 1` intencionalmente. Jobs como `health-survey-dispatcher` iteram sobre todos os tenants — rodar dois ao mesmo tempo causaria condições de corrida (dois dispatches simultâneos para o mesmo tenant). Se futuramente os jobs forem refatorados para operar por tenant individualmente, a concorrência pode ser aumentada com segurança.
+
+### Acionamento manual de jobs
+
+Todos os jobs também expõem um endpoint HTTP para acionamento manual (debug, testes, recovery). Exigem o header `x-cron-secret: <CRON_SECRET>`.
+
+| Endpoint | Descrição |
+|---|---|
+| `POST /api/jobs/health-survey-dispatcher` | Dispara pesquisas agendadas |
+| `POST /api/jobs/health-survey-adherence-checker` | Verifica aderência de respostas |
+| `POST /api/jobs/health-survey-score-alert-detector` | Gera alertas de score |
+| `POST /api/jobs/employee-unpause` | Despausa funcionários com data vencida |
+| `POST /api/jobs/pgr-review-reminder` | Cria alerta de revisão do PGR |
+| `POST /api/jobs/stripe-webhook-retry` | Reprocessa webhooks Stripe com falha |
+| `POST /api/jobs/health-survey-response-token-cleanup` | Remove tokens expirados |
+| `POST /api/jobs/action-plan-suggestion-generator` | Gera sugestões de plano de ação |
+| `POST /api/jobs/organization-deletion-executor` | Executa exclusão permanente de orgs |
 
 ```bash
 curl -X POST http://localhost:3000/api/jobs/health-survey-dispatcher \
