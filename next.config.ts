@@ -42,6 +42,7 @@ const securityHeadersDisabled = env.DISABLE_SECURITY_HEADERS;
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  serverExternalPackages: ["bullmq", "ioredis"],
   env: {
     NEXT_PUBLIC_APP_VERSION: appVersion,
   },
