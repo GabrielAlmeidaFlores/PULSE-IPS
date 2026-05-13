@@ -15,6 +15,7 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    "dist/**",
     "coverage/**",
     "next-env.d.ts",
     "node_modules/**",
@@ -89,7 +90,6 @@ const eslintConfig = defineConfig([
         "error",
         { checksVoidReturn: { attributes: false } },
       ],
-      "@typescript-eslint/require-await": "off",
       "@typescript-eslint/return-await": ["error", "in-try-catch"],
       "@typescript-eslint/no-unnecessary-type-assertion": "error",
       "@typescript-eslint/no-unsafe-assignment": "error",
@@ -104,7 +104,6 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/consistent-type-definitions": ["error", "interface"],
       "@typescript-eslint/array-type": ["error", { default: "array" }],
 
-      "import/no-default-export": "off",
       "import/first": "error",
       "import/no-duplicates": "error",
       "import/no-cycle": ["error", { maxDepth: 3 }],
@@ -166,71 +165,6 @@ const eslintConfig = defineConfig([
     },
   },
 
-  {
-    files: [
-      "src/app/**/page.tsx",
-      "src/app/**/layout.tsx",
-      "src/app/**/loading.tsx",
-      "src/app/**/not-found.tsx",
-      "src/app/**/error.tsx",
-      "src/app/**/route.ts",
-      "src/app/**/actions.ts",
-      "src/modules/**/*.service.ts",
-      "src/modules/**/*.repository.ts",
-      "postcss.config.mjs",
-      "next.config.ts",
-      "eslint.config.mjs",
-      "tailwind.config.ts",
-    ],
-    rules: {
-      "import/no-default-export": "off",
-    },
-  },
-
-  {
-    files: ["src/components/ui/**/*.tsx", "src/components/ui/**/*.ts"],
-    rules: {
-      "@typescript-eslint/explicit-function-return-type": "off",
-      "@typescript-eslint/no-unsafe-assignment": "off",
-      "@typescript-eslint/no-unsafe-call": "off",
-      "@typescript-eslint/no-unsafe-member-access": "off",
-      "@typescript-eslint/no-unsafe-argument": "off",
-      "@typescript-eslint/no-unsafe-return": "off",
-      "@typescript-eslint/consistent-type-definitions": "off",
-    },
-  },
-
-  {
-    files: [
-      "src/workers/**/*.ts",
-      "src/libs/integrations/**/*.ts",
-      "src/libs/utils/logger.ts",
-    ],
-    rules: {
-      "no-console": "off",
-      "require-await": "off",
-      "@typescript-eslint/require-await": "off",
-      "@typescript-eslint/explicit-function-return-type": "off",
-    },
-  },
-
-  {
-    files: ["src/lib/**/*.ts", "src/libs/db/**/*.ts"],
-    rules: {
-      "@typescript-eslint/explicit-function-return-type": "off",
-    },
-  },
-
-  {
-    files: ["**/*.test.ts", "**/*.spec.ts", "**/*.test.tsx", "**/*.spec.tsx"],
-    rules: {
-      "@typescript-eslint/no-explicit-any": "off",
-      "@typescript-eslint/no-unsafe-assignment": "off",
-      "@typescript-eslint/no-unsafe-member-access": "off",
-      "@typescript-eslint/no-unsafe-call": "off",
-      "@typescript-eslint/no-unsafe-argument": "off",
-    },
-  },
 ])
 
 export default eslintConfig

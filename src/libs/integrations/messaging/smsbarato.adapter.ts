@@ -42,8 +42,8 @@ export class SmsBaratoAdapter implements IMessagingService {
       throw new Error("SMS Barato nao configurado: defina SMSBARATO_API_KEY");
     }
 
-    const dest = normalizeSmsBaratoPhone(params.to);
-    const text = normalizeSmsBaratoText(params.body);
+    const dest = normalizeSmsBaratoPhone(params.recipientPhone);
+    const text = normalizeSmsBaratoText(params.messageText);
 
     const url = new URL(env.SMSBARATO_BASE_URL);
     url.searchParams.set("chave", env.SMSBARATO_API_KEY);

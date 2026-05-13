@@ -4,10 +4,10 @@ import { createLogger } from "@/libs/utils/logger"
 const logger = createLogger("fake-email")
 
 export class ConsoleEmailAdapter implements IEmailService {
-  async send(params: SendEmailParams): Promise<SendEmailResult> {
+  send(params: SendEmailParams): Promise<SendEmailResult> {
     const id = `fake-email-${Date.now()}`
     logger.info("📧 FAKE EMAIL", { to: params.to, subject: params.subject, id })
     logger.debug(params.html)
-    return { id }
+    return Promise.resolve({ id })
   }
 }

@@ -300,3 +300,20 @@ describe("retryFailedWebhookEvents", () => {
     expect(mockMarkWebhookEventFailed).toHaveBeenCalledWith(failedEvent.id, expect.any(String))
   })
 })
+
+describe("mapStripeStatusToBillingStatus — all branches", () => {
+  it.each([
+    ["trialing", "active"],
+    ["unpaid", "past_due"],
+    ["canceled", "cancelled"],
+    ["incomplete_expired", "cancelled"],
+    ["incomplete", "pending"],
+    ["unknown_stripe_status", "suspended"],
+  ] as [string, string][])(
+    "stripe status '%s' maps to billing status '%s'",
+    async (stripeStatus, expectedBillingStatus) => {
+      await handleStripeWebhook(makeSubscriptionEvent(SUBSCRIPTION_UPDATED, { status: stripeStatus }) as BillingWebhookEvent)
+      expect(mockUpdateOrgBillingStatus).toHaveBeenCalledWith(ORG.id, expectedBillingStatus, PLAN_PRICE.planId)
+    },
+  )
+})

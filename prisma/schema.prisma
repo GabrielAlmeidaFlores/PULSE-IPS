@@ -547,6 +547,7 @@ model ActionPlanSuggestion {
 
   @@index([tenantId, status])
   @@index([tenantId, suggestionKey])
+  @@index([dismissedBy])
   @@map("action_plan_suggestions")
 }
 

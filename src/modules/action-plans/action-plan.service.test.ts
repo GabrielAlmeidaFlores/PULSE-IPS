@@ -55,7 +55,7 @@ describe("updatePlan", () => {
     expect(mockUpdateActionPlan).toHaveBeenCalledWith(
       TENANT_ID,
       PLAN.id,
-      expect.objectContaining({ status: "completed", completedAt: expect.any(Date) }),
+      expect.objectContaining({ status: "completed", completedAt: expect.any(Date) as Date }),
     )
   })
 
@@ -77,6 +77,16 @@ describe("createPlanWithTasks", () => {
     expect(mockCreateActionPlanWithTasks).toHaveBeenCalledWith(TENANT_ID, input, tasks)
     expect(mockCreateAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({ tenantId: TENANT_ID, userId: "user-1", action: "action_plan.created" }),
+    )
+  })
+
+  it("registra audit log sem userId quando actorId não é fornecido", async () => {
+    const input = { title: "Plano novo", description: "desc", origin: "metric_alert" as const }
+
+    await createPlanWithTasks(TENANT_ID, input, [], undefined)
+
+    expect(mockCreateAuditLog).toHaveBeenCalledWith(
+      expect.not.objectContaining({ userId: expect.anything() as string }),
     )
   })
 })
@@ -142,6 +152,17 @@ describe("createPlan", () => {
       expect.objectContaining({ tenantId: TENANT_ID, userId: "user-1", action: "action_plan.created" }),
     )
     expect(result).toEqual(PLAN)
+  })
+
+  it("registra audit log sem userId quando actorId não é fornecido", async () => {
+    mockCreateActionPlan.mockResolvedValue(PLAN as Awaited<ReturnType<typeof createActionPlan>>)
+
+    const input: CreateActionPlanInput = { title: "Reduzir estresse", description: "Ações para reduzir estresse" }
+    await createPlan(TENANT_ID, input)
+
+    expect(mockCreateAuditLog).toHaveBeenCalledWith(
+      expect.not.objectContaining({ userId: expect.anything() as string }),
+    )
   })
 })
 

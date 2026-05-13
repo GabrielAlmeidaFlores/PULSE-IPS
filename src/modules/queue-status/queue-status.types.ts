@@ -1,3 +1,14 @@
+export interface IQueueReader {
+  getJobCounts(...types: string[]): Promise<Record<string, number>>
+  getActive(start?: number, end?: number): Promise<{ id?: string | null; name: string; data: unknown; attemptsMade: number; opts: { attempts?: number; delay?: number }; timestamp: number; processedOn?: number | null; finishedOn?: number | null; failedReason?: string }[]>
+  getWaiting(start?: number, end?: number): Promise<{ id?: string | null; name: string; data: unknown; attemptsMade: number; opts: { attempts?: number; delay?: number }; timestamp: number; processedOn?: number | null; finishedOn?: number | null; failedReason?: string }[]>
+  getDelayed(start?: number, end?: number): Promise<{ id?: string | null; name: string; data: unknown; attemptsMade: number; opts: { attempts?: number; delay?: number }; timestamp: number; processedOn?: number | null; finishedOn?: number | null; failedReason?: string }[]>
+  getFailed(start?: number, end?: number): Promise<{ id?: string | null; name: string; data: unknown; attemptsMade: number; opts: { attempts?: number; delay?: number }; timestamp: number; processedOn?: number | null; finishedOn?: number | null; failedReason?: string }[]>
+  getRepeatableJobs(): Promise<{ key: string; name: string; pattern?: string | null; next?: number | null; endDate?: number | null }[]>
+  close(): Promise<void>
+}
+
+
 export interface QueueCounts {
   waiting: number
   active: number

@@ -1,10 +1,9 @@
-import { Queue } from "bullmq"
-import { QUEUE_NAME, MESSAGE_QUEUE_NAME, redisConnection } from "@/libs/queue"
-import type { QueueOverview, QueueStatus, LiveJobSummary, RepeatableJobInfo, QueueCounts } from "@/modules/queue-status/queue-status.types"
+import { QUEUE_NAME, MESSAGE_QUEUE_NAME, createJobQueueReader, createMessageQueueReader } from "@/libs/queue"
+import type { IQueueReader, QueueOverview, QueueStatus, LiveJobSummary, RepeatableJobInfo, QueueCounts } from "@/modules/queue-status/queue-status.types"
 
 const LIVE_JOB_LIMIT = 100
 
-async function buildQueueStatus(queue: Queue, queueName: string): Promise<QueueStatus> {
+async function buildQueueStatus(queue: IQueueReader, queueName: string): Promise<QueueStatus> {
   const [counts, activeJobs, waitingJobs, delayedJobs, failedJobs, repeatableJobs] = await Promise.all([
     queue.getJobCounts("active", "waiting", "delayed", "failed", "completed", "paused"),
     queue.getActive(0, LIVE_JOB_LIMIT - 1),
@@ -15,12 +14,12 @@ async function buildQueueStatus(queue: Queue, queueName: string): Promise<QueueS
   ])
 
   const typedCounts: QueueCounts = {
-    waiting: (counts as Record<string, number>)["waiting"] ?? 0,
-    active: (counts as Record<string, number>)["active"] ?? 0,
-    delayed: (counts as Record<string, number>)["delayed"] ?? 0,
-    failed: (counts as Record<string, number>)["failed"] ?? 0,
-    completed: (counts as Record<string, number>)["completed"] ?? 0,
-    paused: (counts as Record<string, number>)["paused"] ?? 0,
+    waiting: counts["waiting"] ?? 0,
+    active: counts["active"] ?? 0,
+    delayed: counts["delayed"] ?? 0,
+    failed: counts["failed"] ?? 0,
+    completed: counts["completed"] ?? 0,
+    paused: counts["paused"] ?? 0,
   }
 
   const toSummary = (
@@ -62,8 +61,8 @@ async function buildQueueStatus(queue: Queue, queueName: string): Promise<QueueS
 }
 
 async function getQueueOverview(): Promise<QueueOverview> {
-  const jobQueue = new Queue(QUEUE_NAME, { connection: redisConnection })
-  const messageQueue = new Queue(MESSAGE_QUEUE_NAME, { connection: redisConnection })
+  const jobQueue = createJobQueueReader()
+  const messageQueue = createMessageQueueReader()
 
   try {
     const [jobStatus, messageStatus] = await Promise.all([

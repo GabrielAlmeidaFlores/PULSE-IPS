@@ -83,6 +83,14 @@ describe("createDept", () => {
       expect.objectContaining({ tenantId: TENANT_ID, userId: "user-1", action: "department.created" }),
     )
   })
+
+  it("registra audit log sem userId quando actorId não é fornecido", async () => {
+    const input = { name: "Engenharia", workStartTime: "09:00", workEndTime: "18:00", workDays: [1, 2, 3, 4, 5] }
+    await createDept(TENANT_ID, input)
+    expect(mockCreateAuditLog).toHaveBeenCalledWith(
+      expect.not.objectContaining({ userId: expect.anything() as string }),
+    )
+  })
 })
 
 describe("updateDept", () => {
@@ -94,6 +102,13 @@ describe("updateDept", () => {
       expect.objectContaining({ tenantId: TENANT_ID, userId: "user-1", action: "department.updated" }),
     )
   })
+
+  it("registra audit log sem userId quando actorId não é fornecido", async () => {
+    await updateDept(TENANT_ID, DEPT_ID, { name: "Engenharia 2" })
+    expect(mockCreateAuditLog).toHaveBeenCalledWith(
+      expect.not.objectContaining({ userId: expect.anything() as string }),
+    )
+  })
 })
 
 describe("removeDept", () => {
@@ -102,6 +117,13 @@ describe("removeDept", () => {
     expect(mockDeactivate).toHaveBeenCalledWith(TENANT_ID, DEPT_ID)
     expect(mockCreateAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({ tenantId: TENANT_ID, userId: "user-1", action: "department.deleted" }),
+    )
+  })
+
+  it("registra audit log sem userId quando actorId não é fornecido", async () => {
+    await removeDept(TENANT_ID, DEPT_ID)
+    expect(mockCreateAuditLog).toHaveBeenCalledWith(
+      expect.not.objectContaining({ userId: expect.anything() as string }),
     )
   })
 

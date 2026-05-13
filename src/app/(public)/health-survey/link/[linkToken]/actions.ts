@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import { isRedirectError } from "next/dist/client/components/redirect-error"
 import { unlockHealthSurveyViaIdentifier } from "@/modules/health-surveys/health-survey-response.service"
 import { AppError } from "@/libs/errors/app-error"
+import { enforceRateLimit, getClientIp } from "@/libs/rate-limit"
 import type { ActionResult } from "@/libs/utils/action-result"
 
 interface UnlockActionResult extends ActionResult {
@@ -17,6 +18,10 @@ export async function unlockHealthSurveyAction(
   linkToken: string,
   identifier: string,
 ): Promise<UnlockActionResult> {
+  const ip = await getClientIp()
+  const rateLimitError = await enforceRateLimit(`rl:survey-unlock:${ip}`, 10, 60)
+  if (rateLimitError !== null) return { error: rateLimitError }
+
   try {
     const result = await unlockHealthSurveyViaIdentifier(linkToken, identifier)
 

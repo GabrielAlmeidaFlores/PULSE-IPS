@@ -1,3 +1,4 @@
+import type * as React from "react";
 import { mergeProps } from "@base-ui/react/merge-props"
 import { useRender } from "@base-ui/react/use-render"
 import { cva, type VariantProps } from "class-variance-authority"
@@ -32,7 +33,7 @@ function Badge({
   variant = "default",
   render,
   ...props
-}: useRender.ComponentProps<"span"> & VariantProps<typeof badgeVariants>) {
+}: useRender.ComponentProps<"span"> & VariantProps<typeof badgeVariants>): React.ReactElement {
   return useRender({
     defaultTagName: "span",
     props: mergeProps<"span">(

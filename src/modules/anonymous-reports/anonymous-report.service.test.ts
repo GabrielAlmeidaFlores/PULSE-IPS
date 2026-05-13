@@ -63,7 +63,7 @@ describe("updateReportStatus", () => {
     expect(mockUpdateReport).toHaveBeenCalledWith(
       "org-1",
       "rep-1",
-      expect.objectContaining({ status: "resolved", resolvedAt: expect.any(Date) }),
+      expect.objectContaining({ status: "resolved", resolvedAt: expect.any(Date) as Date }),
     )
   })
 

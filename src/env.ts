@@ -12,13 +12,18 @@ export const env = createEnv({
     STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_").optional(),
 
     MESSAGING_PROVIDER: z
-      .enum(["smsbarato", "console"])
+      .enum(["smsbarato", "smsbarato-wa", "console"])
       .default("console"),
     SMSBARATO_API_KEY: z.string().min(1).optional(),
     SMSBARATO_BASE_URL: z
       .string()
       .url()
       .default("https://sistema81.smsbarato.com.br/send"),
+    SMSBARATO_WA_BASE_URL: z
+      .string()
+      .url()
+      .default("https://sistema81.smsbarato.com.br/sendwa"),
+    SMSBARATO_WA_TEMPLATE: z.string().min(1).default("pulse_survey"),
 
     SURVEY_MESSAGE_TEMPLATE: z
       .string()
@@ -32,9 +37,13 @@ export const env = createEnv({
 
     CRON_SECRET: z.string().min(16),
 
+    INTERNAL_API_URL: z.string().url().default("http://localhost:3000"),
+
     REDIS_HOST: z.string().default("localhost"),
     REDIS_PORT: z.string().default("6379"),
     REDIS_PASSWORD: z.string().optional(),
+
+    RATE_LIMITER_PROVIDER: z.enum(["redis", "memory"]).default("redis"),
 
     DISABLE_SECURITY_HEADERS: z
       .string()
@@ -90,6 +99,10 @@ export const env = createEnv({
     SMSBARATO_BASE_URL:
       process.env.SMSBARATO_BASE_URL ??
       "https://sistema81.smsbarato.com.br/send",
+    SMSBARATO_WA_BASE_URL:
+      process.env.SMSBARATO_WA_BASE_URL ??
+      "https://sistema81.smsbarato.com.br/sendwa",
+    SMSBARATO_WA_TEMPLATE: process.env.SMSBARATO_WA_TEMPLATE ?? "pulse_survey",
 
     SURVEY_MESSAGE_TEMPLATE: process.env.SURVEY_MESSAGE_TEMPLATE,
 
@@ -99,9 +112,13 @@ export const env = createEnv({
 
     CRON_SECRET: process.env.CRON_SECRET,
 
+    INTERNAL_API_URL: process.env.INTERNAL_API_URL ?? "http://localhost:3000",
+
     REDIS_HOST: process.env.REDIS_HOST ?? "localhost",
     REDIS_PORT: process.env.REDIS_PORT ?? "6379",
     REDIS_PASSWORD: process.env.REDIS_PASSWORD,
+
+    RATE_LIMITER_PROVIDER: process.env.RATE_LIMITER_PROVIDER ?? "redis",
 
     DISABLE_SECURITY_HEADERS: process.env.DISABLE_SECURITY_HEADERS,
     NODE_ENV: process.env.NODE_ENV ?? "development",

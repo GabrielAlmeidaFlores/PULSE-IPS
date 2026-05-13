@@ -157,6 +157,26 @@ describe("parseImportPreview — invalid rows", () => {
     expect(preview.items[0]?.errors[0]).toMatch(/Inexistente/)
   })
 
+  it("sets email on invalid item when schema validation fails but email is present", async () => {
+    const buf = await makeBuffer(
+      [...PT_HEADERS, "Email"],
+      [["Ana", "", DEPT_NAME, VALID_EMAIL]],
+    )
+    const preview = await parseImportPreview(buf, TENANT_ID)
+    expect(preview.items[0]?.valid).toBe(false)
+    expect(preview.items[0]?.email).toBe(VALID_EMAIL)
+  })
+
+  it("sets email on invalid item when department is not found but email is present", async () => {
+    const buf = await makeBuffer(
+      [...PT_HEADERS, "Email"],
+      [["Ana", VALID_PHONE, "Inexistente", VALID_EMAIL]],
+    )
+    const preview = await parseImportPreview(buf, TENANT_ID)
+    expect(preview.items[0]?.valid).toBe(false)
+    expect(preview.items[0]?.email).toBe(VALID_EMAIL)
+  })
+
   it("populates errors array with messages for invalid rows", async () => {
     const buf = await makeBuffer(PT_HEADERS, [["", VALID_PHONE, DEPT_NAME]])
     const preview = await parseImportPreview(buf, TENANT_ID)
@@ -198,6 +218,19 @@ describe("executeImport — department resolution", () => {
     const buf = await makeBuffer(PT_HEADERS, [["Ana", VALID_PHONE, "Inexistente"]])
     const result = await executeImport(TENANT_ID, buf)
     expect(result.failed).toBe(1)
+  })
+
+  it("records an error when department existed in preview but was removed before import (race condition)", async () => {
+    mockFindDepts
+      .mockResolvedValueOnce([{ id: DEPT_ID, name: DEPT_NAME } as DeptRow])
+      .mockResolvedValueOnce([])
+
+    const buf = await makeBuffer(PT_HEADERS, [["Ana", VALID_PHONE, DEPT_NAME]])
+    const result = await executeImport(TENANT_ID, buf)
+
+    expect(result.failed).toBe(1)
+    expect(result.errors[0]?.error).toMatch(new RegExp(DEPT_NAME))
+    expect(mockCreateEmployee).not.toHaveBeenCalled()
   })
 
   it("includes row number in error when department not found", async () => {
@@ -268,6 +301,13 @@ describe("executeImport — employee creation", () => {
     const buf = await makeBuffer(PT_HEADERS, [["Ana", VALID_PHONE, DEPT_NAME]])
     const result = await executeImport(TENANT_ID, buf)
     expect(result.errors[0]?.error).toBe("E-mail já cadastrado")
+  })
+
+  it("records stringified error when createEmployee throws a non-Error value", async () => {
+    mockCreateEmployee.mockRejectedValue("erro de string inesperado")
+    const buf = await makeBuffer(PT_HEADERS, [["Ana", VALID_PHONE, DEPT_NAME]])
+    const result = await executeImport(TENANT_ID, buf)
+    expect(result.errors[0]?.error).toBe("erro de string inesperado")
   })
 
   it("continues processing remaining rows after a single row error", async () => {

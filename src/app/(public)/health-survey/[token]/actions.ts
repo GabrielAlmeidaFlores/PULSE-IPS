@@ -4,6 +4,7 @@ import { z } from "zod"
 import type { ActionResult } from "@/libs/utils/action-result"
 import { submitHealthSurveyResponse } from "@/modules/health-surveys/health-survey-response.service"
 import { optOutFromHealthSurveyToken, acceptConsentFromHealthSurveyToken, refuseConsentFromHealthSurveyToken } from "@/modules/consent/consent.service"
+import { enforceRateLimit, getClientIp } from "@/libs/rate-limit"
 
 const UNEXPECTED_ERROR_MESSAGE = "Ocorreu um erro inesperado."
 
@@ -23,6 +24,11 @@ export async function submitHealthSurveyAction(
 ): Promise<ActionResult> {
   const parsed = submitHealthSurveySchema.safeParse({ token, answers })
   if (!parsed.success) return { error: "Dados inválidos." }
+
+  const ip = await getClientIp()
+  const rateLimitError = await enforceRateLimit(`rl:survey-submit:${ip}`, 5, 60)
+  if (rateLimitError !== null) return { error: rateLimitError }
+
   try {
     await submitHealthSurveyResponse(parsed.data)
     return {}

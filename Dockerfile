@@ -18,7 +18,7 @@ ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 ENV NEXT_PUBLIC_APP_VERSION=$NEXT_PUBLIC_APP_VERSION
 ENV NEXT_PUBLIC_CONSULTANT_WHATSAPP=$NEXT_PUBLIC_CONSULTANT_WHATSAPP
 ENV SKIP_ENV_VALIDATION=true
-RUN yarn build
+RUN yarn build && yarn worker:build
 
 FROM base AS worker
 RUN apk add --no-cache openssl
@@ -28,11 +28,10 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/assets ./assets
-COPY --from=builder /app/src ./src
-COPY --from=builder /app/tsconfig.json ./tsconfig.json
+COPY --from=builder /app/dist/workers ./dist/workers
 COPY package.json ./
 USER nextjs
-CMD ["node_modules/.bin/tsx", "--tsconfig", "tsconfig.json", "src/workers/job-worker.ts"]
+CMD ["node", "dist/workers/job-worker.js"]
 
 FROM base AS runner
 RUN apk add --no-cache openssl

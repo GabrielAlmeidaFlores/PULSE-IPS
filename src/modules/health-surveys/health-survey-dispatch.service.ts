@@ -152,8 +152,10 @@ async function sendDispatchTokensAndMessagesForDepartment(
         return {
           name: "send-message" as const,
           data: {
-            to: emp.phone,
-            body: buildMessageFromTemplate(env.SURVEY_MESSAGE_TEMPLATE, emp.name, healthSurveyUrl),
+            recipientPhone: emp.phone,
+            messageText: buildMessageFromTemplate(env.SURVEY_MESSAGE_TEMPLATE, emp.name, healthSurveyUrl),
+            recipientName: emp.name,
+            surveyLink: healthSurveyUrl,
             tenantId,
             employeeId: emp.id,
             provider: env.MESSAGING_PROVIDER,
