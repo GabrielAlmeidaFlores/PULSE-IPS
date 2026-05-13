@@ -12,7 +12,7 @@ export const onRequestError: Instrumentation.onRequestError = async (
   const ip = ipRaw?.split(",")[0]?.trim() ?? request.headers["x-real-ip"] ?? undefined
 
   try {
-    await fetch(`${env.NEXT_PUBLIC_APP_URL}/api/internal/request-log`, {
+    await fetch(`${env.INTERNAL_API_URL}/api/internal/request-log`, {
       method: "POST",
       headers: {
         "content-type": "application/json",

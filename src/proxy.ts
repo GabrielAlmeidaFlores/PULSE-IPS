@@ -98,7 +98,7 @@ function fireLog(
     ...sessionInfo,
   }
 
-  void fetch(new URL("/api/internal/request-log", request.url).toString(), {
+  void fetch(`${env.INTERNAL_API_URL}/api/internal/request-log`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-internal-secret": env.CRON_SECRET },
     body: JSON.stringify(payload),

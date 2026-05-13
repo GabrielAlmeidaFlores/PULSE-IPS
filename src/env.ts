@@ -32,9 +32,13 @@ export const env = createEnv({
 
     CRON_SECRET: z.string().min(16),
 
+    INTERNAL_API_URL: z.string().url().default("http://localhost:3000"),
+
     REDIS_HOST: z.string().default("localhost"),
     REDIS_PORT: z.string().default("6379"),
     REDIS_PASSWORD: z.string().optional(),
+
+    RATE_LIMITER_PROVIDER: z.enum(["redis", "memory"]).default("redis"),
 
     DISABLE_SECURITY_HEADERS: z
       .string()
@@ -99,9 +103,13 @@ export const env = createEnv({
 
     CRON_SECRET: process.env.CRON_SECRET,
 
+    INTERNAL_API_URL: process.env.INTERNAL_API_URL ?? "http://localhost:3000",
+
     REDIS_HOST: process.env.REDIS_HOST ?? "localhost",
     REDIS_PORT: process.env.REDIS_PORT ?? "6379",
     REDIS_PASSWORD: process.env.REDIS_PASSWORD,
+
+    RATE_LIMITER_PROVIDER: process.env.RATE_LIMITER_PROVIDER ?? "redis",
 
     DISABLE_SECURITY_HEADERS: process.env.DISABLE_SECURITY_HEADERS,
     NODE_ENV: process.env.NODE_ENV ?? "development",

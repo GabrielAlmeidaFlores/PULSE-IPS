@@ -4,6 +4,7 @@ import { z } from "zod"
 import type { ActionResult } from "@/libs/utils/action-result"
 import { submitReport } from "@/modules/anonymous-reports/anonymous-report.service"
 import { AppError } from "@/libs/errors/app-error"
+import { enforceRateLimit, getClientIp } from "@/libs/rate-limit"
 
 const submitReportSchema = z.object({
   content: z.string().min(10, { message: "O relato deve ter no mínimo 10 caracteres." }).max(5000, { message: "O relato deve ter no máximo 5000 caracteres." }),
@@ -16,6 +17,11 @@ export async function submitReportAction(
 ): Promise<ActionResult> {
   const parsed = submitReportSchema.safeParse(input)
   if (!parsed.success) return { error: "Conteúdo inválido." }
+
+  const ip = await getClientIp()
+  const rateLimitError = await enforceRateLimit(`rl:report:${ip}`, 5, 300)
+  if (rateLimitError !== null) return { error: rateLimitError }
+
   try {
     await submitReport(orgSlug, { ...parsed.data, orgSlug })
     return {}

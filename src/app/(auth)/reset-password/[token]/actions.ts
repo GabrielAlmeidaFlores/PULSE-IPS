@@ -5,6 +5,7 @@ import { z } from "zod"
 import { isRedirectError } from "next/dist/client/components/redirect-error"
 import type { ActionResult } from "@/libs/utils/action-result"
 import { resetPassword } from "@/modules/auth/auth.service"
+import { enforceRateLimit, getClientIp } from "@/libs/rate-limit"
 
 const resetPasswordSchema = z.object({
   token: z.string().min(1, { message: "Token inválido." }).max(255),
@@ -17,6 +18,11 @@ export async function resetPasswordAction(input: {
 }): Promise<ActionResult> {
   const parsed = resetPasswordSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
+
+  const ip = await getClientIp()
+  const rateLimitError = await enforceRateLimit(`rl:reset-password:${ip}:${input.token}`, 5, 900)
+  if (rateLimitError !== null) return { error: rateLimitError }
+
   try {
     await resetPassword(parsed.data.token, parsed.data.newPassword)
     redirect("/login?reset=success")

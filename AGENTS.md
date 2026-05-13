@@ -2393,6 +2393,24 @@ export interface IStorageService {
 }
 ```
 
+### Rate Limiter
+
+```typescript
+// libs/integrations/rate-limiter/rate-limiter.interface.ts
+export interface IRateLimiterService {
+  check(key: string, limit: number, windowSeconds: number): Promise<RateLimitCheckResult>
+}
+```
+
+**Implementação Redis:** `RATE_LIMITER_PROVIDER=redis` → `RedisRateLimiterAdapter` ✅  
+**Desenvolvimento/Testes:** `RATE_LIMITER_PROVIDER=memory` → `InMemoryRateLimiterAdapter`
+
+O adapter Redis usa `rate-limiter-flexible` (Lua atômica internamente) e mantém um cache de instâncias `RateLimiterRedis` por configuração `(limit, windowSeconds)`. O adapter in-memory usa um `Map<string, RateLimitBucket>` com expiração por timestamp — útil para testes sem Redis.
+
+**Factory:** `getRateLimiterService()` em `src/libs/integrations/index.ts` retorna um **singleton** (a instância é cacheada no módulo), garantindo que o cache interno de instâncias do adapter Redis seja preservado entre requests.
+
+**Camada consumidora:** `src/libs/rate-limit.ts` é o único arquivo que chama `getRateLimiterService()` — as Server Actions importam apenas `enforceRateLimit`, `checkRateLimit` e `getClientIp` de `@/libs/rate-limit`, sem nenhum acoplamento direto ao `rate-limiter-flexible`.
+
 ### PDF — Geração do relatório PGR
 
 O PDF do relatório PGR é gerado **sob demanda** pela rota `GET /api/pgr/[id]/pdf`, sem armazenamento em disco/storage. A abordagem é domain-specific — não usa a interface genérica `IPDFService`.
@@ -3491,14 +3509,20 @@ AWS_REGION=us-east-1
 AWS_S3_BUCKET=pulse-documents
 AWS_ENDPOINT_URL=...                      # endpoint customizado (ex: MinIO, Cloudflare R2) — opcional
 
-# Jobs
+# Jobs / Rate Limiter
 REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_PASSWORD=...                        # opcional — autenticação Redis em produção
 CRON_SECRET=...                           # proteção dos endpoints /api/jobs/*
+RATE_LIMITER_PROVIDER=redis               # "redis" (padrão produção) | "memory" (testes sem Redis)
 
 # URL pública
 NEXT_PUBLIC_APP_URL=https://app.pulse.com
+
+# URL interna para chamadas server-to-server (proxy.ts → /api/internal/*)
+# Em Docker deve ser http://localhost:3000 (padrão) — NUNCA usar NEXT_PUBLIC_APP_URL aqui
+# pois em AWS/Docker o container não consegue alcançar a própria URL pública (hairpin NAT)
+INTERNAL_API_URL=http://localhost:3000
 
 # Versão da aplicação (opcional — exibida na UI)
 NEXT_PUBLIC_APP_VERSION=1.0.0
