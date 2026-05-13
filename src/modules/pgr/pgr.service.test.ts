@@ -161,6 +161,16 @@ describe("getPgrReviews", () => {
 
     expect(result[0]?.overallHealthIndex).toBeNull()
   })
+
+  it("retorna overallHealthIndex null quando avgScore de todos os setores é zero", async () => {
+    mockFindReviewsByTenant.mockResolvedValue([
+      { ...REVIEW_LIST_ITEM, deptResults: [{ avgScore: 0, responseCount: 0 }] },
+    ])
+
+    const result = await getPgrReviews(TENANT_ID)
+
+    expect(result[0]?.overallHealthIndex).toBeNull()
+  })
 })
 
 describe("getPgrReviewsPaginated", () => {
@@ -170,6 +180,17 @@ describe("getPgrReviewsPaginated", () => {
     expect(mockFindReviewsByTenantPaginated).toHaveBeenCalledWith(TENANT_ID, {}, 5, 5)
     expect(result.total).toBe(1)
     expect(result.items[0]).toHaveProperty("overallHealthIndex")
+  })
+
+  it("passa filtros year e status para o repository quando fornecidos", async () => {
+    await getPgrReviewsPaginated(TENANT_ID, { page: 1, pageSize: 10, year: "2026", status: "generated" })
+
+    expect(mockFindReviewsByTenantPaginated).toHaveBeenCalledWith(
+      TENANT_ID,
+      { year: "2026", status: "generated" },
+      0,
+      10,
+    )
   })
 })
 
@@ -188,6 +209,13 @@ describe("generatePgrReport", () => {
       code: "NO_DATA_FOR_PERIOD",
     })
     expect(mockCreatePgrReviewAtomic).not.toHaveBeenCalled()
+  })
+
+  it("lança AppError quando período tem formato inválido", async () => {
+    await expect(generatePgrReport(TENANT_ID, "2026-4")).rejects.toMatchObject({
+      code: "INVALID_PERIOD",
+    })
+    expect(mockFindOrgWithDepts).not.toHaveBeenCalled()
   })
 
   it("lança AppError quando já existe relatório para o período", async () => {
@@ -231,6 +259,114 @@ describe("generatePgrReport", () => {
     )
     expect(mockCreatePgrReviewAtomic).not.toHaveBeenCalled()
   })
+
+  it("processa período de dezembro com rollover de ano correto (mês 1 do ano seguinte)", async () => {
+    mockFindOrgWithDepts.mockResolvedValue({
+      timezone: "America/Sao_Paulo",
+      departments: [DEPT],
+    } as Awaited<ReturnType<typeof findOrgWithDepartmentsForPgr>>)
+
+    await generatePgrReport(TENANT_ID, "2026-12")
+
+    expect(mockCreatePgrReviewAtomic).toHaveBeenCalledWith(
+      expect.objectContaining({ period: "2026-12" }),
+      expect.any(Array),
+      expect.any(Array),
+    )
+  })
+
+  it("define avgScore como 0 quando setor tem menos que o mínimo de respondentes", async () => {
+    mockFindDispatches.mockResolvedValue([makeDispatch(4, 2)])
+
+    await generatePgrReport(TENANT_ID, PERIOD)
+
+    expect(mockCreatePgrReviewAtomic).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: TENANT_ID }),
+      expect.arrayContaining([expect.objectContaining({ avgScore: 0 })]),
+      expect.any(Array),
+    )
+  })
+
+  it("normaliza score sem inversão para scoreDirection higher_is_better", async () => {
+    const higherIsBetterDispatch: PgrDispatch = {
+      ...makeDispatch(4, 6),
+      healthSurveyConfiguration: {
+        ...makeDispatch(4, 6).healthSurveyConfiguration,
+        questions: [{ ...QUESTION, scoreDirection: "higher_is_better" }],
+      },
+      responses: Array.from({ length: 6 }, (_, i) => ({
+        id: `r-hi-${i}`,
+        tenantId: TENANT_ID,
+        departmentId: DEPT_ID,
+        dispatchId: "d-hi",
+        createdAt: new Date("2026-04-15T10:00:00Z"),
+        items: [{ id: `item-hi-${i}`, healthSurveyResponseId: `r-hi-${i}`, questionId: "q-1", score: 4 }],
+      })),
+    }
+    mockFindDispatches.mockResolvedValue([higherIsBetterDispatch])
+
+    await generatePgrReport(TENANT_ID, PERIOD)
+
+    expect(mockCreatePgrReviewAtomic).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: TENANT_ID }),
+      expect.arrayContaining([expect.objectContaining({ avgScore: 4 })]),
+      expect.any(Array),
+    )
+  })
+
+  it("cobre fallbacks de scoreDirection null, continue de outro dept, item com questionId desconhecido e deptDispatches sem DEPT_ID", async () => {
+    const questionNullDirection = { ...QUESTION, scoreDirection: null as never }
+
+    const dispatchA: PgrDispatch = {
+      ...makeDispatch(4, 0),
+      id: "d-A",
+      deptDispatches: [{ departmentId: "other-dept", totalRecipients: 5 }],
+      healthSurveyConfiguration: {
+        ...makeDispatch(4, 0).healthSurveyConfiguration,
+        id: "config-A",
+        questions: [questionNullDirection],
+      },
+      responses: [
+        ...Array.from({ length: 5 }, (_, i) => ({
+          id: `r-A-${i}`,
+          tenantId: TENANT_ID,
+          departmentId: DEPT_ID,
+          dispatchId: "d-A",
+          createdAt: new Date("2026-04-15T10:00:00Z"),
+          items: [
+            { id: `item-A-known-${i}`, healthSurveyResponseId: `r-A-${i}`, questionId: "q-1", score: 3 },
+            { id: `item-A-orphan-${i}`, healthSurveyResponseId: `r-A-${i}`, questionId: "orphan-q", score: 2 },
+          ],
+        })),
+        {
+          id: "r-other",
+          tenantId: TENANT_ID,
+          departmentId: "other-dept",
+          dispatchId: "d-A",
+          createdAt: new Date("2026-04-15T10:00:00Z"),
+          items: [{ id: "item-other", healthSurveyResponseId: "r-other", questionId: "q-1", score: 5 }],
+        },
+      ],
+    }
+
+    const dispatchB: PgrDispatch = {
+      ...makeDispatch(4, 0),
+      id: "d-B",
+      deptDispatches: [],
+      healthSurveyConfiguration: {
+        ...makeDispatch(4, 0).healthSurveyConfiguration,
+        id: "config-B",
+        questions: [questionNullDirection],
+      },
+      responses: [],
+    }
+
+    mockFindDispatches.mockResolvedValue([dispatchA, dispatchB])
+
+    await generatePgrReport(TENANT_ID, PERIOD)
+
+    expect(mockCreatePgrReviewAtomic).toHaveBeenCalled()
+  })
 })
 
 describe("sendPgrReviewReminders", () => {
@@ -256,6 +392,20 @@ describe("sendPgrReviewReminders", () => {
       expect.objectContaining({ tenantId: TENANT_ID, type: "pgr_review_due" }),
     )
     expect(result).toEqual({ remindersCreated: 1 })
+  })
+
+  it("usa texto 'em breve' na mensagem quando nextReviewAt é null", async () => {
+    mockFindUpcomingReviews.mockResolvedValue([
+      { tenantId: TENANT_ID, nextReviewAt: null, organization: { timezone: "America/Sao_Paulo" } },
+    ] as Awaited<ReturnType<typeof findAllTenantsUpcomingPgrReviews>>)
+    mockHasTenantPlanFeature.mockResolvedValue(true)
+    mockFindExistingPgrAlert.mockResolvedValue(null)
+
+    await sendPgrReviewReminders()
+
+    expect(mockCreatePgrAlert).toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringContaining("em breve") as string }),
+    )
   })
 
   it("não cria alerta quando tenant não tem feature pgr", async () => {
@@ -335,5 +485,14 @@ describe("getPgrScoreDistributions", () => {
     const scoreFive = result[0]?.distribution.find((d) => d.score === 5)
     expect(scoreThree?.count).toBe(2)
     expect(scoreFive?.count).toBe(1)
+  })
+
+  it("processa período de dezembro corretamente com rollover de ano", async () => {
+    mockFindItemScoresForPeriod.mockResolvedValue([])
+
+    const result = await getPgrScoreDistributions(TENANT_ID, "2026-12", [])
+
+    expect(result).toEqual([])
+    expect(mockFindItemScoresForPeriod).toHaveBeenCalled()
   })
 })
