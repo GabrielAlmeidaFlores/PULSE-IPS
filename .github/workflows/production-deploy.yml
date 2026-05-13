@@ -43,20 +43,26 @@ jobs:
         env:
           SKIP_ENV_VALIDATION: true
 
-  build-push:
-    name: Build & push to ECR
+  generate-tag:
+    name: Generate image tag
     runs-on: ubuntu-latest
     needs: [quality]
-    timeout-minutes: 30
+    timeout-minutes: 5
     outputs:
       image-tag: ${{ steps.tag.outputs.value }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
       - name: Generate image tag
         id: tag
         run: echo "value=$(date -u +'%Y.%m.%d.%H%M')" >> $GITHUB_OUTPUT
+
+  build-app:
+    name: Build & push app image
+    runs-on: ubuntu-latest
+    needs: [generate-tag]
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Extract public build args
         id: build-args
@@ -92,9 +98,31 @@ jobs:
             NEXT_PUBLIC_CONSULTANT_WHATSAPP=${{ steps.build-args.outputs.whatsapp }}
           tags: |
             ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_APP_REPO }}:latest
-            ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_APP_REPO }}:${{ steps.tag.outputs.value }}
+            ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_APP_REPO }}:${{ needs.generate-tag.outputs.image-tag }}
           cache-from: type=gha,scope=app
           cache-to: type=gha,mode=max,scope=app
+
+  build-worker:
+    name: Build & push worker image
+    runs-on: ubuntu-latest
+    needs: [generate-tag]
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Build and push worker image
         uses: docker/build-push-action@v6
@@ -105,7 +133,7 @@ jobs:
           push: true
           tags: |
             ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_WORKER_REPO }}:latest
-            ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_WORKER_REPO }}:${{ steps.tag.outputs.value }}
+            ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_WORKER_REPO }}:${{ needs.generate-tag.outputs.image-tag }}
           cache-from: type=gha,scope=worker
           cache-to: type=gha,mode=max,scope=worker
 
@@ -169,7 +197,7 @@ jobs:
     name: Database migrations
     runs-on: production
     timeout-minutes: 10
-    needs: [infra, build-push]
+    needs: [infra, build-app, generate-tag]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -189,8 +217,8 @@ jobs:
 
       - name: Pull and retag app image
         run: |
-          docker pull ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_APP_REPO }}:${{ needs.build-push.outputs.image-tag }}
-          docker tag ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_APP_REPO }}:${{ needs.build-push.outputs.image-tag }} pulse-app:latest
+          docker pull ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_APP_REPO }}:${{ needs.generate-tag.outputs.image-tag }}
+          docker tag ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_APP_REPO }}:${{ needs.generate-tag.outputs.image-tag }} pulse-app:latest
 
       - name: Run Prisma migrate deploy
         run: |
@@ -205,7 +233,7 @@ jobs:
     name: Deploy app and worker
     runs-on: production
     timeout-minutes: 10
-    needs: [migrate, build-push]
+    needs: [migrate, build-app, build-worker, generate-tag]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -225,10 +253,10 @@ jobs:
 
       - name: Pull and retag images
         run: |
-          docker pull ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_APP_REPO }}:${{ needs.build-push.outputs.image-tag }}
-          docker pull ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_WORKER_REPO }}:${{ needs.build-push.outputs.image-tag }}
-          docker tag ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_APP_REPO }}:${{ needs.build-push.outputs.image-tag }} pulse-app:latest
-          docker tag ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_WORKER_REPO }}:${{ needs.build-push.outputs.image-tag }} pulse-worker:latest
+          docker pull ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_APP_REPO }}:${{ needs.generate-tag.outputs.image-tag }}
+          docker pull ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_WORKER_REPO }}:${{ needs.generate-tag.outputs.image-tag }}
+          docker tag ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_APP_REPO }}:${{ needs.generate-tag.outputs.image-tag }} pulse-app:latest
+          docker tag ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_WORKER_REPO }}:${{ needs.generate-tag.outputs.image-tag }} pulse-worker:latest
 
       - name: Recreate app, worker and schedule-register
         run: |

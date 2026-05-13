@@ -6,29 +6,32 @@ RUN apk add --no-cache libc6-compat openssl
 COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile
 
-FROM base AS builder
+FROM base AS builder-base
 RUN apk add --no-cache openssl
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN yarn prisma generate
+ENV SKIP_ENV_VALIDATION=true
+RUN yarn worker:build
+
+FROM builder-base AS builder
 ARG NEXT_PUBLIC_APP_URL
 ARG NEXT_PUBLIC_APP_VERSION
 ARG NEXT_PUBLIC_CONSULTANT_WHATSAPP
 ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 ENV NEXT_PUBLIC_APP_VERSION=$NEXT_PUBLIC_APP_VERSION
 ENV NEXT_PUBLIC_CONSULTANT_WHATSAPP=$NEXT_PUBLIC_CONSULTANT_WHATSAPP
-ENV SKIP_ENV_VALIDATION=true
-RUN yarn build && yarn worker:build
+RUN yarn build
 
 FROM base AS worker
 RUN apk add --no-cache openssl
 ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
-COPY --from=builder /app/assets ./assets
-COPY --from=builder /app/dist/workers ./dist/workers
+COPY --from=builder-base /app/node_modules ./node_modules
+COPY --from=builder-base /app/prisma ./prisma
+COPY --from=builder-base /app/prisma.config.ts ./prisma.config.ts
+COPY --from=builder-base /app/assets ./assets
+COPY --from=builder-base /app/dist/workers ./dist/workers
 COPY package.json ./
 USER nextjs
 CMD ["node", "dist/workers/job-worker.js"]
