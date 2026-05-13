@@ -15,8 +15,27 @@ const REPEAT_SCHEDULES: Record<JobName, string> = {
   "organization-deletion-executor": "30 3 * * *",
 }
 
+async function removeStaleSchedulers(queue: ReturnType<typeof createJobQueue>): Promise<void> {
+  const activeJobNames = new Set(Object.keys(REPEAT_SCHEDULES))
+  const existing = await queue.getJobSchedulers()
+
+  const stale = existing.filter((s) => !activeJobNames.has(s.key))
+
+  if (stale.length === 0) {
+    logger.info("no stale schedulers found")
+    return
+  }
+
+  for (const scheduler of stale) {
+    await queue.removeJobScheduler(scheduler.key)
+    logger.warn(`removed stale scheduler: ${scheduler.key}`)
+  }
+}
+
 async function registerScheduledJobs(): Promise<void> {
   const queue = createJobQueue()
+
+  await removeStaleSchedulers(queue)
 
   for (const [jobName, pattern] of Object.entries(REPEAT_SCHEDULES) as [JobName, string][]) {
     await queue.upsertJobScheduler(
