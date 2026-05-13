@@ -81,16 +81,6 @@ const QUESTION_BANKS = {
   ],
 }
 
-type BankKey = keyof typeof QUESTION_BANKS
-
-interface ConfigProfile {
-  name: string
-  questionBank: BankKey
-  frequency: "weekly" | "biweekly" | "monthly"
-  baseScore: (w: number) => number
-  adherenceRate: (w: number) => number
-}
-
 interface DeptProfile {
   deptName: string
   employeeCount: number
@@ -98,7 +88,8 @@ interface DeptProfile {
   workStartTime: string
   workEndTime: string
   startWeek: number
-  configs: ConfigProfile[]
+  baseScore: (w: number) => number
+  adherenceRate: (w: number) => number
 }
 
 const DEPT_PROFILES: DeptProfile[] = [
@@ -109,31 +100,13 @@ const DEPT_PROFILES: DeptProfile[] = [
     workStartTime: "09:00",
     workEndTime: "18:00",
     startWeek: 0,
-    configs: [
-      {
-        name: "Saúde Geral — Tecnologia",
-        questionBank: "default",
-        frequency: "weekly",
-        baseScore: (w) => {
-          if (w < 35) return clamp(4.1 + (Math.random() - 0.5) * 0.5)
-          if (w < 71) return clamp(3.0 + (Math.random() - 0.5) * 0.8)
-          if (w < 97) return clamp(3.6 + (Math.random() - 0.5) * 0.5)
-          return clamp(4.0 + (Math.random() - 0.5) * 0.4)
-        },
-        adherenceRate: (w) => (w >= 35 && w < 71 ? 0.68 + Math.random() * 0.1 : 0.86 + Math.random() * 0.08),
-      },
-      {
-        name: "Carga de Trabalho — Tecnologia",
-        questionBank: "burnout",
-        frequency: "biweekly",
-        baseScore: (w) => {
-          if (w < 30) return clamp(3.9 + (Math.random() - 0.5) * 0.5)
-          if (w < 75) return clamp(2.7 + (Math.random() - 0.5) * 0.7)
-          return clamp(3.5 + (Math.random() - 0.5) * 0.5)
-        },
-        adherenceRate: (_) => 0.80 + Math.random() * 0.12,
-      },
-    ],
+    baseScore: (w) => {
+      if (w < 35) return clamp(4.1 + (Math.random() - 0.5) * 0.5)
+      if (w < 71) return clamp(3.0 + (Math.random() - 0.5) * 0.8)
+      if (w < 97) return clamp(3.6 + (Math.random() - 0.5) * 0.5)
+      return clamp(4.0 + (Math.random() - 0.5) * 0.4)
+    },
+    adherenceRate: (w) => (w >= 35 && w < 71 ? 0.68 + Math.random() * 0.1 : 0.86 + Math.random() * 0.08),
   },
   {
     deptName: "Comercial",
@@ -142,22 +115,15 @@ const DEPT_PROFILES: DeptProfile[] = [
     workStartTime: "08:00",
     workEndTime: "18:00",
     startWeek: 0,
-    configs: [
-      {
-        name: "Saúde Geral — Comercial",
-        questionBank: "default",
-        frequency: "weekly",
-        baseScore: (w) => {
-          const weekInYear = w % 52
-          if (weekInYear >= 34 && weekInYear <= 42) return clamp(3.5 + (Math.random() - 0.5) * 0.6)
-          return clamp(4.0 + (Math.random() - 0.5) * 0.5)
-        },
-        adherenceRate: (w) => {
-          const weekInYear = w % 52
-          return weekInYear >= 34 && weekInYear <= 42 ? 0.80 + Math.random() * 0.08 : 0.91 + Math.random() * 0.07
-        },
-      },
-    ],
+    baseScore: (w) => {
+      const weekInYear = w % 52
+      if (weekInYear >= 34 && weekInYear <= 42) return clamp(3.5 + (Math.random() - 0.5) * 0.6)
+      return clamp(4.0 + (Math.random() - 0.5) * 0.5)
+    },
+    adherenceRate: (w) => {
+      const weekInYear = w % 52
+      return weekInYear >= 34 && weekInYear <= 42 ? 0.80 + Math.random() * 0.08 : 0.91 + Math.random() * 0.07
+    },
   },
   {
     deptName: "Recursos Humanos",
@@ -166,15 +132,8 @@ const DEPT_PROFILES: DeptProfile[] = [
     workStartTime: "09:00",
     workEndTime: "18:00",
     startWeek: 0,
-    configs: [
-      {
-        name: "Saúde Geral — RH",
-        questionBank: "default",
-        frequency: "biweekly",
-        baseScore: (_) => clamp(4.3 + (Math.random() - 0.5) * 0.4),
-        adherenceRate: (_) => 0.92 + Math.random() * 0.08,
-      },
-    ],
+    baseScore: (_) => clamp(4.3 + (Math.random() - 0.5) * 0.4),
+    adherenceRate: (_) => 0.92 + Math.random() * 0.08,
   },
   {
     deptName: "Financeiro",
@@ -183,15 +142,8 @@ const DEPT_PROFILES: DeptProfile[] = [
     workStartTime: "09:00",
     workEndTime: "18:00",
     startWeek: 0,
-    configs: [
-      {
-        name: "Saúde Geral — Financeiro",
-        questionBank: "default",
-        frequency: "weekly",
-        baseScore: (w) => clamp(3.9 - w * 0.0095 + (Math.random() - 0.5) * 0.5),
-        adherenceRate: (w) => clamp(0.85 - w * 0.002 + (Math.random() - 0.5) * 0.06, 0.48, 0.88),
-      },
-    ],
+    baseScore: (w) => clamp(3.9 - w * 0.0095 + (Math.random() - 0.5) * 0.5),
+    adherenceRate: (w) => clamp(0.85 - w * 0.002 + (Math.random() - 0.5) * 0.06, 0.48, 0.88),
   },
   {
     deptName: "Operações",
@@ -200,29 +152,12 @@ const DEPT_PROFILES: DeptProfile[] = [
     workStartTime: "07:00",
     workEndTime: "16:00",
     startWeek: 0,
-    configs: [
-      {
-        name: "Saúde Geral — Operações",
-        questionBank: "default",
-        frequency: "weekly",
-        baseScore: (w) => {
-          if (w < 52) return clamp(2.9 + (Math.random() - 0.5) * 0.6)
-          if (w < 87) return clamp(2.1 + (Math.random() - 0.5) * 0.5)
-          return clamp(2.7 + (Math.random() - 0.5) * 0.5)
-        },
-        adherenceRate: (w) => (w >= 52 && w < 87 ? 0.50 + Math.random() * 0.12 : 0.68 + Math.random() * 0.12),
-      },
-      {
-        name: "Segurança e Ergonomia — Operações",
-        questionBank: "physical",
-        frequency: "monthly",
-        baseScore: (w) => {
-          if (w < 60) return clamp(2.5 + (Math.random() - 0.5) * 0.6)
-          return clamp(3.2 + (Math.random() - 0.5) * 0.5)
-        },
-        adherenceRate: (_) => 0.72 + Math.random() * 0.16,
-      },
-    ],
+    baseScore: (w) => {
+      if (w < 52) return clamp(2.9 + (Math.random() - 0.5) * 0.6)
+      if (w < 87) return clamp(2.1 + (Math.random() - 0.5) * 0.5)
+      return clamp(2.7 + (Math.random() - 0.5) * 0.5)
+    },
+    adherenceRate: (w) => (w >= 52 && w < 87 ? 0.50 + Math.random() * 0.12 : 0.68 + Math.random() * 0.12),
   },
   {
     deptName: "Marketing",
@@ -231,18 +166,11 @@ const DEPT_PROFILES: DeptProfile[] = [
     workStartTime: "09:00",
     workEndTime: "18:00",
     startWeek: 0,
-    configs: [
-      {
-        name: "Saúde Geral — Marketing",
-        questionBank: "default",
-        frequency: "biweekly",
-        baseScore: (w) => {
-          const cycle = Math.sin((w / 52) * Math.PI * 2)
-          return clamp(3.6 + cycle * 0.6 + (Math.random() - 0.5) * 0.4)
-        },
-        adherenceRate: (_) => 0.74 + Math.random() * 0.18,
-      },
-    ],
+    baseScore: (w) => {
+      const cycle = Math.sin((w / 52) * Math.PI * 2)
+      return clamp(3.6 + cycle * 0.6 + (Math.random() - 0.5) * 0.4)
+    },
+    adherenceRate: (_) => 0.74 + Math.random() * 0.18,
   },
   {
     deptName: "Suporte",
@@ -251,23 +179,16 @@ const DEPT_PROFILES: DeptProfile[] = [
     workStartTime: "09:00",
     workEndTime: "18:00",
     startWeek: 61,
-    configs: [
-      {
-        name: "Saúde Geral — Suporte",
-        questionBank: "default",
-        frequency: "weekly",
-        baseScore: (w) => {
-          const relW = w - 61
-          if (relW < 14) return clamp(4.0 + (Math.random() - 0.5) * 0.5)
-          if (relW < 34) return clamp(3.2 + (Math.random() - 0.5) * 0.6)
-          return clamp(3.8 + (Math.random() - 0.5) * 0.4)
-        },
-        adherenceRate: (w) => {
-          const relW = w - 61
-          return relW >= 14 && relW < 34 ? 0.74 + Math.random() * 0.1 : 0.86 + Math.random() * 0.08
-        },
-      },
-    ],
+    baseScore: (w) => {
+      const relW = w - 61
+      if (relW < 14) return clamp(4.0 + (Math.random() - 0.5) * 0.5)
+      if (relW < 34) return clamp(3.2 + (Math.random() - 0.5) * 0.6)
+      return clamp(3.8 + (Math.random() - 0.5) * 0.4)
+    },
+    adherenceRate: (w) => {
+      const relW = w - 61
+      return relW >= 14 && relW < 34 ? 0.74 + Math.random() * 0.1 : 0.86 + Math.random() * 0.08
+    },
   },
 ]
 
@@ -430,8 +351,6 @@ async function main(): Promise<void> {
   logger.info("🏢 Criando departamentos, colaboradores e configurações...")
   const deptMap: Record<string, string> = {}
   const employeeMap: Record<string, string[]> = {}
-  const configsMap: Record<string, { id: string; profile: ConfigProfile; questionIds: string[] }[]> = {}
-
   for (const deptProfile of DEPT_PROFILES) {
     const deptCreatedAt = addWeeks(START, deptProfile.startWeek)
 
@@ -472,43 +391,32 @@ async function main(): Promise<void> {
       })
     }
     employeeMap[deptProfile.deptName] = empIds
-
-    const configEntries: { id: string; profile: ConfigProfile; questionIds: string[] }[] = []
-    for (const configProfile of deptProfile.configs) {
-      const config = await prisma.healthSurveyConfiguration.create({
-        data: {
-          id: randomUUID(), tenantId,
-          name: configProfile.name,
-          frequency: configProfile.frequency,
-          dispatchTime: deptProfile.workStartTime,
-          isActive: true,
-          createdAt: deptCreatedAt,
-        },
-      })
-
-      await prisma.healthSurveyConfigDepartment.create({
-        data: { configId: config.id, departmentId: dept.id },
-      })
-
-      await prisma.healthSurveyConfigWorkDay.createMany({
-        data: deptProfile.workDays.map((d) => ({ configId: config.id, dayOfWeek: d })),
-      })
-
-      const bank = QUESTION_BANKS[configProfile.questionBank]
-      const qIds: string[] = []
-      for (let qi = 0; qi < bank.length; qi++) {
-        const q = bank[qi]
-        if (!q) continue
-        const question = await prisma.healthSurveyQuestion.create({
-          data: { id: randomUUID(), tenantId, healthSurveyConfigurationId: config.id, text: q.text, order: qi + 1, scoreDirection: q.direction, isActive: true },
-        })
-        qIds.push(question.id)
-      }
-      configEntries.push({ id: config.id, profile: configProfile, questionIds: qIds })
-    }
-    configsMap[deptProfile.deptName] = configEntries
   }
-  logger.info("✅ Departamentos, colaboradores e configurações criados.")
+
+  const globalConfig = await prisma.healthSurveyConfiguration.create({
+    data: { id: randomUUID(), tenantId, name: "Pesquisa de Saúde Ocupacional", frequency: "weekly", dispatchTime: "09:00", isActive: true, createdAt: START },
+  })
+
+  for (const deptProfile of DEPT_PROFILES) {
+    const deptId = deptMap[deptProfile.deptName]
+    if (!deptId) continue
+    await prisma.healthSurveyConfigDepartment.create({ data: { configId: globalConfig.id, departmentId: deptId } })
+  }
+
+  await prisma.healthSurveyConfigWorkDay.createMany({
+    data: [1, 2, 3, 4, 5].map((d) => ({ configId: globalConfig.id, dayOfWeek: d })),
+  })
+
+  const globalQIds: string[] = []
+  for (let qi = 0; qi < QUESTION_BANKS.default.length; qi++) {
+    const q = QUESTION_BANKS.default[qi]
+    if (!q) continue
+    const question = await prisma.healthSurveyQuestion.create({
+      data: { id: randomUUID(), tenantId, healthSurveyConfigurationId: globalConfig.id, text: q.text, order: qi + 1, scoreDirection: q.direction, isActive: true },
+    })
+    globalQIds.push(question.id)
+  }
+  logger.info("✅ Departamentos, colaboradores e configuração criados.")
 
   logger.info(`📊 Gerando ${TOTAL_WEEKS} semanas de pesquisas (26 meses) em memória...`)
 
@@ -547,116 +455,109 @@ async function main(): Promise<void> {
   for (const deptProfile of DEPT_PROFILES) {
     const deptId = deptMap[deptProfile.deptName]
     const empIds = employeeMap[deptProfile.deptName] ?? []
-    const configEntries = configsMap[deptProfile.deptName] ?? []
     if (!deptId || empIds.length === 0) continue
 
-    for (const configEntry of configEntries) {
-      const { id: configId, profile: configProfile, questionIds: qIds } = configEntry
-      if (qIds.length === 0) continue
+    let prevAvgScore = 3.5
 
-      const freqWeeks = configProfile.frequency === "weekly" ? 1 : configProfile.frequency === "biweekly" ? 2 : 4
-      let prevAvgScore = 3.5
+    for (let w = deptProfile.startWeek; w < TOTAL_WEEKS; w += 1) {
+      const dispatchDate = setMinutes(setHours(addWeeks(START, w), 9), 0)
+      if (dispatchDate > NOW) break
 
-      for (let w = deptProfile.startWeek; w < TOTAL_WEEKS; w += freqWeeks) {
-        const dispatchDate = setMinutes(setHours(addWeeks(START, w), 9), 0)
-        if (dispatchDate > NOW) break
+      const baseScore = deptProfile.baseScore(w)
+      const adherence = deptProfile.adherenceRate(w)
+      const respondentCount = Math.max(1, Math.round(empIds.length * adherence))
+      const respondents = empIds.slice(0, respondentCount)
+      const dispatchId = randomUUID()
 
-        const baseScore = configProfile.baseScore(w)
-        const adherence = configProfile.adherenceRate(w)
-        const respondentCount = Math.max(1, Math.round(empIds.length * adherence))
-        const respondents = empIds.slice(0, respondentCount)
-        const dispatchId = randomUUID()
+      allDispatches.push({
+        id: dispatchId,
+        tenantId,
+        healthSurveyConfigurationId: globalConfig.id,
+        scheduledAt: dispatchDate,
+        dispatchedAt: dispatchDate,
+        adherenceCheckedAt: addDays(dispatchDate, 2),
+        status: "available",
+        signedLinkToken: randomUUID(),
+      })
 
-        allDispatches.push({
-          id: dispatchId,
-          tenantId,
-          healthSurveyConfigurationId: configId,
-          scheduledAt: dispatchDate,
-          dispatchedAt: dispatchDate,
-          adherenceCheckedAt: addDays(dispatchDate, 2),
-          status: "available",
-          signedLinkToken: randomUUID(),
+      allDeptDispatches.push({
+        id: randomUUID(),
+        dispatchId,
+        departmentId: deptId,
+        tenantId,
+        totalRecipients: empIds.length,
+        totalResponses: respondents.length,
+      })
+
+      const scores: number[] = []
+      for (const empId of respondents) {
+        const empScore = clamp(Math.round(baseScore + (Math.random() - 0.5) * 1.2))
+        scores.push(empScore)
+
+        const tokenId = randomUUID()
+        const responseId = randomUUID()
+        const usedAt = addHours(dispatchDate, rand(1, 6))
+
+        allTokens.push({
+          id: tokenId, tenantId, dispatchId, employeeId: empId,
+          token: randomUUID(), expiresAt: addDays(dispatchDate, 2), usedAt,
+          workStartTime: deptProfile.workStartTime, workEndTime: deptProfile.workEndTime,
+          createdAt: dispatchDate,
         })
 
-        allDeptDispatches.push({
-          id: randomUUID(),
-          dispatchId,
-          departmentId: deptId,
-          tenantId,
-          totalRecipients: empIds.length,
-          totalResponses: respondents.length,
-        })
+        allResponses.push({ id: responseId, tenantId, dispatchId, createdAt: usedAt })
 
-        const scores: number[] = []
-        for (const empId of respondents) {
-          const empScore = clamp(Math.round(baseScore + (Math.random() - 0.5) * 1.2))
-          scores.push(empScore)
-
-          const tokenId = randomUUID()
-          const responseId = randomUUID()
-          const usedAt = addHours(dispatchDate, rand(1, 6))
-
-          allTokens.push({
-            id: tokenId, tenantId, dispatchId, employeeId: empId,
-            token: randomUUID(), expiresAt: addDays(dispatchDate, 2), usedAt,
-            workStartTime: deptProfile.workStartTime, workEndTime: deptProfile.workEndTime,
-            createdAt: dispatchDate,
-          })
-
-          allResponses.push({ id: responseId, tenantId, dispatchId, createdAt: usedAt })
-
-          for (const qId of qIds) {
-            allItems.push({
-              id: randomUUID(), healthSurveyResponseId: responseId, questionId: qId,
-              score: clamp(Math.round(empScore + (Math.random() - 0.5) * 0.8)),
-            })
-          }
-        }
-
-        const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 3.0
-
-        if (adherence < 0.8 && empIds.length >= 5) {
-          const pct = Math.round(adherence * 100)
-          const alertType = adherence < 0.5 ? "no_response" : "low_adherence"
-          alertsToCreate.push({
-            id: randomUUID(), tenantId, departmentId: deptId,
-            type: alertType,
-            severity: adherence < 0.3 ? "critical" : "warning",
-            message: `Taxa de adesão: ${pct}% (${respondents.length}/${empIds.length}) — ${configProfile.name}`,
-            isRead: w < TOTAL_WEEKS - 10,
-            resolvedAt: w < TOTAL_WEEKS - 10 ? addDays(dispatchDate, rand(3, 10)) : null,
-            createdAt: addDays(dispatchDate, 2),
+        for (const qId of globalQIds) {
+          allItems.push({
+            id: randomUUID(), healthSurveyResponseId: responseId, questionId: qId,
+            score: clamp(Math.round(empScore + (Math.random() - 0.5) * 0.8)),
           })
         }
-
-        if (prevAvgScore - avgScore > 1.0) {
-          const drop = prevAvgScore - avgScore
-          alertsToCreate.push({
-            id: randomUUID(), tenantId, departmentId: deptId,
-            type: "score_drop",
-            severity: drop > 2 ? "critical" : "warning",
-            message: `Queda de ${drop.toFixed(1)} pontos — ${deptProfile.deptName} (${configProfile.name}): de ${toHealthIndex(prevAvgScore)}% para ${toHealthIndex(avgScore)}%.`,
-            isRead: w < TOTAL_WEEKS - 10,
-            resolvedAt: w < TOTAL_WEEKS - 10 ? addDays(dispatchDate, rand(5, 14)) : null,
-            createdAt: addDays(dispatchDate, 2),
-          })
-        }
-
-        if (avgScore < 3.0 && empIds.length >= 5) {
-          const hi = toHealthIndex(avgScore)
-          alertsToCreate.push({
-            id: randomUUID(), tenantId, departmentId: deptId,
-            type: "low_score",
-            severity: avgScore < 2 ? "critical" : "warning",
-            message: `Índice de saúde baixo — ${deptProfile.deptName}: ${hi}% (${healthIndexLabel(hi)}).`,
-            isRead: w < TOTAL_WEEKS - 10,
-            resolvedAt: w < TOTAL_WEEKS - 10 ? addDays(dispatchDate, rand(5, 14)) : null,
-            createdAt: addDays(dispatchDate, 2),
-          })
-        }
-
-        prevAvgScore = avgScore
       }
+
+      const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 3.0
+
+      if (adherence < 0.8 && empIds.length >= 5) {
+        const pct = Math.round(adherence * 100)
+        const alertType = adherence < 0.5 ? "no_response" : "low_adherence"
+        alertsToCreate.push({
+          id: randomUUID(), tenantId, departmentId: deptId,
+          type: alertType,
+          severity: adherence < 0.3 ? "critical" : "warning",
+          message: `Taxa de adesão: ${pct}% (${respondents.length}/${empIds.length}) — ${deptProfile.deptName}`,
+          isRead: w < TOTAL_WEEKS - 10,
+          resolvedAt: w < TOTAL_WEEKS - 10 ? addDays(dispatchDate, rand(3, 10)) : null,
+          createdAt: addDays(dispatchDate, 2),
+        })
+      }
+
+      if (prevAvgScore - avgScore > 1.0) {
+        const drop = prevAvgScore - avgScore
+        alertsToCreate.push({
+          id: randomUUID(), tenantId, departmentId: deptId,
+          type: "score_drop",
+          severity: drop > 2 ? "critical" : "warning",
+          message: `Queda de ${drop.toFixed(1)} pontos — ${deptProfile.deptName}: de ${toHealthIndex(prevAvgScore)}% para ${toHealthIndex(avgScore)}%.`,
+          isRead: w < TOTAL_WEEKS - 10,
+          resolvedAt: w < TOTAL_WEEKS - 10 ? addDays(dispatchDate, rand(5, 14)) : null,
+          createdAt: addDays(dispatchDate, 2),
+        })
+      }
+
+      if (avgScore < 3.0 && empIds.length >= 5) {
+        const hi = toHealthIndex(avgScore)
+        alertsToCreate.push({
+          id: randomUUID(), tenantId, departmentId: deptId,
+          type: "low_score",
+          severity: avgScore < 2 ? "critical" : "warning",
+          message: `Índice de saúde baixo — ${deptProfile.deptName}: ${hi}% (${healthIndexLabel(hi)}).`,
+          isRead: w < TOTAL_WEEKS - 10,
+          resolvedAt: w < TOTAL_WEEKS - 10 ? addDays(dispatchDate, rand(5, 14)) : null,
+          createdAt: addDays(dispatchDate, 2),
+        })
+      }
+
+      prevAvgScore = avgScore
     }
 
     if (deptProfile.deptName === "Financeiro") {
@@ -709,8 +610,6 @@ async function main(): Promise<void> {
   const tecDeptId = deptMap["Tecnologia"] ?? ""
   const finDeptId = deptMap["Financeiro"] ?? ""
   const opsDeptId = deptMap["Operações"] ?? ""
-  const supDeptId = deptMap["Suporte"] ?? ""
-  const mktDeptId = deptMap["Marketing"] ?? ""
 
   const plan1 = await prisma.actionPlan.create({
     data: {
@@ -982,31 +881,19 @@ async function main(): Promise<void> {
       const deptId = deptMap[deptProfile.deptName]
       if (!deptId) continue
 
-      const configEntries = configsMap[deptProfile.deptName] ?? []
-      const allScoresForDept: number[] = []
-
-      for (const ce of configEntries) {
-        const sc = ce.profile.baseScore(Math.max(deptProfile.startWeek, pgr.weekApprox - 4))
-        allScoresForDept.push(sc)
-      }
-      const avgScore = allScoresForDept.length > 0 ? allScoresForDept.reduce((a, b) => a + b, 0) / allScoresForDept.length : 3.5
+      const avgScore = clamp(deptProfile.baseScore(Math.max(deptProfile.startWeek, pgr.weekApprox - 4)))
       const responseCount = Math.round(deptProfile.employeeCount * 0.82)
 
       deptResultRows.push({
         id: randomUUID(), pgrReviewId: pgrId, departmentId: deptId,
         departmentName: deptProfile.deptName, employeeCount: deptProfile.employeeCount,
-        avgScore: clamp(avgScore), responseCount, totalRecipients: deptProfile.employeeCount,
+        avgScore, responseCount, totalRecipients: deptProfile.employeeCount,
         createdAt: pgr.reviewedAt,
       })
 
-      const primaryConfig = configEntries[0]
-      if (!primaryConfig) continue
-      const qIds = primaryConfig.questionIds
-      const bank = QUESTION_BANKS[primaryConfig.profile.questionBank]
-
-      for (let qi = 0; qi < qIds.length; qi++) {
-        const qId = qIds[qi]
-        const bankQ = bank[qi]
+      for (let qi = 0; qi < globalQIds.length; qi++) {
+        const qId = globalQIds[qi]
+        const bankQ = QUESTION_BANKS.default[qi]
         if (!qId || !bankQ) continue
         questionResultRows.push({
           id: randomUUID(), pgrReviewId: pgrId, departmentId: deptId, questionId: qId,
@@ -1033,6 +920,7 @@ async function main(): Promise<void> {
   logger.info("")
   logger.info("  Departamentos:  7 (Tecnologia, Comercial, RH, Financeiro, Operações, Marketing + Suporte [mês 14])")
   logger.info("  Colaboradores:  46")
+  logger.info("  Configuração:   1 (Pesquisa de Saúde Ocupacional — semanal, todos os setores)")
   logger.info(`  Dispatches:     ${allDispatches.length}`)
   logger.info(`  Respostas:      ${allResponses.length}`)
   logger.info(`  Itens de resp:  ${allItems.length}`)
@@ -1042,11 +930,6 @@ async function main(): Promise<void> {
   logger.info("  Documentos:     10")
   logger.info("  Relatos anôn.:  12")
   logger.info("  Revisões PGR:   5 (set/2024 → mar/2026)")
-  logger.info("")
-  logger.info("  Configs por setor:")
-  logger.info("    Tecnologia:  2 configs (Saúde Geral semanal + Carga de Trabalho quinzenal)")
-  logger.info("    Operações:   2 configs (Saúde Geral semanal + Segurança/Ergonomia mensal)")
-  logger.info("    Demais:      1 config cada")
 }
 
 main().catch((e) => {

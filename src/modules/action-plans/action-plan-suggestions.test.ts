@@ -1,12 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import {
   buildSuggestionFromAlert,
+  buildAlertDescription,
   buildReportSuggestion,
   buildDispatchSuggestion,
   buildConsentSuggestion,
   buildPgrSuggestion,
   computeRawSuggestions,
 } from "@/modules/action-plans/suggestions"
+import { pickAlertSuggestions } from "@/modules/action-plans/suggestions/alert"
 import { findSuggestionContextData } from "@/modules/action-plans/action-plan.repository"
 
 vi.mock("@/modules/action-plans/action-plan.repository", () => ({
@@ -18,6 +20,7 @@ const mockFindContext = vi.mocked(findSuggestionContextData)
 const DEPT_ID_1 = "dept-1"
 const DEPT_NAME_VENDAS = "Vendas"
 const DISPATCH_DATE = "2026-04-20"
+const ALERT_CREATED_AT = "2026-04-20T10:00:00Z"
 const SCORE_DROP_TYPE = "score_drop"
 const CAT_HARASSMENT = "harassment"
 const CAT_OVERLOAD = "overload"
@@ -34,7 +37,7 @@ const baseAlert = {
   departmentId: DEPT_ID_1,
   department: { name: "TI" },
   message: "Queda de 1.5 pontos no setor TI",
-  createdAt: new Date("2026-04-20T10:00:00Z"),
+  createdAt: new Date(ALERT_CREATED_AT),
 }
 
 describe("buildSuggestionFromAlert", () => {
@@ -175,6 +178,48 @@ describe("buildReportSuggestion", () => {
     const result = buildReportSuggestion(reports, new Set())
     expect(result?.description).toContain("em análise")
   })
+
+  it("description says 'hoje' when oldest report was created today", () => {
+    const today = new Date()
+    const reports = [
+      { category: CAT_HARASSMENT, status: "open", createdAt: today },
+      { category: CAT_OVERLOAD, status: "open", createdAt: today },
+      { category: CAT_CONFLICT, status: "open", createdAt: today },
+    ]
+    const result = buildReportSuggestion(reports, new Set())
+    expect(result?.description).toContain("hoje")
+  })
+
+  it("description says 'há 1 dia' when oldest report was created yesterday", () => {
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
+    const reports = [
+      { category: CAT_HARASSMENT, status: "open", createdAt: yesterday },
+      { category: CAT_OVERLOAD, status: "open", createdAt: yesterday },
+      { category: CAT_CONFLICT, status: "open", createdAt: yesterday },
+    ]
+    const result = buildReportSuggestion(reports, new Set())
+    expect(result?.description).toContain("há 1 dia")
+  })
+
+  it("falls back to 'outros' for report with null category", () => {
+    const reports = [
+      { category: null, status: "open", createdAt: new Date(REPORT_DATE_1) },
+      { category: null, status: "open", createdAt: new Date(REPORT_DATE_2) },
+      { category: null, status: "open", createdAt: new Date(REPORT_DATE_3) },
+    ]
+    const result = buildReportSuggestion(reports, new Set())
+    expect(result?.description).toContain("outros")
+  })
+
+  it("uses raw category key when category is not in known labels", () => {
+    const reports = [
+      { category: "unknown_cat", status: "open", createdAt: new Date(REPORT_DATE_1) },
+      { category: "unknown_cat", status: "open", createdAt: new Date(REPORT_DATE_2) },
+      { category: "unknown_cat", status: "open", createdAt: new Date(REPORT_DATE_3) },
+    ]
+    const result = buildReportSuggestion(reports, new Set())
+    expect(result?.description).toContain("unknown_cat")
+  })
 })
 
 describe("buildDispatchSuggestion", () => {
@@ -218,6 +263,24 @@ describe("buildDispatchSuggestion", () => {
   it("includes missing response count in description", () => {
     const result = buildDispatchSuggestion([dispatch], new Set())
     expect(result?.description).toContain("5 respostas não foram recebidas")
+  })
+
+  it("returns null when dispatch has zero recipients", () => {
+    const zeroRecipients = { ...dispatch, totalRecipients: 0 }
+    expect(buildDispatchSuggestion([zeroRecipients], new Set())).toBeNull()
+  })
+
+  it("uses 'pesquisa recente' label when dispatchedAt is null", () => {
+    const noDate = { ...dispatch, dispatchedAt: null }
+    const result = buildDispatchSuggestion([noDate], new Set())
+    expect(result?.description).toContain("pesquisa recente")
+  })
+
+  it("uses 'geral' as department name when configDepartments is empty", () => {
+    const noDepts = { ...dispatch, healthSurveyConfiguration: { configDepartments: [] } }
+    const result = buildDispatchSuggestion([noDepts], new Set())
+    expect(result?.title).toContain("geral")
+    expect(result?.key).toBe("dispatch-low-adherence-geral")
   })
 })
 
@@ -408,5 +471,78 @@ describe("computeRawSuggestions", () => {
     })
     const result = await computeRawSuggestions("tenant-1")
     expect(result.some((s) => s.key.startsWith("dispatch-"))).toBe(false)
+  })
+})
+
+describe("buildAlertDescription — fallbacks de mapeamento", () => {
+  it("usa o valor bruto de severity como label quando não consta no mapeamento", () => {
+    const alert = {
+      id: "a-1",
+      type: "score_drop",
+      severity: "high",
+      departmentId: "dept-1",
+      department: { name: "TI" },
+      message: "Queda detectada",
+      createdAt: new Date(ALERT_CREATED_AT),
+    }
+
+    const result = buildAlertDescription(alert)
+
+    expect(result).toContain("high")
+  })
+
+  it("omite contexto de tipo quando o tipo de alerta não está mapeado em ALERT_CONTEXT_BY_TYPE", () => {
+    const alert = {
+      id: "a-2",
+      type: "pgr_review_due",
+      severity: "info",
+      departmentId: null,
+      department: null,
+      message: "Revisão pendente",
+      createdAt: new Date(ALERT_CREATED_AT),
+    }
+
+    const result = buildAlertDescription(alert)
+
+    expect(result).not.toContain("undefined")
+    expect(result).toContain("informativa")
+  })
+})
+
+describe("pickAlertSuggestions", () => {
+  const baseAlert = {
+    id: "a-1",
+    type: "score_drop",
+    severity: "warning",
+    departmentId: "dept-1",
+    department: { name: "TI" },
+    message: "Queda detectada",
+    createdAt: new Date(ALERT_CREATED_AT),
+  }
+
+  it("retorna array vazio imediatamente quando slots é zero", () => {
+    const result = pickAlertSuggestions([baseAlert], new Set(), new Set(), 0)
+
+    expect(result).toHaveLength(0)
+  })
+
+  it("para de coletar sugestões ao atingir o limite de slots", () => {
+    const alertLowScore = {
+      ...baseAlert,
+      id: "a-2",
+      type: "low_score",
+    }
+
+    const result = pickAlertSuggestions([baseAlert, alertLowScore], new Set(), new Set(), 1)
+
+    expect(result).toHaveLength(1)
+  })
+
+  it("ignora sugestão cujo título já existe nos planos em andamento", () => {
+    const existingTitles = new Set(["intervenção de bem-estar — ti"])
+
+    const result = pickAlertSuggestions([baseAlert], existingTitles, new Set(), 6)
+
+    expect(result).toHaveLength(0)
   })
 })

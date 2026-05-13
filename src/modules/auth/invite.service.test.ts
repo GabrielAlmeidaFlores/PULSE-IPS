@@ -21,6 +21,10 @@ import { getEmailService } from "@/libs/integrations"
 vi.mock("@/modules/auth/auth.repository")
 vi.mock("@/modules/audit/audit.repository")
 vi.mock("@/libs/integrations")
+vi.mock("@/modules/auth/auth.service", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/auth/auth.service")>()
+  return { ...actual, hashPassword: vi.fn().mockResolvedValue("hashed-password") }
+})
 vi.mock("@/libs/email-templates", () => ({ renderEmailTemplate: vi.fn(() => "<html>invite</html>") }))
 vi.mock("@/env", () => ({
   env: {

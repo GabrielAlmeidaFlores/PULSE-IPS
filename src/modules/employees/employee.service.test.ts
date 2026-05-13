@@ -297,7 +297,7 @@ describe("deleteExistingEmployee", () => {
     await deleteExistingEmployee(TENANT_ID, "emp-1")
 
     expect(mockCreateAuditLog).toHaveBeenCalledWith(
-      expect.not.objectContaining({ userId: expect.anything() }),
+      expect.not.objectContaining({ userId: expect.anything() as string }),
     )
   })
 })

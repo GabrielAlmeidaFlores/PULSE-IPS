@@ -117,7 +117,7 @@ function buildJobLogInput(
 const jobWorker = createJobWorker(processJob)
 const messageWorker = createMessageWorker(processMessageJob)
 
-jobWorker.on("completed", (job, result) => {
+jobWorker.on("completed", (job, result): void => {
   jobLogger.success(`completed: ${job.name} (id: ${job.id})`, result)
   const logInput = buildJobLogInput(job, QUEUE_NAME, "completed", result)
   if (logInput !== null) {
@@ -127,7 +127,7 @@ jobWorker.on("completed", (job, result) => {
   }
 })
 
-jobWorker.on("failed", (job, err) => {
+jobWorker.on("failed", (job, err): void => {
   jobLogger.error(`failed: ${job?.name} (id: ${job?.id}) — ${err.message}`)
   if (job !== undefined) {
     const logInput = buildJobLogInput(job, QUEUE_NAME, "failed", undefined, err)
@@ -139,11 +139,11 @@ jobWorker.on("failed", (job, err) => {
   }
 })
 
-jobWorker.on("error", (err) => {
+jobWorker.on("error", (err): void => {
   jobLogger.error("worker error", err)
 })
 
-messageWorker.on("completed", (job) => {
+messageWorker.on("completed", (job): void => {
   const maskedPhone = `***${String(job.data.to).slice(-4)}`
   msgLogger.success(`sent to ${maskedPhone} (id: ${job.id})`)
   const logInput = buildJobLogInput(job, MESSAGE_QUEUE_NAME, "completed", { to: maskedPhone, type: job.data.type })
@@ -154,7 +154,7 @@ messageWorker.on("completed", (job) => {
   }
 })
 
-messageWorker.on("failed", (job, err) => {
+messageWorker.on("failed", (job, err): void => {
   const maskedPhone = `***${String(job?.data.to).slice(-4)}`
   msgLogger.error(`failed to ${maskedPhone} (attempt ${job?.attemptsMade ?? 0}) — ${err.message}`)
   if (job !== undefined) {
@@ -167,7 +167,7 @@ messageWorker.on("failed", (job, err) => {
   }
 })
 
-messageWorker.on("error", (err) => {
+messageWorker.on("error", (err): void => {
   msgLogger.error("worker error", err)
 })
 

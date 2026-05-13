@@ -56,12 +56,10 @@ function write({ level, origin, message, data }: LogEntry): void {
   const msg = msgColor(level, message)
   const line = `${timestamp} ${tag} ${src} ${msg}${formatData(data)}`
 
-  if (level === "error") {
-    console.error(line)
-  } else if (level === "warn") {
-    console.warn(line)
+  if (level === "error" || level === "warn") {
+    process.stderr.write(`${line}\n`)
   } else {
-    console.log(line)
+    process.stdout.write(`${line}\n`)
   }
 }
 

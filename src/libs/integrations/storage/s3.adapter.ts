@@ -41,7 +41,7 @@ export class S3Adapter implements IStorageService {
     await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }))
   }
 
-  async getUrl(key: string): Promise<string> {
+  getUrl(key: string): Promise<string> {
     const command = new GetObjectCommand({ Bucket: this.bucket, Key: key })
     return getSignedUrl(this.client, command, { expiresIn: SIGNED_URL_EXPIRES_IN })
   }

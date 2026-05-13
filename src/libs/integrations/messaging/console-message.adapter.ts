@@ -10,10 +10,10 @@ import { createLogger } from "@/libs/utils/logger"
 const logger = createLogger("fake-message")
 
 export class ConsoleMessageAdapter implements IMessagingService {
-  async send(params: SendMessageParams): Promise<SendMessageResult> {
+  send(params: SendMessageParams): Promise<SendMessageResult> {
     const externalId = `fake-message-${Date.now()}`
     logger.info("📱 FAKE MESSAGE", { to: params.to, body: params.body, id: externalId })
-    return { externalId, status: "sent" }
+    return Promise.resolve({ externalId, status: "sent" })
   }
 
   async sendBulk(params: BulkMessageParams): Promise<BulkMessageResult> {

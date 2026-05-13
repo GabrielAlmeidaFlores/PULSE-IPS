@@ -13,29 +13,30 @@ import { createLogger } from "@/libs/utils/logger"
 const logger = createLogger("fake-billing")
 
 export class FakeBillingAdapter implements IBillingService {
-  async createProduct(params: CreateStripeProductParams): Promise<{ id: string }> {
+  createProduct(params: CreateStripeProductParams): Promise<{ id: string }> {
     const id = `fake_prod_${Date.now()}`
     logger.info(`💳 createProduct: "${params.name}"`, { id })
-    return { id }
+    return Promise.resolve({ id })
   }
 
-  async createPrice(params: CreateStripePriceParams): Promise<{ id: string }> {
+  createPrice(params: CreateStripePriceParams): Promise<{ id: string }> {
     const id = `fake_price_${Date.now()}`
     logger.info(`💳 createPrice: ${params.unitAmountInCents / 100} ${params.currency}/${params.interval}`, { id })
-    return { id }
+    return Promise.resolve({ id })
   }
 
-  async createCustomer(email: string, name: string): Promise<{ id: string }> {
+  createCustomer(email: string, name: string): Promise<{ id: string }> {
     const id = `fake_cus_${Date.now()}`
     logger.info(`💳 createCustomer: ${name} <${email}>`, { id })
-    return { id }
+    return Promise.resolve({ id })
   }
 
-  async cancelSubscription(externalSubscriptionId: string): Promise<void> {
+  cancelSubscription(externalSubscriptionId: string): Promise<void> {
     logger.warn(`💳 cancelSubscription`, { externalSubscriptionId })
+    return Promise.resolve()
   }
 
-  async createCheckoutSession(
+  createCheckoutSession(
     params: CreateCheckoutSessionParams,
   ): Promise<CreateCheckoutSessionResult> {
     logger.info("💳 createCheckoutSession (payment auto-approved)", {
@@ -43,14 +44,14 @@ export class FakeBillingAdapter implements IBillingService {
       priceId: params.externalPriceId,
       customerId: params.externalCustomerId,
     })
-    return { url: params.successUrl }
+    return Promise.resolve({ url: params.successUrl })
   }
 
-  async createBillingPortalSession(
+  createBillingPortalSession(
     params: CreateBillingPortalSessionParams,
   ): Promise<CreateBillingPortalSessionResult> {
     logger.info("💳 createBillingPortalSession", { returnUrl: params.returnUrl })
-    return { url: params.returnUrl }
+    return Promise.resolve({ url: params.returnUrl })
   }
 
   constructWebhookEvent(_payload: string | Buffer, _signature: string): BillingWebhookEvent {

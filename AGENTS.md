@@ -1785,6 +1785,8 @@ const { scheduledDayOfMonth } = parsed.data  // pode vir com valor residual
 
 O comando `yarn lint` executa o ESLint sobre todos os arquivos `**/*.ts` e `**/*.tsx` (exceto `.next/`, `out/`, `build/`, `node_modules/`, `prisma/`, `src/cli/`). **Todo PR deve passar com zero erros e zero warnings.**
 
+> ⚠️ **REGRA INVIOLÁVEL:** Nenhuma entrada em `eslint.config.mjs` pode ter valor `"off"`. Não existem relaxamentos por camada — as mesmas regras se aplicam a todos os arquivos, incluindo componentes UI, workers, adapters, testes e utilitários. Ver seção "Proibição absoluta de regras `'off'`" abaixo.
+
 #### Regras gerais (todos os arquivos TS/TSX)
 
 | Regra | Nível | Significado prático |
@@ -1858,15 +1860,25 @@ O comando `yarn lint` executa o ESLint sobre todos os arquivos `**/*.ts` e `**/*
 | `src/app/**` | Proibido importar repositories diretamente — use service |
 | `src/modules/**/*.service.ts` | Proibido importar `prisma` diretamente — use repository |
 
-#### Relaxamentos por camada
+#### Proibição absoluta de regras `"off"` no ESLint — sem exceções
 
-| Padrão de arquivo | Regras desativadas |
+**Nenhuma regra pode ter valor `"off"` em `eslint.config.mjs` — proibição absoluta e inviolável.**
+
+Todo o código da aplicação — incluindo componentes UI, workers, adapters de integração, arquivos de teste, utilitários e arquivos de configuração — está sujeito às mesmas regras rígidas. Não existem relaxamentos por camada.
+
+**Consequências práticas:**
+
+| Prática proibida (anterior) | Prática obrigatória (atual) |
 |---|---|
-| `src/components/ui/**` | `explicit-function-return-type`, `no-unsafe-*`, `consistent-type-definitions` |
-| `src/workers/**`, `src/libs/integrations/**`, `src/libs/utils/logger.ts`, `src/libs/logger.ts` | `no-console`, `require-await`, `explicit-function-return-type` |
-| `src/lib/**`, `src/libs/db/**` | `explicit-function-return-type` |
-| `**/*.test.ts`, `**/*.spec.ts` | `no-explicit-any`, `no-unsafe-*` |
-| Arquivos de config/rota/action/page/layout | `import/no-default-export` desativado |
+| `no-console: "off"` em workers | Usar `process.stdout.write` / `process.stderr.write` — ou o worker logger em `src/libs/utils/logger.ts` |
+| `require-await: "off"` em adapters | Remover `async` de métodos que não usam `await`; retornar `Promise.resolve(value)` explicitamente |
+| `explicit-function-return-type: "off"` em UI | Anotar `: React.ReactElement` em toda declaração de função componente |
+| `no-unsafe-*: "off"` em testes | Usar `expect.any(Date) as Date` e `expect.anything() as string` — nunca deixar `any` escapar para o tipo inferido |
+| `no-explicit-any: "off"` em testes | Usar `as Awaited<ReturnType<typeof fn>>` nos mocks — nunca `as any` |
+
+**Checklist obrigatório antes de qualquer PR:**
+- Não existe nenhuma linha com `"off"` em `eslint.config.mjs`
+- `yarn lint` retorna **zero erros e zero warnings**
 
 ---
 
