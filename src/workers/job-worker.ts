@@ -74,7 +74,12 @@ async function processJob(jobName: JobName): Promise<void> {
 
 async function processMessageJob(data: SendMessageJobData): Promise<void> {
   const messaging = getMessagingService()
-  const result = await messaging.send({ to: data.to, body: data.body })
+  const result = await messaging.send({
+    recipientPhone: data.recipientPhone,
+    messageText: data.messageText,
+    ...(data.recipientName !== undefined ? { recipientName: data.recipientName } : {}),
+    ...(data.surveyLink !== undefined ? { surveyLink: data.surveyLink } : {}),
+  })
   await createMessageLog(data.tenantId, {
     employeeId: data.employeeId,
     type: data.type,
@@ -144,9 +149,9 @@ jobWorker.on("error", (err): void => {
 })
 
 messageWorker.on("completed", (job): void => {
-  const maskedPhone = `***${String(job.data.to).slice(-4)}`
+  const maskedPhone = `***${String(job.data.recipientPhone).slice(-4)}`
   msgLogger.success(`sent to ${maskedPhone} (id: ${job.id})`)
-  const logInput = buildJobLogInput(job, MESSAGE_QUEUE_NAME, "completed", { to: maskedPhone, type: job.data.type })
+  const logInput = buildJobLogInput(job, MESSAGE_QUEUE_NAME, "completed", { recipientPhone: maskedPhone, type: job.data.type })
   if (logInput !== null) {
     jobLogService.insertJobLog(logInput).catch((err: Error) => {
       msgLogger.error(`failed to write job log: ${err.message}`)
@@ -155,7 +160,7 @@ messageWorker.on("completed", (job): void => {
 })
 
 messageWorker.on("failed", (job, err): void => {
-  const maskedPhone = `***${String(job?.data.to).slice(-4)}`
+  const maskedPhone = `***${String(job?.data.recipientPhone).slice(-4)}`
   msgLogger.error(`failed to ${maskedPhone} (attempt ${job?.attemptsMade ?? 0}) — ${err.message}`)
   if (job !== undefined) {
     const logInput = buildJobLogInput(job, MESSAGE_QUEUE_NAME, "failed", undefined, err)

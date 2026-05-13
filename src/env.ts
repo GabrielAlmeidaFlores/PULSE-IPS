@@ -12,13 +12,18 @@ export const env = createEnv({
     STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_").optional(),
 
     MESSAGING_PROVIDER: z
-      .enum(["smsbarato", "console"])
+      .enum(["smsbarato", "smsbarato-wa", "console"])
       .default("console"),
     SMSBARATO_API_KEY: z.string().min(1).optional(),
     SMSBARATO_BASE_URL: z
       .string()
       .url()
       .default("https://sistema81.smsbarato.com.br/send"),
+    SMSBARATO_WA_BASE_URL: z
+      .string()
+      .url()
+      .default("https://sistema81.smsbarato.com.br/sendwa"),
+    SMSBARATO_WA_TEMPLATE: z.string().min(1).default("pulse_survey"),
 
     SURVEY_MESSAGE_TEMPLATE: z
       .string()
@@ -94,6 +99,10 @@ export const env = createEnv({
     SMSBARATO_BASE_URL:
       process.env.SMSBARATO_BASE_URL ??
       "https://sistema81.smsbarato.com.br/send",
+    SMSBARATO_WA_BASE_URL:
+      process.env.SMSBARATO_WA_BASE_URL ??
+      "https://sistema81.smsbarato.com.br/sendwa",
+    SMSBARATO_WA_TEMPLATE: process.env.SMSBARATO_WA_TEMPLATE ?? "pulse_survey",
 
     SURVEY_MESSAGE_TEMPLATE: process.env.SURVEY_MESSAGE_TEMPLATE,
 

@@ -12,7 +12,7 @@ const logger = createLogger("fake-message")
 export class ConsoleMessageAdapter implements IMessagingService {
   send(params: SendMessageParams): Promise<SendMessageResult> {
     const externalId = `fake-message-${Date.now()}`
-    logger.info("📱 FAKE MESSAGE", { to: params.to, body: params.body, id: externalId })
+    logger.info("📱 FAKE MESSAGE", { recipientPhone: params.recipientPhone, messageText: params.messageText, id: externalId })
     return Promise.resolve({ externalId, status: "sent" })
   }
 

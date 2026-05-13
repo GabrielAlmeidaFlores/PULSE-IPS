@@ -1,6 +1,8 @@
 export interface SendMessageParams {
-  to: string
-  body: string
+  recipientPhone: string
+  messageText: string
+  recipientName?: string
+  surveyLink?: string
 }
 
 export interface SendMessageResult {
@@ -10,7 +12,7 @@ export interface SendMessageResult {
 }
 
 export interface BulkMessageParams {
-  recipients: { to: string; body: string }[]
+  recipients: { recipientPhone: string; messageText: string; recipientName?: string; surveyLink?: string }[]
 }
 
 export interface BulkMessageResult {

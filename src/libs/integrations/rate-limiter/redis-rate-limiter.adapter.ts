@@ -1,5 +1,5 @@
 import { RateLimiterRedis, RateLimiterRes } from "rate-limiter-flexible"
-import { redis } from "@/libs/redis"
+import { redisClient } from "@/libs/integrations/rate-limiter/redis-client"
 import type { IRateLimiterService, RateLimitCheckResult } from "@/libs/integrations/rate-limiter/rate-limiter.interface"
 
 export class RedisRateLimiterAdapter implements IRateLimiterService {
@@ -10,7 +10,7 @@ export class RedisRateLimiterAdapter implements IRateLimiterService {
     const existing = this.instanceCache.get(cacheKey)
     if (existing !== undefined) return existing
     const instance = new RateLimiterRedis({
-      storeClient: redis,
+      storeClient: redisClient,
       keyPrefix: "",
       points: limit,
       duration: windowSeconds,

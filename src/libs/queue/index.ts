@@ -23,8 +23,10 @@ export type JobName =
   | "organization-deletion-executor"
 
 export interface SendMessageJobData {
-  to: string
-  body: string
+  recipientPhone: string
+  messageText: string
+  recipientName?: string
+  surveyLink?: string
   tenantId: string
   employeeId: string
   provider: string
@@ -80,4 +82,10 @@ export function createMessageWorker(
   )
 }
 
-export { redisConnection }
+export function createJobQueueReader(): Queue<Record<string, never>, void, JobName> {
+  return new Queue<Record<string, never>, void, JobName>(QUEUE_NAME, { connection: redisConnection })
+}
+
+export function createMessageQueueReader(): Queue<SendMessageJobData> {
+  return new Queue<SendMessageJobData>(MESSAGE_QUEUE_NAME, { connection: redisConnection })
+}

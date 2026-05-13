@@ -1,5 +1,6 @@
 import { ConsoleMessageAdapter } from "@/libs/integrations/messaging/console-message.adapter"
 import { SmsBaratoAdapter } from "@/libs/integrations/messaging/smsbarato.adapter"
+import { SmsBaratoWaAdapter } from "@/libs/integrations/messaging/smsbarato-wa.adapter"
 import { ConsoleEmailAdapter } from "@/libs/integrations/email/console-email.adapter"
 import { ResendAdapter } from "@/libs/integrations/email/resend.adapter"
 import { FakeBillingAdapter } from "@/libs/integrations/billing/fake-billing.adapter"
@@ -19,6 +20,8 @@ export function getMessagingService(): IMessagingService {
   switch (env.MESSAGING_PROVIDER) {
     case "smsbarato":
       return new SmsBaratoAdapter()
+    case "smsbarato-wa":
+      return new SmsBaratoWaAdapter()
     default:
       return new ConsoleMessageAdapter()
   }

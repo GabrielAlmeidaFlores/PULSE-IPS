@@ -16,5 +16,5 @@ function createRedisClient(): Redis {
   })
 }
 
-export const redis: Redis =
+export const redisClient: Redis =
   globalThis.__redisClient ?? (globalThis.__redisClient = createRedisClient())
