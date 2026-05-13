@@ -99,6 +99,12 @@ services:
       DATABASE_URL: "postgresql://pulse:pulse@db:5432/pulse"
       REDIS_HOST: redis
       REDIS_PORT: "6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -h redis ping || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   schedule-register:
     image: pulse-worker:latest

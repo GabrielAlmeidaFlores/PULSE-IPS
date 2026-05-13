@@ -1085,7 +1085,7 @@ Sugestões automáticas de plano de ação geradas pelo job diário `action-plan
 | created_at | timestamptz | NOT NULL |
 | updated_at | timestamptz | NOT NULL |
 
-**Índices:** `(tenant_id, status)`, `(tenant_id, suggestion_key)`
+**Índices:** `(tenant_id, status)`, `(tenant_id, suggestion_key)`, `(dismissed_by)`
 
 #### `action_plan_suggestion_tasks`
 
@@ -3056,6 +3056,28 @@ npx prisma studio
 npx prisma generate
 ```
 
+### Regra fundamental — migrations contêm apenas o que o Prisma geraria
+
+**As migrations devem conter exclusivamente o SQL que o Prisma gera automaticamente a partir do `schema.prisma`.** Nunca adicione SQL manual a uma migration — isso inclui:
+
+- `CHECK` constraints de valores de enum (`CHECK (status IN (...))`)
+- `TRIGGER`s, `FUNCTION`s, `VIEW`s ou qualquer outro objeto de banco
+- `ALTER TABLE` para adicionar constraints que o Prisma não conhece
+- Qualquer SQL que não seja consequência direta de uma mudança no `schema.prisma`
+
+**Motivo:** migrations com SQL manual criam divergência silenciosa entre o schema Prisma e o banco. O Prisma passa a ter uma visão incorreta do banco, os diffs subsequentes ficam errados, e ninguém consegue entender o que foi adicionado manualmente versus o que o ORM declarou.
+
+**O que o Prisma gera (e portanto é permitido nas migrations):**
+- `CREATE TABLE` / `DROP TABLE`
+- `ALTER TABLE ADD COLUMN` / `DROP COLUMN`
+- `CREATE INDEX` / `DROP INDEX` (derivados de `@@index`, `@unique`, `@@unique`)
+- `ALTER TABLE ADD CONSTRAINT ... FOREIGN KEY` (derivado de relações)
+- `ALTER TABLE ADD CONSTRAINT ... PRIMARY KEY`
+- `ALTER TABLE ... ADD CONSTRAINT ... UNIQUE`
+- `ALTER TABLE ALTER COLUMN` (tipo, nullable, default)
+
+**Se precisar de SQL customizado** (ex: renomear coluna sem destruir dados), use `npx prisma migrate dev --name nome` para gerar a pasta com o timestamp correto e então **substitua** o SQL gerado pelo SQL customizado — nunca adicione SQL extra por cima.
+
 ### Regra para criação de migrations — timestamp real obrigatório
 
 **Nunca crie pastas de migration manualmente.** O timestamp do nome da pasta (`YYYYMMDDHHMMSS_nome`) é gerado automaticamente pelo Prisma e representa o instante real de criação. Criar pastas manualmente com timestamps arbitrários ou futuros quebra a auditabilidade da ordem de criação em branches paralelas e dificulta triagem de conflitos.
@@ -3068,7 +3090,47 @@ npx prisma migrate dev --name nome-descritivo
 mkdir prisma/migrations/20260429000000_nome
 ```
 
-Se uma migration precisar ser criada fora do fluxo normal (ex: SQL customizado), use `npx prisma migrate dev --name nome` e edite o arquivo SQL gerado — nunca crie a pasta diretamente.
+Se uma migration precisar de SQL customizado (ex: RENAME COLUMN), use `npx prisma migrate dev --name nome --create-only` para gerar apenas o arquivo sem aplicar, edite o SQL gerado, e então aplique com `npx prisma migrate dev`.
+
+### Checklist de auditoria do banco — garantir que nada extra existe
+
+Antes de qualquer PR ou após suspeita de divergência, execute:
+
+```bash
+DB="postgresql://..."
+
+# 1. Nenhum CHECK constraint além dos NOT NULL do Prisma (resultado deve ser 0)
+psql "$DB" -t -A -c "
+SELECT count(*)
+FROM information_schema.table_constraints tc
+JOIN information_schema.check_constraints cc ON tc.constraint_name = cc.constraint_name
+WHERE tc.constraint_type = 'CHECK'
+  AND tc.table_schema = 'public'
+  AND cc.check_clause NOT LIKE '%IS NOT NULL%';
+"
+
+# 2. Nenhum trigger (resultado deve ser vazio)
+psql "$DB" -t -A -c "
+SELECT trigger_name || ' ON ' || event_object_table
+FROM information_schema.triggers WHERE trigger_schema = 'public';
+"
+
+# 3. Nenhuma view (resultado deve ser vazio)
+psql "$DB" -t -A -c "
+SELECT table_name FROM information_schema.views WHERE table_schema = 'public';
+"
+
+# 4. Nenhuma função/procedure custom (resultado deve ser vazio)
+psql "$DB" -t -A -c "
+SELECT routine_name FROM information_schema.routines
+WHERE routine_schema = 'public' AND routine_type IN ('FUNCTION', 'PROCEDURE');
+"
+
+# 5. Schema em sync com Prisma
+npx prisma migrate status
+```
+
+Resultado esperado: `0` constraints extras, listas vazias de triggers/views/functions, "Database schema is up to date".
 
 ### Regra para renomear colunas
 
