@@ -121,10 +121,8 @@ services:
       REDIS_PORT: "6379"
     command:
       [
-        "node_modules/.bin/tsx",
-        "--tsconfig",
-        "tsconfig.json",
-        "src/workers/register-schedules.ts",
+        "node",
+        "dist/workers/register-schedules.js",
       ]
 
   minio:

@@ -10,6 +10,7 @@
     "seed": "SKIP_ENV_VALIDATION=true tsx src/cli/seed/index.ts",
     "worker:dev": "tsx --tsconfig tsconfig.json src/workers/job-worker.ts",
     "worker:schedules": "tsx --tsconfig tsconfig.json src/workers/register-schedules.ts",
+    "worker:build": "esbuild src/workers/job-worker.ts src/workers/register-schedules.ts --bundle --platform=node --target=node22 --packages=external --outdir=dist/workers --tsconfig=tsconfig.json",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage"
   },

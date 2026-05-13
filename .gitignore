@@ -44,3 +44,7 @@ next-env.d.ts
 
 # eslint cache
 .eslintcache
+
+# Worker build output
+workers
+dist/
