@@ -33,7 +33,7 @@ export const env = createEnv({
 
     EMAIL_PROVIDER: z.enum(["resend", "console"]).default("console"),
     RESEND_API_KEY: z.string().startsWith("re_").optional(),
-    EMAIL_FROM: z.string().email().optional(),
+    EMAIL_FROM: z.string().min(1).optional(),
 
     CRON_SECRET: z.string().min(16),
 
