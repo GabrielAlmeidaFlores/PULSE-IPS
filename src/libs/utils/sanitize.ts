@@ -34,11 +34,13 @@ const LEGAL_DOCUMENT_OPTIONS: sanitizeHtml.IOptions = {
 }
 
 export function sanitizeRichHtml(dirty: string): string {
-  const sanitized = sanitizeHtml(dirty, ALLOWED_HTML_OPTIONS)
-  return sanitized.replace(/\p{Extended_Pictographic}/gu, "").trim()
+  const firstPass = sanitizeHtml(dirty, ALLOWED_HTML_OPTIONS)
+  const secondPass = sanitizeHtml(firstPass, ALLOWED_HTML_OPTIONS)
+  return secondPass.replace(/\p{Extended_Pictographic}/gu, "").trim()
 }
 
 export function sanitizeLegalDocument(dirty: string): string {
-  const sanitized = sanitizeHtml(dirty, LEGAL_DOCUMENT_OPTIONS)
-  return sanitized.replace(/\p{Extended_Pictographic}/gu, "").trim()
+  const firstPass = sanitizeHtml(dirty, LEGAL_DOCUMENT_OPTIONS)
+  const secondPass = sanitizeHtml(firstPass, LEGAL_DOCUMENT_OPTIONS)
+  return secondPass.replace(/\p{Extended_Pictographic}/gu, "").trim()
 }
