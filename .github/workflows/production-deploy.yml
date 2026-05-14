@@ -149,6 +149,9 @@ jobs:
       - name: Write .env
         run: printf '%s' '${{ vars.PRD_ENVS }}' > .env
 
+      - name: Secure .env permissions
+        run: chmod 600 .env
+
       - name: Ensure db is healthy
         run: |
           if docker ps --filter "name=^pulse_db$" --filter "status=running" --format "{{.Names}}" | grep -q "^pulse_db$"; then
@@ -205,6 +208,9 @@ jobs:
       - name: Write .env
         run: printf '%s' '${{ vars.PRD_ENVS }}' > .env
 
+      - name: Secure .env permissions
+        run: chmod 600 .env
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -242,6 +248,9 @@ jobs:
 
       - name: Write .env
         run: printf '%s' '${{ vars.PRD_ENVS }}' > .env
+
+      - name: Secure .env permissions
+        run: chmod 600 .env
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
