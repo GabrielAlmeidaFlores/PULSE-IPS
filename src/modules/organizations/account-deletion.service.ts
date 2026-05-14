@@ -1,3 +1,4 @@
+import { randomInt } from "crypto"
 import { env } from "@/env"
 import { addDays, addMinutes, format } from "date-fns"
 import { ptBR } from "date-fns/locale"
@@ -23,7 +24,7 @@ const logger = createLogger("account-deletion")
 const ACTIVE_SUBSCRIPTION_STATUSES = new Set(["active", "trialing"])
 
 function generateSixDigitCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString()
+  return randomInt(100000, 1000000).toString()
 }
 
 export async function requestAccountDeletionCode(
