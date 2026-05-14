@@ -41,6 +41,7 @@ import {
   toHealthIndex,
   healthIndexAccent,
 } from "@/libs/utils/health-index";
+import { MINIMUM_RESPONDENTS_FOR_DISPLAY } from "@/libs/utils/anonymity";
 import { env } from "@/env";
 
 interface HealthSurveyDispatchDetailPageProps {
@@ -218,6 +219,8 @@ function DeptChartSection({
   deptStats,
 }: DeptChartSectionProps): React.ReactElement {
   const hasResponses = deptStats.totalResponses > 0;
+  const awaitingThreshold = hasResponses && deptStats.totalResponses < MINIMUM_RESPONDENTS_FOR_DISPLAY;
+  const hasEnoughForStats = deptStats.totalResponses >= MINIMUM_RESPONDENTS_FOR_DISPLAY;
   const deptAdherence = Math.round(deptStats.adherenceRate * 100);
   const deptLabel = deptStats.departments.length > 0
     ? deptStats.departments.map((d) => d.name).join(", ")
@@ -249,6 +252,19 @@ function DeptChartSection({
         </div>
       </div>
 
+      {awaitingThreshold && (
+        <div className="px-5 py-3 bg-status-warning-subtle border-b border-status-warning-border flex items-start gap-2">
+          <span className="text-status-warning text-sm mt-px shrink-0">⚠</span>
+          <p className="text-xs text-status-warning leading-relaxed">
+            As estatísticas são exibidas somente quando há pelo menos{" "}
+            <strong>{MINIMUM_RESPONDENTS_FOR_DISPLAY} respondentes</strong> — proteção ao anonimato dos colaboradores.
+            Faltam{" "}
+            <strong>{MINIMUM_RESPONDENTS_FOR_DISPLAY - deptStats.totalResponses} resposta{MINIMUM_RESPONDENTS_FOR_DISPLAY - deptStats.totalResponses === 1 ? "" : "s"}</strong>{" "}
+            para liberar os dados.
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-0 divide-y md:divide-y-0 md:divide-x divide-border">
         <div className="p-5 flex flex-col items-center justify-center gap-2">
           <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
@@ -273,17 +289,19 @@ function DeptChartSection({
               Índice de Saúde por Pergunta
             </p>
           </div>
-          {hasResponses ? (
+          {hasEnoughForStats ? (
             <HealthSurveyQuestionScoreChart stats={deptStats} />
           ) : (
             <p className="text-xs text-muted-foreground text-center py-8">
-              Nenhuma resposta registrada ainda.
+              {awaitingThreshold
+                ? `Aguardando mais ${MINIMUM_RESPONDENTS_FOR_DISPLAY - deptStats.totalResponses} resposta${MINIMUM_RESPONDENTS_FOR_DISPLAY - deptStats.totalResponses === 1 ? "" : "s"} para liberar as estatísticas.`
+                : "Nenhuma resposta registrada ainda."}
             </p>
           )}
         </div>
       </div>
 
-      {hasResponses && (
+      {hasEnoughForStats && (
         <div className="border-t border-border">
           <div className="px-5 py-3 border-b border-border flex items-center justify-between">
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
