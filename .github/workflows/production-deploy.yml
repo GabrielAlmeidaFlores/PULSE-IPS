@@ -222,10 +222,12 @@ jobs:
 
       - name: Run Prisma migrate deploy
         run: |
+          POSTGRES_USER=$(grep '^POSTGRES_USER=' .env | head -1 | cut -d= -f2- || echo 'pulse')
+          POSTGRES_PASSWORD=$(grep '^POSTGRES_PASSWORD=' .env | head -1 | cut -d= -f2- || echo 'pulse')
           docker run --rm \
             --network host \
             --env-file .env \
-            -e DATABASE_URL=postgresql://pulse:pulse@localhost:5432/pulse \
+            -e DATABASE_URL=postgresql://${POSTGRES_USER:-pulse}:${POSTGRES_PASSWORD:-pulse}@localhost:5432/pulse \
             pulse-app:latest \
             node node_modules/prisma/build/index.js migrate deploy
 
