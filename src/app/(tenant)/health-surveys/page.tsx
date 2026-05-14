@@ -198,8 +198,13 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
                   className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors group ${i % 2 !== 0 ? "bg-muted/10" : ""}`}
                 >
                   <td className="px-4 py-3">
-                    <Link href={`/health-surveys/${d.id}`} className="block font-mono text-xs text-foreground">
-                      {formatInTimeZone(new Date(d.scheduledAt), timezone, "dd/MM/yyyy")}
+                    <Link href={`/health-surveys/${d.id}`} className="block">
+                      <span className="font-mono text-xs text-foreground">
+                        {formatInTimeZone(new Date(d.scheduledAt), timezone, "dd/MM/yyyy")}
+                      </span>
+                      <div className="font-mono text-[10px] text-muted-foreground mt-0.5">
+                        {formatInTimeZone(new Date(d.scheduledAt), timezone, "HH:mm")}
+                      </div>
                     </Link>
                   </td>
                   <td className="px-4 py-3 w-36">
