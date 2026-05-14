@@ -13,7 +13,7 @@ const ALLOWED_HTML_OPTIONS: sanitizeHtml.IOptions = {
   ],
   allowedAttributes: {
     a: ["href", "target", "rel"],
-    "*": ["class", "style"],
+    "*": ["class"],
   },
   allowedSchemes: ["http", "https", "mailto"],
 }

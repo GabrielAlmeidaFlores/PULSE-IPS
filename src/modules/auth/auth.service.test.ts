@@ -122,10 +122,10 @@ describe("verifyPassword", () => {
 })
 
 describe("login", () => {
-  it("throws when org not found", async () => {
+  it("throws INVALID_CREDENTIALS when org not found (prevents org slug enumeration)", async () => {
     mockFindOrgBySlug.mockResolvedValue(null)
     await expect(login({ orgSlug: "unknown", email: "x@x.com", password: "pass" })).rejects.toMatchObject({
-      code: "ORG_NOT_FOUND",
+      code: "INVALID_CREDENTIALS",
     })
   })
 
