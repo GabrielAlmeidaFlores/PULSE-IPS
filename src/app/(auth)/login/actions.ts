@@ -23,8 +23,12 @@ export async function loginAction(input: {
   if (!parsed.success) return { error: "Dados inválidos." }
 
   const ip = await getClientIp()
-  const rateLimitError = await enforceRateLimit(`rl:login:${ip}`, 10, 900)
-  if (rateLimitError !== null) return { error: rateLimitError }
+  const ipRateLimitError = await enforceRateLimit(`rl:login:ip:${ip}`, 10, 900)
+  if (ipRateLimitError !== null) return { error: ipRateLimitError }
+
+  const userKey = `rl:login:user:${parsed.data.orgSlug}:${parsed.data.email}`
+  const userRateLimitError = await enforceRateLimit(userKey, 10, 900)
+  if (userRateLimitError !== null) return { error: userRateLimitError }
 
   try {
     await login(parsed.data)

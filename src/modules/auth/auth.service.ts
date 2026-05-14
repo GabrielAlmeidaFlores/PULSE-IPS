@@ -35,7 +35,7 @@ export function verifyPassword(plain: string, hash: string): Promise<boolean> {
 
 export async function login(input: LoginInput): Promise<SessionPayload> {
   const org = await findOrgBySlug(input.orgSlug)
-  if (!org) throw new AppError("ORG_NOT_FOUND", "Organização não encontrada")
+  if (!org) throw new AppError("INVALID_CREDENTIALS", INVALID_CREDENTIALS_MSG)
 
   const user = await findOrgUserByEmail(org.id, input.email)
   if (!user?.isActive) throw new AppError("INVALID_CREDENTIALS", INVALID_CREDENTIALS_MSG)
