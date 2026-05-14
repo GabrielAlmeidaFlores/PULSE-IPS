@@ -1,4 +1,4 @@
-import { randomUUID } from "crypto"
+import { randomInt, randomUUID } from "crypto"
 import { addHours } from "date-fns"
 import { toZonedTime } from "date-fns-tz"
 import { getMessageQueue } from "@/libs/queue"
@@ -38,7 +38,7 @@ function buildMessageFromTemplate(template: string, employeeName: string, survey
 }
 
 function generateHealthSurveyTokenShortCode(): string {
-  return Math.floor(1000000 + Math.random() * 9000000).toString()
+  return randomInt(1000000, 10000000).toString()
 }
 
 function getDayOfWeekInTimezone(timezone: string): number {
