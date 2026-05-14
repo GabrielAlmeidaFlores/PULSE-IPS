@@ -360,13 +360,18 @@ function buildSameDayConfigMap(
   allDispatches: HealthSurveyDispatchWithConfig[],
   anchorDay: string,
   timezone: string,
+  anchorDispatchId: string,
 ): Map<string, HealthSurveyDispatchWithConfig> {
   const map = new Map<string, HealthSurveyDispatchWithConfig>();
   for (const d of allDispatches) {
     if (formatInTimeZone(new Date(d.scheduledAt), timezone, DAY_FORMAT) !== anchorDay) continue;
     const configId = d.healthSurveyConfiguration.id;
     const existing = map.get(configId);
-    if (!existing || new Date(d.scheduledAt) > new Date(existing.scheduledAt)) {
+    if (!existing) {
+      map.set(configId, d);
+    } else if (d.id === anchorDispatchId) {
+      map.set(configId, d);
+    } else if (existing.id !== anchorDispatchId && new Date(d.scheduledAt) > new Date(existing.scheduledAt)) {
       map.set(configId, d);
     }
   }
@@ -499,7 +504,7 @@ export default async function HealthSurveyDispatchDetailPage({
 
   const anchorDay = formatInTimeZone(anchorStats.scheduledAt, timezone, DAY_FORMAT);
 
-  const sameDayConfigMap = buildSameDayConfigMap(allDispatches, anchorDay, timezone);
+  const sameDayConfigMap = buildSameDayConfigMap(allDispatches, anchorDay, timezone, dispatchId);
 
   const allDeptOptions = Array.from(
     new Map(
