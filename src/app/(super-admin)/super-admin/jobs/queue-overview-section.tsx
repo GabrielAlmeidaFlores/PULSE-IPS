@@ -1,11 +1,13 @@
 "use client"
 
-import { Fragment, useState } from "react"
+import { Fragment, useState, useTransition } from "react"
 import type { QueueStatus, LiveJobSummary } from "@/modules/queue-status/queue-status.types"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react"
+import { retryAllFailedJobsAction } from "@/app/(super-admin)/super-admin/jobs/actions"
+import { toast } from "sonner"
 
 interface Props {
   queue: QueueStatus
@@ -278,12 +280,25 @@ function LiveJobsTable({ jobs }: { jobs: LiveJobSummary[] }): React.ReactElement
 }
 
 export function QueueOverviewSection({ queue }: Props): React.ReactElement {
+  const [isPending, startTransition] = useTransition()
   const allLiveJobs: LiveJobSummary[] = [
     ...queue.activeJobs,
     ...queue.waitingJobs,
     ...queue.delayedJobs,
     ...queue.failedJobs,
   ]
+  const failedCount = queue.counts.failed
+
+  function handleRetryAll(): void {
+    startTransition(async () => {
+      const result = await retryAllFailedJobsAction()
+      if (result.error !== undefined) {
+        toast.error(result.error)
+      } else {
+        toast.success("Jobs reenfileirados com sucesso.")
+      }
+    })
+  }
 
   return (
     <div className="space-y-4">
@@ -337,10 +352,23 @@ export function QueueOverviewSection({ queue }: Props): React.ReactElement {
       {allLiveJobs.length > 0 ? (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Jobs na fila agora{" "}
-              <span className="text-[11px] font-normal">({allLiveJobs.length.toLocaleString("pt-BR")})</span>
-            </CardTitle>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Jobs na fila agora{" "}
+                <span className="text-[11px] font-normal">({allLiveJobs.length.toLocaleString("pt-BR")})</span>
+              </CardTitle>
+              {failedCount > 0 && (
+                <button
+                  onClick={handleRetryAll}
+                  disabled={isPending}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold border border-status-danger-border text-status-danger hover:bg-status-danger-subtle disabled:opacity-50 transition-colors"
+                  style={{ borderRadius: 0 }}
+                >
+                  <RefreshCw className={`h-3 w-3 ${isPending ? "animate-spin" : ""}`} />
+                  Retentar todos ({failedCount})
+                </button>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             <LiveJobsTable jobs={allLiveJobs} />
