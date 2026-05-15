@@ -4,10 +4,7 @@ import { NextResponse } from "next/server"
 export async function GET(): Promise<NextResponse> {
   const dbOk = await healthService.checkDatabase()
   if (dbOk) {
-    return NextResponse.json({ status: "ok", timestamp: new Date().toISOString() })
+    return NextResponse.json({ status: "ok" })
   }
-  return NextResponse.json(
-    { status: "error", timestamp: new Date().toISOString() },
-    { status: 503 },
-  )
+  return NextResponse.json({ status: "error" }, { status: 503 })
 }

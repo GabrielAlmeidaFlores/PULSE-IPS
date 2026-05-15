@@ -1,7 +1,42 @@
+import { randomBytes } from "crypto"
 import { NextResponse, type NextRequest } from "next/server"
 import { jwtVerify } from "jose"
 import { env } from "@/env"
 import { extractClientIp } from "@/libs/utils/client-ip"
+
+function generateNonce(): string {
+  return randomBytes(16).toString("base64")
+}
+
+function buildCspDirectives(nonce: string): string {
+  return [
+    "default-src 'self'",
+    `script-src 'nonce-${nonce}' 'strict-dynamic' 'unsafe-inline' https://js.stripe.com`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https:",
+    "font-src 'self' data:",
+    "connect-src 'self' https://api.stripe.com",
+    "frame-src https://js.stripe.com https://hooks.stripe.com",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "upgrade-insecure-requests",
+    "report-uri /api/csp-report",
+  ].join("; ")
+}
+
+function createNextWithNonce(request: NextRequest, nonce: string): NextResponse {
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set("x-nonce", nonce)
+  requestHeaders.set("Content-Security-Policy", buildCspDirectives(nonce))
+  return NextResponse.next({ request: { headers: requestHeaders } })
+}
+
+function addCspToResponse(response: NextResponse, nonce: string): void {
+  if (response.status >= 300 && response.status < 400) return
+  response.headers.set("Content-Security-Policy", buildCspDirectives(nonce))
+}
 
 const SUPER_ADMIN_LOGIN_PATH = "/super-admin/login"
 
@@ -21,6 +56,7 @@ const PUBLIC_PATHS = [
   "/consent-terms",
   "/api/webhooks",
   "/api/health",
+  "/api/csp-report",
   "/data-deletion",
   SUPER_ADMIN_LOGIN_PATH,
 ]
@@ -41,7 +77,7 @@ const TENANT_PATHS = [
 
 const SUPER_ADMIN_PREFIX = "/super-admin"
 const SUPER_ADMIN_API_PREFIX = "/api/super-admin"
-const SKIP_LOG_PREFIXES = ["/api/internal/", "/api/jobs/", "/api/auth/", "/api/health", "/_next/", "/favicon"]
+const SKIP_LOG_PREFIXES = ["/api/internal/", "/api/jobs/", "/api/auth/", "/api/health", "/api/csp-report", "/_next/", "/favicon"]
 
 function isPublicPath(pathname: string): boolean {
   if (pathname === "/") return true
@@ -138,6 +174,7 @@ async function handleSuperAdminRoute(
   superAdminCookie: string | undefined,
   request: NextRequest,
   sessionInfo: SessionInfo,
+  nonce: string,
 ): Promise<NextResponse> {
   if (!superAdminCookie) {
     return NextResponse.redirect(new URL(SUPER_ADMIN_LOGIN_PATH, request.url))
@@ -147,7 +184,7 @@ async function handleSuperAdminRoute(
     const userId = payload["userId"]
     if (typeof userId === "string") sessionInfo.userId = userId
     sessionInfo.userType = "super_admin"
-    return NextResponse.next()
+    return createNextWithNonce(request, nonce)
   } catch {
     return NextResponse.redirect(new URL(SUPER_ADMIN_LOGIN_PATH, request.url))
   }
@@ -157,6 +194,7 @@ async function handleTenantRoute(
   sessionCookie: string | undefined,
   request: NextRequest,
   sessionInfo: SessionInfo,
+  nonce: string,
 ): Promise<NextResponse> {
   if (!sessionCookie) {
     return NextResponse.redirect(new URL("/login", request.url))
@@ -168,7 +206,7 @@ async function handleTenantRoute(
     if (typeof tenantId === "string") sessionInfo.tenantId = tenantId
     if (typeof userId === "string") sessionInfo.userId = userId
     sessionInfo.userType = "org_user"
-    const response = NextResponse.next()
+    const response = createNextWithNonce(request, nonce)
     if (typeof tenantId === "string") response.headers.set("x-tenant-id", tenantId)
     return response
   } catch {
@@ -179,27 +217,32 @@ async function handleTenantRoute(
 export async function proxy(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl
   const startMs = Date.now()
+  const nonce = generateNonce()
 
   if (shouldSkipLog(pathname)) {
-    return processRequest(request)
+    const response = await processRequest(request, nonce)
+    addCspToResponse(response, nonce)
+    return response
   }
 
   const sessionInfo: SessionInfo = {}
-  const response = await processRequestWithSession(request, sessionInfo)
+  const response = await processRequestWithSession(request, sessionInfo, nonce)
+  addCspToResponse(response, nonce)
 
   fireLog(request, response, startMs, sessionInfo)
 
   return response
 }
 
-function processRequest(request: NextRequest): Promise<NextResponse> {
+function processRequest(request: NextRequest, nonce: string): Promise<NextResponse> {
   const sessionInfo: SessionInfo = {}
-  return processRequestWithSession(request, sessionInfo)
+  return processRequestWithSession(request, sessionInfo, nonce)
 }
 
 async function processRequestWithSession(
   request: NextRequest,
   sessionInfo: SessionInfo,
+  nonce: string,
 ): Promise<NextResponse> {
   const { pathname } = request.nextUrl
   const sessionCookie = request.cookies.get("pulse_session")?.value
@@ -208,17 +251,17 @@ async function processRequestWithSession(
   const loginRedirect = await tryRedirectIfAlreadyLoggedIn(pathname, sessionCookie, superAdminCookie, request)
   if (loginRedirect) return loginRedirect
 
-  if (isPublicPath(pathname)) return NextResponse.next()
+  if (isPublicPath(pathname)) return createNextWithNonce(request, nonce)
 
   if (pathname.startsWith(SUPER_ADMIN_PREFIX) || pathname.startsWith(SUPER_ADMIN_API_PREFIX)) {
-    return handleSuperAdminRoute(superAdminCookie, request, sessionInfo)
+    return handleSuperAdminRoute(superAdminCookie, request, sessionInfo, nonce)
   }
 
   if (isTenantPath(pathname)) {
-    return handleTenantRoute(sessionCookie, request, sessionInfo)
+    return handleTenantRoute(sessionCookie, request, sessionInfo, nonce)
   }
 
-  return NextResponse.next()
+  return createNextWithNonce(request, nonce)
 }
 
 export const config = {
