@@ -59,7 +59,7 @@ function buildCspDirectives(nonce: string): string {
     "default-src 'self'",
     `script-src 'nonce-${nonce}' 'strict-dynamic' https://js.stripe.com`,
     `style-src 'self' 'unsafe-inline' 'nonce-${nonce}'`,
-    "img-src 'self' data: blob: https:",
+    "img-src 'self' data: blob:",
     "font-src 'self' data:",
     "connect-src 'self' https://api.stripe.com",
     "frame-src https://js.stripe.com https://hooks.stripe.com",
