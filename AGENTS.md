@@ -2261,11 +2261,33 @@ O arquivo `src/proxy.ts` com export `proxy` substitui o antigo `middleware.ts` n
 POST /login
   ├─ Recebe: { slug, email, password }
   ├─ Busca organization WHERE slug = ? AND is_active = true
+  │    └─ Se não encontrado: bcrypt.compare(password, DUMMY_HASH) → lança INVALID_CREDENTIALS
   ├─ Busca organization_users WHERE tenant_id = org.id AND email = ? AND is_active = true
+  │    └─ Se não encontrado/inativo: bcrypt.compare(password, DUMMY_HASH) → lança INVALID_CREDENTIALS
   ├─ bcrypt.compare(password, user.password_hash)
   ├─ Cria session cookie (HttpOnly, Secure, SameSite=Strict)
   └─ Redireciona para /dashboard (BillingWallModal exibido se billing não ativo)
 ```
+
+#### Proteção contra timing oracle — regra obrigatória
+
+**Todo caminho de early-exit no `login()` que ocorra antes do `bcrypt.compare` real deve executar um dummy compare.** Sem isso, um atacante pode medir a diferença de tempo de resposta para enumerar slugs de organização e endereços de e-mail válidos.
+
+```typescript
+// ✅ CORRETO — dummy compare equaliza o tempo de resposta
+const DUMMY_HASH = "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TiGc.0C5EOnf2Hy4P7dymR0Y7nUi"
+
+const org = await findOrgBySlug(input.orgSlug)
+if (!org) {
+    await bcrypt.compare(input.password, DUMMY_HASH)  // ~200ms de custo bcrypt
+    throw new AppError("INVALID_CREDENTIALS", msg)
+}
+
+// ❌ PROIBIDO — responde em ~5ms para slug inválido, ~200ms para válido
+if (!org) throw new AppError("INVALID_CREDENTIALS", msg)
+```
+
+O `DUMMY_HASH` é um hash bcrypt pré-computado com cost factor 12. O `bcrypt.compare` extrai o fator do próprio hash e executa exatamente o mesmo número de iterações — garantindo que o tempo de resposta seja idêntico independentemente de a org ou o usuário existirem.
 
 ### Reset de senha
 
@@ -2410,6 +2432,40 @@ O adapter Redis usa `rate-limiter-flexible` (Lua atômica internamente) e manté
 **Factory:** `getRateLimiterService()` em `src/libs/integrations/index.ts` retorna um **singleton** (a instância é cacheada no módulo), garantindo que o cache interno de instâncias do adapter Redis seja preservado entre requests.
 
 **Camada consumidora:** `src/libs/rate-limit.ts` é o único arquivo que chama `getRateLimiterService()` — as Server Actions importam apenas `enforceRateLimit`, `checkRateLimit` e `getClientIp` de `@/libs/rate-limit`, sem nenhum acoplamento direto ao `rate-limiter-flexible`.
+
+#### Rate limiter — princípio fail-closed obrigatório
+
+**O rate limiter deve sempre falhar fechado (fail-closed), nunca aberto (fail-open).** Se o Redis estiver indisponível ou ocorrer qualquer erro de infraestrutura, a requisição deve ser **bloqueada**, não permitida.
+
+Isso se aplica em duas camadas independentes:
+
+**1. Adapter Redis (`RedisRateLimiterAdapter`):**
+```typescript
+} catch (err) {
+    if (err instanceof RateLimiterRes) {
+        return { allowed: false, retryAfterSeconds: Math.ceil(err.msBeforeNext / 1000) }
+    }
+    // Redis indisponível → bloquear para preservar a garantia de segurança
+    return { allowed: false, retryAfterSeconds: 60 }
+}
+```
+
+**2. Proxy layer (`proxy.ts` — `enforceProxyRateLimit`):**
+```typescript
+try {
+    const response = await fetch(`${env.INTERNAL_API_URL}/api/internal/rate-limit-proxy`, ...)
+    if (!response.ok) {
+        // Endpoint interno retornou erro → fail-closed
+        return NextResponse.json({ error: "Muitas tentativas." }, { status: 429 })
+    }
+    ...
+} catch {
+    // Fetch falhou (timeout, rede, etc.) → fail-closed
+    return NextResponse.json({ error: "Muitas tentativas." }, { status: 429 })
+}
+```
+
+**Motivo:** um rate limiter que falha aberto é equivalente a não ter rate limiter. Endpoints de login, reset de senha e acesso a pesquisas ficam completamente desprotegidos contra brute-force se o Redis tiver qualquer instabilidade.
 
 ### PDF — Geração do relatório PGR
 
@@ -5084,4 +5140,30 @@ health_survey_responses           → sem employee_id + department_id nullable (
 - `group_token` removido — não é mais necessário para agrupar dispatches do mesmo run
 - 1 `signed_link_token` por dispatch — o link público serve para todos os setores cobertos pela config
 
-*Pulse — AGENTS.md | Documento interno | Maio de 2026*
+---
+
+## 38. Segurança — Decisões e Limitações Conhecidas
+
+### 38.1 `style-src 'unsafe-inline'` — limitação conhecida
+
+A diretiva CSP `style-src 'unsafe-inline'` está presente intencionalmente e **não pode ser removida** sem uma refatoração massiva da UI. O React renderiza `style={{}}` como atributos HTML `style="..."` que são bloqueados por CSP sem `unsafe-inline` — não existe alternativa via nonce para atributos inline (nonces funcionam apenas para elementos `<style>`, não para atributos).
+
+**Mitigação aplicada:** a diretiva `img-src` foi restrita a `'self' data: blob:` (sem `https:` wildcard), eliminando o principal canal de exfiltração via CSS injection. Qualquer tentativa de CSS keylogging via `background: url(https://...)` é bloqueada.
+
+**Para remover `unsafe-inline` no futuro:** converter todos os `style={{}}` para Tailwind classes ou CSS modules. Estimativa: 360+ componentes.
+
+### 38.2 `CF-Connecting-IP` — requer proteção a nível de infraestrutura
+
+O código confia em `CF-Connecting-IP` como IP autoritativo do cliente (arquivo `src/libs/utils/client-ip.ts`). O Cloudflare bloqueia clientes que tentam forjar esse header — **mas apenas quando as requisições chegam via Cloudflare**. Se o origin IP for descoberto e acessado diretamente, o atacante pode fornecer qualquer `CF-Connecting-IP` e burlar o rate limiting por IP.
+
+**Mitigação obrigatória a nível de infraestrutura (fora do codebase):**
+- Configurar o security group / firewall do servidor de origem para aceitar conexões **apenas dos IPs publicados pelo Cloudflare**: https://www.cloudflare.com/ips-v4 e https://www.cloudflare.com/ips-v6
+- Bloquear todo tráfego direto ao origin IP (portas 80 e 443) de IPs não-Cloudflare
+
+Sem essa configuração de infraestrutura, o rate limiting por IP pode ser contornado por qualquer atacante que descubra o IP de origem (via certificate transparency logs, Shodan, DNS histórico, etc.).
+
+### 38.3 Multipart/form-data em rotas de página — proteção no proxy
+
+O `proxy.ts` rejeita com HTTP 415 qualquer POST com `Content-Type: multipart/form-data` para as rotas de autenticação (`/login`, `/forgot-password`, `/super-admin/login`) quando o header `next-action` não está presente. Isso previne que ferramentas de fuzzing causem HTTP 500 nessas rotas via payloads multipart inválidos.
+
+Requisições legítimas do React Server Actions incluem sempre o header `next-action` — esse check não afeta o fluxo normal da aplicação.

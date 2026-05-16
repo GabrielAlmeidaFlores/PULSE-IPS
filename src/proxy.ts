@@ -25,6 +25,12 @@ async function enforceProxyRateLimit(request: NextRequest): Promise<NextResponse
   const config = PROXY_RATE_LIMITED_PATHS.find((p) => pathname === p.path || pathname.startsWith(`${p.path}/`))
   if (!config) return null
 
+  const contentType = request.headers.get("content-type") ?? ""
+  const isServerAction = request.headers.has("next-action")
+  if (contentType.includes("multipart/form-data") && !isServerAction) {
+    return new NextResponse(null, { status: 415 })
+  }
+
   const ip = extractClientIp(request.headers) ?? "unknown"
   const key = `${config.key}:${ip}`
 
@@ -33,9 +39,12 @@ async function enforceProxyRateLimit(request: NextRequest): Promise<NextResponse
       method: "POST",
       headers: { "content-type": "application/json", "x-internal-secret": env.CRON_SECRET },
       body: JSON.stringify({ key, limit: config.limit, windowSeconds: config.windowSeconds }),
+      signal: AbortSignal.timeout(2000),
     })
 
-    if (!response.ok) return null
+    if (!response.ok) {
+      return NextResponse.json({ error: "Muitas tentativas. Tente novamente em instantes." }, { status: 429 })
+    }
 
     const result = (await response.json()) as RateLimitCheckResult
     if (!result.allowed) {
@@ -45,6 +54,7 @@ async function enforceProxyRateLimit(request: NextRequest): Promise<NextResponse
       return NextResponse.json({ error: message }, { status: 429, headers: { "Retry-After": String(retryAfter) } })
     }
   } catch {
+    return NextResponse.json({ error: "Muitas tentativas. Tente novamente em instantes." }, { status: 429 })
   }
 
   return null
