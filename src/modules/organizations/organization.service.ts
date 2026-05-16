@@ -22,6 +22,10 @@ export function getOrganization(tenantId: string): Promise<Organization | null> 
   return findOrganizationById(tenantId)
 }
 
+export function getOrganizationBySlug(slug: string): Promise<Organization | null> {
+  return findOrganizationBySlug(slug)
+}
+
 export function getAllOrganizations(): ReturnType<typeof findAllOrganizations> {
   return findAllOrganizations()
 }

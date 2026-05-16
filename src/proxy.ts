@@ -3,6 +3,52 @@ import { NextResponse, type NextRequest } from "next/server"
 import { jwtVerify } from "jose"
 import { env } from "@/env"
 import { extractClientIp } from "@/libs/utils/client-ip"
+import type { RateLimitCheckResult } from "@/libs/integrations/rate-limiter/rate-limiter.interface"
+
+interface ProxyRateLimitConfig {
+  path: string
+  key: string
+  limit: number
+  windowSeconds: number
+}
+
+const PROXY_RATE_LIMITED_PATHS: ProxyRateLimitConfig[] = [
+  { path: "/login", key: "rl:proxy:login", limit: 20, windowSeconds: 900 },
+  { path: "/forgot-password", key: "rl:proxy:forgot-password", limit: 5, windowSeconds: 900 },
+  { path: "/super-admin/login", key: "rl:proxy:super-admin-login", limit: 10, windowSeconds: 900 },
+]
+
+async function enforceProxyRateLimit(request: NextRequest): Promise<NextResponse | null> {
+  if (request.method !== "POST") return null
+
+  const { pathname } = request.nextUrl
+  const config = PROXY_RATE_LIMITED_PATHS.find((p) => pathname === p.path || pathname.startsWith(`${p.path}/`))
+  if (!config) return null
+
+  const ip = extractClientIp(request.headers) ?? "unknown"
+  const key = `${config.key}:${ip}`
+
+  try {
+    const response = await fetch(`${env.INTERNAL_API_URL}/api/internal/rate-limit-proxy`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-internal-secret": env.CRON_SECRET },
+      body: JSON.stringify({ key, limit: config.limit, windowSeconds: config.windowSeconds }),
+    })
+
+    if (!response.ok) return null
+
+    const result = (await response.json()) as RateLimitCheckResult
+    if (!result.allowed) {
+      const retryAfter = Math.ceil(result.retryAfterSeconds)
+      const minutes = Math.ceil(retryAfter / 60)
+      const message = minutes <= 1 ? "Muitas tentativas. Tente novamente em instantes." : `Muitas tentativas. Tente novamente em ${minutes} minutos.`
+      return NextResponse.json({ error: message }, { status: 429, headers: { "Retry-After": String(retryAfter) } })
+    }
+  } catch {
+  }
+
+  return null
+}
 
 function generateNonce(): string {
   return randomBytes(16).toString("base64")
@@ -11,8 +57,8 @@ function generateNonce(): string {
 function buildCspDirectives(nonce: string): string {
   return [
     "default-src 'self'",
-    `script-src 'nonce-${nonce}' 'strict-dynamic' 'unsafe-inline' https://js.stripe.com`,
-    "style-src 'self' 'unsafe-inline'",
+    `script-src 'nonce-${nonce}' 'strict-dynamic' https://js.stripe.com`,
+    `style-src 'self' 'unsafe-inline' 'nonce-${nonce}'`,
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
     "connect-src 'self' https://api.stripe.com",
@@ -218,6 +264,9 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl
   const startMs = Date.now()
   const nonce = generateNonce()
+
+  const rateLimitResponse = await enforceProxyRateLimit(request)
+  if (rateLimitResponse !== null) return rateLimitResponse
 
   if (shouldSkipLog(pathname)) {
     const response = await processRequest(request, nonce)
