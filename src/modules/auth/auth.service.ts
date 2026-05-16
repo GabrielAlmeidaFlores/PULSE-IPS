@@ -25,6 +25,8 @@ import { createAuditLog } from "@/modules/audit/audit.repository"
 
 const INVALID_CREDENTIALS_MSG = "Credenciais inválidas"
 
+const DUMMY_HASH = "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TiGc.0C5EOnf2Hy4P7dymR0Y7nUi"
+
 export function hashPassword(plain: string): Promise<string> {
   return bcrypt.hash(plain, 12)
 }
@@ -35,10 +37,16 @@ export function verifyPassword(plain: string, hash: string): Promise<boolean> {
 
 export async function login(input: LoginInput): Promise<SessionPayload> {
   const org = await findOrgBySlug(input.orgSlug)
-  if (!org) throw new AppError("INVALID_CREDENTIALS", INVALID_CREDENTIALS_MSG)
+  if (!org) {
+    await bcrypt.compare(input.password, DUMMY_HASH)
+    throw new AppError("INVALID_CREDENTIALS", INVALID_CREDENTIALS_MSG)
+  }
 
   const user = await findOrgUserByEmail(org.id, input.email)
-  if (!user?.isActive) throw new AppError("INVALID_CREDENTIALS", INVALID_CREDENTIALS_MSG)
+  if (!user?.isActive) {
+    await bcrypt.compare(input.password, DUMMY_HASH)
+    throw new AppError("INVALID_CREDENTIALS", INVALID_CREDENTIALS_MSG)
+  }
 
   const valid = await verifyPassword(input.password, user.passwordHash)
   if (!valid) throw new AppError("INVALID_CREDENTIALS", INVALID_CREDENTIALS_MSG)
