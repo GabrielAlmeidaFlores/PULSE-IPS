@@ -1,0 +1,5 @@
+Contact: mailto:seguranca@pulseips.com.br
+Expires: 2027-01-01T00:00:00.000Z
+Preferred-Languages: pt, en
+Canonical: https://pulseips.com.br/.well-known/security.txt
+Policy: https://pulseips.com.br/privacy-policy
