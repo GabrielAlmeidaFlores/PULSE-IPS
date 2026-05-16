@@ -80,8 +80,10 @@ export async function resendOrgInviteAction(inviteId: string): Promise<ActionRes
   const session = await getSession()
   if (!session) return { error: SESSION_EXPIRED_ERROR }
   assertOrgAdmin(session)
+  const idParsed = z.string().uuid().safeParse(inviteId)
+  if (!idParsed.success) return { error: "Convite inválido." }
   try {
-    await resendOrgInvite(session.tenantId, inviteId, session.userId)
+    await resendOrgInvite(session.tenantId, idParsed.data, session.userId)
     revalidatePath("/settings")
     return {}
   } catch (err) {
@@ -94,8 +96,10 @@ export async function cancelOrgInviteAction(inviteId: string): Promise<ActionRes
   const session = await getSession()
   if (!session) return { error: SESSION_EXPIRED_ERROR }
   assertOrgAdmin(session)
+  const idParsed = z.string().uuid().safeParse(inviteId)
+  if (!idParsed.success) return { error: "Convite inválido." }
   try {
-    await cancelOrgInvite(session.tenantId, inviteId, session.userId)
+    await cancelOrgInvite(session.tenantId, idParsed.data, session.userId)
     revalidatePath("/settings")
     return {}
   } catch (err) {

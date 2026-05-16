@@ -1,5 +1,6 @@
 "use server"
 
+import { z } from "zod"
 import { revalidatePath } from "next/cache"
 import { randomUUID } from "crypto"
 import { getSession } from "@/modules/auth/session"
@@ -7,6 +8,8 @@ import { createNewDocument, addDocumentVersion, getDocument, getDocumentVersions
 import type { DocumentVersionItem } from "@/modules/documents/document.types"
 import { AppError } from "@/libs/errors/app-error"
 import type { ActionResult } from "@/libs/utils/action-result"
+
+const documentIdSchema = z.string().uuid()
 
 const ALLOWED_TYPES = ["policy", "procedure", "pgr", "pcmso", "other"] as const
 type DocType = (typeof ALLOWED_TYPES)[number]
@@ -63,18 +66,20 @@ export async function uploadDocumentVersionAction(
   const session = await getSession()
   if (!session) return { error: "Sessão expirada." }
 
-  const documentId = formData.get("documentId") as string | null
+  const rawDocumentId = formData.get("documentId") as string | null
   const file = formData.get("file") as File | null
 
-  if (!documentId) return { error: "Documento inválido." }
+  if (!rawDocumentId) return { error: "Documento inválido." }
+  const docIdParsed = documentIdSchema.safeParse(rawDocumentId)
+  if (!docIdParsed.success) return { error: "Documento inválido." }
   if (!file || file.size === 0) return { error: "Arquivo é obrigatório." }
 
   try {
-    const doc = await getDocument(session.tenantId, documentId)
+    const doc = await getDocument(session.tenantId, docIdParsed.data)
     if (!doc) return { error: "Documento não encontrado." }
 
     const key = await uploadFile(session.tenantId, file)
-    await addDocumentVersion(session.tenantId, documentId, key, session.userId)
+    await addDocumentVersion(session.tenantId, docIdParsed.data, key, session.userId)
     revalidatePath("/documents")
     return {}
   } catch (err) {
@@ -93,8 +98,11 @@ export async function getDocumentVersionsAction(documentId: string): Promise<Ver
   const session = await getSession()
   if (!session) return { error: "Sessão expirada." }
 
+  const parsed = documentIdSchema.safeParse(documentId)
+  if (!parsed.success) return { error: "ID inválido." }
+
   try {
-    const versions = await getDocumentVersions(session.tenantId, documentId)
+    const versions = await getDocumentVersions(session.tenantId, parsed.data)
     return {
       versions: versions.map((v) => ({
         id: v.id,

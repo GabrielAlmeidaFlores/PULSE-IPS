@@ -1,5 +1,6 @@
 "use server"
 
+import { z } from "zod"
 import { redirect } from "next/navigation"
 import { isRedirectError } from "next/dist/client/components/redirect-error"
 import { revalidatePath } from "next/cache"
@@ -11,9 +12,11 @@ import { AppError } from "@/libs/errors/app-error"
 export async function cancelOrganizationDeletionAction(organizationId: string): Promise<ActionResult> {
   const session = await getSuperAdminSession()
   if (!session) redirect("/super-admin/login")
+  const idParsed = z.string().uuid().safeParse(organizationId)
+  if (!idParsed.success) return { error: "ID inválido." }
   try {
-    await cancelScheduledOrganizationDeletion(organizationId)
-    revalidatePath(`/super-admin/organizations/${organizationId}`)
+    await cancelScheduledOrganizationDeletion(idParsed.data)
+    revalidatePath(`/super-admin/organizations/${idParsed.data}`)
     return {}
   } catch (err) {
     if (isRedirectError(err)) throw err
