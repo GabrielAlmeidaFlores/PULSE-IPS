@@ -28,7 +28,7 @@ export class RedisRateLimiterAdapter implements IRateLimiterService {
       if (err instanceof RateLimiterRes) {
         return { allowed: false, retryAfterSeconds: Math.ceil(err.msBeforeNext / 1000) }
       }
-      return { allowed: false, retryAfterSeconds: 60 }
+      return { allowed: false, retryAfterSeconds: 10 }
     }
   }
 }
