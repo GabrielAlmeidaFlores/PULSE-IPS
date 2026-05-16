@@ -13,6 +13,10 @@ export default defineConfig({
       NEXTAUTH_SECRET: "test-secret",
       CRON_SECRET: "test-cron",
       NEXT_PUBLIC_APP_URL: "http://localhost:3000",
+      LOG_LEVEL: "silent",
+      NODE_ENV: "test",
+      REDIS_HOST: "localhost",
+      REDIS_PORT: "6379",
     },
     coverage: {
       provider: "v8",
