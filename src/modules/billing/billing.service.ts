@@ -3,18 +3,27 @@ import { env } from "@/env"
 import { getBillingService } from "@/libs/integrations"
 import { AppError } from "@/libs/errors/app-error"
 import { findActiveSubscription, upsertSubscription, findPlanPriceForProvisioning, createSubscriptionFeatureSnapshot, findTenantSubscriptionFeatures } from "@/modules/billing/billing.repository"
-import { findOrganizationRequired, updateOrganizationBillingStatus } from "@/modules/organizations/organization.repository"
+import { findOrganizationRequired, updateOrganizationBillingStatus, updateOrganizationCustomerId } from "@/modules/organizations/organization.repository"
 import { findPlanFeatures } from "@/modules/plans/plan.repository"
 import type { PlanFeature } from "@/modules/plans/plan.types"
 import type { SubscriptionWithPlan } from "@/modules/billing/billing.types"
+
+async function ensureStripeCustomer(tenantId: string): Promise<string> {
+  const org = await findOrganizationRequired(tenantId)
+  if (org.externalCustomerId) return org.externalCustomerId
+
+  const billing = getBillingService()
+  const customer = await billing.createCustomer(`${org.slug}@pulse.app`, org.name)
+  await updateOrganizationCustomerId(org.id, customer.id)
+  return customer.id
+}
 
 export async function createCheckoutSession(
   tenantId: string,
   externalPriceId: string,
   options?: { successUrl?: string | undefined; cancelUrl?: string | undefined },
 ): Promise<string> {
-  const org = await findOrganizationRequired(tenantId)
-  if (!org.externalCustomerId) throw new AppError("NO_BILLING_CUSTOMER", "Organização sem cliente de faturamento.")
+  const externalCustomerId = await ensureStripeCustomer(tenantId)
 
   const billing = getBillingService()
   const successUrl = options?.successUrl ?? `${env.NEXT_PUBLIC_APP_URL}/billing?success=true`
@@ -22,7 +31,7 @@ export async function createCheckoutSession(
 
   const { url } = await billing.createCheckoutSession({
     externalPriceId,
-    externalCustomerId: org.externalCustomerId,
+    externalCustomerId,
     organizationId: tenantId,
     successUrl,
     cancelUrl,

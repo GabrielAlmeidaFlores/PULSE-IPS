@@ -1,8 +1,9 @@
 import { getAllOrganizationsPaginatedAdmin } from "@/modules/organizations/organization.service"
 import { buildPaginationParams } from "@/libs/utils/pagination"
 import Link from "next/link"
-import { ChevronRight } from "lucide-react"
+import { ChevronRight, Plus } from "lucide-react"
 import { FilterBar, TablePagination } from "@/libs/design-system"
+import { SetTrialModalButton } from "@/app/(super-admin)/super-admin/organizations/set-trial-modal-button"
 
 const BILLING_LABELS: Record<string, string> = {
   active:    "Ativo",
@@ -29,6 +30,26 @@ function BillingBadge({ status }: { status: string }): React.ReactElement {
   )
 }
 
+function TrialBadge({ trialExpiresAt }: { trialExpiresAt: Date | null }): React.ReactElement {
+  if (trialExpiresAt === null) return <span className="text-muted-foreground">—</span>
+
+  const isActive = trialExpiresAt > new Date()
+  const formatted = trialExpiresAt.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" })
+
+  if (isActive) {
+    return (
+      <span className="text-[10px] font-bold tracking-widest uppercase px-2 py-0.5 badge-success" style={{ borderRadius: 0 }}>
+        {formatted}
+      </span>
+    )
+  }
+  return (
+    <span className="text-[10px] font-bold tracking-widest uppercase px-2 py-0.5 bg-muted text-muted-foreground" style={{ borderRadius: 0 }}>
+      {formatted}
+    </span>
+  )
+}
+
 export default async function OrganizationsPage({
   searchParams,
 }: {
@@ -45,10 +66,22 @@ export default async function OrganizationsPage({
   return (
     <div className="flex flex-col h-full">
       <div className="px-6 py-3 border-b border-border bg-card shrink-0">
-        <h1 className="text-[13px] font-black tracking-[0.2em] uppercase text-foreground">Organizações</h1>
-        <p className="text-[11px] text-muted-foreground">
-          {total} organização{total !== 1 ? "s" : ""} cadastrada{total !== 1 ? "s" : ""} — criadas via checkout pelos clientes
-        </p>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-[13px] font-black tracking-[0.2em] uppercase text-foreground">Organizações</h1>
+            <p className="text-[11px] text-muted-foreground">
+              {total} organização{total !== 1 ? "s" : ""} cadastrada{total !== 1 ? "s" : ""}
+            </p>
+          </div>
+          <Link
+            href="/super-admin/organizations/new"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-[10px] font-black tracking-widest uppercase hover:bg-primary/90 transition-colors"
+            style={{ borderRadius: 0 }}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Nova organização
+          </Link>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -58,13 +91,14 @@ export default async function OrganizationsPage({
         />
         <div className="border border-border bg-card" style={{ borderRadius: 0 }}>
           <div className="overflow-x-auto">
-          <table className="w-full text-[12px]" style={{ minWidth: 640 }}>
+          <table className="w-full text-[12px]" style={{ minWidth: 720 }}>
             <thead>
               <tr className="border-b border-border bg-muted">
                 <th className="text-left px-4 py-2.5 font-bold tracking-widest uppercase text-[10px] text-muted-foreground">Organização</th>
                 <th className="text-left px-4 py-2.5 font-bold tracking-widest uppercase text-[10px] text-muted-foreground hidden sm:table-cell">Slug</th>
                 <th className="text-left px-4 py-2.5 font-bold tracking-widest uppercase text-[10px] text-muted-foreground hidden md:table-cell">Plano</th>
                 <th className="text-center px-4 py-2.5 font-bold tracking-widest uppercase text-[10px] text-muted-foreground">Billing</th>
+                <th className="text-center px-4 py-2.5 font-bold tracking-widest uppercase text-[10px] text-muted-foreground hidden lg:table-cell">Trial</th>
                 <th className="text-right px-4 py-2.5 font-bold tracking-widest uppercase text-[10px] text-muted-foreground hidden sm:table-cell">Colaboradores</th>
                 <th className="w-8" />
               </tr>
@@ -72,8 +106,8 @@ export default async function OrganizationsPage({
             <tbody>
               {orgs.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-muted-foreground text-[11px] tracking-wide">
-                    Nenhuma organização ainda. Clientes criam suas contas via checkout na landing page.
+                  <td colSpan={7} className="px-4 py-10 text-center text-muted-foreground text-[11px] tracking-wide">
+                    Nenhuma organização cadastrada.
                   </td>
                 </tr>
               )}
@@ -87,6 +121,16 @@ export default async function OrganizationsPage({
                   <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">{org.plan?.name ?? "—"}</td>
                   <td className="px-4 py-3 text-center">
                     <BillingBadge status={org.billingStatus} />
+                  </td>
+                  <td className="px-4 py-3 text-center hidden lg:table-cell">
+                    <div className="flex items-center justify-center gap-2">
+                      <TrialBadge trialExpiresAt={org.trialExpiresAt} />
+                      <SetTrialModalButton
+                        organizationId={org.id}
+                        organizationName={org.name}
+                        trialExpiresAt={org.trialExpiresAt}
+                      />
+                    </div>
                   </td>
                   <td className="px-4 py-3 font-mono text-right text-muted-foreground hidden sm:table-cell">
                     {org._count.employees}

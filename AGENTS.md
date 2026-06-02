@@ -114,9 +114,9 @@ Feita exclusivamente pelo Super Admin. Campos:
 |---|---|
 | Nome da empresa | Sim |
 | Slug (identificador único de login) | Sim — gerado automaticamente, editável |
-| Plano atribuído | Sim |
 | E-mail do Admin principal | Sim — recebe convite de primeiro acesso |
-| CNPJ | Não |
+| Plano atribuído | Não — admin pode contratar depois via Stripe |
+| Fuso horário | Não — padrão `America/Sao_Paulo` |
 
 ---
 
@@ -298,9 +298,16 @@ src/
 │   │   ├── super-admin/
 │   │   │   ├── dashboard/page.tsx          # KPIs: orgs ativas, colaboradores, mensagens
 │   │   │   ├── organizations/
-│   │   │   │   ├── page.tsx                # Lista organizações (Super Admin não cria mais)
+│   │   │   │   ├── page.tsx                # Lista organizações + botão "Nova organização" + coluna Trial por linha
+│   │   │   │   ├── set-trial-modal-button.tsx  # Client Component — modal de gestão de trial por linha da listagem
+│   │   │   │   ├── new/
+│   │   │   │   │   ├── page.tsx            # RSC — busca planos e renderiza formulário de criação
+│   │   │   │   │   ├── create-org-form.tsx # Client Component — form com auto-slug, NativeSelect de plano e timezone
+│   │   │   │   │   └── actions.ts          # createOrgByAdminAction — cria org + envia convite de primeiro acesso
 │   │   │   │   └── [id]/
 │   │   │   │       ├── page.tsx
+│   │   │   │       ├── set-trial-form.tsx  # Client Component — form de trial na página de detalhe
+│   │   │   │       ├── actions.ts          # setOrgTrialAction — revalida listagem + detalhe
 │   │   │   │       └── billing/page.tsx    # Status de assinatura + override de limite
 │   │   │   ├── plans/
 │   │   │   │   ├── page.tsx                # Lista planos com funcionalidades inclusas
@@ -739,6 +746,7 @@ O tenant. `id` é o `tenant_id` de todas as demais tabelas.
 | external_customer_id | varchar(255) | UNIQUE — ID do customer no provedor de billing |
 | billing_status | varchar(20) | `'pending'` \| `'active'` \| `'past_due'` \| `'suspended'` \| `'cancelled'` |
 | max_employees_override | integer | NULL = usa limite do plano |
+| trial_expires_at | timestamptz | NULL = sem trial ativo; NOT NULL = trial ativo até essa data (bypass do billing wall) |
 | deletion_scheduled_at | timestamptz | NULL = sem exclusão agendada; NOT NULL = exclusão permanente pendente |
 | is_active | boolean | NOT NULL, default true |
 | created_at | timestamptz | NOT NULL |

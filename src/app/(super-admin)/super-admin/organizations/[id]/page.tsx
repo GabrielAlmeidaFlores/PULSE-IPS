@@ -16,6 +16,7 @@ import {
 } from "lucide-react"
 import { CancelDeletionBanner } from "@/app/(super-admin)/super-admin/organizations/[id]/cancel-deletion-banner"
 import { OrgAuditLogs } from "@/app/(super-admin)/super-admin/organizations/[id]/org-audit-logs"
+import { SetTrialForm } from "@/app/(super-admin)/super-admin/organizations/[id]/set-trial-form"
 
 interface Props {
   params: Promise<{ id: string }>
@@ -24,6 +25,7 @@ interface Props {
 
 const BILLING_LABELS: Record<string, string> = {
   active: "Ativo",
+  trialing: "Em trial",
   pending: "Pendente",
   past_due: "Em atraso",
   suspended: "Suspenso",
@@ -46,6 +48,7 @@ type BadgeColor = "green" | "amber" | "red" | "muted" | "blue";
 
 function billingStatusColor(status: string): BadgeColor {
   if (status === "active") return "green";
+  if (status === "trialing") return "blue";
   if (status === "past_due" || status === "suspended") return "red";
   return "amber";
 }
@@ -224,7 +227,7 @@ function SubscriptionCard({
         />
         <MetricRow
           label="Máx. colaboradores"
-          value={sub.snapshotMaxEmployees}
+          value={sub.snapshotMaxEmployees ?? "Ilimitado"}
         />
         {sub.cancelAtPeriodEnd && (
           <MetricRow
@@ -269,6 +272,9 @@ export default async function OrganizationDetailPage({
     org.employeeCounts.inactive +
     org.employeeCounts.paused;
 
+  const isInTrial = org.trialExpiresAt !== null && org.trialExpiresAt > new Date()
+  const effectiveBillingStatus = isInTrial && org.billingStatus === "pending" ? "trialing" : org.billingStatus
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-4 px-6 py-3.5 border-b border-border bg-card shrink-0">
@@ -290,8 +296,8 @@ export default async function OrganizationDetailPage({
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <StatusBadge
-            label={BILLING_LABELS[org.billingStatus] ?? org.billingStatus}
-            color={billingStatusColor(org.billingStatus)}
+            label={BILLING_LABELS[effectiveBillingStatus] ?? effectiveBillingStatus}
+            color={billingStatusColor(effectiveBillingStatus)}
           />
           <StatusBadge
             label={org.isActive ? "Ativa" : "Inativa"}
@@ -510,9 +516,9 @@ export default async function OrganizationDetailPage({
                     </span>
                     <StatusBadge
                       label={
-                        BILLING_LABELS[org.billingStatus] ?? org.billingStatus
+                        BILLING_LABELS[effectiveBillingStatus] ?? effectiveBillingStatus
                       }
-                      color={billingStatusColor(org.billingStatus)}
+                      color={billingStatusColor(effectiveBillingStatus)}
                     />
                   </div>
                 </div>
@@ -528,6 +534,20 @@ export default async function OrganizationDetailPage({
                     </p>
                   </div>
                 )}
+                <div className="px-5 py-3 border-t border-border">
+                  <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground mb-2">
+                    Período de trial
+                  </p>
+                  {org.trialExpiresAt !== null && (
+                    <p className="text-[12px] mb-2">
+                      <span className={org.trialExpiresAt > new Date() ? "text-status-success font-semibold" : "text-status-danger font-semibold"}>
+                        {org.trialExpiresAt > new Date() ? "Ativo até " : "Expirado em "}
+                        {formatDate(org.trialExpiresAt)}
+                      </span>
+                    </p>
+                  )}
+                  <SetTrialForm organizationId={org.id} trialExpiresAt={org.trialExpiresAt} />
+                </div>
               </Card>
 
               <Card>

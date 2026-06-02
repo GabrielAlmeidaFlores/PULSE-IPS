@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { createCheckoutSession, getBillingPortalUrl, getSubscription, getTenantPlanFeatures, hasTenantPlanFeature } from "@/modules/billing/billing.service"
-import { findOrganizationRequired, updateOrganizationBillingStatus } from "@/modules/organizations/organization.repository"
+import { findOrganizationRequired, updateOrganizationBillingStatus, updateOrganizationCustomerId } from "@/modules/organizations/organization.repository"
 import { findActiveSubscription, upsertSubscription, findPlanPriceForProvisioning, findTenantSubscriptionFeatures, createSubscriptionFeatureSnapshot } from "@/modules/billing/billing.repository"
 import { findPlanFeatures } from "@/modules/plans/plan.repository"
 import { getBillingService } from "@/libs/integrations"
@@ -21,6 +21,7 @@ vi.mock("@/env", () => ({
 
 const mockFindOrgRequired = vi.mocked(findOrganizationRequired)
 const mockUpdateOrgBillingStatus = vi.mocked(updateOrganizationBillingStatus)
+const mockUpdateOrganizationCustomerId = vi.mocked(updateOrganizationCustomerId)
 const mockFindActiveSubscription = vi.mocked(findActiveSubscription)
 const mockUpsertSubscription = vi.mocked(upsertSubscription)
 const mockFindPlanPriceForProvisioning = vi.mocked(findPlanPriceForProvisioning)
@@ -31,7 +32,8 @@ const mockGetBillingService = vi.mocked(getBillingService)
 
 const mockBillingCreateProduct = vi.fn().mockResolvedValue({ id: "prod_new" })
 const mockBillingCreatePrice = vi.fn().mockResolvedValue({ id: "price_new" })
-const mockBillingCreateCheckoutSession = vi.fn().mockResolvedValue({ url: "https://checkout.stripe.com/session" })
+const CHECKOUT_SESSION_URL = "https://checkout.stripe.com/session"
+const mockBillingCreateCheckoutSession = vi.fn().mockResolvedValue({ url: CHECKOUT_SESSION_URL })
 const mockBillingCreateBillingPortalSession = vi.fn().mockResolvedValue({ url: "https://billing.stripe.com/portal" })
 const mockBillingCreateCustomer = vi.fn().mockResolvedValue({ id: "cus_new" })
 const mockBillingCancelSubscription = vi.fn().mockResolvedValue(undefined)
@@ -60,22 +62,29 @@ const PLAN_PRICE = {
 beforeEach(() => {
   vi.clearAllMocks()
   mockUpdateOrgBillingStatus.mockResolvedValue(undefined)
+  mockUpdateOrganizationCustomerId.mockResolvedValue(undefined)
   mockUpsertSubscription.mockResolvedValue({ id: "sub-1" } as Awaited<ReturnType<typeof upsertSubscription>>)
   mockFindTenantSubscriptionFeatures.mockResolvedValue([])
   mockCreateSubscriptionFeatureSnapshot.mockResolvedValue(undefined)
   mockFindPlanFeatures.mockResolvedValue([])
-  mockBillingCreateCheckoutSession.mockResolvedValue({ url: "https://checkout.stripe.com/session" })
+  mockBillingCreateCheckoutSession.mockResolvedValue({ url: CHECKOUT_SESSION_URL })
   mockBillingCreateBillingPortalSession.mockResolvedValue({ url: "https://billing.stripe.com/portal" })
   mockGetBillingService.mockReturnValue(MOCK_BILLING_SERVICE)
 })
 
 describe("createCheckoutSession", () => {
-  it("throws when org has no billing customer", async () => {
+  it("auto-cria customer Stripe quando org não tem externalCustomerId", async () => {
     mockFindOrgRequired.mockResolvedValue({ ...ORG, externalCustomerId: null } as Awaited<ReturnType<typeof findOrganizationRequired>>)
 
-    await expect(createCheckoutSession("org-1", "price_ext")).rejects.toMatchObject({
-      code: "NO_BILLING_CUSTOMER",
-    })
+    const url = await createCheckoutSession("org-1", "price_ext")
+
+    expect(mockBillingCreateCustomer).toHaveBeenCalledOnce()
+    expect(mockBillingCreateCustomer.mock.calls[0]?.[0]).toBe("acme@pulse.app")
+    expect(mockUpdateOrganizationCustomerId).toHaveBeenCalledWith("org-1", "cus_new")
+    expect(mockBillingCreateCheckoutSession).toHaveBeenCalledWith(
+      expect.objectContaining({ externalCustomerId: "cus_new" }),
+    )
+    expect(url).toBe(CHECKOUT_SESSION_URL)
   })
 
   it("returns checkout URL from billing service", async () => {
@@ -83,7 +92,7 @@ describe("createCheckoutSession", () => {
 
     const url = await createCheckoutSession("org-1", "price_ext")
 
-    expect(url).toBe("https://checkout.stripe.com/session")
+    expect(url).toBe(CHECKOUT_SESSION_URL)
     expect(mockBillingCreateCheckoutSession).toHaveBeenCalledWith(
       expect.objectContaining({ externalPriceId: "price_ext", externalCustomerId: ORG.externalCustomerId }),
     )

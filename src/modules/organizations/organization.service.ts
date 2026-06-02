@@ -13,6 +13,7 @@ import {
   findAllOrganizationsForExport,
   findOrganizationFullDetail,
   findOrganizationAuditLogsPaginated,
+  setOrganizationTrialExpiresAt,
   type OrganizationAdminListingFilters,
 } from "@/modules/organizations/organization.repository"
 import type { CreateOrganizationInput, UpdateOrganizationInput, Organization, OrgAuditEntry } from "@/modules/organizations/organization.types"
@@ -43,6 +44,10 @@ export async function createOrg(input: CreateOrganizationInput): Promise<Organiz
   const org = await createOrganization(input)
   await updateOrganizationCustomerId(org.id, customer.id)
   return org
+}
+
+export async function setOrgTrial(organizationId: string, trialExpiresAt: Date | null): Promise<void> {
+  await setOrganizationTrialExpiresAt(organizationId, trialExpiresAt)
 }
 
 export function updateOrg(tenantId: string, input: UpdateOrganizationInput): Promise<Organization> {
