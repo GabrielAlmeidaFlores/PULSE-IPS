@@ -54,7 +54,7 @@ Plataforma SaaS multi-tenant de gestão de saúde e bem-estar ocupacional voltad
 | Formulários | React Hook Form + Zod |
 | Sessão | JWT via `jose` (cookie `HttpOnly`) |
 | E-mail | Resend + React Email (templates) |
-| Mensagens | Twilio / WhatsApp Cloud API |
+| Mensagens | SMS Barato (SMS e WhatsApp) |
 | Pagamentos | Stripe (webhooks + Checkout) |
 | PDF | `@react-pdf/renderer` |
 | Deploy | Docker multi-stage |
@@ -380,22 +380,31 @@ NEXTAUTH_SECRET="coloque-aqui-um-segredo-longo-e-aleatorio"
 # ─── URL pública ───────────────────────────────────────────────────
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 
-# ─── Redis (BullMQ) ────────────────────────────────────────────────
+# ─── Redis (BullMQ + Rate Limiter) ────────────────────────────────
 REDIS_HOST="localhost"
 REDIS_PORT="6379"
 # REDIS_PASSWORD=""   # opcional, para Redis com autenticação
+
+# ─── Rate Limiter ──────────────────────────────────────────────────
+# Opções: redis (padrão produção) | memory (testes sem Redis)
+RATE_LIMITER_PROVIDER="redis"
 
 # ─── Cron secret ───────────────────────────────────────────────────
 # Mínimo 16 caracteres
 CRON_SECRET="coloque-aqui-um-segredo-para-os-crons"
 
 # ─── Provedor de mensagens ─────────────────────────────────────────
-# Opções: console | smsbarato
+# Opções: console | smsbarato | smsbarato-wa
 MESSAGING_PROVIDER="console"
 
-# SMS Barato (quando MESSAGING_PROVIDER=smsbarato)
+# SMS Barato — SMS (quando MESSAGING_PROVIDER=smsbarato)
 SMSBARATO_API_KEY="sua-chave-smsbarato"
 SMSBARATO_BASE_URL="https://sistema81.smsbarato.com.br/send"
+
+# SMS Barato — WhatsApp (quando MESSAGING_PROVIDER=smsbarato-wa)
+# Requer SMSBARATO_API_KEY acima
+SMSBARATO_WA_BASE_URL="https://sistema81.smsbarato.com.br/sendwa"
+SMSBARATO_WA_TEMPLATE="pulse_survey"   # nome do template pré-aprovado no SMS Barato
 
 # Template da mensagem enviada ao funcionário com o link da pesquisa
 # {nome} é substituído pelo primeiro nome do colaborador; {link} pelo link único da pesquisa
@@ -423,6 +432,11 @@ NEXT_PUBLIC_EMAIL_SUPPORT="suporte@pulseips.com.br"
 NEXT_PUBLIC_EMAIL_PRIVACY="privacidade@pulseips.com.br"
 NEXT_PUBLIC_EMAIL_CONTACT="contato@pulseips.com.br"
 NEXT_PUBLIC_EMAIL_LEGAL="legal@pulseips.com.br"
+
+# ─── Diagnóstico / segurança ───────────────────────────────────────
+# Nível de log do servidor (trace | debug | info | warn | error | fatal | silent)
+LOG_LEVEL="info"
+# DISABLE_SECURITY_HEADERS="true"  # desabilita headers HTTP (use apenas atrás de proxy reverso)
 ```
 
 > Com `MESSAGING_PROVIDER=console` e `EMAIL_PROVIDER=console`, todas as mensagens são impressas no terminal. Nenhuma integração externa é necessária para desenvolvimento local.
@@ -441,7 +455,8 @@ NEXT_PUBLIC_EMAIL_LEGAL="legal@pulseips.com.br"
 | `MESSAGING_PROVIDER` | Descrição |
 |---|---|
 | `console` | Imprime no terminal (dev) |
-| `smsbarato` | Envia via SMS Barato (gateway nacional) |
+| `smsbarato` | Envia SMS via SMS Barato |
+| `smsbarato-wa` | Envia WhatsApp via SMS Barato (template pré-aprovado) |
 
 ### E-mail
 
@@ -555,6 +570,8 @@ O arquivo `src/proxy.ts` intercepta todas as requisições:
 2. Caminhos `/super-admin/*` verificam o cookie `pulse_super_admin_session`.
 3. Todos os demais caminhos verificam o cookie `pulse_session`.
 4. Se o JWT estiver ausente ou inválido, redireciona para `/login` ou `/super-admin/login`.
+5. **Rate limiting por IP** (fail-closed via Redis): `/login` → 20 req/15 min · `/forgot-password` → 5 req/15 min · `/super-admin/login` → 10 req/15 min. Se o Redis estiver indisponível, a requisição é bloqueada com HTTP 429 para evitar bruteforce.
+6. **CSP e headers de segurança**: o proxy injeta um nonce único por requisição e monta um `Content-Security-Policy` strict. Violações de CSP são reportadas em `POST /api/csp-report`.
 
 ---
 
@@ -744,9 +761,9 @@ sendDispatchTokensAndMessages(dispatch)
 Fila pulse:messages
   └── Worker processMessageJob()
         ├── Chama getMessagingService().send({ to, body })
-        │     ├── Twilio: POST Twilio API
-        │     ├── WhatsApp: POST Meta API
-        │     └── Console: console.log (dev)
+        │     ├── smsbarato: POST SMS Barato API (SMS)
+        │     ├── smsbarato-wa: POST SMS Barato API (WhatsApp — template)
+        │     └── Console: imprime no terminal (dev)
         └── Registra MessageLog (status: sent | failed)
 ```
 

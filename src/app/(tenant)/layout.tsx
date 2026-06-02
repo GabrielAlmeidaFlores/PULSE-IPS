@@ -28,7 +28,8 @@ export default async function TenantLayout({
 
   const billingStatus = org?.billingStatus ?? "pending"
   const deletionScheduledAt = org?.deletionScheduledAt ?? null
-  const hasBillingWall = deletionScheduledAt === null && !ACTIVE_BILLING_STATUSES.has(billingStatus)
+  const isInTrial = org?.trialExpiresAt !== null && org?.trialExpiresAt !== undefined && org.trialExpiresAt > new Date()
+  const hasBillingWall = !isInTrial && deletionScheduledAt === null && !ACTIVE_BILLING_STATUSES.has(billingStatus)
 
   return (
     <SidebarProvider>

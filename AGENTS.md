@@ -114,9 +114,9 @@ Feita exclusivamente pelo Super Admin. Campos:
 |---|---|
 | Nome da empresa | Sim |
 | Slug (identificador único de login) | Sim — gerado automaticamente, editável |
-| Plano atribuído | Sim |
 | E-mail do Admin principal | Sim — recebe convite de primeiro acesso |
-| CNPJ | Não |
+| Plano atribuído | Não — admin pode contratar depois via Stripe |
+| Fuso horário | Não — padrão `America/Sao_Paulo` |
 
 ---
 
@@ -244,6 +244,7 @@ Todo o projeto usa `"strict": true` mais flags adicionais (ver seção 9). `any`
 | `imask` + `react-imask` | Máscaras de input (telefone, CNPJ, etc.) |
 | `exceljs` | Geração de arquivos Excel (exportação de dados) |
 | `cmdk` | Componente de command menu (palette de comandos) |
+| `rate-limiter-flexible` | Rate limiting granular por chave/janela com suporte a Redis |
 
 ---
 
@@ -297,9 +298,16 @@ src/
 │   │   ├── super-admin/
 │   │   │   ├── dashboard/page.tsx          # KPIs: orgs ativas, colaboradores, mensagens
 │   │   │   ├── organizations/
-│   │   │   │   ├── page.tsx                # Lista organizações (Super Admin não cria mais)
+│   │   │   │   ├── page.tsx                # Lista organizações + botão "Nova organização" + coluna Trial por linha
+│   │   │   │   ├── set-trial-modal-button.tsx  # Client Component — modal de gestão de trial por linha da listagem
+│   │   │   │   ├── new/
+│   │   │   │   │   ├── page.tsx            # RSC — busca planos e renderiza formulário de criação
+│   │   │   │   │   ├── create-org-form.tsx # Client Component — form com auto-slug, NativeSelect de plano e timezone
+│   │   │   │   │   └── actions.ts          # createOrgByAdminAction — cria org + envia convite de primeiro acesso
 │   │   │   │   └── [id]/
 │   │   │   │       ├── page.tsx
+│   │   │   │       ├── set-trial-form.tsx  # Client Component — form de trial na página de detalhe
+│   │   │   │       ├── actions.ts          # setOrgTrialAction — revalida listagem + detalhe
 │   │   │   │       └── billing/page.tsx    # Status de assinatura + override de limite
 │   │   │   ├── plans/
 │   │   │   │   ├── page.tsx                # Lista planos com funcionalidades inclusas
@@ -348,6 +356,8 @@ src/
 │       ├── documents/[id]/route.ts         # GET — download/acesso a documentos
 │       ├── pgr/[id]/pdf/route.ts           # GET — geração de PDF do relatório PGR
 │       ├── internal/request-log/route.ts   # POST — recebe logs de request do instrumentation.ts
+│       ├── internal/rate-limit-proxy/route.ts  # POST — endpoint de rate-limit chamado pelo proxy (2s timeout)
+│       ├── csp-report/route.ts             # POST — recebe violações de CSP (rate-limitado 20/60s por IP)
 │       └── super-admin/export/route.ts     # GET — exportação de dados (autenticado como super_admin)
 │
 ├── modules/                                # Módulos de domínio (feature-first)
@@ -439,14 +449,16 @@ src/
 │   ├── local-storage.ts                    # Utilitário SSR-safe para localStorage (ver seção 23)
 │   ├── design-system/
 │   │   ├── index.ts
+│   │   ├── tokens/                         # Design tokens (colors.ts, spacing.ts, typography.ts)
 │   │   └── components/
 │   │       ├── layout/                     # Sidebar, Header, SuperAdminSidebar, PageHeader
 │   │       ├── feedback/                   # Alert, EmptyState, LoadingSpinner
-│   │       └── data-display/              # StatCard, DataTable, StatusBadge, SectorHealthBar
+│   │       └── data-display/              # StatCard, DataTable, StatusBadge, SectorHealthBar, KpiBlock
 │   ├── integrations/
 │   │   ├── messaging/
 │   │   │   ├── messaging.interface.ts      # IMessagingService
-│   │   │   ├── smsbarato.adapter.ts        # ✅ Implementação SMS Barato
+│   │   │   ├── smsbarato.adapter.ts        # ✅ Implementação SMS Barato (SMS)
+│   │   │   ├── smsbarato-wa.adapter.ts     # ✅ Implementação SMS Barato (WhatsApp — template)
 │   │   │   └── console-message.adapter.ts  # Desenvolvimento local
 │   │   ├── email/
 │   │   │   ├── email.interface.ts          # IEmailService
@@ -463,7 +475,12 @@ src/
 │   │   ├── billing/
 │   │   │   ├── billing.interface.ts        # IBillingService
 │   │   │   └── stripe.adapter.ts           # ✅ Implementação atual
-│   │   └── index.ts                        # Factories: getEmailService(), getBillingService()…
+│   │   ├── rate-limiter/
+│   │   │   ├── rate-limiter.interface.ts   # IRateLimiterService
+│   │   │   ├── redis-rate-limiter.adapter.ts  # ✅ Produção (rate-limiter-flexible + ioredis)
+│   │   │   ├── in-memory-rate-limiter.adapter.ts  # Testes/dev sem Redis
+│   │   │   └── redis-client.ts             # ioredis singleton (pino logging, isTest guard, reconexão)
+│   │   └── index.ts                        # Factories: getEmailService(), getBillingService(), getRateLimiterService()…
 │   ├── email-templates/
 │   │   ├── index.ts                        # getTemplate(name, vars) → { subject, Component }
 │   │   ├── org-invite.tsx
@@ -473,9 +490,16 @@ src/
 │   │   └── plan-cancelled.tsx
 │   ├── auth/
 │   │   └── permissions.ts                 # isOrgAdmin, isOrgRh, assertOrgAdmin, assertOrgMember
+│   ├── errors/
+│   │   └── app-error.ts                   # AppError e isAppError — erros de domínio esperados
+│   ├── rate-limit.ts                       # Helpers para rate limiting em Server Actions: enforceRateLimit, checkRateLimit, getClientIp
 │   └── utils/
 │       ├── action-result.ts               # ActionResult interface
+│       ├── anonymity.ts                   # MINIMUM_RESPONDENTS_FOR_DISPLAY = 5
+│       ├── client-ip.ts                   # extractClientIp(headers) — cf-connecting-ip → x-real-ip → x-forwarded-for
+│       ├── cn.ts                          # cn(...inputs) = twMerge(clsx(inputs))
 │       ├── json.ts                        # JsonValue — tipo JSON próprio da aplicação (não usa Prisma)
+│       ├── phone.ts                       # normalizePhoneToE164(raw) — normaliza número brasileiro para E.164
 │       ├── sanitize.ts                    # sanitizeRichHtml (editor) + sanitizeLegalDocument (docs oficiais)
 │       ├── pagination.ts
 │       ├── date.ts
@@ -486,9 +510,20 @@ src/
 │   │                                       # Instalados em src/components/ui/ pelo CLI do shadcn
 │   ├── theme-provider.tsx                  # ThemeProvider — mantém estado do tema, escreve cookie + localStorage
 │   ├── theme-toggle.tsx                    # ThemeToggle — CSS-only (ambos ícones no DOM, dark:scale-* controla visibilidade)
-│   └── animate-in.tsx                      # Wrapper de animação de entrada via IntersectionObserver
-├── proxy.ts                                # Next.js 16 proxy (auth + tenant resolution)
+│   ├── animate-in.tsx                      # Wrapper de animação de entrada via IntersectionObserver
+│   ├── confirm-action-modal.tsx            # Modal de confirmação genérico (variant: destructive | warning)
+│   ├── confirm-delete-modal.tsx            # Wrapper sobre ConfirmActionModal para exclusões simples
+│   ├── phone-input.tsx                     # Input de telefone com máscara (react-imask)
+│   ├── alert-type-info.tsx                 # Tooltip com informações sobre tipos de alerta
+│   ├── page-help.tsx                       # Tooltip genérico de ajuda em páginas
+│   ├── danger-zone.tsx                     # Padrão de zona de perigo (collapsible) para ações destrutivas
+│   ├── chart-card.tsx                      # Card wrapper para gráficos recharts
+│   ├── score-segment-tooltip.tsx           # Tooltip de segmentos de score (gráfico de distribuição)
+│   └── edit-name-modal.tsx                 # Modal de edição inline de nome
+├── proxy.ts                                # Next.js 16 proxy (auth + tenant resolution + rate limiting por IP + CSP)
 │                                           # ⚠️ Não é middleware.ts — Next.js 16 usa proxy.ts
+│                                           # Rate limiting: /login (20/15min) · /forgot-password (5/15min) · /super-admin/login (10/15min)
+│                                           # Fail-closed: bloqueia com 429 se Redis indisponível
 ├── instrumentation.ts                      # Next.js instrumentation hook — captura erros e envia para /api/internal/request-log
 ├── env.ts                                  # Variáveis de ambiente tipadas (@t3-oss/env-nextjs + Zod)
 ├── lib/
@@ -711,6 +746,7 @@ O tenant. `id` é o `tenant_id` de todas as demais tabelas.
 | external_customer_id | varchar(255) | UNIQUE — ID do customer no provedor de billing |
 | billing_status | varchar(20) | `'pending'` \| `'active'` \| `'past_due'` \| `'suspended'` \| `'cancelled'` |
 | max_employees_override | integer | NULL = usa limite do plano |
+| trial_expires_at | timestamptz | NULL = sem trial ativo; NOT NULL = trial ativo até essa data (bypass do billing wall) |
 | deletion_scheduled_at | timestamptz | NULL = sem exclusão agendada; NOT NULL = exclusão permanente pendente |
 | is_active | boolean | NOT NULL, default true |
 | created_at | timestamptz | NOT NULL |
@@ -2323,10 +2359,13 @@ export interface IMessagingService {
 }
 ```
 
-**Implementação SMS Barato:** `MESSAGING_PROVIDER=smsbarato` → `SmsBaratoAdapter` ✅  
+**Implementação SMS Barato (SMS):** `MESSAGING_PROVIDER=smsbarato` → `SmsBaratoAdapter` ✅  
+**Implementação SMS Barato (WhatsApp):** `MESSAGING_PROVIDER=smsbarato-wa` → `SmsBaratoWaAdapter` ✅  
 **Desenvolvimento:** `MESSAGING_PROVIDER=console` → `ConsoleMessageAdapter` (imprime no terminal)  
-**Variáveis SMS Barato:** `SMSBARATO_API_KEY` — chave de integração fornecida pelo suporte SMS Barato; `SMSBARATO_BASE_URL` (default `"https://sistema81.smsbarato.com.br/send"`) — endpoint da API  
-**Restrições SMS Barato:** texto máximo de 150 chars (sem contar a URL); acentos e quebras de linha removidos automaticamente pelo adapter; `dest` deve ser apenas dígitos com DDD (sem `+55`)
+**Variáveis SMS Barato (SMS):** `SMSBARATO_API_KEY`, `SMSBARATO_BASE_URL` (default `"https://sistema81.smsbarato.com.br/send"`)  
+**Variáveis SMS Barato (WhatsApp):** `SMSBARATO_API_KEY` (compartilhada), `SMSBARATO_WA_BASE_URL` (default `"https://sistema81.smsbarato.com.br/sendwa"`), `SMSBARATO_WA_TEMPLATE` (nome do template pré-aprovado, default `"pulse_survey"`)  
+**Restrições SMS Barato (SMS):** texto máximo de 150 chars (sem contar a URL); acentos e quebras de linha removidos automaticamente pelo adapter; `dest` deve ser apenas dígitos com DDD (sem `+55`)  
+**Restrições SMS Barato (WhatsApp):** usa template pré-aprovado no painel SMS Barato; os parâmetros do template são enviados na ordem esperada pelo template configurado; `dest` igual ao SMS (apenas dígitos com DDD)
 
 > **Regra de terminologia:** os termos "SMS", "WhatsApp" e "CPF" **nunca devem aparecer em código, banco de dados ou UI**. Substituições obrigatórias: SMS/WhatsApp → `mensagem`/`message`; CPF → `document`/`documento`. Essa proibição se aplica a nomes de arquivos, classes, funções, variáveis, campos de banco, labels de UI e mensagens de erro.
 ### Email
@@ -2465,9 +2504,25 @@ try {
 }
 ```
 
-**Motivo:** um rate limiter que falha aberto é equivalente a não ter rate limiter. Endpoints de login, reset de senha e acesso a pesquisas ficam completamente desprotegidos contra brute-force se o Redis tiver qualquer instabilidade.
+#### Rate limiter — proxy por IP (camada de entrada)
 
-### PDF — Geração do relatório PGR
+O `proxy.ts` aplica rate limiting **antes** de qualquer código da aplicação, usando a rota interna `/api/internal/rate-limit-proxy` com timeout de 2 segundos:
+
+| Rota | Limite | Janela |
+|---|---|---|
+| `/login` | 20 requisições | 15 minutos |
+| `/forgot-password` | 5 requisições | 15 minutos |
+| `/super-admin/login` | 10 requisições | 15 minutos |
+
+A chave de rate limiting é o IP do cliente (extraído via `extractClientIp` de `@/libs/utils/client-ip.ts`), que verifica os headers `cf-connecting-ip` → `x-real-ip` → `x-forwarded-for` em ordem de prioridade.
+
+**Fail-closed no proxy:** se o Redis estiver indisponível, o timeout de 2s é atingido e a requisição é bloqueada com `HTTP 429`. Isso é intencional — protege contra brute-force mesmo durante instabilidades do Redis.
+
+#### Rate limiter — CSP e logs de violação
+
+O proxy define um `Content-Security-Policy` strict com `nonce` único por requisição. Violações de CSP são reportadas em `POST /api/csp-report`, que é rate-limitado a 20 requisições por 60 segundos por IP para evitar abuso. As violações são logadas via pino logger mas **não persistidas no banco**.
+
+
 
 O PDF do relatório PGR é gerado **sob demanda** pela rota `GET /api/pgr/[id]/pdf`, sem armazenamento em disco/storage. A abordagem é domain-specific — não usa a interface genérica `IPDFService`.
 
@@ -3550,11 +3605,14 @@ STRIPE_SECRET_KEY=sk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 
 # Messaging
-MESSAGING_PROVIDER=smsbarato
-SMSBARATO_API_KEY=...                     # chave de integração fornecida pelo suporte SMS Barato
-SMSBARATO_BASE_URL=https://sistema81.smsbarato.com.br/send  # endpoint da API (opcional — tem default)
+MESSAGING_PROVIDER=smsbarato                # "smsbarato" | "smsbarato-wa" | "console"
+SMSBARATO_API_KEY=...                       # chave de integração fornecida pelo suporte SMS Barato
+SMSBARATO_BASE_URL=https://sistema81.smsbarato.com.br/send  # SMS — endpoint da API (opcional — tem default)
+SMSBARATO_WA_BASE_URL=https://sistema81.smsbarato.com.br/sendwa  # WhatsApp — endpoint (opcional — tem default)
+SMSBARATO_WA_TEMPLATE=pulse_survey          # nome do template pré-aprovado no painel SMS Barato (opcional)
 
-# Mensagem de pesquisa de saúde (template com {nome} e {link})
+# Mensagem de pesquisa de saúde (template com {nome} e {link}) — usado pelo SmsBaratoAdapter (SMS)
+# Para smsbarato-wa, o template é definido no painel SMS Barato (SMSBARATO_WA_TEMPLATE)
 SURVEY_MESSAGE_TEMPLATE="Oi {nome}! Tem 1 minutinho? Sua pesquisa de bem-estar está aqui: {link}"
 
 # Storage

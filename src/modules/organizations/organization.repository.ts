@@ -183,6 +183,7 @@ export async function findOrganizationFullDetail(id: string): Promise<OrgFullDet
     billingStatus: org.billingStatus,
     maxEmployeesOverride: org.maxEmployeesOverride,
     timezone: org.timezone,
+    trialExpiresAt: org.trialExpiresAt,
     isActive: org.isActive,
     createdAt: org.createdAt,
     updatedAt: org.updatedAt,
@@ -282,4 +283,8 @@ export async function findOrganizationAuditLogsPaginated(
     createdAt: row.createdAt,
   }))
   return { items, total }
+}
+
+export async function setOrganizationTrialExpiresAt(id: string, trialExpiresAt: Date | null): Promise<void> {
+  await prisma.organization.update({ where: { id }, data: { trialExpiresAt } })
 }

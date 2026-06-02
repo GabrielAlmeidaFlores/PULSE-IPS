@@ -7,6 +7,7 @@ export interface Organization {
   billingStatus: string
   maxEmployeesOverride: number | null
   timezone: string
+  trialExpiresAt: Date | null
   isActive: boolean
   deletionScheduledAt: Date | null
   createdAt: Date
@@ -54,6 +55,7 @@ export interface OrgFullDetail {
   billingStatus: string
   maxEmployeesOverride: number | null
   timezone: string
+  trialExpiresAt: Date | null
   isActive: boolean
   createdAt: Date
   updatedAt: Date

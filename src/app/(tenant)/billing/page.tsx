@@ -2,9 +2,10 @@ import { redirect } from "next/navigation"
 import { getSession } from "@/modules/auth/session"
 import { getSubscription, getTenantPlanFeatures } from "@/modules/billing/billing.service"
 import { getAllPlans } from "@/modules/plans/plan.service"
+import { getOrganization } from "@/modules/organizations/organization.service"
 import { ALL_PLAN_FEATURES, PLAN_FEATURE_LABELS } from "@/modules/plans/plan.types"
 import { format } from "date-fns"
-import { CheckCircle2 } from "lucide-react"
+import { CheckCircle2, CalendarClock } from "lucide-react"
 import { PlanCard, ManageSubscriptionButton } from "@/app/(tenant)/billing/billing-actions"
 import { PageHelp } from "@/components/page-help"
 import { env } from "@/env"
@@ -39,11 +40,14 @@ export default async function BillingPage(): Promise<React.ReactElement> {
   if (!session) redirect("/login")
   if (session.role !== "admin") redirect("/dashboard")
 
-  const [subscription, plans, activeFeatures] = await Promise.all([
+  const [subscription, plans, activeFeatures, org] = await Promise.all([
     getSubscription(session.tenantId),
     getAllPlans(),
     getTenantPlanFeatures(session.tenantId),
+    getOrganization(session.tenantId),
   ])
+
+  const isInTrial = org?.trialExpiresAt !== null && org?.trialExpiresAt !== undefined && org.trialExpiresAt > new Date()
 
   const consultantUrl = buildConsultantUrl()
 
@@ -79,6 +83,18 @@ export default async function BillingPage(): Promise<React.ReactElement> {
       </div>
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
 
+        {isInTrial && org?.trialExpiresAt !== undefined && org.trialExpiresAt !== null && (
+          <div className="border border-status-info-border bg-status-info-subtle flex items-start gap-3 px-4 py-3">
+            <CalendarClock className="h-4 w-4 text-status-info shrink-0 mt-0.5" />
+            <div>
+              <p className="text-[12px] font-bold text-status-info">Período de trial ativo</p>
+              <p className="text-[11px] text-status-info/80 mt-0.5">
+                Acesso liberado até {format(org.trialExpiresAt, "dd/MM/yyyy")}. Assine um plano antes do vencimento para manter o acesso sem interrupção.
+              </p>
+            </div>
+          </div>
+        )}
+
         {subscription ? (
           <>
             <div className="border border-border bg-card">
@@ -93,7 +109,7 @@ export default async function BillingPage(): Promise<React.ReactElement> {
                     {BILLING_STATUS_LABELS[subscription.status] ?? subscription.status}
                   </span>
                 )},
-                { label: "Valor", value: `${(subscription.snapshotPriceInCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })  } / ${  subscription.snapshotInterval}` },
+                { label: "Valor", value: `${(subscription.snapshotPriceInCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} / ${subscription.snapshotInterval}` },
                 { label: "Max. colaboradores", value: subscription.snapshotMaxEmployees },
                 { label: "Período atual", value: `${format(subscription.currentPeriodStart, "dd/MM/yyyy")  } até ${  format(subscription.currentPeriodEnd, "dd/MM/yyyy")}` },
               ].map((row) => (
