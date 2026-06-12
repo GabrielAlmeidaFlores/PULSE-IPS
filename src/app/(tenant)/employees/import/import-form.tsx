@@ -10,10 +10,10 @@ const PREVIEW_STORAGE_KEY = "pulse:import-preview"
 
 function downloadSampleCsv(): void {
   const rows = [
-    ["Nome", "Telefone", "Departamento", "Email"],
-    ["João Silva", "11999990001", "Operações", "joao@empresa.com"],
-    ["Maria Souza", "11999990002", "RH", ""],
-    ["Carlos Lima", "11999990003", "Operações", "carlos@empresa.com"],
+    ["Nome", "Telefone", "Departamento", "Email", "Hora Início", "Hora Fim", "Dias de Trabalho"],
+    ["João Silva", "11999990001", "Operações", "joao@empresa.com", "09:00", "18:00", "Seg,Ter,Qua,Qui,Sex"],
+    ["Maria Souza", "11999990002", "RH", "", "", "", ""],
+    ["Carlos Lima", "11999990003", "Operações", "carlos@empresa.com", "08:00", "17:00", "Seg,Ter,Qua,Qui,Sex"],
   ]
   const csv = rows.map((r) => r.map((c) => `"${c}"`).join(",")).join("\n")
   const blob = new Blob([`\uFEFF${  csv}`], { type: "text/csv;charset=utf-8;" })
@@ -75,6 +75,9 @@ export function ImportEmployeesForm(): React.ReactElement {
               ["Telefone", "Obrigatório — ex: +5511999999999"],
               ["Departamento", "Obrigatório — deve existir no sistema"],
               ["Email", "Opcional"],
+              ["Hora Início", "Opcional — ex: 09:00"],
+              ["Hora Fim", "Opcional — ex: 18:00"],
+              ["Dias de Trabalho", "Opcional — ex: Seg,Ter,Qua,Qui,Sex"],
             ].map(([col, desc]) => (
               <div key={col} className="contents">
                 <span className="font-mono font-bold text-foreground text-[11px]">{col}</span>

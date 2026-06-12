@@ -9,8 +9,9 @@ import { getActiveDepartments } from "@/modules/departments/department.service"
 import { importRowSchema } from "@/modules/employees/employee.schema"
 import type { ImportPreview, ImportPreviewItem } from "@/modules/employees/employee.types"
 
-const IMPORT_ALLOWED_EXTENSIONS = new Set(["xlsx", "xls"])
+const IMPORT_ALLOWED_EXTENSIONS = new Set(["xlsx", "xls", "csv"])
 const IMPORT_MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024
+const IMPORT_UNSUPPORTED_FORMAT_ERROR = "Apenas arquivos .xlsx, .xls e .csv são suportados."
 
 interface ImportResult {
   error?: string
@@ -32,11 +33,11 @@ export async function previewImportAction(formData: FormData): Promise<PreviewRe
   if (!file) return { error: "Nenhum arquivo selecionado." }
   if (file.size > IMPORT_MAX_FILE_SIZE_BYTES) return { error: "Arquivo muito grande (máx. 5 MB)." }
   const ext = (file.name.split(".").pop() ?? "").toLowerCase()
-  if (!IMPORT_ALLOWED_EXTENSIONS.has(ext)) return { error: "Apenas arquivos .xlsx e .xls são suportados." }
+  if (!IMPORT_ALLOWED_EXTENSIONS.has(ext)) return { error: IMPORT_UNSUPPORTED_FORMAT_ERROR }
 
   try {
     const buffer = await file.arrayBuffer()
-    const preview = await parseImportPreview(buffer, session.tenantId)
+    const preview = await parseImportPreview(buffer, session.tenantId, ext)
     return { preview }
   } catch (err) {
     if (err instanceof AppError) return { error: err.message }
@@ -71,6 +72,9 @@ export async function confirmImportAction(validItems: ImportPreviewItem[]): Prom
         phone: rowParsed.data.phone,
         departmentId,
         ...(rowParsed.data.email !== undefined ? { email: rowParsed.data.email } : {}),
+        ...(rowParsed.data.workStartTime !== undefined ? { workStartTime: rowParsed.data.workStartTime } : {}),
+        ...(rowParsed.data.workEndTime !== undefined ? { workEndTime: rowParsed.data.workEndTime } : {}),
+        ...(rowParsed.data.workDays !== undefined ? { workDays: rowParsed.data.workDays } : {}),
       }, session.userId)
       created++
     } catch (err) {
@@ -90,11 +94,11 @@ export async function importEmployeesAction(formData: FormData): Promise<ImportR
   if (!file) return { error: "Nenhum arquivo selecionado." }
   if (file.size > IMPORT_MAX_FILE_SIZE_BYTES) return { error: "Arquivo muito grande (máx. 5 MB)." }
   const ext = (file.name.split(".").pop() ?? "").toLowerCase()
-  if (!IMPORT_ALLOWED_EXTENSIONS.has(ext)) return { error: "Apenas arquivos .xlsx e .xls são suportados." }
+  if (!IMPORT_ALLOWED_EXTENSIONS.has(ext)) return { error: IMPORT_UNSUPPORTED_FORMAT_ERROR }
 
   try {
     const buffer = await file.arrayBuffer()
-    const result = await executeImport(session.tenantId, buffer)
+    const result = await executeImport(session.tenantId, buffer, ext)
     return {
       created: result.created,
       failed: result.failed,

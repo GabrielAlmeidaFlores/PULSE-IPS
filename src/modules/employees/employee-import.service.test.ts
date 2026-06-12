@@ -19,6 +19,7 @@ const VALID_PHONE_2 = "+5511888888888"
 const VALID_EMAIL = "ana@test.com"
 const DEPT_NAME = "TI"
 const DEPT_ID = "dept-ti"
+const SCHED_PT_HEADERS = [...PT_HEADERS, "Hora Início", "Hora Fim", "Dias de Trabalho"]
 
 type DeptRow = Awaited<ReturnType<typeof findActiveDepartmentsByTenant>>[number]
 
@@ -186,7 +187,7 @@ describe("parseImportPreview — invalid rows", () => {
   it("counts invalid rows correctly", async () => {
     const buf = await makeBuffer(PT_HEADERS, [
       ["Ana", VALID_PHONE, DEPT_NAME],
-      ["", "", ""],
+      ["Bob", "telefone-invalido", DEPT_NAME],
     ])
     const preview = await parseImportPreview(buf, TENANT_ID)
     expect(preview.invalid).toBe(1)
@@ -290,7 +291,7 @@ describe("executeImport — employee creation", () => {
 
   it("counts invalid rows in failed", async () => {
     const buf = await makeBuffer(PT_HEADERS, [
-      ["", "", ""],
+      ["Bob", "telefone-invalido", DEPT_NAME],
     ])
     const result = await executeImport(TENANT_ID, buf)
     expect(result.failed).toBe(1)
@@ -327,5 +328,201 @@ describe("executeImport — employee creation", () => {
     const buf = await makeBuffer(PT_HEADERS, [])
     const result = await executeImport(TENANT_ID, buf)
     expect(result.created).toBe(0)
+  })
+})
+
+describe("parseImportPreview — work schedule", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockFindDepts.mockResolvedValue(ALL_PREVIEW_DEPTS)
+  })
+
+  it("reads workStartTime from 'Hora Início' column", async () => {
+    const buf = await makeBuffer(SCHED_PT_HEADERS, [["Ana", VALID_PHONE, DEPT_NAME, "09:00", "18:00", "Seg"]])
+    const preview = await parseImportPreview(buf, TENANT_ID)
+    expect(preview.items[0]?.workStartTime).toBe("09:00")
+  })
+
+  it("reads workStartTime from lowercase alias 'hora inicio'", async () => {
+    const buf = await makeBuffer(
+      [...PT_HEADERS, "hora inicio"],
+      [["Ana", VALID_PHONE, DEPT_NAME, "09:00"]],
+    )
+    const preview = await parseImportPreview(buf, TENANT_ID)
+    expect(preview.items[0]?.workStartTime).toBe("09:00")
+  })
+
+  it("reads workEndTime from 'Hora Fim' column", async () => {
+    const buf = await makeBuffer(SCHED_PT_HEADERS, [["Ana", VALID_PHONE, DEPT_NAME, "09:00", "18:00", "Seg"]])
+    const preview = await parseImportPreview(buf, TENANT_ID)
+    expect(preview.items[0]?.workEndTime).toBe("18:00")
+  })
+
+  it("normalizes '9:00' to '09:00'", async () => {
+    const buf = await makeBuffer(SCHED_PT_HEADERS, [["Ana", VALID_PHONE, DEPT_NAME, "9:00", "18:00", "Seg"]])
+    const preview = await parseImportPreview(buf, TENANT_ID)
+    expect(preview.items[0]?.workStartTime).toBe("09:00")
+  })
+
+  it("normalizes '9h00' to '09:00'", async () => {
+    const buf = await makeBuffer(SCHED_PT_HEADERS, [["Ana", VALID_PHONE, DEPT_NAME, "9h00", "18:00", "Seg"]])
+    const preview = await parseImportPreview(buf, TENANT_ID)
+    expect(preview.items[0]?.workStartTime).toBe("09:00")
+  })
+
+  it("marks row invalid for unrecognized time format", async () => {
+    const buf = await makeBuffer(SCHED_PT_HEADERS, [["Ana", VALID_PHONE, DEPT_NAME, "9999", "18:00", "Seg"]])
+    const preview = await parseImportPreview(buf, TENANT_ID)
+    expect(preview.items[0]?.valid).toBe(false)
+    expect(preview.items[0]?.errors[0]).toMatch(/Horário de início inválido/)
+  })
+
+  it("reads workDays from 'Dias de Trabalho' column with PT day names", async () => {
+    const buf = await makeBuffer(SCHED_PT_HEADERS, [["Ana", VALID_PHONE, DEPT_NAME, "09:00", "18:00", "Seg,Ter,Qua,Qui,Sex"]])
+    const preview = await parseImportPreview(buf, TENANT_ID)
+    expect(preview.items[0]?.workDays).toEqual([1, 2, 3, 4, 5])
+  })
+
+  it("reads workDays from 'Dias' column with numeric values", async () => {
+    const buf = await makeBuffer(
+      [...PT_HEADERS, "Dias"],
+      [["Ana", VALID_PHONE, DEPT_NAME, "1,2,3"]],
+    )
+    const preview = await parseImportPreview(buf, TENANT_ID)
+    expect(preview.items[0]?.workDays).toEqual([1, 2, 3])
+  })
+
+  it("parses 'Dom' as day 0", async () => {
+    const buf = await makeBuffer(SCHED_PT_HEADERS, [["Ana", VALID_PHONE, DEPT_NAME, "09:00", "18:00", "Dom"]])
+    const preview = await parseImportPreview(buf, TENANT_ID)
+    expect(preview.items[0]?.workDays).toEqual([0])
+  })
+
+  it("marks row invalid for unrecognized day name", async () => {
+    const buf = await makeBuffer(SCHED_PT_HEADERS, [["Ana", VALID_PHONE, DEPT_NAME, "09:00", "18:00", "Xyz,Ter"]])
+    const preview = await parseImportPreview(buf, TENANT_ID)
+    expect(preview.items[0]?.valid).toBe(false)
+    expect(preview.items[0]?.errors[0]).toMatch(/Dia inválido/)
+  })
+
+  it("leaves workStartTime undefined when schedule columns absent", async () => {
+    const buf = await makeBuffer(PT_HEADERS, [["Ana", VALID_PHONE, DEPT_NAME]])
+    const preview = await parseImportPreview(buf, TENANT_ID)
+    expect(preview.items[0]?.workStartTime).toBeUndefined()
+  })
+
+  it("marks valid row with all schedule fields present", async () => {
+    const buf = await makeBuffer(SCHED_PT_HEADERS, [["Ana", VALID_PHONE, DEPT_NAME, "09:00", "18:00", "Seg,Sex"]])
+    const preview = await parseImportPreview(buf, TENANT_ID)
+    expect(preview.items[0]?.valid).toBe(true)
+    expect(preview.items[0]?.workStartTime).toBe("09:00")
+    expect(preview.items[0]?.workEndTime).toBe("18:00")
+    expect(preview.items[0]?.workDays).toEqual([1, 5])
+  })
+})
+
+describe("executeImport — work schedule", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockFindDepts.mockResolvedValue([{ id: DEPT_ID, name: DEPT_NAME } as DeptRow])
+    mockCreateEmployee.mockResolvedValue({} as Awaited<ReturnType<typeof createEmployee>>)
+  })
+
+  it("passes workStartTime to createEmployee when column present", async () => {
+    const buf = await makeBuffer(
+      [...PT_HEADERS, "Hora Início"],
+      [["Ana", VALID_PHONE, DEPT_NAME, "09:00"]],
+    )
+    await executeImport(TENANT_ID, buf)
+    expect(mockCreateEmployee).toHaveBeenCalledWith(TENANT_ID, expect.objectContaining({ workStartTime: "09:00" }))
+  })
+
+  it("passes workEndTime to createEmployee when column present", async () => {
+    const buf = await makeBuffer(
+      [...PT_HEADERS, "Hora Fim"],
+      [["Ana", VALID_PHONE, DEPT_NAME, "18:00"]],
+    )
+    await executeImport(TENANT_ID, buf)
+    expect(mockCreateEmployee).toHaveBeenCalledWith(TENANT_ID, expect.objectContaining({ workEndTime: "18:00" }))
+  })
+
+  it("passes workDays to createEmployee when column present with PT day names", async () => {
+    const buf = await makeBuffer(
+      [...PT_HEADERS, "Dias de Trabalho"],
+      [["Ana", VALID_PHONE, DEPT_NAME, "Seg,Ter,Qua,Qui,Sex"]],
+    )
+    await executeImport(TENANT_ID, buf)
+    expect(mockCreateEmployee).toHaveBeenCalledWith(TENANT_ID, expect.objectContaining({ workDays: [1, 2, 3, 4, 5] }))
+  })
+
+  it("does not include workStartTime in createEmployee call when column absent", async () => {
+    const buf = await makeBuffer(PT_HEADERS, [["Ana", VALID_PHONE, DEPT_NAME]])
+    await executeImport(TENANT_ID, buf)
+    expect(mockCreateEmployee).toHaveBeenCalledTimes(1)
+    const callInput = mockCreateEmployee.mock.calls[0]?.[1]
+    expect(callInput).toBeDefined()
+    expect(callInput).not.toHaveProperty("workStartTime")
+  })
+})
+
+describe("parseImportPreview — CSV format", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockFindDepts.mockResolvedValue(ALL_PREVIEW_DEPTS)
+  })
+
+  function makeCsvBuffer(headers: string[], rows: string[][]): ArrayBuffer {
+    const lines = [headers, ...rows].map((cols) => cols.map((c) => `"${c}"`).join(",")).join("\n")
+    const nodeBuf = Buffer.from(`\uFEFF${lines}`, "utf-8")
+    return nodeBuf.buffer.slice(nodeBuf.byteOffset, nodeBuf.byteOffset + nodeBuf.byteLength)
+  }
+
+  it("parses a valid CSV row into a valid preview item", async () => {
+    const buf = makeCsvBuffer(PT_HEADERS, [["Ana", VALID_PHONE, DEPT_NAME]])
+    const preview = await parseImportPreview(buf, TENANT_ID, "csv")
+    expect(preview.valid).toBe(1)
+    expect(preview.invalid).toBe(0)
+    expect(preview.items[0]?.name).toBe("Ana")
+    expect(preview.items[0]?.phone).toBe(VALID_PHONE)
+    expect(preview.items[0]?.departmentName).toBe(DEPT_NAME)
+  })
+
+  it("marks row invalid when phone is missing in CSV", async () => {
+    const buf = makeCsvBuffer(PT_HEADERS, [["Ana", "", DEPT_NAME]])
+    const preview = await parseImportPreview(buf, TENANT_ID, "csv")
+    expect(preview.invalid).toBe(1)
+    expect(preview.items[0]?.valid).toBe(false)
+  })
+
+  it("marks row invalid when department not found in CSV", async () => {
+    const buf = makeCsvBuffer(PT_HEADERS, [["Ana", VALID_PHONE, "Inexistente"]])
+    const preview = await parseImportPreview(buf, TENANT_ID, "csv")
+    expect(preview.invalid).toBe(1)
+  })
+
+  it("reads optional email from CSV", async () => {
+    const buf = makeCsvBuffer([...PT_HEADERS, "Email"], [["Ana", VALID_PHONE, DEPT_NAME, VALID_EMAIL]])
+    const preview = await parseImportPreview(buf, TENANT_ID, "csv")
+    expect(preview.items[0]?.email).toBe(VALID_EMAIL)
+  })
+
+  it("reads work schedule columns from CSV", async () => {
+    const buf = makeCsvBuffer(
+      SCHED_PT_HEADERS,
+      [["Ana", VALID_PHONE, DEPT_NAME, "09:00", "18:00", "Seg,Ter,Qua,Qui,Sex"]],
+    )
+    const preview = await parseImportPreview(buf, TENANT_ID, "csv")
+    expect(preview.items[0]?.workStartTime).toBe("09:00")
+    expect(preview.items[0]?.workEndTime).toBe("18:00")
+    expect(preview.items[0]?.workDays).toEqual([1, 2, 3, 4, 5])
+  })
+
+  it("skips completely empty rows in CSV", async () => {
+    const buf = makeCsvBuffer(PT_HEADERS, [
+      ["Ana", VALID_PHONE, DEPT_NAME],
+      ["", "", ""],
+    ])
+    const preview = await parseImportPreview(buf, TENANT_ID, "csv")
+    expect(preview.items).toHaveLength(1)
   })
 })
