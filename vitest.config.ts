@@ -17,6 +17,7 @@ export default defineConfig({
       NODE_ENV: "test",
       REDIS_HOST: "localhost",
       REDIS_PORT: "6379",
+      RATE_LIMITER_PROVIDER: "memory",
     },
     coverage: {
       provider: "v8",

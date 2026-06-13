@@ -39,6 +39,7 @@ const BASE_CONFIG_INPUT = {
   scheduledDayOfMonth: null,
   dispatchTime: "09:00",
   workDays: [1, 2, 3, 4, 5],
+  respectEmployeeSchedule: false,
   questions: BASE_QUESTIONS,
 }
 const BASE_UPDATE_INPUT = {

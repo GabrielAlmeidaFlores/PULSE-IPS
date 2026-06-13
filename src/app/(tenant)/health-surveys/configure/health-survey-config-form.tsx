@@ -34,6 +34,7 @@ export interface HealthSurveyConfigFormData {
   scheduledDayOfMonth: number | null
   dispatchTime: string
   workDays: number[]
+  respectEmployeeSchedule: boolean
   questions: { text: string; order: number; scoreDirection: ScoreDirection }[]
 }
 
@@ -121,6 +122,7 @@ export function HealthSurveyConfigForm({ mode, departments, initialConfig, initi
   const [frequency, setFrequency] = useState<"daily" | "twice_weekly" | "weekly" | "biweekly" | "monthly">(initialFreq)
   const [scheduledDayOfMonth, setScheduledDayOfMonth] = useState<number | null>(initialConfig?.scheduledDayOfMonth ?? null)
   const [dispatchTime, setDispatchTime] = useState(initialConfig?.dispatchTime ?? "09:00")
+  const [respectEmployeeSchedule, setRespectEmployeeSchedule] = useState(initialConfig?.respectEmployeeSchedule ?? false)
   const [workDays, setWorkDays] = useState(() => {
     if (initialConfig !== null && initialConfig !== undefined) {
       return new Set(initialConfig.workDays.map((w) => w.dayOfWeek))
@@ -218,6 +220,7 @@ export function HealthSurveyConfigForm({ mode, departments, initialConfig, initi
         scheduledDayOfMonth: frequency === "monthly" ? scheduledDayOfMonth : null,
         dispatchTime,
         workDays: Array.from(workDays).sort((a, b) => a - b),
+        respectEmployeeSchedule,
         questions,
       })
       if (result?.error) {
@@ -421,9 +424,20 @@ export function HealthSurveyConfigForm({ mode, departments, initialConfig, initi
               style={{ borderRadius: 0 }}
             />
           </div>
-          <p className="text-[11px] text-muted-foreground">
-            Horário em que a mensagem será enviada aos colaboradores. O horário de expediente de cada colaborador é configurado no setor.
-          </p>
+          <label className="flex items-start gap-2.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={respectEmployeeSchedule}
+              onChange={(e) => setRespectEmployeeSchedule(e.target.checked)}
+              className="accent-primary mt-0.5 shrink-0"
+            />
+            <span className="text-[12px] text-foreground leading-snug">
+              <span className="font-semibold">Respeitar horário individual do colaborador</span>
+              <span className="block text-[11px] text-muted-foreground mt-0.5">
+                A mensagem será enviada no início do turno de cada colaborador, com o delay necessário. Colaboradores sem dia útil configurado nos próximos 7 dias não receberão a pesquisa neste ciclo.
+              </span>
+            </span>
+          </label>
         </div>
       </div>
 

@@ -92,6 +92,7 @@ function makePendingDispatch(workDays = [1, 2, 3, 4, 5]): PendingDispatch {
     healthSurveyConfiguration: {
       id: "config-1",
       dispatchTime: "12:00",
+      respectEmployeeSchedule: false,
       workDays: workDays.map((d) => ({ dayOfWeek: d })),
       configDepartments: [{ department: DEPARTMENT }],
     },
@@ -107,6 +108,7 @@ function makeAutoDispatchConfig(overrides?: Partial<ActiveHealthSurveyConfigForD
     dispatchTime: "12:00",
     workDays: [1, 2, 3, 4, 5],
     lastDispatchedAt: null,
+    respectEmployeeSchedule: false,
     organization: { timezone: "America/Sao_Paulo", slug: "test-org" },
     departments: [{ ...AUTO_DISPATCH_DEPT }],
     questions: [],
@@ -664,6 +666,61 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
     expect(mockAddBulk).toHaveBeenCalledOnce()
     const [jobs] = mockAddBulk.mock.calls[0] as [{ data: { messageText: string } }[]]
     expect(jobs[0]?.data.messageText).not.toContain("expired-old-token")
+
+    vi.useRealTimers()
+  })
+})
+
+describe("runHealthSurveyAutoDispatchScheduler — respectEmployeeSchedule", () => {
+  it("agenda mensagem com delay correto quando colaborador não trabalha hoje", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2024-01-15T12:00:00-03:00"))
+
+    const fridayEmployee = {
+      ...EMPLOYEE,
+      workDays: [5],
+      workStartTime: "09:00",
+      workEndTime: "18:00",
+    }
+    mockFindActiveConfigs.mockResolvedValue([
+      makeAutoDispatchConfig({
+        respectEmployeeSchedule: true,
+        departments: [{ ...AUTO_DISPATCH_DEPT, workDays: [1, 2, 3, 4, 5], employees: [fridayEmployee] }],
+      }),
+    ])
+    mockFindEmployeeIdsEligibleForDispatch.mockResolvedValue(["emp-1"])
+    mockFindExistingTokensForDispatch.mockResolvedValue([])
+
+    const result = await runHealthSurveyAutoDispatchScheduler()
+
+    expect(result.triggered).toBe(1)
+    expect(mockAddBulk).toHaveBeenCalledOnce()
+    const [jobs] = mockAddBulk.mock.calls[0] as [{ opts?: { delay: number } }[]]
+    expect(jobs[0]?.opts?.delay).toBe(334_800_000)
+
+    vi.useRealTimers()
+  })
+
+  it("ignora colaborador sem dia útil nos próximos 7 dias — dispatch criado mas sem tokens nem mensagens", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2024-01-15T12:00:00-03:00"))
+
+    const noWorkDaysEmployee = { ...EMPLOYEE, workDays: [] }
+    mockFindActiveConfigs.mockResolvedValue([
+      makeAutoDispatchConfig({
+        respectEmployeeSchedule: true,
+        departments: [{ ...AUTO_DISPATCH_DEPT, workDays: [], employees: [noWorkDaysEmployee] }],
+      }),
+    ])
+    mockFindEmployeeIdsEligibleForDispatch.mockResolvedValue(["emp-1"])
+    mockFindExistingTokensForDispatch.mockResolvedValue([])
+
+    const result = await runHealthSurveyAutoDispatchScheduler()
+
+    expect(result.triggered).toBe(1)
+    expect(mockCreateHealthSurveyTokens).not.toHaveBeenCalled()
+    expect(mockAddBulk).not.toHaveBeenCalled()
+    expect(mockUpsertDeptDispatch).toHaveBeenCalledWith(expect.any(String), "dept-1", 1)
 
     vi.useRealTimers()
   })

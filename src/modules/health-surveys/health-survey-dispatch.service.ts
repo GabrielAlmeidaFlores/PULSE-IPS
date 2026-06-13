@@ -1,6 +1,6 @@
 import { randomInt, randomUUID } from "crypto"
-import { addHours } from "date-fns"
-import { toZonedTime } from "date-fns-tz"
+import { addDays, addHours } from "date-fns"
+import { formatInTimeZone, fromZonedTime, toZonedTime } from "date-fns-tz"
 import { getMessageQueue } from "@/libs/queue"
 import { env } from "@/env"
 import { createLogger } from "@/libs/utils/logger"
@@ -33,6 +33,21 @@ const FREQUENCY_INTERVAL_DAYS: Record<string, number> = {
   monthly: 28,
 }
 
+const DAY_OF_WEEK_MAP: Record<string, number> = {
+  Sun: 0,
+  Mon: 1,
+  Tue: 2,
+  Wed: 3,
+  Thu: 4,
+  Fri: 5,
+  Sat: 6,
+}
+
+interface EmployeeDispatchScheduleEntry {
+  expiresAt: Date
+  delayMs: number
+}
+
 function buildMessageFromTemplate(template: string, employeeName: string, surveyUrl: string): string {
   return template.replace("{nome}", employeeName).replace("{link}", surveyUrl)
 }
@@ -41,10 +56,13 @@ function generateHealthSurveyTokenShortCode(): string {
   return randomInt(1000000, 10000000).toString()
 }
 
+function getDayOfWeekForDate(date: Date, timezone: string): number {
+  const dayName = new Intl.DateTimeFormat("en-US", { timeZone: timezone, weekday: "short" }).format(date)
+  return DAY_OF_WEEK_MAP[dayName] ?? 0
+}
+
 function getDayOfWeekInTimezone(timezone: string): number {
-  const dayName = new Intl.DateTimeFormat("en-US", { timeZone: timezone, weekday: "short" }).format(new Date())
-  const dayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
-  return dayMap[dayName] ?? 0
+  return getDayOfWeekForDate(new Date(), timezone)
 }
 
 function getDayOfMonthInTimezone(timezone: string): number {
@@ -93,14 +111,68 @@ function isAtDispatchTime(dispatchTime: string, timezone: string): boolean {
   return currentMinutes >= targetMinutes && currentMinutes < targetMinutes + 60
 }
 
+function findNextWorkDayShiftStart(
+  effectiveWorkDays: number[],
+  workStartTime: string,
+  workEndTime: string,
+  timezone: string,
+  now: Date,
+): Date | null {
+  for (let offset = 0; offset <= 7; offset++) {
+    const targetDate = addDays(now, offset)
+    const dayOfWeek = getDayOfWeekForDate(targetDate, timezone)
+    if (!effectiveWorkDays.includes(dayOfWeek)) continue
+
+    const dateStr = formatInTimeZone(targetDate, timezone, "yyyy-MM-dd")
+    const shiftStartUtc = fromZonedTime(new Date(`${dateStr}T${workStartTime}:00`), timezone)
+    const shiftEndUtc = fromZonedTime(new Date(`${dateStr}T${workEndTime}:00`), timezone)
+
+    if (offset === 0) {
+      if (now >= shiftStartUtc && now < shiftEndUtc) return now
+      if (now < shiftStartUtc) return shiftStartUtc
+      continue
+    }
+
+    return shiftStartUtc
+  }
+  return null
+}
+
+function buildEmployeeDispatchScheduleMap(
+  employees: HealthSurveyDispatchEmployee[],
+  department: { workStartTime: string; workEndTime: string; workDays: number[] },
+  timezone: string,
+  now: Date,
+): Map<string, EmployeeDispatchScheduleEntry> {
+  const scheduleMap = new Map<string, EmployeeDispatchScheduleEntry>()
+
+  for (const emp of employees) {
+    const effectiveWorkDays = emp.workDays.length > 0 ? emp.workDays : department.workDays
+    const workStartTime = emp.workStartTime ?? department.workStartTime
+    const workEndTime = emp.workEndTime ?? department.workEndTime
+
+    const scheduledSendAt = findNextWorkDayShiftStart(effectiveWorkDays, workStartTime, workEndTime, timezone, now)
+    if (scheduledSendAt === null) continue
+
+    const delayMs = Math.max(0, scheduledSendAt.getTime() - now.getTime())
+    const expiresAt = addHours(scheduledSendAt, 48)
+
+    scheduleMap.set(emp.id, { expiresAt, delayMs })
+  }
+
+  return scheduleMap
+}
+
 async function sendDispatchTokensAndMessagesForDepartment(
   dispatchId: string,
   tenantId: string,
   orgSlug: string,
   departmentId: string,
   eligibleEmployees: HealthSurveyDispatchEmployee[],
-  department: { workStartTime: string; workEndTime: string },
+  department: { workStartTime: string; workEndTime: string; workDays: number[] },
   hasMessaging: boolean,
+  respectEmployeeSchedule: boolean,
+  timezone: string,
 ): Promise<number> {
   const allEmployeeIds = eligibleEmployees.map((e) => e.id)
   const eligibleForDispatchIds = new Set(await findEmployeeIdsEligibleForDispatch(tenantId, allEmployeeIds))
@@ -121,18 +193,30 @@ async function sendDispatchTokensAndMessagesForDepartment(
 
   const toSendEmployees = dispatchTargetEmployees.filter((e) => !respondedEmployeeIds.has(e.id))
 
-  const newTokenInputs = toSendEmployees
+  const scheduleMap = respectEmployeeSchedule
+    ? buildEmployeeDispatchScheduleMap(toSendEmployees, department, timezone, now)
+    : new Map<string, EmployeeDispatchScheduleEntry>()
+
+  const toSendFiltered = respectEmployeeSchedule
+    ? toSendEmployees.filter((e) => existingUnusedTokenMap.has(e.id) || scheduleMap.has(e.id))
+    : toSendEmployees
+
+  const newTokenInputs = toSendFiltered
     .filter((e) => !existingUnusedTokenMap.has(e.id))
-    .map((emp) => ({
-      tenantId,
-      dispatchId,
-      employeeId: emp.id,
-      token: randomUUID(),
-      shortCode: generateHealthSurveyTokenShortCode(),
-      expiresAt: addHours(new Date(), 48),
-      workStartTime: emp.workStartTime ?? department.workStartTime,
-      workEndTime: emp.workEndTime ?? department.workEndTime,
-    }))
+    .map((emp) => {
+      const schedule = scheduleMap.get(emp.id)
+      const expiresAt = schedule !== undefined ? schedule.expiresAt : addHours(now, 48)
+      return {
+        tenantId,
+        dispatchId,
+        employeeId: emp.id,
+        token: randomUUID(),
+        shortCode: generateHealthSurveyTokenShortCode(),
+        expiresAt,
+        workStartTime: emp.workStartTime ?? department.workStartTime,
+        workEndTime: emp.workEndTime ?? department.workEndTime,
+      }
+    })
 
   const newTokenMap = new Map(newTokenInputs.map((t) => [t.employeeId, { token: t.token, shortCode: t.shortCode }]))
 
@@ -142,13 +226,15 @@ async function sendDispatchTokensAndMessagesForDepartment(
 
   if (hasMessaging) {
     const messageQueue = getMessageQueue()
-    const bulkJobs = toSendEmployees
+    const bulkJobs = toSendFiltered
       .map((emp) => {
         const tokenEntry = existingUnusedTokenMap.get(emp.id) ?? newTokenMap.get(emp.id)
         if (!tokenEntry) return null
         const healthSurveyUrl = tokenEntry.shortCode
           ? `${env.NEXT_PUBLIC_APP_URL}/health-survey/${orgSlug}/${tokenEntry.shortCode}`
           : `${env.NEXT_PUBLIC_APP_URL}/health-survey/${tokenEntry.token}`
+        const schedule = scheduleMap.get(emp.id)
+        const delayMs = schedule?.delayMs ?? 0
         return {
           name: "send-message" as const,
           data: {
@@ -161,6 +247,7 @@ async function sendDispatchTokensAndMessagesForDepartment(
             provider: env.MESSAGING_PROVIDER,
             type: "survey_dispatch" as const,
           },
+          ...(delayMs > 0 ? { opts: { delay: delayMs } } : {}),
         }
       })
       .filter((job): job is NonNullable<typeof job> => job !== null)
@@ -180,16 +267,21 @@ async function fireDispatch(
   orgSlug: string,
   departments: HealthSurveyDispatchDepartment[],
   timezone: string,
+  respectEmployeeSchedule: boolean,
 ): Promise<boolean> {
   const today = getDayOfWeekInTimezone(timezone)
 
-  const departmentsWithEmployees = departments.map((dept) => ({
-    ...dept,
-    employees: dept.employees.filter((emp) => {
-      const effectiveDays = emp.workDays.length > 0 ? emp.workDays : dept.workDays
-      return effectiveDays.includes(today)
-    }),
-  })).filter((dept) => dept.employees.length > 0)
+  const departmentsWithEmployees = (
+    respectEmployeeSchedule
+      ? departments
+      : departments.map((dept) => ({
+          ...dept,
+          employees: dept.employees.filter((emp) => {
+            const effectiveDays = emp.workDays.length > 0 ? emp.workDays : dept.workDays
+            return effectiveDays.includes(today)
+          }),
+        }))
+  ).filter((dept) => dept.employees.length > 0)
 
   if (departmentsWithEmployees.length === 0) return false
 
@@ -207,6 +299,8 @@ async function fireDispatch(
       dept.employees,
       dept,
       hasMessaging,
+      respectEmployeeSchedule,
+      timezone,
     )
   }
 
@@ -224,6 +318,7 @@ export async function runHealthSurveyDispatcher(): Promise<{ dispatched: number;
     const config = dispatch.healthSurveyConfiguration
     const timezone = dispatch.organization.timezone
     const orgSlug = dispatch.organization.slug
+    const respectEmployeeSchedule = config.respectEmployeeSchedule
 
     try {
       const today = getDayOfWeekInTimezone(timezone)
@@ -233,11 +328,13 @@ export async function runHealthSurveyDispatcher(): Promise<{ dispatched: number;
         const dept = cd.department
         const deptWorkDays = dept.workDays.map((w) => w.dayOfWeek)
 
-        const workDayFiltered = dept.employees.filter((emp) => {
-          const effectiveDays = emp.workDays.map((w) => w.dayOfWeek)
-          const activeDays = effectiveDays.length > 0 ? effectiveDays : deptWorkDays
-          return activeDays.includes(today)
-        })
+        const workDayFiltered = respectEmployeeSchedule
+          ? dept.employees
+          : dept.employees.filter((emp) => {
+              const effectiveDays = emp.workDays.map((w) => w.dayOfWeek)
+              const activeDays = effectiveDays.length > 0 ? effectiveDays : deptWorkDays
+              return activeDays.includes(today)
+            })
 
         const eligibleEmployees: HealthSurveyDispatchEmployee[] = workDayFiltered.map((emp) => ({
           id: emp.id,
@@ -255,8 +352,10 @@ export async function runHealthSurveyDispatcher(): Promise<{ dispatched: number;
             orgSlug,
             dept.id,
             eligibleEmployees,
-            { workStartTime: dept.workStartTime, workEndTime: dept.workEndTime },
+            { workStartTime: dept.workStartTime, workEndTime: dept.workEndTime, workDays: deptWorkDays },
             hasMessaging,
+            respectEmployeeSchedule,
+            timezone,
           )
         } else {
           await upsertHealthSurveyDeptDispatch(dispatch.id, dept.id, 0)
@@ -299,6 +398,7 @@ export async function runHealthSurveyAutoDispatchScheduler(): Promise<{ triggere
         config.organization.slug,
         config.departments,
         timezone,
+        config.respectEmployeeSchedule,
       )
       if (fired) triggered++
     } catch (err) {

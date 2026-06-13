@@ -58,6 +58,7 @@ export interface CreateHealthSurveyForDepartmentsInput {
   scheduledDayOfMonth: number | null
   dispatchTime: string
   workDays: number[]
+  respectEmployeeSchedule: boolean
   questions: { text: string; order: number; scoreDirection: ScoreDirection }[]
 }
 
@@ -88,6 +89,7 @@ export async function createHealthSurveyForDepartments(tenantId: string, input: 
     scheduledDayOfMonth: input.scheduledDayOfMonth,
     dispatchTime: input.dispatchTime,
     workDays: input.workDays,
+    respectEmployeeSchedule: input.respectEmployeeSchedule,
     questions: input.questions,
   }
 

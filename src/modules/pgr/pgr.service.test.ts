@@ -103,6 +103,7 @@ function makeDispatch(month: number, responseCount: number): PgrDispatch {
       frequency: "weekly",
       scheduledDayOfMonth: null,
       dispatchTime: "09:00",
+      respectEmployeeSchedule: false,
       isActive: true,
       createdAt: dispatchedAt,
       updatedAt: dispatchedAt,

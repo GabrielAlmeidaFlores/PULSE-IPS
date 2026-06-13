@@ -66,5 +66,9 @@ function createRedisClient(): Redis {
   return client
 }
 
-export const redisClient: Redis =
-  globalThis.__redisClient ?? (globalThis.__redisClient = createRedisClient())
+export function getRedisClient(): Redis {
+  if (globalThis.__redisClient === undefined) {
+    globalThis.__redisClient = createRedisClient()
+  }
+  return globalThis.__redisClient
+}

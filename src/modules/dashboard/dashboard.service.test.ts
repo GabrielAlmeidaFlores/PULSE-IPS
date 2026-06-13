@@ -54,6 +54,7 @@ const CONFIG_FIXTURE = {
   frequency: "weekly",
   scheduledDayOfMonth: null,
   dispatchTime: "09:00",
+  respectEmployeeSchedule: false,
   isActive: true,
   createdAt: BASE_DATE,
   updatedAt: BASE_DATE,
