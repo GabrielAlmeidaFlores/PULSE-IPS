@@ -84,7 +84,7 @@ const AUTO_DISPATCH_DEPT = {
   employees: [EMPLOYEE],
 }
 
-function makePendingDispatch(workDays = [1, 2, 3, 4, 5]): PendingDispatch {
+function makePendingDispatch(workDays = [1, 2, 3, 4, 5], tokenExpiryHours = 48): PendingDispatch {
   return {
     id: DISPATCH_ID,
     tenantId: TENANT_ID,
@@ -93,6 +93,7 @@ function makePendingDispatch(workDays = [1, 2, 3, 4, 5]): PendingDispatch {
       id: "config-1",
       dispatchTime: "12:00",
       respectEmployeeSchedule: false,
+      tokenExpiryHours,
       workDays: workDays.map((d) => ({ dayOfWeek: d })),
       configDepartments: [{ department: DEPARTMENT }],
     },
@@ -109,6 +110,7 @@ function makeAutoDispatchConfig(overrides?: Partial<ActiveHealthSurveyConfigForD
     workDays: [1, 2, 3, 4, 5],
     lastDispatchedAt: null,
     respectEmployeeSchedule: false,
+    tokenExpiryHours: 48,
     organization: { timezone: "America/Sao_Paulo", slug: "test-org" },
     departments: [{ ...AUTO_DISPATCH_DEPT }],
     questions: [],
@@ -208,6 +210,24 @@ describe("runHealthSurveyDispatcher", () => {
     const result = await runHealthSurveyDispatcher()
     expect(result).toEqual({ dispatched: 1, errors: 0 })
     expect(mockMarkDispatchDispatched).toHaveBeenCalledOnce()
+
+    vi.useRealTimers()
+  })
+
+  it("usa tokenExpiryHours configurado para calcular expiresAt do token (valor não-padrão de 72h)", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
+
+    mockFindPendingDispatches.mockResolvedValue([makePendingDispatch([1, 2, 3, 4, 5], 72)])
+
+    await runHealthSurveyDispatcher()
+
+    const expectedExpiresAt = new Date(new Date(WORK_DAY_TIMESTAMP).getTime() + 72 * 60 * 60 * 1000)
+    expect(mockCreateHealthSurveyTokens).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ expiresAt: expectedExpiresAt }),
+      ]),
+    )
 
     vi.useRealTimers()
   })
@@ -721,6 +741,39 @@ describe("runHealthSurveyAutoDispatchScheduler — respectEmployeeSchedule", () 
     expect(mockCreateHealthSurveyTokens).not.toHaveBeenCalled()
     expect(mockAddBulk).not.toHaveBeenCalled()
     expect(mockUpsertDeptDispatch).toHaveBeenCalledWith(expect.any(String), "dept-1", 1)
+
+    vi.useRealTimers()
+  })
+
+  it("usa tokenExpiryHours para calcular expiresAt como scheduledSendAt + tokenExpiryHours quando respectEmployeeSchedule está ativo", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(WORK_DAY_TIMESTAMP))
+
+    const fridayEmployee = {
+      ...EMPLOYEE,
+      workDays: [5],
+      workStartTime: "09:00",
+      workEndTime: "18:00",
+    }
+    mockFindActiveConfigs.mockResolvedValue([
+      makeAutoDispatchConfig({
+        respectEmployeeSchedule: true,
+        tokenExpiryHours: 24,
+        departments: [{ ...AUTO_DISPATCH_DEPT, workDays: [1, 2, 3, 4, 5], employees: [fridayEmployee] }],
+      }),
+    ])
+    mockFindEmployeeIdsEligibleForDispatch.mockResolvedValue(["emp-1"])
+    mockFindExistingTokensForDispatch.mockResolvedValue([])
+
+    await runHealthSurveyAutoDispatchScheduler()
+
+    const scheduledSendAt = new Date("2024-01-19T12:00:00.000Z")
+    const expectedExpiresAt = new Date(scheduledSendAt.getTime() + 24 * 60 * 60 * 1000)
+    expect(mockCreateHealthSurveyTokens).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ expiresAt: expectedExpiresAt }),
+      ]),
+    )
 
     vi.useRealTimers()
   })

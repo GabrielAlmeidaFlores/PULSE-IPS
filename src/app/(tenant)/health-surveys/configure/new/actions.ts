@@ -26,6 +26,7 @@ const createHealthSurveyConfigSchema = z.object({
   dispatchTime: z.string().regex(TIME_REGEX),
   workDays: z.array(z.number().int().min(0).max(6)).min(1).max(7),
   respectEmployeeSchedule: z.boolean(),
+  tokenExpiryHours: z.number().int().min(1).max(1000).default(48),
   questions: z.array(questionSchema).min(1, "Adicione ao menos uma pergunta").max(20),
 })
 
@@ -36,7 +37,7 @@ export async function createHealthSurveyConfigAction(input: unknown): Promise<Ac
   const parsed = createHealthSurveyConfigSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
 
-  const { name, description, departmentIds, frequency, scheduledDayOfMonth, dispatchTime, workDays, respectEmployeeSchedule, questions } = parsed.data
+  const { name, description, departmentIds, frequency, scheduledDayOfMonth, dispatchTime, workDays, respectEmployeeSchedule, tokenExpiryHours, questions } = parsed.data
 
   if (frequency === "monthly" && scheduledDayOfMonth === null) {
     return { error: "Selecione o dia do mês para o envio mensal." }
@@ -52,6 +53,7 @@ export async function createHealthSurveyConfigAction(input: unknown): Promise<Ac
       dispatchTime,
       workDays,
       respectEmployeeSchedule,
+      tokenExpiryHours,
       questions,
     })
     revalidatePath("/health-surveys/configure")

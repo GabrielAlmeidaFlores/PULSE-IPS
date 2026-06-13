@@ -143,6 +143,7 @@ function buildEmployeeDispatchScheduleMap(
   department: { workStartTime: string; workEndTime: string; workDays: number[] },
   timezone: string,
   now: Date,
+  tokenExpiryHours: number,
 ): Map<string, EmployeeDispatchScheduleEntry> {
   const scheduleMap = new Map<string, EmployeeDispatchScheduleEntry>()
 
@@ -155,7 +156,7 @@ function buildEmployeeDispatchScheduleMap(
     if (scheduledSendAt === null) continue
 
     const delayMs = Math.max(0, scheduledSendAt.getTime() - now.getTime())
-    const expiresAt = addHours(scheduledSendAt, 48)
+    const expiresAt = addHours(scheduledSendAt, tokenExpiryHours)
 
     scheduleMap.set(emp.id, { expiresAt, delayMs })
   }
@@ -173,6 +174,7 @@ async function sendDispatchTokensAndMessagesForDepartment(
   hasMessaging: boolean,
   respectEmployeeSchedule: boolean,
   timezone: string,
+  tokenExpiryHours: number,
 ): Promise<number> {
   const allEmployeeIds = eligibleEmployees.map((e) => e.id)
   const eligibleForDispatchIds = new Set(await findEmployeeIdsEligibleForDispatch(tenantId, allEmployeeIds))
@@ -194,7 +196,7 @@ async function sendDispatchTokensAndMessagesForDepartment(
   const toSendEmployees = dispatchTargetEmployees.filter((e) => !respondedEmployeeIds.has(e.id))
 
   const scheduleMap = respectEmployeeSchedule
-    ? buildEmployeeDispatchScheduleMap(toSendEmployees, department, timezone, now)
+    ? buildEmployeeDispatchScheduleMap(toSendEmployees, department, timezone, now, tokenExpiryHours)
     : new Map<string, EmployeeDispatchScheduleEntry>()
 
   const toSendFiltered = respectEmployeeSchedule
@@ -205,7 +207,7 @@ async function sendDispatchTokensAndMessagesForDepartment(
     .filter((e) => !existingUnusedTokenMap.has(e.id))
     .map((emp) => {
       const schedule = scheduleMap.get(emp.id)
-      const expiresAt = schedule !== undefined ? schedule.expiresAt : addHours(now, 48)
+      const expiresAt = schedule !== undefined ? schedule.expiresAt : addHours(now, tokenExpiryHours)
       return {
         tenantId,
         dispatchId,
@@ -268,6 +270,7 @@ async function fireDispatch(
   departments: HealthSurveyDispatchDepartment[],
   timezone: string,
   respectEmployeeSchedule: boolean,
+  tokenExpiryHours: number,
 ): Promise<boolean> {
   const today = getDayOfWeekInTimezone(timezone)
 
@@ -301,6 +304,7 @@ async function fireDispatch(
       hasMessaging,
       respectEmployeeSchedule,
       timezone,
+      tokenExpiryHours,
     )
   }
 
@@ -319,6 +323,7 @@ export async function runHealthSurveyDispatcher(): Promise<{ dispatched: number;
     const timezone = dispatch.organization.timezone
     const orgSlug = dispatch.organization.slug
     const respectEmployeeSchedule = config.respectEmployeeSchedule
+    const tokenExpiryHours = config.tokenExpiryHours
 
     try {
       const today = getDayOfWeekInTimezone(timezone)
@@ -356,6 +361,7 @@ export async function runHealthSurveyDispatcher(): Promise<{ dispatched: number;
             hasMessaging,
             respectEmployeeSchedule,
             timezone,
+            tokenExpiryHours,
           )
         } else {
           await upsertHealthSurveyDeptDispatch(dispatch.id, dept.id, 0)
@@ -399,6 +405,7 @@ export async function runHealthSurveyAutoDispatchScheduler(): Promise<{ triggere
         config.departments,
         timezone,
         config.respectEmployeeSchedule,
+        config.tokenExpiryHours,
       )
       if (fired) triggered++
     } catch (err) {

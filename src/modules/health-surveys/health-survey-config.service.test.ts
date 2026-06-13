@@ -40,6 +40,7 @@ const BASE_CONFIG_INPUT = {
   dispatchTime: "09:00",
   workDays: [1, 2, 3, 4, 5],
   respectEmployeeSchedule: false,
+  tokenExpiryHours: 48,
   questions: BASE_QUESTIONS,
 }
 const BASE_UPDATE_INPUT = {

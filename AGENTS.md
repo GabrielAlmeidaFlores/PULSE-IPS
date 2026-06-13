@@ -905,6 +905,7 @@ Uma configuração pode cobrir **N setores** via join table `health_survey_confi
 | scheduled_day_of_month | integer | NULL — dia do mês (1–28) para frequência `'monthly'`; quando NULL e frequência mensal, usa intervalo de 28 dias |
 | dispatch_time | varchar(5) | NOT NULL, default `'09:00'` — `"HH:MM"` — horário exato em que a pesquisa será disparada |
 | respect_employee_schedule | boolean | NOT NULL, default false — quando `true`, as mensagens são enviadas no início do turno de cada colaborador (com delay BullMQ), em vez de todas ao mesmo tempo no `dispatch_time` |
+| token_expiry_hours | integer | NOT NULL, default 48 — tempo em horas que o token de resposta permanece válido após o disparo (ou após `scheduledSendAt` quando `respectEmployeeSchedule = true`). Mínimo: 1, máximo: 1000 |
 | is_active | boolean | NOT NULL |
 | INDEX | (tenant_id) | |
 
@@ -912,7 +913,7 @@ Dias de trabalho da pesquisa em `health_survey_config_work_days` (join table —
 
 > `dispatch_time` define o horário exato de disparo da pesquisa (avaliado no fuso da organização). O scheduler dispara quando o horário atual está dentro de uma janela de 60 minutos a partir de `dispatch_time` (ex: `dispatchTime = "09:00"` → dispara entre 09:00 e 09:59). A janela de 60 minutos garante que um restart ou deploy do worker não cause perda do disparo — o `lastDispatchedAt` protege contra double-dispatch dentro da mesma janela. **Horários de expediente pertencem ao setor e ao colaborador — não à configuração de pesquisa.** Cadeia de herança de horário de expediente para snapshot do token: `employee.workStartTime/workEndTime → department.workStartTime/workEndTime`. Para dias de trabalho por funcionário: `employee_work_days` (se não vazio) → `department_work_days`. Todos avaliados no `organizations.timezone`.
 
-> **`respect_employee_schedule`:** quando `true`, o filtro de dia de trabalho no momento do disparo é desabilitado — todos os colaboradores elegíveis são incluídos independentemente do dia de hoje. Para cada colaborador, `buildEmployeeDispatchScheduleMap` calcula o próximo dia útil (dentro de 7 dias) e o horário de início do turno, e o job de mensagem BullMQ recebe `opts.delay` correspondente ao milissegundos até esse momento. O `expiresAt` do token é calculado como `scheduledSendAt + 48h` (em vez de `now + 48h`). Colaboradores sem dia útil configurado nos próximos 7 dias não recebem token nem mensagem naquele ciclo, mas ainda são contados em `total_recipients`.
+> **`respect_employee_schedule`:** quando `true`, o filtro de dia de trabalho no momento do disparo é desabilitado — todos os colaboradores elegíveis são incluídos independentemente do dia de hoje. Para cada colaborador, `buildEmployeeDispatchScheduleMap` calcula o próximo dia útil (dentro de 7 dias) e o horário de início do turno, e o job de mensagem BullMQ recebe `opts.delay` correspondente ao milissegundos até esse momento. O `expiresAt` do token é calculado como `scheduledSendAt + tokenExpiryHours` (em vez de `now + tokenExpiryHours`). Colaboradores sem dia útil configurado nos próximos 7 dias não recebem token nem mensagem naquele ciclo, mas ainda são contados em `total_recipients`.
 
 > **Frequência mensal com `scheduled_day_of_month`:** quando preenchido, o scheduler dispara apenas no dia exato do mês (avaliado no fuso da organização) e impede reenvio se o último disparo foi há menos de 25 dias. Dias 29–31 são excluídos da UI — o valor máximo é 28 para garantir compatibilidade com fevereiro.
 
@@ -1028,7 +1029,7 @@ Após o uso, `used_at` é preenchido, mas **nenhum vínculo** é criado entre to
 | token | varchar(255) | NOT NULL, UNIQUE |
 | short_code | varchar(7) | NULL, UNIQUE per `(tenant_id, short_code)` — código de 7 dígitos usado na pretty URL `/health-survey/[orgSlug]/[shortCode]`. Gerado apenas para tokens criados via disparo de mensagem; NULL para tokens criados via link assinado. |
 | used_at | timestamptz | |
-| expires_at | timestamptz | NOT NULL — `dispatched_at + 48h` |
+| expires_at | timestamptz | NOT NULL — `dispatched_at + tokenExpiryHours` (valor de `health_survey_configurations.token_expiry_hours`, padrão 48h) |
 | work_start_time | varchar(5) | NOT NULL — snapshot `"HH:MM"` no momento do disparo |
 | work_end_time | varchar(5) | NOT NULL — snapshot `"HH:MM"` no momento do disparo |
 | created_at | timestamptz | NOT NULL |
@@ -3356,11 +3357,11 @@ Busca todas as configurações ativas com billing ativo (findAllTenantsActiveHea
               → Busca tokens existentes (link assinado)
               → Se respectEmployeeSchedule = true:
                   → buildEmployeeDispatchScheduleMap: para cada employee, calcula próximo dia útil (≤7 dias)
-                      e horário de início do turno → entry { expiresAt: scheduledSendAt+48h, delayMs }
+                      e horário de início do turno → entry { expiresAt: scheduledSendAt+tokenExpiryHours, delayMs }
                   → Colaboradores sem dia útil nos próximos 7 dias → excluídos de tokens e mensagens
-                  → expiresAt do token = scheduledSendAt + 48h (em vez de now + 48h)
+                  → expiresAt do token = scheduledSendAt + tokenExpiryHours (em vez de now + tokenExpiryHours)
               → Se respectEmployeeSchedule = false:
-                  → expiresAt do token = now + 48h (comportamento padrão)
+                  → expiresAt do token = now + tokenExpiryHours (valor configurado, padrão 48h)
               → Cria novos tokens para colaboradores sem token válido (shortCode = 7 dígitos)
               → upsertHealthSurveyDeptDispatch(dispatchId, deptId, totalRecipients)
               → [GATE FEATURE] hasTenantPlanFeature(tenantId, "messaging")

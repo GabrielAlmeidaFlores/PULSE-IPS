@@ -25,6 +25,7 @@ const updateHealthSurveyConfigSchema = z.object({
   dispatchTime: z.string().regex(TIME_REGEX),
   workDays: z.array(z.number().int().min(0).max(6)).min(1).max(7),
   respectEmployeeSchedule: z.boolean(),
+  tokenExpiryHours: z.number().int().min(1).max(1000).default(48),
   questions: z.array(questionSchema).min(1, "Adicione ao menos uma pergunta").max(20),
   departmentIds: z.array(z.string().uuid()).min(1, "Selecione ao menos um setor."),
 })
@@ -39,7 +40,7 @@ export async function updateHealthSurveyConfigAction(configId: string, input: un
   const parsed = updateHealthSurveyConfigSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
 
-  const { name, description, frequency, scheduledDayOfMonth: rawScheduledDay, dispatchTime, workDays, respectEmployeeSchedule, questions, departmentIds } = parsed.data
+  const { name, description, frequency, scheduledDayOfMonth: rawScheduledDay, dispatchTime, workDays, respectEmployeeSchedule, tokenExpiryHours, questions, departmentIds } = parsed.data
   const scheduledDayOfMonth = frequency === "monthly" ? rawScheduledDay : null
 
   if (frequency === "monthly" && scheduledDayOfMonth === null) {
@@ -55,6 +56,7 @@ export async function updateHealthSurveyConfigAction(configId: string, input: un
       dispatchTime,
       workDays,
       respectEmployeeSchedule,
+      tokenExpiryHours,
       questions,
       departmentIds,
     })

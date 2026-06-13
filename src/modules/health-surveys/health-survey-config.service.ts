@@ -59,6 +59,7 @@ export interface CreateHealthSurveyForDepartmentsInput {
   dispatchTime: string
   workDays: number[]
   respectEmployeeSchedule: boolean
+  tokenExpiryHours: number
   questions: { text: string; order: number; scoreDirection: ScoreDirection }[]
 }
 
@@ -90,6 +91,7 @@ export async function createHealthSurveyForDepartments(tenantId: string, input: 
     dispatchTime: input.dispatchTime,
     workDays: input.workDays,
     respectEmployeeSchedule: input.respectEmployeeSchedule,
+    tokenExpiryHours: input.tokenExpiryHours,
     questions: input.questions,
   }
 

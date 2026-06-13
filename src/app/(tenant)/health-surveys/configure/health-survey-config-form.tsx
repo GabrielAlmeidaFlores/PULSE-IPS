@@ -35,6 +35,7 @@ export interface HealthSurveyConfigFormData {
   dispatchTime: string
   workDays: number[]
   respectEmployeeSchedule: boolean
+  tokenExpiryHours: number
   questions: { text: string; order: number; scoreDirection: ScoreDirection }[]
 }
 
@@ -123,6 +124,8 @@ export function HealthSurveyConfigForm({ mode, departments, initialConfig, initi
   const [scheduledDayOfMonth, setScheduledDayOfMonth] = useState<number | null>(initialConfig?.scheduledDayOfMonth ?? null)
   const [dispatchTime, setDispatchTime] = useState(initialConfig?.dispatchTime ?? "09:00")
   const [respectEmployeeSchedule, setRespectEmployeeSchedule] = useState(initialConfig?.respectEmployeeSchedule ?? false)
+  const [tokenExpiryHours, setTokenExpiryHours] = useState(initialConfig?.tokenExpiryHours ?? 48)
+  const [tokenExpiryHoursRaw, setTokenExpiryHoursRaw] = useState(String(initialConfig?.tokenExpiryHours ?? 48))
   const [workDays, setWorkDays] = useState(() => {
     if (initialConfig !== null && initialConfig !== undefined) {
       return new Set(initialConfig.workDays.map((w) => w.dayOfWeek))
@@ -221,6 +224,7 @@ export function HealthSurveyConfigForm({ mode, departments, initialConfig, initi
         dispatchTime,
         workDays: Array.from(workDays).sort((a, b) => a - b),
         respectEmployeeSchedule,
+        tokenExpiryHours,
         questions,
       })
       if (result?.error) {
@@ -438,6 +442,31 @@ export function HealthSurveyConfigForm({ mode, departments, initialConfig, initi
               </span>
             </span>
           </label>
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Validade do link (horas)</label>
+            <input
+              type="number"
+              min={1}
+              max={1000}
+              value={tokenExpiryHoursRaw}
+              onChange={(e) => {
+                setTokenExpiryHoursRaw(e.target.value)
+                const parsed = parseInt(e.target.value, 10)
+                if (!isNaN(parsed)) {
+                  setTokenExpiryHours(Math.min(1000, Math.max(1, parsed)))
+                }
+              }}
+              onBlur={() => {
+                const parsed = parseInt(tokenExpiryHoursRaw, 10)
+                const coerced = isNaN(parsed) ? 48 : Math.min(1000, Math.max(1, parsed))
+                setTokenExpiryHours(coerced)
+                setTokenExpiryHoursRaw(String(coerced))
+              }}
+              className={inputCls}
+              style={{ borderRadius: 0 }}
+            />
+            <p className="text-[10px] text-muted-foreground mt-1">Tempo máximo que o colaborador tem para responder após receber o link. Padrão: 48 horas.</p>
+          </div>
         </div>
       </div>
 

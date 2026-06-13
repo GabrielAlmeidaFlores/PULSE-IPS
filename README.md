@@ -703,7 +703,8 @@ const color = healthIndexAccent(hi)          // → classe CSS de cor
    - **Dia do mês** (obrigatório para `monthly`): seleciona o dia exato (1–28) em que o disparo deve ocorrer; máximo 28 para compatibilidade com fevereiro
    - **Dias da semana**: seleção dos dias em que o Pulse deve disparar (0=Dom … 6=Sáb), armazenados na tabela relacional `health_survey_config_work_days` — nunca como string separada por vírgula
    - **Horário de disparo**: `dispatchTime` (formato `HH:mm`) — hora exata em que o scheduler vai disparar a pesquisa naquele dia; a janela de validade do link usa o horário de expediente do setor/colaborador
-   - **Respeitar expediente do colaborador** (`respectEmployeeSchedule`): quando ativado, o filtro de dia de trabalho no momento do disparo é desabilitado e cada mensagem é enfileirada no BullMQ com um delay calculado até o início do turno de cada colaborador no próximo dia útil (dentro de 7 dias). Colaboradores sem dia útil configurado nos próximos 7 dias não recebem token nem mensagem naquele ciclo, mas são contados em `total_recipients`. O `expiresAt` do token é calculado como `horarioInicioTurno + 48h` (em vez de `now + 48h`). Padrão: desativado.
+   - **Respeitar expediente do colaborador** (`respectEmployeeSchedule`): quando ativado, o filtro de dia de trabalho no momento do disparo é desabilitado e cada mensagem é enfileirada no BullMQ com um delay calculado até o início do turno de cada colaborador no próximo dia útil (dentro de 7 dias). Colaboradores sem dia útil configurado nos próximos 7 dias não recebem token nem mensagem naquele ciclo, mas são contados em `total_recipients`. O `expiresAt` do token é calculado como `horarioInicioTurno + tokenExpiryHours` (em vez de `now + tokenExpiryHours`). Padrão: desativado.
+   - **Validade do link** (`tokenExpiryHours`): tempo em horas que o link da pesquisa permanece válido após o disparo (ou após o início do turno quando `respectEmployeeSchedule` está ativado). Padrão: 48h. Mínimo: 1h, máximo: 1000h.
    - **Perguntas**: lista de questões com score de 1 a 5, cada uma com `scoreDirection` (`higher_is_better` ou `lower_is_better`). Perguntas de estresse e carga de trabalho usam `lower_is_better` (1 = ótimo). O sistema normaliza automaticamente antes de calcular métricas e gerar alertas.
 3. **Múltiplas configurações são permitidas para o mesmo departamento** — não há deduplicação. Cada configuração é independente e identificada pelo nome. Se o mesmo setor for selecionado em duas criações distintas, duas configs independentes são geradas lado a lado.
 
@@ -732,8 +733,8 @@ A cada 5 min → job health-survey-dispatcher
   │                 ├── Filtra por consentimento elegível
   │                 ├── Reutiliza tokens não usados existentes
   │                 ├── Cria novos tokens:
-  │                 │     ├── respectEmployeeSchedule = false → expiresAt = now + 48h
-  │                 │     └── respectEmployeeSchedule = true  → expiresAt = inicioTurno + 48h
+  │                 │     ├── respectEmployeeSchedule = false → expiresAt = now + tokenExpiryHours
+  │                 │     └── respectEmployeeSchedule = true  → expiresAt = inicioTurno + tokenExpiryHours
   │                 ├── Marca dispatch → status: available, dispatchedAt=now, total_recipients
   │                 └── [GATE FEATURE] messaging → enfileira mensagens no BullMQ
   │                       ├── respectEmployeeSchedule = false → delay = 0 (envio imediato)
@@ -755,7 +756,7 @@ sendDispatchTokensAndMessages(dispatch)
   ├── Busca tokens existentes para o dispatch (via link assinado ou reenvio anterior)
   ├── respondedEmployeeIds — colaboradores que já responderam → pula criação de token e mensagem
   ├── existingUnusedTokenMap — tokens válidos não usados → reutiliza o token, reenvia mensagem
-  ├── newTokenInputs — demais colaboradores → cria novo token (expira em 48h)
+  ├── newTokenInputs — demais colaboradores → cria novo token (expira em tokenExpiryHours horas, padrão 48h)
   ├── Marca dispatch → status: available, dispatchedAt=now, total_recipients=elegíveis (incl. pré-respondentes)
   └── [GATE FEATURE] messaging → enfileira jobs no BullMQ para envio via getMessagingService()
 ```
@@ -805,7 +806,7 @@ A página `/health-survey/[orgSlug]/[shortCode]` resolve o shortcode para o toke
 
 O funcionário pode acessar o formulário de duas formas:
 
-**Via mensagem individual (padrão):** o link é enviado por mensagem após o disparo. Cada colaborador recebe uma URL amigável no formato `/health-survey/[orgSlug]/[shortCode]` (ex: `pulseips.com.br/health-survey/demo/3468762`), que redireciona internamente para o token UUID. Cada link é de uso único e expira em 48h.
+**Via mensagem individual (padrão):** o link é enviado por mensagem após o disparo. Cada colaborador recebe uma URL amigável no formato `/health-survey/[orgSlug]/[shortCode]` (ex: `pulseips.com.br/health-survey/demo/3468762`), que redireciona internamente para o token UUID. Cada link é de uso único e expira conforme `tokenExpiryHours` configurado na pesquisa (padrão: 48h).
 
 **Via link assinado (sem mensagem):** o RH distribui manualmente o link `/health-survey/link/[signedLinkToken]` para o setor (e-mail, intranet, grupo). Ao acessar, o colaborador informa seu telefone ou documento para identificação. O sistema cria ou reutiliza um token individual e redireciona para `/health-survey/[token]`. Esta modalidade também permite **responder antes do disparo ser processado** — o dispatcher identificará os pré-respondentes e os ignorará no envio de mensagens.
 

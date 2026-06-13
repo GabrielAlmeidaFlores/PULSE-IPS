@@ -35,6 +35,7 @@ export interface HealthSurveyConfigurationType {
   dispatchTime: string
   workDays: number[]
   respectEmployeeSchedule: boolean
+  tokenExpiryHours: number
   isActive: boolean
   createdAt: Date
   updatedAt: Date
@@ -82,6 +83,7 @@ export interface CreateHealthSurveyConfigInput {
   dispatchTime: string
   workDays: number[]
   respectEmployeeSchedule: boolean
+  tokenExpiryHours: number
   questions: { text: string; order: number; scoreDirection: ScoreDirection }[]
 }
 
@@ -93,6 +95,7 @@ export interface UpdateHealthSurveyConfigInput {
   dispatchTime: string
   workDays: number[]
   respectEmployeeSchedule: boolean
+  tokenExpiryHours: number
   departmentIds: string[]
   questions: { text: string; order: number; scoreDirection: ScoreDirection }[]
 }
