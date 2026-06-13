@@ -493,7 +493,7 @@ src/
 ├── modules/                    # Lógica de negócio por domínio
 │   ├── auth/                   # Autenticação, sessão, convites
 │   ├── billing/                # Assinaturas, planos, webhooks Stripe
-│   ├── employees/              # Funcionários, importação Excel
+│   ├── employees/              # Funcionários, importação Excel ou CSV
 │   ├── health-surveys/                # Configuração, disparo, respostas
 │   ├── alerts/                 # Detecção e gestão de alertas
 │   ├── action-plans/           # Planos de ação e tarefas
@@ -678,9 +678,9 @@ const color = healthIndexAccent(hi)          // → classe CSS de cor
 1. Usuário preenche nome, telefone, e-mail (opcional), departamento e horário de trabalho (`workStartTime`, `workEndTime`).
 2. A action `createEmployeeAction` lê `tenantId` da sessão e cria o funcionário no banco.
 
-**Importação por planilha Excel:**
-1. Usuário faz upload de um arquivo `.xlsx` em `/employees/import`.
-2. O serviço detecta automaticamente os cabeçalhos da planilha (case-insensitive, suporta variações em português: "nome", "telefone", "mensagem", "setor", etc.).
+**Importação por planilha Excel ou CSV:**
+1. Usuário faz upload de um arquivo `.xlsx`, `.xls` ou `.csv` em `/employees/import`.
+2. O serviço detecta automaticamente os cabeçalhos (case-insensitive, suporta variações em português: "nome", "telefone", "mensagem", "setor", etc.). Colunas opcionais de jornada individual também são reconhecidas: `Hora Início`, `Hora Fim`, `Dias de Trabalho` — quando presentes, sobrepõem os valores do departamento para aquele colaborador.
 3. Cada linha é validada via Zod. O resultado é exibido em `/employees/import/preview` com duas listas: linhas válidas e inválidas (com motivo do erro).
 4. O usuário confirma o import. A action `importEmployeesAction` lê `tenantId` da sessão (nunca do cliente).
 5. Para cada linha válida: vincula ao departamento informado (por nome, case-insensitive) e cria o funcionário. Duplicatas de e-mail no mesmo tenant são ignoradas silenciosamente.
@@ -703,6 +703,7 @@ const color = healthIndexAccent(hi)          // → classe CSS de cor
    - **Dia do mês** (obrigatório para `monthly`): seleciona o dia exato (1–28) em que o disparo deve ocorrer; máximo 28 para compatibilidade com fevereiro
    - **Dias da semana**: seleção dos dias em que o Pulse deve disparar (0=Dom … 6=Sáb), armazenados na tabela relacional `health_survey_config_work_days` — nunca como string separada por vírgula
    - **Horário de disparo**: `dispatchTime` (formato `HH:mm`) — hora exata em que o scheduler vai disparar a pesquisa naquele dia; a janela de validade do link usa o horário de expediente do setor/colaborador
+   - **Respeitar expediente do colaborador** (`respectEmployeeSchedule`): quando ativado, o filtro de dia de trabalho no momento do disparo é desabilitado e cada mensagem é enfileirada no BullMQ com um delay calculado até o início do turno de cada colaborador no próximo dia útil (dentro de 7 dias). Colaboradores sem dia útil configurado nos próximos 7 dias não recebem token nem mensagem naquele ciclo, mas são contados em `total_recipients`. O `expiresAt` do token é calculado como `horarioInicioTurno + 48h` (em vez de `now + 48h`). Padrão: desativado.
    - **Perguntas**: lista de questões com score de 1 a 5, cada uma com `scoreDirection` (`higher_is_better` ou `lower_is_better`). Perguntas de estresse e carga de trabalho usam `lower_is_better` (1 = ótimo). O sistema normaliza automaticamente antes de calcular métricas e gerar alertas.
 3. **Múltiplas configurações são permitidas para o mesmo departamento** — não há deduplicação. Cada configuração é independente e identificada pelo nome. Se o mesmo setor for selecionado em duas criações distintas, duas configs independentes são geradas lado a lado.
 
@@ -718,16 +719,25 @@ Este é o fluxo central da plataforma. Ocorre de duas formas:
 A cada 5 min → job health-survey-dispatcher
   ├── runHealthSurveyAutoDispatchScheduler()
   │     ├── Busca configs ativas com employees (billing ativo)
-  │     ├── [GATE 1] isAtDispatchTime → skip se não estamos na janela de 15 min do horário configurado
+  │     ├── [GATE 1] isAtDispatchTime → skip se não estamos na janela de 60 min do horário configurado
   │     ├── [GATE 2] shouldSkipDispatch → skip se dia/intervalo não elegível
   │     └── Para cada config elegível:
   │           ├── Cria HealthSurveyDispatch (status: scheduled)
   │           └── sendDispatchTokensAndMessages()
+  │                 ├── Se respectEmployeeSchedule = false:
+  │                 │     └── Filtra por dia de trabalho hoje
+  │                 ├── Se respectEmployeeSchedule = true:
+  │                 │     ├── Inclui todos os employees (sem filtro de dia de hoje)
+  │                 │     └── buildEmployeeDispatchScheduleMap → calcula próximo turno (≤7 dias) por colaborador
   │                 ├── Filtra por consentimento elegível
   │                 ├── Reutiliza tokens não usados existentes
-  │                 ├── Cria novos tokens (expira em 48h)
+  │                 ├── Cria novos tokens:
+  │                 │     ├── respectEmployeeSchedule = false → expiresAt = now + 48h
+  │                 │     └── respectEmployeeSchedule = true  → expiresAt = inicioTurno + 48h
   │                 ├── Marca dispatch → status: available, dispatchedAt=now, total_recipients
   │                 └── [GATE FEATURE] messaging → enfileira mensagens no BullMQ
+  │                       ├── respectEmployeeSchedule = false → delay = 0 (envio imediato)
+  │                       └── respectEmployeeSchedule = true  → delay = ms até início do turno
   │
   └── runHealthSurveyDispatcher()
         ├── Busca dispatches com status: scheduled e scheduledAt <= now() (disparos manuais)
@@ -1142,7 +1152,7 @@ O super admin acessa `/super-admin` com credenciais separadas e tem controle tot
 - **Nota:** `HealthSurveyConfiguration` **não** tem horário de expediente — apenas `dispatchTime` (hora de disparo). Os horários de expediente pertencem ao setor e ao colaborador.
 
 **No disparo de pesquisas:**
-1. O worker verifica se o horário atual (no timezone da organização) corresponde à janela de 15 minutos a partir de `dispatchTime` (`isAtDispatchTime`).
+1. O worker verifica se o horário atual (no timezone da organização) corresponde à janela de 60 minutos a partir de `dispatchTime` (`isAtDispatchTime`).
 2. Verifica se o dia atual está nos dias configurados em `health_survey_config_work_days` e se o intervalo de frequência foi respeitado.
 3. Se fora do horário de disparo, o disparo é adiado para a próxima execução do job (a cada 5 min).
 
