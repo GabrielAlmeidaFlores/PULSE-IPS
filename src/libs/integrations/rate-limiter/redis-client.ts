@@ -67,8 +67,6 @@ function createRedisClient(): Redis {
 }
 
 export function getRedisClient(): Redis {
-  if (globalThis.__redisClient === undefined) {
-    globalThis.__redisClient = createRedisClient()
-  }
+  globalThis.__redisClient ??= createRedisClient()
   return globalThis.__redisClient
 }
