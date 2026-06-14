@@ -100,6 +100,8 @@ export function createNewHealthSurveyConfigEntry(
       workDays: {
         createMany: { data: input.workDays.map((d) => ({ dayOfWeek: d })) },
       },
+      respectEmployeeSchedule: input.respectEmployeeSchedule,
+      tokenExpiryHours: input.tokenExpiryHours,
       configDepartments: {
         createMany: { data: input.departmentIds.map((departmentId) => ({ departmentId })) },
       },
@@ -146,6 +148,8 @@ export async function updateExistingHealthSurveyConfigEntry(
         frequency: input.frequency,
         scheduledDayOfMonth: input.scheduledDayOfMonth ?? null,
         dispatchTime: input.dispatchTime,
+        respectEmployeeSchedule: input.respectEmployeeSchedule,
+        tokenExpiryHours: input.tokenExpiryHours,
         workDays: {
           deleteMany: {},
           createMany: { data: input.workDays.map((d) => ({ dayOfWeek: d })) },
@@ -691,6 +695,8 @@ export interface ActiveHealthSurveyConfigForDispatch {
   scheduledDayOfMonth: number | null
   dispatchTime: string
   workDays: number[]
+  respectEmployeeSchedule: boolean
+  tokenExpiryHours: number
   organization: { timezone: string; slug: string }
   departments: HealthSurveyDispatchDepartment[]
   questions: HealthSurveyQuestion[]
@@ -752,6 +758,8 @@ export async function findAllTenantsActiveHealthSurveyConfigsForAutoDispatch(): 
         })),
       })),
       questions: c.questions,
+      respectEmployeeSchedule: c.respectEmployeeSchedule,
+      tokenExpiryHours: c.tokenExpiryHours,
       lastDispatchedAt: c.dispatches[0]?.dispatchedAt ?? null,
     }))
 }

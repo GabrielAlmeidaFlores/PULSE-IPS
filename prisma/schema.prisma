@@ -327,9 +327,11 @@ model HealthSurveyConfiguration {
   description          String?
   frequency            String
   scheduledDayOfMonth  Int?                  @map("scheduled_day_of_month")
-  dispatchTime         String                @default("09:00") @db.VarChar(5) @map("dispatch_time")
-  workDays             HealthSurveyConfigWorkDay[]
-  isActive             Boolean               @default(true) @map("is_active")
+  dispatchTime             String                @default("09:00") @db.VarChar(5) @map("dispatch_time")
+  respectEmployeeSchedule  Boolean               @default(false) @map("respect_employee_schedule")
+  tokenExpiryHours         Int                   @default(48) @map("token_expiry_hours")
+  workDays                 HealthSurveyConfigWorkDay[]
+  isActive                 Boolean               @default(true) @map("is_active")
   createdAt            DateTime              @default(now()) @map("created_at")
   updatedAt            DateTime              @updatedAt @map("updated_at")
 

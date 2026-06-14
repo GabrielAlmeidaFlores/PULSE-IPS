@@ -9,6 +9,14 @@ import type { ImportPreview, ImportPreviewItem } from "@/modules/employees/emplo
 
 const PREVIEW_STORAGE_KEY = "pulse:import-preview"
 
+const DAY_ABBREVS: Record<number, string> = {
+  0: "Dom", 1: "Seg", 2: "Ter", 3: "Qua", 4: "Qui", 5: "Sex", 6: "Sáb",
+}
+
+function formatWorkDaysDisplay(days: number[]): string {
+  return days.map((d) => DAY_ABBREVS[d] ?? String(d)).join(", ")
+}
+
 function readPreviewFromStorage(): ImportPreview | null {
   if (typeof window === "undefined") return null
   const stored = sessionStorage.getItem(PREVIEW_STORAGE_KEY)
@@ -114,6 +122,8 @@ export default function ImportPreviewPage(): React.ReactElement {
                 <th className="text-left px-4 py-2.5 font-bold tracking-widest uppercase text-[10px] text-muted-foreground">Telefone</th>
                 <th className="text-left px-4 py-2.5 font-bold tracking-widest uppercase text-[10px] text-muted-foreground">Departamento</th>
                 <th className="text-left px-4 py-2.5 font-bold tracking-widest uppercase text-[10px] text-muted-foreground">E-mail</th>
+                <th className="text-left px-4 py-2.5 font-bold tracking-widest uppercase text-[10px] text-muted-foreground">Expediente</th>
+                <th className="text-left px-4 py-2.5 font-bold tracking-widest uppercase text-[10px] text-muted-foreground">Dias</th>
                 <th className="text-center px-4 py-2.5 font-bold tracking-widest uppercase text-[10px] text-muted-foreground">Status</th>
               </tr>
             </thead>
@@ -128,6 +138,16 @@ export default function ImportPreviewPage(): React.ReactElement {
                   <td className="px-4 py-2.5 font-mono text-muted-foreground">{item.phone}</td>
                   <td className="px-4 py-2.5 text-muted-foreground">{item.departmentName}</td>
                   <td className="px-4 py-2.5 font-mono text-muted-foreground">{item.email ?? "—"}</td>
+                  <td className="px-4 py-2.5 font-mono text-muted-foreground">
+                    {item.workStartTime !== undefined && item.workEndTime !== undefined
+                      ? `${item.workStartTime}–${item.workEndTime}`
+                      : "—"}
+                  </td>
+                  <td className="px-4 py-2.5 text-muted-foreground">
+                    {item.workDays !== undefined && item.workDays.length > 0
+                      ? formatWorkDaysDisplay(item.workDays)
+                      : "—"}
+                  </td>
                   <td className="px-4 py-2.5 text-center">
                     {item.valid ? (
                       <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-status-success">

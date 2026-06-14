@@ -30,7 +30,11 @@ services:
     command: >
       sh -c "[ -n \"$$REDIS_PASSWORD\" ] && exec redis-server --requirepass \"$$REDIS_PASSWORD\" || exec redis-server"
     healthcheck:
-      test: ["CMD-SHELL", "[ -n \"$REDIS_PASSWORD\" ] && redis-cli -a \"$REDIS_PASSWORD\" --no-auth-warning ping || redis-cli ping"]
+      test:
+        [
+          "CMD-SHELL",
+          '[ -n "$REDIS_PASSWORD" ] && redis-cli -a "$REDIS_PASSWORD" --no-auth-warning ping || redis-cli ping',
+        ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -65,7 +69,7 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:5000:5000"
     env_file:
       - .env
     environment:
@@ -106,7 +110,11 @@ services:
       REDIS_PORT: "6379"
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
     healthcheck:
-      test: ["CMD-SHELL", "[ -n \"$REDIS_PASSWORD\" ] && redis-cli -h redis -a \"$REDIS_PASSWORD\" --no-auth-warning ping || redis-cli -h redis ping"]
+      test:
+        [
+          "CMD-SHELL",
+          '[ -n "$REDIS_PASSWORD" ] && redis-cli -h redis -a "$REDIS_PASSWORD" --no-auth-warning ping || redis-cli -h redis ping',
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -126,11 +134,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-    command:
-      [
-        "node",
-        "dist/workers/register-schedules.js",
-      ]
+    command: ["node", "dist/workers/register-schedules.js"]
 
   minio:
     image: minio/minio:latest
