@@ -42,6 +42,9 @@ export interface ImportRow {
   phone: string
   departmentName: string
   email?: string | undefined
+  workStartTime?: string | undefined
+  workEndTime?: string | undefined
+  workDays?: number[] | undefined
 }
 
 export interface ImportPreviewItem {
@@ -50,6 +53,9 @@ export interface ImportPreviewItem {
   phone: string
   departmentName: string
   email?: string | undefined
+  workStartTime?: string | undefined
+  workEndTime?: string | undefined
+  workDays?: number[] | undefined
   valid: boolean
   errors: string[]
 }
