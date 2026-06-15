@@ -16,7 +16,6 @@ const IMPORT_UNSUPPORTED_FORMAT_ERROR = "Apenas arquivos .xlsx, .xls e .csv são
 interface ImportResult {
   error?: string
   created?: number
-  skipped?: number
   failed?: number
   errors?: { row: number; error: string }[]
 }
@@ -46,7 +45,7 @@ export async function previewImportAction(formData: FormData): Promise<PreviewRe
   }
 }
 
-type RowOutcome = "created" | "skipped" | { row: number; error: string }
+type RowOutcome = "created" | { row: number; error: string }
 
 async function processOneImportRow(
   tenantId: string,
@@ -74,7 +73,6 @@ async function processOneImportRow(
     }, userId)
     return "created"
   } catch (err) {
-    if (err instanceof AppError && err.code === "EMAIL_CONFLICT") return "skipped"
     return { row: item.row, error: err instanceof Error ? err.message : String(err) }
   }
 }
@@ -87,17 +85,14 @@ export async function confirmImportAction(validItems: ImportPreviewItem[]): Prom
   const deptMap = new Map(departments.map((d) => [d.name.toLowerCase(), d.id]))
 
   let created = 0
-  let skipped = 0
   const errors: { row: number; error: string }[] = []
 
   for (const item of validItems) {
     const outcome = await processOneImportRow(session.tenantId, session.userId, item, deptMap)
     if (outcome === "created") created++
-    else if (outcome === "skipped") skipped++
     else errors.push(outcome)
   }
 
   revalidatePath("/employees")
-  return { created, skipped, failed: errors.length, errors }
+  return { created, failed: errors.length, errors }
 }
-
