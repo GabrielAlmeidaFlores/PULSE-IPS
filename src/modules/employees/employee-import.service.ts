@@ -19,6 +19,26 @@ function parseCellTimeValue(val: unknown): string | undefined {
   return undefined
 }
 
+function findColIndex(headers: Record<number, string>, keys: string[]): number | undefined {
+  for (const [col, header] of Object.entries(headers)) {
+    if (keys.some((k) => k.toLowerCase() === header.toLowerCase())) {
+      return Number(col)
+    }
+  }
+  return undefined
+}
+
+function assignImportPreviewOptionalFields(
+  item: ImportPreviewItem,
+  email: string | undefined,
+  workStartTime: string | undefined,
+  workEndTime: string | undefined,
+): void {
+  if (email !== undefined) item.email = email
+  if (workStartTime !== undefined) item.workStartTime = workStartTime
+  if (workEndTime !== undefined) item.workEndTime = workEndTime
+}
+
 export async function parseImportPreview(buffer: ArrayBuffer, tenantId: string): Promise<ImportPreview> {
   const workbook = new ExcelJS.Workbook()
   await workbook.xlsx.load(buffer)
@@ -35,29 +55,20 @@ export async function parseImportPreview(buffer: ArrayBuffer, tenantId: string):
     headers[col] = String(cell.value ?? "").trim()
   })
 
-  const findColIndex = (keys: string[]): number | undefined => {
-    for (const [col, header] of Object.entries(headers)) {
-      if (keys.some((k) => k.toLowerCase() === header.toLowerCase())) {
-        return Number(col)
-      }
-    }
-    return undefined
-  }
-
   const items: ImportPreviewItem[] = []
 
   sheet.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return
 
     const get = (keys: string[]): string => {
-      const col = findColIndex(keys)
+      const col = findColIndex(headers, keys)
       if (col === undefined) return ""
       const val = row.getCell(col).value
       return val !== null && val !== undefined ? String(val).trim() : ""
     }
 
     const getTime = (keys: string[]): string | undefined => {
-      const col = findColIndex(keys)
+      const col = findColIndex(headers, keys)
       if (col === undefined) return undefined
       return parseCellTimeValue(row.getCell(col).value)
     }
@@ -85,9 +96,7 @@ export async function parseImportPreview(buffer: ArrayBuffer, tenantId: string):
         valid: false,
         errors: result.error.issues.map((e) => e.message),
       }
-      if (rawEmail !== undefined) item.email = rawEmail
-      if (rawWorkStartTime !== undefined) item.workStartTime = rawWorkStartTime
-      if (rawWorkEndTime !== undefined) item.workEndTime = rawWorkEndTime
+      assignImportPreviewOptionalFields(item, rawEmail, rawWorkStartTime, rawWorkEndTime)
       items.push(item)
       return
     }
@@ -102,9 +111,7 @@ export async function parseImportPreview(buffer: ArrayBuffer, tenantId: string):
         valid: false,
         errors: [`Departamento "${result.data.departmentName}" não encontrado`],
       }
-      if (result.data.email !== undefined) item.email = result.data.email
-      if (result.data.workStartTime !== undefined) item.workStartTime = result.data.workStartTime
-      if (result.data.workEndTime !== undefined) item.workEndTime = result.data.workEndTime
+      assignImportPreviewOptionalFields(item, result.data.email, result.data.workStartTime, result.data.workEndTime)
       items.push(item)
       return
     }
@@ -117,9 +124,7 @@ export async function parseImportPreview(buffer: ArrayBuffer, tenantId: string):
       valid: true,
       errors: [],
     }
-    if (result.data.email !== undefined) item.email = result.data.email
-    if (result.data.workStartTime !== undefined) item.workStartTime = result.data.workStartTime
-    if (result.data.workEndTime !== undefined) item.workEndTime = result.data.workEndTime
+    assignImportPreviewOptionalFields(item, result.data.email, result.data.workStartTime, result.data.workEndTime)
     items.push(item)
   })
 

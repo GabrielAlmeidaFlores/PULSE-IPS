@@ -3487,26 +3487,31 @@ O `signedLinkToken` é gerado por `randomUUID()` na criação do dispatch e arma
 
 ### 20.10 Importação de colaboradores via Excel
 
+O serviço `parseImportPreview` usa a função `findColIndex` para detectar colunas por nome, com correspondência case-insensitive. Os aliases reconhecidos por campo são:
+
+| Campo | Aliases de cabeçalho aceitos (case-insensitive) |
+|---|---|
+| `name` | `"nome"`, `"nome completo"`, `"name"` |
+| `phone` | `"telefone"`, `"mensagem"`, `"phone"` |
+| `departmentName` | `"setor"`, `"departamento"`, `"departmentName"` |
+| `email` _(opcional)_ | `"email"`, `"e-mail"` |
+| `workStartTime` _(opcional)_ | `"hora início"`, `"hora inicio"` |
+| `workEndTime` _(opcional)_ | `"hora fim"` |
+
+Células de horário suportam dois formatos:
+- **String**: `"09:00"`, `"9:00"` (padded para `"09:00"`)
+- **Date (ExcelJS type 4)**: valor como `Date("1899-12-30T09:00:00.000Z")` → extrai `getUTCHours()`/`getUTCMinutes()`
+
 ```typescript
-// modules/employees/employee-import.service.ts
-
-const HEADER_MAP: Record<string, keyof ImportRow> = {
-  "nome":          "name",
-  "nome completo": "name",
-  "e-mail":        "email",
-  "email":         "email",
-  "telefone":      "phone",
-  "mensagem":      "phone",
-  "setor":         "departmentName",
-}
-
 // Fluxo:
-// 1. parse(buffer) → detecta headers → mapeia colunas (case-insensitive, acentuação tolerada)
-// 2. validate(rows) → Zod schema por linha → separa válidos/inválidos
-// 3. Retorna ImportPreview { valid: Row[], invalid: { row, errors }[] }
-// 4. Após confirmação do RH → importEmployees(tenantId, preview.valid)
-//    ├─ Ignora duplicatas (mesmo email no tenant)
-//    └─ Cria todos os válidos em batch
+// 1. parseImportPreview(buffer, tenantId) → detecta headers via findColIndex → mapeia colunas
+// 2. Para cada linha: valida com importRowSchema (Zod) → separa válidos/inválidos
+// 3. Valida se departamento existe em departments.findActiveDepartmentsByTenant
+// 4. Retorna ImportPreview { valid: number, invalid: number, items: ImportPreviewItem[] }
+// 5. Após confirmação do RH → executeImport(tenantId, buffer)
+//    ├─ Re-executa parseImportPreview internamente
+//    ├─ Itera apenas itens válidos → chama createEmployee com conditional spread
+//    └─ workStartTime / workEndTime passados apenas quando presentes na planilha
 ```
 
 ### 20.11 Métricas de plataforma (Super Admin Dashboard)
