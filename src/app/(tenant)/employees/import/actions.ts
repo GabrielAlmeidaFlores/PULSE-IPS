@@ -71,6 +71,8 @@ export async function confirmImportAction(validItems: ImportPreviewItem[]): Prom
         phone: rowParsed.data.phone,
         departmentId,
         ...(rowParsed.data.email !== undefined ? { email: rowParsed.data.email } : {}),
+        ...(rowParsed.data.workStartTime !== undefined ? { workStartTime: rowParsed.data.workStartTime } : {}),
+        ...(rowParsed.data.workEndTime !== undefined ? { workEndTime: rowParsed.data.workEndTime } : {}),
       }, session.userId)
       created++
     } catch (err) {

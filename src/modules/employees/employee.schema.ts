@@ -40,4 +40,6 @@ export const importRowSchema = z.object({
   phone: phoneField,
   departmentName: z.string().min(1, { message: "Informe o setor." }),
   email: z.string().email({ message: "E-mail inválido." }).optional(),
+  workStartTime: z.string().regex(TIME_REGEX, "Horário de início inválido (HH:MM).").optional(),
+  workEndTime: z.string().regex(TIME_REGEX, "Horário de fim inválido (HH:MM).").optional(),
 })

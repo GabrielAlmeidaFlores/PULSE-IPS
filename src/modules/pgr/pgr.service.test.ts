@@ -104,6 +104,8 @@ function makeDispatch(month: number, responseCount: number): PgrDispatch {
       scheduledDayOfMonth: null,
       dispatchTime: "09:00",
       isActive: true,
+      respectEmployeeSchedule: true,
+      tokenExpiryHours: 48,
       createdAt: dispatchedAt,
       updatedAt: dispatchedAt,
       configDepartments: [{ departmentId: DEPT_ID, department: DEPT }],

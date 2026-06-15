@@ -115,6 +115,8 @@ function makeTokenRecord(overrides?: Partial<TokenRecord>): TokenRecord {
         scheduledDayOfMonth: null,
         dispatchTime: "09:00",
         isActive: true,
+        respectEmployeeSchedule: true,
+        tokenExpiryHours: 48,
         createdAt: new Date(),
         updatedAt: new Date(),
         questions: [
@@ -431,6 +433,8 @@ function makeDispatchRecord(overrides?: Partial<DispatchRecord>): DispatchRecord
       scheduledDayOfMonth: null,
       dispatchTime: "09:00",
       isActive: true,
+      respectEmployeeSchedule: true,
+      tokenExpiryHours: 48,
       createdAt: new Date(),
       updatedAt: new Date(),
       organization: {

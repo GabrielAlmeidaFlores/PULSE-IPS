@@ -5,6 +5,20 @@ import { createEmployee } from "@/modules/employees/employee.repository"
 import { findActiveDepartmentsByTenant } from "@/modules/departments/department.repository"
 import type { ImportPreview, ImportPreviewItem, ImportResult } from "@/modules/employees/employee.types"
 
+function parseCellTimeValue(val: unknown): string | undefined {
+  if (val instanceof Date) {
+    const h = val.getUTCHours().toString().padStart(2, "0")
+    const m = val.getUTCMinutes().toString().padStart(2, "0")
+    return `${h}:${m}`
+  }
+  const str = val !== null && val !== undefined ? String(val).trim() : ""
+  const match = /^(\d{1,2}):(\d{2})$/.exec(str)
+  if (match) {
+    return `${(match[1] ?? "0").padStart(2, "0")}:${match[2] ?? "00"}`
+  }
+  return undefined
+}
+
 export async function parseImportPreview(buffer: ArrayBuffer, tenantId: string): Promise<ImportPreview> {
   const workbook = new ExcelJS.Workbook()
   await workbook.xlsx.load(buffer)
@@ -21,27 +35,44 @@ export async function parseImportPreview(buffer: ArrayBuffer, tenantId: string):
     headers[col] = String(cell.value ?? "").trim()
   })
 
+  const findColIndex = (keys: string[]): number | undefined => {
+    for (const [col, header] of Object.entries(headers)) {
+      if (keys.some((k) => k.toLowerCase() === header.toLowerCase())) {
+        return Number(col)
+      }
+    }
+    return undefined
+  }
+
   const items: ImportPreviewItem[] = []
 
   sheet.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return
 
     const get = (keys: string[]): string => {
-      for (const [col, header] of Object.entries(headers)) {
-        if (keys.some((k) => k.toLowerCase() === header.toLowerCase())) {
-          const val = row.getCell(Number(col)).value
-          return val !== null && val !== undefined ? String(val).trim() : ""
-        }
-      }
-      return ""
+      const col = findColIndex(keys)
+      if (col === undefined) return ""
+      const val = row.getCell(col).value
+      return val !== null && val !== undefined ? String(val).trim() : ""
     }
 
-    const rawEmail = get(["email", "Email"]) || undefined
+    const getTime = (keys: string[]): string | undefined => {
+      const col = findColIndex(keys)
+      if (col === undefined) return undefined
+      return parseCellTimeValue(row.getCell(col).value)
+    }
+
+    const rawEmail = get(["email", "e-mail"]) || undefined
+    const rawWorkStartTime = getTime(["hora início", "hora inicio"])
+    const rawWorkEndTime = getTime(["hora fim"])
+
     const rawItem = {
-      name: get(["name", "Nome"]),
-      phone: get(["phone", "Telefone"]),
-      departmentName: get(["departmentName", "Departamento"]),
-      ...(rawEmail ? { email: rawEmail } : {}),
+      name: get(["nome", "nome completo", "name"]),
+      phone: get(["telefone", "mensagem", "phone"]),
+      departmentName: get(["setor", "departamento", "departmentName"]),
+      ...(rawEmail !== undefined ? { email: rawEmail } : {}),
+      ...(rawWorkStartTime !== undefined ? { workStartTime: rawWorkStartTime } : {}),
+      ...(rawWorkEndTime !== undefined ? { workEndTime: rawWorkEndTime } : {}),
     }
 
     const result = importRowSchema.safeParse(rawItem)
@@ -54,7 +85,9 @@ export async function parseImportPreview(buffer: ArrayBuffer, tenantId: string):
         valid: false,
         errors: result.error.issues.map((e) => e.message),
       }
-      if (rawEmail) item.email = rawEmail
+      if (rawEmail !== undefined) item.email = rawEmail
+      if (rawWorkStartTime !== undefined) item.workStartTime = rawWorkStartTime
+      if (rawWorkEndTime !== undefined) item.workEndTime = rawWorkEndTime
       items.push(item)
       return
     }
@@ -70,6 +103,8 @@ export async function parseImportPreview(buffer: ArrayBuffer, tenantId: string):
         errors: [`Departamento "${result.data.departmentName}" não encontrado`],
       }
       if (result.data.email !== undefined) item.email = result.data.email
+      if (result.data.workStartTime !== undefined) item.workStartTime = result.data.workStartTime
+      if (result.data.workEndTime !== undefined) item.workEndTime = result.data.workEndTime
       items.push(item)
       return
     }
@@ -83,6 +118,8 @@ export async function parseImportPreview(buffer: ArrayBuffer, tenantId: string):
       errors: [],
     }
     if (result.data.email !== undefined) item.email = result.data.email
+    if (result.data.workStartTime !== undefined) item.workStartTime = result.data.workStartTime
+    if (result.data.workEndTime !== undefined) item.workEndTime = result.data.workEndTime
     items.push(item)
   })
 
@@ -122,6 +159,8 @@ export async function executeImport(
         phone: item.phone,
         departmentId,
         ...(item.email !== undefined ? { email: item.email } : {}),
+        ...(item.workStartTime !== undefined ? { workStartTime: item.workStartTime } : {}),
+        ...(item.workEndTime !== undefined ? { workEndTime: item.workEndTime } : {}),
       })
       created++
     } catch (error) {
@@ -131,4 +170,3 @@ export async function executeImport(
 
   return { created, failed: errors.length, errors }
 }
-

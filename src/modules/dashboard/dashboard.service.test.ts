@@ -55,6 +55,8 @@ const CONFIG_FIXTURE = {
   scheduledDayOfMonth: null,
   dispatchTime: "09:00",
   isActive: true,
+  respectEmployeeSchedule: true,
+  tokenExpiryHours: 48,
   createdAt: BASE_DATE,
   updatedAt: BASE_DATE,
   configDepartments: [{ department: DEPT_FIXTURE }],
