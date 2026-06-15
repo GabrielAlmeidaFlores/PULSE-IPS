@@ -3509,6 +3509,21 @@ O `signedLinkToken` é gerado por `randomUUID()` na criação do dispatch e arma
 
 ### 20.10 Importação de colaboradores via Excel ou CSV
 
+O serviço `parseImportPreview` usa a função `findColIndex` para detectar colunas por nome, com correspondência case-insensitive. Os aliases reconhecidos por campo são:
+
+| Campo | Aliases de cabeçalho aceitos (case-insensitive) |
+|---|---|
+| `name` | `"nome"`, `"nome completo"`, `"name"` |
+| `phone` | `"telefone"`, `"mensagem"`, `"phone"` |
+| `departmentName` | `"setor"`, `"departamento"`, `"departmentName"` |
+| `email` _(opcional)_ | `"email"`, `"e-mail"` |
+| `workStartTime` _(opcional)_ | `"hora início"`, `"hora inicio"` |
+| `workEndTime` _(opcional)_ | `"hora fim"` |
+
+Células de horário suportam dois formatos:
+- **String**: `"09:00"`, `"9:00"` (padded para `"09:00"`)
+- **Date (ExcelJS type 4)**: valor como `Date("1899-12-30T09:00:00.000Z")` → extrai `getUTCHours()`/`getUTCMinutes()`
+
 ```typescript
 // modules/employees/employee-import.service.ts
 

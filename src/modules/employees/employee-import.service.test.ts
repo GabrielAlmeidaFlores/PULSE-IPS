@@ -16,9 +16,17 @@ const PT_HEADERS = ["Nome", "Telefone", "Departamento"]
 const EN_HEADERS = ["name", "phone", "departmentName"]
 const VALID_PHONE = "+5511999999999"
 const VALID_PHONE_2 = "+5511888888888"
+const VALID_PHONE_3 = "+5511777777777"
+const VALID_PHONE_4 = "+5511666666666"
 const VALID_EMAIL = "ana@test.com"
 const DEPT_NAME = "TI"
 const DEPT_ID = "dept-ti"
+const WORK_START_HEADER = "Hora Início"
+const WORK_END_HEADER = "Hora Fim"
+const WORK_START_TIME = "09:00"
+const WORK_END_TIME = "18:00"
+const EMAIL_ALREADY_EXISTS_ERROR = "E-mail já cadastrado"
+const UNEXPECTED_STRING_ERROR = "erro de string inesperado"
 const SCHED_PT_HEADERS = [...PT_HEADERS, "Hora Início", "Hora Fim", "Dias de Trabalho"]
 
 type DeptRow = Awaited<ReturnType<typeof findActiveDepartmentsByTenant>>[number]
@@ -34,6 +42,23 @@ async function makeBuffer(headers: string[], rows: (string | undefined)[][]): Pr
   const ws = wb.addWorksheet("Dados")
   ws.addRow(headers)
   for (const row of rows) ws.addRow(row)
+  const buf = await wb.xlsx.writeBuffer()
+  return buf as ArrayBuffer
+}
+
+async function makeBufferWithDateTimeCells(
+  name: string,
+  phone: string,
+  dept: string,
+  workStartTimeDate: Date | undefined,
+  workEndTimeDate: Date | undefined,
+): Promise<ArrayBuffer> {
+  const wb = new ExcelJS.Workbook()
+  const ws = wb.addWorksheet("Dados")
+  ws.addRow(["Nome", "Telefone", "Departamento", WORK_START_HEADER, WORK_END_HEADER])
+  const dataRow = ws.addRow([name, phone, dept])
+  if (workStartTimeDate !== undefined) dataRow.getCell(4).value = workStartTimeDate
+  if (workEndTimeDate !== undefined) dataRow.getCell(5).value = workEndTimeDate
   const buf = await wb.xlsx.writeBuffer()
   return buf as ArrayBuffer
 }
@@ -57,15 +82,15 @@ describe("parseImportPreview — header detection", () => {
   })
 
   it("detects 'Telefone' header for phone", async () => {
-    const buf = await makeBuffer(PT_HEADERS, [["Ana", "+5511777777777", DEPT_NAME]])
+    const buf = await makeBuffer(PT_HEADERS, [["Ana", VALID_PHONE_3, DEPT_NAME]])
     const preview = await parseImportPreview(buf, TENANT_ID)
-    expect(preview.items[0]?.phone).toBe("+5511777777777")
+    expect(preview.items[0]?.phone).toBe(VALID_PHONE_3)
   })
 
   it("detects 'phone' header (English)", async () => {
-    const buf = await makeBuffer(EN_HEADERS, [["Ana", "+5511666666666", DEPT_NAME]])
+    const buf = await makeBuffer(EN_HEADERS, [["Ana", VALID_PHONE_4, DEPT_NAME]])
     const preview = await parseImportPreview(buf, TENANT_ID)
-    expect(preview.items[0]?.phone).toBe("+5511666666666")
+    expect(preview.items[0]?.phone).toBe(VALID_PHONE_4)
   })
 
   it("detects 'Departamento' header for departmentName", async () => {
@@ -74,8 +99,21 @@ describe("parseImportPreview — header detection", () => {
     expect(preview.items[0]?.departmentName).toBe("Marketing")
   })
 
-  it("reads optional email column when present", async () => {
+  it("detects 'SETOR' header (uppercase) for departmentName", async () => {
+    const buf = await makeBuffer(["Nome", "Telefone", "SETOR"], [["Ana", VALID_PHONE, DEPT_NAME]])
+    const preview = await parseImportPreview(buf, TENANT_ID)
+    expect(preview.items[0]?.departmentName).toBe(DEPT_NAME)
+    expect(preview.items[0]?.valid).toBe(true)
+  })
+
+  it("reads optional email column with 'Email' header", async () => {
     const buf = await makeBuffer([...PT_HEADERS, "Email"], [["Ana", VALID_PHONE, DEPT_NAME, VALID_EMAIL]])
+    const preview = await parseImportPreview(buf, TENANT_ID)
+    expect(preview.items[0]?.email).toBe(VALID_EMAIL)
+  })
+
+  it("reads optional email column with 'E-mail' header (with hyphen)", async () => {
+    const buf = await makeBuffer([...PT_HEADERS, "E-mail"], [["Ana", VALID_PHONE, DEPT_NAME, VALID_EMAIL]])
     const preview = await parseImportPreview(buf, TENANT_ID)
     expect(preview.items[0]?.email).toBe(VALID_EMAIL)
   })
@@ -84,6 +122,43 @@ describe("parseImportPreview — header detection", () => {
     const buf = await makeBuffer(PT_HEADERS, [["Ana", VALID_PHONE, DEPT_NAME]])
     const preview = await parseImportPreview(buf, TENANT_ID)
     expect(preview.items[0]?.email).toBeUndefined()
+  })
+
+  it("reads 'Hora Início' string cell as workStartTime", async () => {
+    const buf = await makeBuffer(
+      [...PT_HEADERS, WORK_START_HEADER, WORK_END_HEADER],
+      [["Ana", VALID_PHONE, DEPT_NAME, WORK_START_TIME, WORK_END_TIME]],
+    )
+    const preview = await parseImportPreview(buf, TENANT_ID)
+    expect(preview.items[0]?.workStartTime).toBe(WORK_START_TIME)
+    expect(preview.items[0]?.workEndTime).toBe(WORK_END_TIME)
+  })
+
+  it("pads single-digit hour in string time cell to two digits", async () => {
+    const buf = await makeBuffer(
+      [...PT_HEADERS, WORK_START_HEADER],
+      [["Ana", VALID_PHONE, DEPT_NAME, "9:00"]],
+    )
+    const preview = await parseImportPreview(buf, TENANT_ID)
+    expect(preview.items[0]?.workStartTime).toBe(WORK_START_TIME)
+  })
+
+  it("reads Date-type time cell (ExcelJS type 4) for 'Hora Início'", async () => {
+    const buf = await makeBufferWithDateTimeCells(
+      "Ana", VALID_PHONE, DEPT_NAME,
+      new Date("1899-12-30T09:00:00.000Z"),
+      new Date("1899-12-30T18:30:00.000Z"),
+    )
+    const preview = await parseImportPreview(buf, TENANT_ID)
+    expect(preview.items[0]?.workStartTime).toBe(WORK_START_TIME)
+    expect(preview.items[0]?.workEndTime).toBe("18:30")
+  })
+
+  it("leaves workStartTime and workEndTime undefined when columns are absent", async () => {
+    const buf = await makeBuffer(PT_HEADERS, [["Ana", VALID_PHONE, DEPT_NAME]])
+    const preview = await parseImportPreview(buf, TENANT_ID)
+    expect(preview.items[0]?.workStartTime).toBeUndefined()
+    expect(preview.items[0]?.workEndTime).toBeUndefined()
   })
 })
 
@@ -124,6 +199,17 @@ describe("parseImportPreview — valid rows", () => {
     const buf = await makeBuffer(PT_HEADERS, [["Ana", VALID_PHONE, DEPT_NAME]])
     const preview = await parseImportPreview(buf, TENANT_ID)
     expect(preview.items[0]?.row).toBe(2)
+  })
+
+  it("preserves workStartTime and workEndTime on valid items", async () => {
+    const buf = await makeBuffer(
+      [...PT_HEADERS, WORK_START_HEADER, WORK_END_HEADER],
+      [["Ana", VALID_PHONE, DEPT_NAME, WORK_START_TIME, WORK_END_TIME]],
+    )
+    const preview = await parseImportPreview(buf, TENANT_ID)
+    expect(preview.items[0]?.valid).toBe(true)
+    expect(preview.items[0]?.workStartTime).toBe(WORK_START_TIME)
+    expect(preview.items[0]?.workEndTime).toBe(WORK_END_TIME)
   })
 })
 
@@ -176,6 +262,26 @@ describe("parseImportPreview — invalid rows", () => {
     const preview = await parseImportPreview(buf, TENANT_ID)
     expect(preview.items[0]?.valid).toBe(false)
     expect(preview.items[0]?.email).toBe(VALID_EMAIL)
+  })
+
+  it("preserves workStartTime on invalid item (schema failure)", async () => {
+    const buf = await makeBuffer(
+      [...PT_HEADERS, WORK_START_HEADER],
+      [["", VALID_PHONE, DEPT_NAME, WORK_START_TIME]],
+    )
+    const preview = await parseImportPreview(buf, TENANT_ID)
+    expect(preview.items[0]?.valid).toBe(false)
+    expect(preview.items[0]?.workStartTime).toBe(WORK_START_TIME)
+  })
+
+  it("preserves workStartTime on invalid item (department not found)", async () => {
+    const buf = await makeBuffer(
+      [...PT_HEADERS, WORK_START_HEADER],
+      [["Ana", VALID_PHONE, "Inexistente", WORK_START_TIME]],
+    )
+    const preview = await parseImportPreview(buf, TENANT_ID)
+    expect(preview.items[0]?.valid).toBe(false)
+    expect(preview.items[0]?.workStartTime).toBe(WORK_START_TIME)
   })
 
   it("populates errors array with messages for invalid rows", async () => {
@@ -272,6 +378,38 @@ describe("executeImport — employee creation", () => {
     expect(mockCreateEmployee).toHaveBeenCalledWith(TENANT_ID, expect.objectContaining({ email: VALID_EMAIL }))
   })
 
+  it("passes workStartTime and workEndTime to createEmployee when schedule columns present", async () => {
+    const buf = await makeBuffer(
+      [...PT_HEADERS, WORK_START_HEADER, WORK_END_HEADER],
+      [["Ana", VALID_PHONE, DEPT_NAME, WORK_START_TIME, WORK_END_TIME]],
+    )
+    await executeImport(TENANT_ID, buf)
+    expect(mockCreateEmployee).toHaveBeenCalledWith(TENANT_ID, expect.objectContaining({
+      workStartTime: WORK_START_TIME,
+      workEndTime: WORK_END_TIME,
+    }))
+  })
+
+  it("does not include workStartTime or workEndTime in createEmployee call when columns absent", async () => {
+    const buf = await makeBuffer(PT_HEADERS, [["Ana", VALID_PHONE, DEPT_NAME]])
+    await executeImport(TENANT_ID, buf)
+    const callArg = mockCreateEmployee.mock.calls[0]?.[1]
+    expect(callArg).not.toHaveProperty("workStartTime")
+    expect(callArg).not.toHaveProperty("workEndTime")
+  })
+
+  it("resolves department from 'SETOR' header", async () => {
+    const buf = await makeBuffer(["Nome", "Telefone", "SETOR"], [["Ana", VALID_PHONE, DEPT_NAME]])
+    await executeImport(TENANT_ID, buf)
+    expect(mockCreateEmployee).toHaveBeenCalledWith(TENANT_ID, expect.objectContaining({ departmentId: DEPT_ID }))
+  })
+
+  it("reads email from 'E-mail' header with hyphen", async () => {
+    const buf = await makeBuffer([...PT_HEADERS, "E-mail"], [["Ana", VALID_PHONE, DEPT_NAME, VALID_EMAIL]])
+    await executeImport(TENANT_ID, buf)
+    expect(mockCreateEmployee).toHaveBeenCalledWith(TENANT_ID, expect.objectContaining({ email: VALID_EMAIL }))
+  })
+
   it("increments created count for each successfully created employee", async () => {
     const buf = await makeBuffer(PT_HEADERS, [
       ["Ana", VALID_PHONE, DEPT_NAME],
@@ -298,22 +436,22 @@ describe("executeImport — employee creation", () => {
   })
 
   it("records error message when createEmployee throws", async () => {
-    mockCreateEmployee.mockRejectedValue(new Error("E-mail já cadastrado"))
+    mockCreateEmployee.mockRejectedValue(new Error(EMAIL_ALREADY_EXISTS_ERROR))
     const buf = await makeBuffer(PT_HEADERS, [["Ana", VALID_PHONE, DEPT_NAME]])
     const result = await executeImport(TENANT_ID, buf)
-    expect(result.errors[0]?.error).toBe("E-mail já cadastrado")
+    expect(result.errors[0]?.error).toBe(EMAIL_ALREADY_EXISTS_ERROR)
   })
 
   it("records stringified error when createEmployee throws a non-Error value", async () => {
-    mockCreateEmployee.mockRejectedValue("erro de string inesperado")
+    mockCreateEmployee.mockRejectedValue(UNEXPECTED_STRING_ERROR)
     const buf = await makeBuffer(PT_HEADERS, [["Ana", VALID_PHONE, DEPT_NAME]])
     const result = await executeImport(TENANT_ID, buf)
-    expect(result.errors[0]?.error).toBe("erro de string inesperado")
+    expect(result.errors[0]?.error).toBe(UNEXPECTED_STRING_ERROR)
   })
 
   it("continues processing remaining rows after a single row error", async () => {
     mockCreateEmployee
-      .mockRejectedValueOnce(new Error("E-mail duplicado"))
+      .mockRejectedValueOnce(new Error(EMAIL_ALREADY_EXISTS_ERROR))
       .mockResolvedValue({} as Awaited<ReturnType<typeof createEmployee>>)
 
     const buf = await makeBuffer(PT_HEADERS, [
