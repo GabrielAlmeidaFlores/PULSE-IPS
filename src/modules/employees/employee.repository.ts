@@ -43,6 +43,10 @@ export function countEmployees(tenantId: string): Promise<number> {
   return prisma.employee.count({ where: { tenantId, status: "active", deletedAt: null } })
 }
 
+export function findEmployeeByEmail(tenantId: string, email: string): Promise<{ id: string } | null> {
+  return prisma.employee.findFirst({ where: { tenantId, email }, select: { id: true } })
+}
+
 export function createEmployee(tenantId: string, data: CreateEmployeeInput): Promise<EmployeeWithWorkDays> {
   return prisma.employee.create({
     data: {
