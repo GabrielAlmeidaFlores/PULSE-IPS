@@ -508,11 +508,18 @@ describe("parseImportPreview — work schedule", () => {
     expect(preview.items[0]?.workStartTime).toBe("09:00")
   })
 
-  it("marks row invalid for unrecognized time format", async () => {
+  it("marks row invalid for unrecognized time format in start time", async () => {
     const buf = await makeBuffer(SCHED_PT_HEADERS, [["Ana", VALID_PHONE, DEPT_NAME, "9999", "18:00", "Seg"]])
     const preview = await parseImportPreview(buf, TENANT_ID)
     expect(preview.items[0]?.valid).toBe(false)
     expect(preview.items[0]?.errors[0]).toMatch(/Horário de início inválido/)
+  })
+
+  it("marks row invalid for unrecognized time format in end time", async () => {
+    const buf = await makeBuffer(SCHED_PT_HEADERS, [["Ana", VALID_PHONE, DEPT_NAME, "09:00", "9999", "Seg"]])
+    const preview = await parseImportPreview(buf, TENANT_ID)
+    expect(preview.items[0]?.valid).toBe(false)
+    expect(preview.items[0]?.errors[0]).toMatch(/Horário de fim inválido/)
   })
 
   it("reads workDays from 'Dias de Trabalho' column with PT day names", async () => {

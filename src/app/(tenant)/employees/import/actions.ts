@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { AppError } from "@/libs/errors/app-error"
 import { getSession } from "@/modules/auth/session"
-import { executeImport, parseImportPreview } from "@/modules/employees/employee-import.service"
+import { parseImportPreview } from "@/modules/employees/employee-import.service"
 import { createNewEmployee } from "@/modules/employees/employee.service"
 import { getActiveDepartments } from "@/modules/departments/department.service"
 import { importRowSchema } from "@/modules/employees/employee.schema"
@@ -16,6 +16,7 @@ const IMPORT_UNSUPPORTED_FORMAT_ERROR = "Apenas arquivos .xlsx, .xls e .csv são
 interface ImportResult {
   error?: string
   created?: number
+  skipped?: number
   failed?: number
   errors?: { row: number; error: string }[]
 }
@@ -45,6 +46,39 @@ export async function previewImportAction(formData: FormData): Promise<PreviewRe
   }
 }
 
+type RowOutcome = "created" | "skipped" | { row: number; error: string }
+
+async function processOneImportRow(
+  tenantId: string,
+  userId: string,
+  item: ImportPreviewItem,
+  deptMap: Map<string, string>,
+): Promise<RowOutcome> {
+  const rowParsed = importRowSchema.safeParse(item)
+  if (!rowParsed.success) {
+    return { row: item.row, error: rowParsed.error.issues[0]?.message ?? "Dados inválidos." }
+  }
+  const departmentId = deptMap.get(rowParsed.data.departmentName.toLowerCase())
+  if (!departmentId) {
+    return { row: item.row, error: `Departamento "${rowParsed.data.departmentName}" não encontrado` }
+  }
+  try {
+    await createNewEmployee(tenantId, {
+      name: rowParsed.data.name,
+      phone: rowParsed.data.phone,
+      departmentId,
+      ...(rowParsed.data.email !== undefined ? { email: rowParsed.data.email } : {}),
+      ...(rowParsed.data.workStartTime !== undefined ? { workStartTime: rowParsed.data.workStartTime } : {}),
+      ...(rowParsed.data.workEndTime !== undefined ? { workEndTime: rowParsed.data.workEndTime } : {}),
+      ...(rowParsed.data.workDays !== undefined ? { workDays: rowParsed.data.workDays } : {}),
+    }, userId)
+    return "created"
+  } catch (err) {
+    if (err instanceof AppError && err.code === "EMAIL_CONFLICT") return "skipped"
+    return { row: item.row, error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
 export async function confirmImportAction(validItems: ImportPreviewItem[]): Promise<ImportResult> {
   const session = await getSession()
   if (!session) return { error: "Sessão expirada." }
@@ -53,59 +87,17 @@ export async function confirmImportAction(validItems: ImportPreviewItem[]): Prom
   const deptMap = new Map(departments.map((d) => [d.name.toLowerCase(), d.id]))
 
   let created = 0
+  let skipped = 0
   const errors: { row: number; error: string }[] = []
 
   for (const item of validItems) {
-    const rowParsed = importRowSchema.safeParse(item)
-    if (!rowParsed.success) {
-      errors.push({ row: item.row, error: rowParsed.error.issues[0]?.message ?? "Dados inválidos." })
-      continue
-    }
-    const departmentId = deptMap.get(rowParsed.data.departmentName.toLowerCase())
-    if (!departmentId) {
-      errors.push({ row: item.row, error: `Departamento "${rowParsed.data.departmentName}" não encontrado` })
-      continue
-    }
-    try {
-      await createNewEmployee(session.tenantId, {
-        name: rowParsed.data.name,
-        phone: rowParsed.data.phone,
-        departmentId,
-        ...(rowParsed.data.email !== undefined ? { email: rowParsed.data.email } : {}),
-        ...(rowParsed.data.workStartTime !== undefined ? { workStartTime: rowParsed.data.workStartTime } : {}),
-        ...(rowParsed.data.workEndTime !== undefined ? { workEndTime: rowParsed.data.workEndTime } : {}),
-        ...(rowParsed.data.workDays !== undefined ? { workDays: rowParsed.data.workDays } : {}),
-      }, session.userId)
-      created++
-    } catch (err) {
-      errors.push({ row: item.row, error: err instanceof Error ? err.message : String(err) })
-    }
+    const outcome = await processOneImportRow(session.tenantId, session.userId, item, deptMap)
+    if (outcome === "created") created++
+    else if (outcome === "skipped") skipped++
+    else errors.push(outcome)
   }
 
   revalidatePath("/employees")
-  return { created, failed: errors.length, errors }
+  return { created, skipped, failed: errors.length, errors }
 }
 
-export async function importEmployeesAction(formData: FormData): Promise<ImportResult> {
-  const session = await getSession()
-  if (!session) return { error: "Sessão expirada." }
-
-  const file = formData.get("file") as File | null
-  if (!file) return { error: "Nenhum arquivo selecionado." }
-  if (file.size > IMPORT_MAX_FILE_SIZE_BYTES) return { error: "Arquivo muito grande (máx. 5 MB)." }
-  const ext = (file.name.split(".").pop() ?? "").toLowerCase()
-  if (!IMPORT_ALLOWED_EXTENSIONS.has(ext)) return { error: IMPORT_UNSUPPORTED_FORMAT_ERROR }
-
-  try {
-    const buffer = await file.arrayBuffer()
-    const result = await executeImport(session.tenantId, buffer, ext)
-    return {
-      created: result.created,
-      failed: result.failed,
-      errors: result.errors,
-    }
-  } catch (err) {
-    if (err instanceof AppError) return { error: err.message }
-    throw err
-  }
-}

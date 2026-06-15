@@ -1,4 +1,4 @@
-import { countEmployees, createEmployee, findEmployeeById, findEmployeesByTenant, updateEmployee, deactivateEmployee, reactivateAllTenantsDueEmployees, findEmployeesForListingPage, softDeleteEmployee, type EmployeeListingFilters } from "@/modules/employees/employee.repository"
+import { countEmployees, createEmployee, findEmployeeById, findEmployeesByTenant, updateEmployee, deactivateEmployee, reactivateAllTenantsDueEmployees, findEmployeesForListingPage, softDeleteEmployee, findEmployeeByEmail, type EmployeeListingFilters } from "@/modules/employees/employee.repository"
 import { findOrganizationById } from "@/modules/organizations/organization.repository"
 import { findPlanById } from "@/modules/plans/plan.repository"
 import { findActiveSubscription } from "@/modules/billing/billing.repository"
@@ -6,6 +6,27 @@ import { createAuditLog } from "@/modules/audit/audit.repository"
 import { getEmployeeIdsForConsentState } from "@/modules/consent/consent.service"
 import type { CreateEmployeeInput, UpdateEmployeeInput } from "@/modules/employees/employee.types"
 import { AppError } from "@/libs/errors/app-error"
+
+async function checkEmployeeLimit(
+  tenantId: string,
+  maxEmployeesOverride: number | null,
+  planId: string | null,
+  currentCount: number,
+): Promise<void> {
+  if (maxEmployeesOverride !== null && maxEmployeesOverride !== undefined) {
+    if (currentCount >= maxEmployeesOverride) throw new AppError("EMPLOYEE_LIMIT_REACHED", "Limite de colaboradores atingido.")
+    return
+  }
+  const subscription = await findActiveSubscription(tenantId)
+  if (subscription) {
+    if (subscription.snapshotMaxEmployees !== null && currentCount >= subscription.snapshotMaxEmployees) throw new AppError("EMPLOYEE_LIMIT_REACHED", "Limite de colaboradores atingido.")
+    return
+  }
+  if (planId) {
+    const plan = await findPlanById(planId)
+    if (plan && plan.maxEmployees !== null && currentCount >= plan.maxEmployees) throw new AppError("EMPLOYEE_LIMIT_REACHED", "Limite de colaboradores atingido.")
+  }
+}
 
 export function getEmployees(tenantId: string, page?: number, pageSize?: number): ReturnType<typeof findEmployeesByTenant> {
   return findEmployeesByTenant(tenantId, page, pageSize)
@@ -19,19 +40,13 @@ export async function createNewEmployee(tenantId: string, input: CreateEmployeeI
   const org = await findOrganizationById(tenantId)
   if (!org) throw new AppError("ORG_NOT_FOUND", "Organização não encontrada.")
 
-  const currentCount = await countEmployees(tenantId)
-
-  if (org.maxEmployeesOverride !== null && org.maxEmployeesOverride !== undefined) {
-    if (currentCount >= org.maxEmployeesOverride) throw new AppError("EMPLOYEE_LIMIT_REACHED", "Limite de colaboradores atingido.")
-  } else {
-    const subscription = await findActiveSubscription(tenantId)
-    if (subscription) {
-      if (subscription.snapshotMaxEmployees !== null && currentCount >= subscription.snapshotMaxEmployees) throw new AppError("EMPLOYEE_LIMIT_REACHED", "Limite de colaboradores atingido.")
-    } else if (org.planId) {
-      const plan = await findPlanById(org.planId)
-      if (plan && plan.maxEmployees !== null && currentCount >= plan.maxEmployees) throw new AppError("EMPLOYEE_LIMIT_REACHED", "Limite de colaboradores atingido.")
-    }
+  if (input.email !== undefined) {
+    const existing = await findEmployeeByEmail(tenantId, input.email)
+    if (existing) throw new AppError("EMAIL_CONFLICT", "Colaborador com este e-mail já cadastrado nesta organização.")
   }
+
+  const currentCount = await countEmployees(tenantId)
+  await checkEmployeeLimit(tenantId, org.maxEmployeesOverride ?? null, org.planId ?? null, currentCount)
 
   const employee = await createEmployee(tenantId, input)
   await createAuditLog({ tenantId, ...(actorId !== undefined ? { userId: actorId } : {}), action: "employee.created", resource: "employees", resourceId: employee.id })
