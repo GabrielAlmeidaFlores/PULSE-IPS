@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { AppError } from "@/libs/errors/app-error"
 import { getSession } from "@/modules/auth/session"
-import { executeImport, parseImportPreview } from "@/modules/employees/employee-import.service"
+import { parseImportPreview } from "@/modules/employees/employee-import.service"
 import { createNewEmployee } from "@/modules/employees/employee.service"
 import { getActiveDepartments } from "@/modules/departments/department.service"
 import { importRowSchema } from "@/modules/employees/employee.schema"
@@ -86,26 +86,3 @@ export async function confirmImportAction(validItems: ImportPreviewItem[]): Prom
   return { created, failed: errors.length, errors }
 }
 
-export async function importEmployeesAction(formData: FormData): Promise<ImportResult> {
-  const session = await getSession()
-  if (!session) return { error: "Sessão expirada." }
-
-  const file = formData.get("file") as File | null
-  if (!file) return { error: "Nenhum arquivo selecionado." }
-  if (file.size > IMPORT_MAX_FILE_SIZE_BYTES) return { error: "Arquivo muito grande (máx. 5 MB)." }
-  const ext = (file.name.split(".").pop() ?? "").toLowerCase()
-  if (!IMPORT_ALLOWED_EXTENSIONS.has(ext)) return { error: IMPORT_UNSUPPORTED_FORMAT_ERROR }
-
-  try {
-    const buffer = await file.arrayBuffer()
-    const result = await executeImport(session.tenantId, buffer, ext)
-    return {
-      created: result.created,
-      failed: result.failed,
-      errors: result.errors,
-    }
-  } catch (err) {
-    if (err instanceof AppError) return { error: err.message }
-    throw err
-  }
-}

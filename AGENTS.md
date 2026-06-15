@@ -3507,51 +3507,29 @@ O `signedLinkToken` é gerado por `randomUUID()` na criação do dispatch e arma
 
 **Módulo de unlock:** `unlockHealthSurveyViaIdentifier(signedLinkToken, identifier)` em `health-survey-response.service.ts`.
 
-### 20.10 Importação de colaboradores via Excel ou CSV
+ ### 20.10 Importação de colaboradores via Excel ou CSV
 
-O serviço `parseImportPreview` usa a função `findColIndex` para detectar colunas por nome, com correspondência case-insensitive. Os aliases reconhecidos por campo são:
+**Fluxo da UI:**
+1. RH faz upload do arquivo → `previewImportAction` → `parseImportPreview` → preview armazenado em `sessionStorage` → redireciona para `/employees/import/preview`
+2. RH revisa e confirma → `confirmImportAction(validItems)` → re-valida cada item com `importRowSchema.safeParse` → chama `createNewEmployee` (service, com verificação de limite do plano e audit log) para cada item válido
+
+O serviço `parseImportPreview` detecta colunas via `getCellStringValue`, com correspondência case-insensitive. Os aliases reconhecidos por campo são:
 
 | Campo | Aliases de cabeçalho aceitos (case-insensitive) |
 |---|---|
 | `name` | `"nome"`, `"nome completo"`, `"name"` |
 | `phone` | `"telefone"`, `"mensagem"`, `"phone"` |
-| `departmentName` | `"setor"`, `"departamento"`, `"departmentName"` |
+| `departmentName` | `"setor"`, `"departamento"`, `"departmentname"` |
 | `email` _(opcional)_ | `"email"`, `"e-mail"` |
-| `workStartTime` _(opcional)_ | `"hora início"`, `"hora inicio"` |
-| `workEndTime` _(opcional)_ | `"hora fim"` |
+| `workStartTime` _(opcional)_ | `"hora início"`, `"hora inicio"`, `"workstarttime"`, `"inicio"` |
+| `workEndTime` _(opcional)_ | `"hora fim"`, `"workendtime"`, `"fim"` |
+| `workDays` _(opcional)_ | `"dias de trabalho"`, `"dias"`, `"workdays"` |
 
 Células de horário suportam dois formatos:
-- **String**: `"09:00"`, `"9:00"` (padded para `"09:00"`)
+- **String**: `"09:00"`, `"9:00"` (padded para `"09:00"`), `"9h00"` (normalizado para `"09:00"`)
 - **Date (ExcelJS type 4)**: valor como `Date("1899-12-30T09:00:00.000Z")` → extrai `getUTCHours()`/`getUTCMinutes()`
 
-```typescript
-// modules/employees/employee-import.service.ts
-
-const HEADER_MAP: Record<string, keyof ImportRow> = {
-  "nome":          "name",
-  "nome completo": "name",
-  "e-mail":        "email",
-  "email":         "email",
-  "telefone":      "phone",
-  "mensagem":      "phone",
-  "setor":         "departmentName",
-  // Colunas opcionais de jornada (case-insensitive, acentuação tolerada)
-  "hora início":   "workStartTime",
-  "hora inicio":   "workStartTime",
-  "hora fim":      "workEndTime",
-  "dias de trabalho": "workDays",
-}
-
-// Fluxo:
-// 1. parse(buffer, extension) → detecta formato (.xlsx / .xls / .csv) → mapeia colunas (case-insensitive, acentuação tolerada)
-// 2. validate(rows) → Zod schema por linha → separa válidos/inválidos
-// 3. Retorna ImportPreview { valid: Row[], invalid: { row, errors }[] }
-// 4. Após confirmação do RH → importEmployees(tenantId, preview.valid, extension)
-//    ├─ Ignora duplicatas (mesmo email no tenant)
-//    └─ Cria todos os válidos em batch
-```
-
-**Formatos suportados:** `.xlsx`, `.xls` e `.csv`. A extensão é extraída no upload e passada como argumento para `parseImportPreview` e `executeImport` — o serviço seleciona o parser correto (`exceljs` para Excel, parser CSV nativo para `.csv`).
+**Formatos suportados:** `.xlsx`, `.xls` e `.csv`. A extensão é extraída no upload e passada para `parseImportPreview` — o serviço seleciona o parser correto (`exceljs` para Excel, parser CSV nativo para `.csv`).
 
 **Colunas opcionais de jornada individual:**
 
@@ -3559,7 +3537,7 @@ const HEADER_MAP: Record<string, keyof ImportRow> = {
 |---|---|---|
 | `Hora Início` / `Hora Inicio` | `workStartTime` | `"HH:MM"` (ex: `"08:00"`) |
 | `Hora Fim` | `workEndTime` | `"HH:MM"` (ex: `"17:00"`) |
-| `Dias de Trabalho` | `workDays` | Números separados por vírgula: `"1,2,3,4,5"` (0=Dom … 6=Sáb) |
+| `Dias de Trabalho` | `workDays` | Nomes PT separados por vírgula (`"Seg,Ter,Qua,Qui,Sex"`) ou numéricos (`"1,2,3,4,5"`) — 0=Dom … 6=Sáb |
 
 Quando presentes, sobrepõem os valores do departamento para aquele colaborador. Quando ausentes, o colaborador herda horário e dias do departamento.
 
