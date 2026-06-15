@@ -1734,7 +1734,7 @@ Use `AppError` para todos os erros de domínio esperados (regras de negócio, va
 ```typescript
 // Padrão de uso em services
 throw new AppError("EMPLOYEE_LIMIT_REACHED", "Limite de colaboradores atingido.")
-throw new AppError("EMAIL_CONFLICT", "E-mail já cadastrado nesta organização.")
+throw new AppError("ORG_NOT_FOUND", "Organização não encontrada.")
 throw new AppError("INVALID_TOKEN", "Link inválido ou expirado.")
 
 // Captura em Server Actions
@@ -2100,9 +2100,6 @@ export const employeeService = {
         throw new AppError("EMPLOYEE_LIMIT_REACHED", "Limite de colaboradores atingido.")
       }
     }
-
-    const existing = await employeeRepository.findByEmail(tenantId, data.email)
-    if (existing) throw new AppError("EMAIL_CONFLICT", "E-mail já cadastrado nesta organização.")
 
     const employee = await employeeRepository.create(tenantId, data)
 
@@ -3511,7 +3508,11 @@ O `signedLinkToken` é gerado por `randomUUID()` na criação do dispatch e arma
 
 **Fluxo da UI:**
 1. RH faz upload do arquivo → `previewImportAction` → `parseImportPreview` → preview armazenado em `sessionStorage` → redireciona para `/employees/import/preview`
-2. RH revisa e confirma → `confirmImportAction(validItems)` → re-valida cada item com `importRowSchema.safeParse` → chama `createNewEmployee` (service, com verificação de limite do plano e audit log) para cada item válido
+2. RH revisa e confirma → `confirmImportAction(validItems)` → re-valida cada item com `importRowSchema.safeParse` → chama `createNewEmployee` para cada item válido
+
+**Comportamento:** todo item válido sempre cria um novo colaborador via `createNewEmployee` (verifica limite do plano, audit `employee.created`). Não existe verificação de e-mail duplicado — o banco não possui constraint única em `(tenant_id, email)` para a tabela `employees`. O toast de conclusão exibe `X importado(s)` e `Y com erro`.
+
+> **Sem unicidade de e-mail em colaboradores:** a constraint `@@unique([tenantId, email])` foi removida da tabela `employees` (migration `20260615104105_remove_employee_email_unique`). O mesmo e-mail pode ser cadastrado múltiplas vezes no mesmo tenant. Isso é intencional — e-mail é campo opcional e não é o identificador primário do colaborador.
 
 O serviço `parseImportPreview` detecta colunas via `getCellStringValue`, com correspondência case-insensitive. Os aliases reconhecidos por campo são:
 

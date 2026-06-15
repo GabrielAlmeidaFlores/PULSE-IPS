@@ -20,7 +20,6 @@ import {
   findEmployeeById,
   updateEmployee,
   findEmployeesForListingPage,
-  findEmployeeByEmail,
   type EmployeeWithDepartment,
 } from "@/modules/employees/employee.repository"
 import { findOrganizationById } from "@/modules/organizations/organization.repository"
@@ -44,7 +43,6 @@ const mockSoftDeleteEmployee = vi.mocked(softDeleteEmployee)
 const mockReactivateAllTenantsDueEmployees = vi.mocked(reactivateAllTenantsDueEmployees)
 const mockFindEmployeesByTenant = vi.mocked(findEmployeesByTenant)
 const mockFindEmployeeById = vi.mocked(findEmployeeById)
-const mockFindEmployeeByEmail = vi.mocked(findEmployeeByEmail)
 const mockUpdateEmployee = vi.mocked(updateEmployee)
 const mockFindOrganizationById = vi.mocked(findOrganizationById)
 const mockFindPlanById = vi.mocked(findPlanById)
@@ -65,7 +63,6 @@ beforeEach(() => {
   mockCreateAuditLog.mockResolvedValue(undefined)
   mockDeactivateEmployee.mockResolvedValue({ count: 0 })
   mockSoftDeleteEmployee.mockResolvedValue({ count: 1 })
-  mockFindEmployeeByEmail.mockResolvedValue(null)
 })
 
 describe("createNewEmployee — employee limit checks", () => {
@@ -145,41 +142,14 @@ describe("createNewEmployee — employee limit checks", () => {
       expect.objectContaining({ action: "employee.created", resourceId: CREATED_EMPLOYEE.id }),
     )
   })
-})
 
-describe("createNewEmployee — email conflict check", () => {
-  const INPUT_WITH_EMAIL = { ...EMPLOYEE_INPUT, email: "ana@empresa.com" }
-
-  beforeEach(() => {
+  it("cria colaborador com email sem verificar duplicidade", async () => {
     mockFindOrganizationById.mockResolvedValue({ ...ORG_NO_OVERRIDE, maxEmployeesOverride: 10 } as Awaited<ReturnType<typeof findOrganizationById>>)
     mockCountEmployees.mockResolvedValue(0)
-  })
 
-  it("lança EMAIL_CONFLICT quando email já existe (inclui soft-deleted)", async () => {
-    mockFindEmployeeByEmail.mockResolvedValue(
-      { id: "emp-existing", email: "ana@empresa.com" } as Awaited<ReturnType<typeof findEmployeeByEmail>>,
-    )
-
-    await expect(createNewEmployee(TENANT_ID, INPUT_WITH_EMAIL)).rejects.toMatchObject({
-      code: "EMAIL_CONFLICT",
-    })
-    expect(mockCreateEmployee).not.toHaveBeenCalled()
-  })
-
-  it("não chama findEmployeeByEmail quando email não é fornecido", async () => {
-    await createNewEmployee(TENANT_ID, EMPLOYEE_INPUT)
-
-    expect(mockFindEmployeeByEmail).not.toHaveBeenCalled()
-    expect(mockCreateEmployee).toHaveBeenCalledOnce()
-  })
-
-  it("cria colaborador normalmente quando email não existe ainda", async () => {
-    mockFindEmployeeByEmail.mockResolvedValue(null)
-
-    const result = await createNewEmployee(TENANT_ID, INPUT_WITH_EMAIL)
-
-    expect(mockFindEmployeeByEmail).toHaveBeenCalledWith(TENANT_ID, "ana@empresa.com")
+    const result = await createNewEmployee(TENANT_ID, { ...EMPLOYEE_INPUT, email: "ana@empresa.com" })
     expect(result).toEqual(CREATED_EMPLOYEE)
+    expect(mockCreateEmployee).toHaveBeenCalledOnce()
   })
 })
 

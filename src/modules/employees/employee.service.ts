@@ -1,4 +1,4 @@
-import { countEmployees, createEmployee, findEmployeeById, findEmployeesByTenant, updateEmployee, deactivateEmployee, reactivateAllTenantsDueEmployees, findEmployeesForListingPage, softDeleteEmployee, findEmployeeByEmail, type EmployeeListingFilters } from "@/modules/employees/employee.repository"
+import { countEmployees, createEmployee, findEmployeeById, findEmployeesByTenant, updateEmployee, deactivateEmployee, reactivateAllTenantsDueEmployees, findEmployeesForListingPage, softDeleteEmployee, type EmployeeListingFilters } from "@/modules/employees/employee.repository"
 import { findOrganizationById } from "@/modules/organizations/organization.repository"
 import { findPlanById } from "@/modules/plans/plan.repository"
 import { findActiveSubscription } from "@/modules/billing/billing.repository"
@@ -39,11 +39,6 @@ export function getEmployee(tenantId: string, employeeId: string): ReturnType<ty
 export async function createNewEmployee(tenantId: string, input: CreateEmployeeInput, actorId?: string): ReturnType<typeof createEmployee> {
   const org = await findOrganizationById(tenantId)
   if (!org) throw new AppError("ORG_NOT_FOUND", "Organização não encontrada.")
-
-  if (input.email !== undefined) {
-    const existing = await findEmployeeByEmail(tenantId, input.email)
-    if (existing) throw new AppError("EMAIL_CONFLICT", "Colaborador com este e-mail já cadastrado nesta organização.")
-  }
 
   const currentCount = await countEmployees(tenantId)
   await checkEmployeeLimit(tenantId, org.maxEmployeesOverride ?? null, org.planId ?? null, currentCount)

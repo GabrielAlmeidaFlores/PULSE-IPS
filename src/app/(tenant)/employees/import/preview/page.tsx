@@ -53,10 +53,9 @@ export default function ImportPreviewPage(): React.ReactElement {
 
       const parts: string[] = []
       if ((res.created ?? 0) > 0) parts.push(`${res.created} importado(s)`)
-      if ((res.skipped ?? 0) > 0) parts.push(`${res.skipped} já existente(s)`)
       if ((res.failed ?? 0) > 0) parts.push(`${res.failed} com erro`)
 
-      if ((res.failed ?? 0) > 0 && (res.created ?? 0) === 0 && (res.skipped ?? 0) === 0) {
+      if ((res.failed ?? 0) > 0 && (res.created ?? 0) === 0) {
         toast.error(parts.join(" · "))
       } else {
         toast.success(parts.length > 0 ? parts.join(" · ") : "Nenhum colaborador processado.")
