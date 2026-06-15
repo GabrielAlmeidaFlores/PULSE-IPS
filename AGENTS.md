@@ -335,7 +335,7 @@ src/
 │   │   ├── employees/
 │   │   │   ├── page.tsx
 │   │   │   ├── new/page.tsx
-│   │   │   ├── import/page.tsx             # Upload Excel
+│   │   │   ├── import/page.tsx             # Upload Excel ou CSV
 │   │   │   ├── import/preview/page.tsx     # Preview válidos/erros antes de confirmar
 │   │   │   └── [id]/page.tsx
 │   │   ├── departments/
@@ -381,7 +381,7 @@ src/
 │   │   ├── employee.service.ts
 │   │   ├── employee.schema.ts
 │   │   ├── employee.types.ts
-│   │   ├── employee-import.service.ts      # Importação via Excel (header detection)
+│   │   ├── employee-import.service.ts      # Importação via Excel ou CSV (header detection, colunas opcionais de jornada)
 │   │   └── employee-import.types.ts
 │   ├── departments/
 │   ├── consent/
@@ -479,7 +479,7 @@ src/
 │   │   │   ├── rate-limiter.interface.ts   # IRateLimiterService
 │   │   │   ├── redis-rate-limiter.adapter.ts  # ✅ Produção (rate-limiter-flexible + ioredis)
 │   │   │   ├── in-memory-rate-limiter.adapter.ts  # Testes/dev sem Redis
-│   │   │   └── redis-client.ts             # ioredis singleton (pino logging, isTest guard, reconexão)
+│   │   │   └── redis-client.ts             # getRedisClient() — factory lazy que cria o ioredis singleton apenas na primeira chamada (evita conexões prematuras na inicialização do módulo; pino logging, isTest guard, reconexão)
 │   │   └── index.ts                        # Factories: getEmailService(), getBillingService(), getRateLimiterService()…
 │   ├── email-templates/
 │   │   ├── index.ts                        # getTemplate(name, vars) → { subject, Component }
@@ -904,12 +904,16 @@ Uma configuração pode cobrir **N setores** via join table `health_survey_confi
 | frequency | varchar(20) | `'daily'` \| `'twice_weekly'` \| `'weekly'` \| `'biweekly'` \| `'monthly'` |
 | scheduled_day_of_month | integer | NULL — dia do mês (1–28) para frequência `'monthly'`; quando NULL e frequência mensal, usa intervalo de 28 dias |
 | dispatch_time | varchar(5) | NOT NULL, default `'09:00'` — `"HH:MM"` — horário exato em que a pesquisa será disparada |
+| respect_employee_schedule | boolean | NOT NULL, default false — quando `true`, as mensagens são enviadas no início do turno de cada colaborador (com delay BullMQ), em vez de todas ao mesmo tempo no `dispatch_time` |
+| token_expiry_hours | integer | NOT NULL, default 48 — tempo em horas que o token de resposta permanece válido após o disparo (ou após `scheduledSendAt` quando `respectEmployeeSchedule = true`). Mínimo: 1, máximo: 1000 |
 | is_active | boolean | NOT NULL |
 | INDEX | (tenant_id) | |
 
 Dias de trabalho da pesquisa em `health_survey_config_work_days` (join table — ver abaixo). Armazenados como `day_of_week INT` (0=Dom … 6=Sáb).
 
 > `dispatch_time` define o horário exato de disparo da pesquisa (avaliado no fuso da organização). O scheduler dispara quando o horário atual está dentro de uma janela de 60 minutos a partir de `dispatch_time` (ex: `dispatchTime = "09:00"` → dispara entre 09:00 e 09:59). A janela de 60 minutos garante que um restart ou deploy do worker não cause perda do disparo — o `lastDispatchedAt` protege contra double-dispatch dentro da mesma janela. **Horários de expediente pertencem ao setor e ao colaborador — não à configuração de pesquisa.** Cadeia de herança de horário de expediente para snapshot do token: `employee.workStartTime/workEndTime → department.workStartTime/workEndTime`. Para dias de trabalho por funcionário: `employee_work_days` (se não vazio) → `department_work_days`. Todos avaliados no `organizations.timezone`.
+
+> **`respect_employee_schedule`:** quando `true`, o filtro de dia de trabalho no momento do disparo é desabilitado — todos os colaboradores elegíveis são incluídos independentemente do dia de hoje. Para cada colaborador, `buildEmployeeDispatchScheduleMap` calcula o próximo dia útil (dentro de 7 dias) e o horário de início do turno, e o job de mensagem BullMQ recebe `opts.delay` correspondente ao milissegundos até esse momento. O `expiresAt` do token é calculado como `scheduledSendAt + tokenExpiryHours` (em vez de `now + tokenExpiryHours`). Colaboradores sem dia útil configurado nos próximos 7 dias não recebem token nem mensagem naquele ciclo, mas ainda são contados em `total_recipients`.
 
 > **Frequência mensal com `scheduled_day_of_month`:** quando preenchido, o scheduler dispara apenas no dia exato do mês (avaliado no fuso da organização) e impede reenvio se o último disparo foi há menos de 25 dias. Dias 29–31 são excluídos da UI — o valor máximo é 28 para garantir compatibilidade com fevereiro.
 
@@ -1025,7 +1029,7 @@ Após o uso, `used_at` é preenchido, mas **nenhum vínculo** é criado entre to
 | token | varchar(255) | NOT NULL, UNIQUE |
 | short_code | varchar(7) | NULL, UNIQUE per `(tenant_id, short_code)` — código de 7 dígitos usado na pretty URL `/health-survey/[orgSlug]/[shortCode]`. Gerado apenas para tokens criados via disparo de mensagem; NULL para tokens criados via link assinado. |
 | used_at | timestamptz | |
-| expires_at | timestamptz | NOT NULL — `dispatched_at + 48h` |
+| expires_at | timestamptz | NOT NULL — `dispatched_at + tokenExpiryHours` (valor de `health_survey_configurations.token_expiry_hours`, padrão 48h) |
 | work_start_time | varchar(5) | NOT NULL — snapshot `"HH:MM"` no momento do disparo |
 | work_end_time | varchar(5) | NOT NULL — snapshot `"HH:MM"` no momento do disparo |
 | created_at | timestamptz | NOT NULL |
@@ -1672,7 +1676,7 @@ Isso inclui:
   ```
 - `workDays` é armazenado em tabelas de join relacionais (`department_work_days`, `employee_work_days`, `health_survey_config_work_days`) — nunca como string separada por vírgula. Em TypeScript, `workDays: number[]` (0=Dom … 6=Sáb) — avaliado no timezone da organização
 - `workStartTime`/`workEndTime` como `"HH:MM"` — presentes em departamentos, colaboradores e tokens de resposta; avaliados no timezone da organização. **Configurações de pesquisa não têm horário de expediente** — apenas `dispatchTime` (horário de disparo)
-- `dispatchTime` em `health_survey_configurations` define **quando** a pesquisa será disparada, não uma janela de expediente. O scheduler dispara na janela de 15 minutos a partir desse horário.
+- `dispatchTime` em `health_survey_configurations` define **quando** a pesquisa será disparada, não uma janela de expediente. O scheduler dispara na janela de 60 minutos a partir desse horário.
 
 **Settings:** O RH configura o fuso horário em `/settings` → campo `Fuso horário`. O valor salvo é um IANA timezone string (ex: `"America/Sao_Paulo"`).
 
@@ -2857,14 +2861,15 @@ Admin pode autogerenciar assinatura (atualizar cartão, cancelar, baixar faturas
 
 ### Proteção de billing status no layout do tenant
 
-O controle de billing é feito no `(tenant)/layout.tsx`, não no `proxy.ts`. O usuário pode logar normalmente independentemente do billing status. O layout verifica o `billingStatus` da organização e, se não for `active` ou `trialing`, renderiza o `BillingWallModal` sobre o conteúdo.
+O controle de billing é feito no `(tenant)/layout.tsx`, não no `proxy.ts`. O usuário pode logar normalmente independentemente do billing status. O layout verifica o `billingStatus` da organização e, se não for `active` ou `trialing` **e** não houver trial ativo (`trialExpiresAt > now()`) **e** a exclusão da conta não estiver agendada, renderiza o `BillingWallModal` sobre o conteúdo.
 
 ```typescript
 // src/app/(tenant)/layout.tsx (trecho)
 const ACTIVE_BILLING_STATUSES = new Set(["active", "trialing"])
 
 const billingStatus = org?.billingStatus ?? "pending"
-const hasBillingWall = !ACTIVE_BILLING_STATUSES.has(billingStatus)
+const isInTrial = org?.trialExpiresAt !== null && org?.trialExpiresAt !== undefined && org.trialExpiresAt > new Date()
+const hasBillingWall = !isInTrial && deletionScheduledAt === null && !ACTIVE_BILLING_STATUSES.has(billingStatus)
 
 return (
   <div>
@@ -2873,6 +2878,10 @@ return (
   </div>
 )
 ```
+
+> **Trial bypass:** quando o Super Admin define `trialExpiresAt` para uma organização via `/super-admin/organizations/[id]` (ou na criação via `/super-admin/organizations/new`), o `BillingWallModal` não é exibido enquanto `trialExpiresAt > now()`, independentemente do `billingStatus`. O trial não afeta o auto-dispatch — `findAllTenantsActiveHealthSurveyConfigsForAutoDispatch` ainda filtra por `billingStatus IN ("active", "trialing")` apenas.
+
+> **Deletion grace period:** quando `deletionScheduledAt IS NOT NULL` (exclusão agendada em andamento), o `BillingWallModal` também não é exibido — o usuário mantém acesso durante os 30 dias de carência para exportar dados ou cancelar a exclusão.
 
 **`BillingWallModal`** (`src/app/(tenant)/billing/billing-wall-modal.tsx`):
 - Overlay `fixed inset-0 z-50` que bloqueia a UI
@@ -3328,7 +3337,7 @@ O job `health-survey-dispatcher` (a cada 5 min) executa em paralelo **duas funç
 ```
 Busca todas as configurações ativas com billing ativo (findAllTenantsActiveHealthSurveyConfigsForAutoDispatch)
   → Para cada configuração:
-      [GATE 1] isAtDispatchTime(dispatchTime, timezone) → skip se não estamos na janela de 15 minutos a partir do horário configurado
+      [GATE 1] isAtDispatchTime(dispatchTime, timezone) → skip se não estamos na janela de 60 minutos a partir do horário configurado
       [GATE 2] shouldSkipDispatch(config, timezone):
           - Para frequência 'monthly' com scheduledDayOfMonth (condições independentes — OR):
               → skip se hoje NÃO é o dia do mês configurado (getDayOfMonthInTimezone ≠ scheduledDayOfMonth)
@@ -3336,17 +3345,30 @@ Busca todas as configurações ativas com billing ativo (findAllTenantsActiveHea
           - Para outras frequências (condições independentes — OR):
               → skip se hoje não é um dia de trabalho da config (isWorkDay)
               → skip se o último dispatch foi há menos de FREQUENCY_INTERVAL_DAYS dias
-      [PASS] → fireDispatch:
-          → Filtra employees (por setor, por dia de trabalho) — se nenhum em nenhum setor: retorna false
+      [PASS] → fireDispatch(config, orgSlug, departments, timezone, respectEmployeeSchedule):
+          → Se respectEmployeeSchedule = false:
+              → Filtra employees por dia de trabalho hoje (employee_work_days → department_work_days)
+          → Se respectEmployeeSchedule = true:
+              → Inclui todos os employees — sem filtro de dia de trabalho no momento do disparo
+          → Se nenhum employee em nenhum setor após filtro: retorna false
           → Cria health_survey_dispatch (status='scheduled')
           → Para cada setor com employees elegíveis: sendDispatchTokensAndMessagesForDepartment
               → Filtra colaboradores elegíveis por consentimento
               → Busca tokens existentes (link assinado)
-              → Cria novos tokens para colaboradores sem token válido (expires_at = +48h, shortCode = 7 dígitos)
+              → Se respectEmployeeSchedule = true:
+                  → buildEmployeeDispatchScheduleMap: para cada employee, calcula próximo dia útil (≤7 dias)
+                      e horário de início do turno → entry { expiresAt: scheduledSendAt+tokenExpiryHours, delayMs }
+                  → Colaboradores sem dia útil nos próximos 7 dias → excluídos de tokens e mensagens
+                  → expiresAt do token = scheduledSendAt + tokenExpiryHours (em vez de now + tokenExpiryHours)
+              → Se respectEmployeeSchedule = false:
+                  → expiresAt do token = now + tokenExpiryHours (valor configurado, padrão 48h)
+              → Cria novos tokens para colaboradores sem token válido (shortCode = 7 dígitos)
               → upsertHealthSurveyDeptDispatch(dispatchId, deptId, totalRecipients)
               → [GATE FEATURE] hasTenantPlanFeature(tenantId, "messaging")
                   ├─ SEM feature: tokens criados, nenhuma mensagem enviada → RH usa link assinado
-                  └─ COM feature: messagingService.sendBulk com pretty URL → Registra em message_logs
+                  └─ COM feature: enfileira jobs BullMQ para envio
+                       Se respectEmployeeSchedule = true: job recebe opts.delay (ms até início do turno)
+                       Se respectEmployeeSchedule = false: delay = 0 (envio imediato)
                        URL enviada: /health-survey/[orgSlug]/[shortCode] (fallback: /health-survey/[uuid])
           → markHealthSurveyDispatchDispatched(tenantId, dispatchId) — status='available', dispatchedAt=now
 ```
@@ -3485,7 +3507,7 @@ O `signedLinkToken` é gerado por `randomUUID()` na criação do dispatch e arma
 
 **Módulo de unlock:** `unlockHealthSurveyViaIdentifier(signedLinkToken, identifier)` em `health-survey-response.service.ts`.
 
-### 20.10 Importação de colaboradores via Excel
+### 20.10 Importação de colaboradores via Excel ou CSV
 
 O serviço `parseImportPreview` usa a função `findColIndex` para detectar colunas por nome, com correspondência case-insensitive. Os aliases reconhecidos por campo são:
 
@@ -3503,16 +3525,43 @@ Células de horário suportam dois formatos:
 - **Date (ExcelJS type 4)**: valor como `Date("1899-12-30T09:00:00.000Z")` → extrai `getUTCHours()`/`getUTCMinutes()`
 
 ```typescript
+// modules/employees/employee-import.service.ts
+
+const HEADER_MAP: Record<string, keyof ImportRow> = {
+  "nome":          "name",
+  "nome completo": "name",
+  "e-mail":        "email",
+  "email":         "email",
+  "telefone":      "phone",
+  "mensagem":      "phone",
+  "setor":         "departmentName",
+  // Colunas opcionais de jornada (case-insensitive, acentuação tolerada)
+  "hora início":   "workStartTime",
+  "hora inicio":   "workStartTime",
+  "hora fim":      "workEndTime",
+  "dias de trabalho": "workDays",
+}
+
 // Fluxo:
-// 1. parseImportPreview(buffer, tenantId) → detecta headers via findColIndex → mapeia colunas
-// 2. Para cada linha: valida com importRowSchema (Zod) → separa válidos/inválidos
-// 3. Valida se departamento existe em departments.findActiveDepartmentsByTenant
-// 4. Retorna ImportPreview { valid: number, invalid: number, items: ImportPreviewItem[] }
-// 5. Após confirmação do RH → executeImport(tenantId, buffer)
-//    ├─ Re-executa parseImportPreview internamente
-//    ├─ Itera apenas itens válidos → chama createEmployee com conditional spread
-//    └─ workStartTime / workEndTime passados apenas quando presentes na planilha
+// 1. parse(buffer, extension) → detecta formato (.xlsx / .xls / .csv) → mapeia colunas (case-insensitive, acentuação tolerada)
+// 2. validate(rows) → Zod schema por linha → separa válidos/inválidos
+// 3. Retorna ImportPreview { valid: Row[], invalid: { row, errors }[] }
+// 4. Após confirmação do RH → importEmployees(tenantId, preview.valid, extension)
+//    ├─ Ignora duplicatas (mesmo email no tenant)
+//    └─ Cria todos os válidos em batch
 ```
+
+**Formatos suportados:** `.xlsx`, `.xls` e `.csv`. A extensão é extraída no upload e passada como argumento para `parseImportPreview` e `executeImport` — o serviço seleciona o parser correto (`exceljs` para Excel, parser CSV nativo para `.csv`).
+
+**Colunas opcionais de jornada individual:**
+
+| Cabeçalho aceito | Campo | Formato |
+|---|---|---|
+| `Hora Início` / `Hora Inicio` | `workStartTime` | `"HH:MM"` (ex: `"08:00"`) |
+| `Hora Fim` | `workEndTime` | `"HH:MM"` (ex: `"17:00"`) |
+| `Dias de Trabalho` | `workDays` | Números separados por vírgula: `"1,2,3,4,5"` (0=Dom … 6=Sáb) |
+
+Quando presentes, sobrepõem os valores do departamento para aquele colaborador. Quando ausentes, o colaborador herda horário e dias do departamento.
 
 ### 20.11 Métricas de plataforma (Super Admin Dashboard)
 

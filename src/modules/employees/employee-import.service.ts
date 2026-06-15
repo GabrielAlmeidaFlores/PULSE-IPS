@@ -1,3 +1,4 @@
+import { Readable } from "stream"
 import ExcelJS from "exceljs"
 import { AppError } from "@/libs/errors/app-error"
 import { importRowSchema } from "@/modules/employees/employee.schema"
@@ -5,46 +6,214 @@ import { createEmployee } from "@/modules/employees/employee.repository"
 import { findActiveDepartmentsByTenant } from "@/modules/departments/department.repository"
 import type { ImportPreview, ImportPreviewItem, ImportResult } from "@/modules/employees/employee.types"
 
-function parseCellTimeValue(val: unknown): string | undefined {
-  if (val instanceof Date) {
-    const h = val.getUTCHours().toString().padStart(2, "0")
-    const m = val.getUTCMinutes().toString().padStart(2, "0")
-    return `${h}:${m}`
-  }
-  const str = val !== null && val !== undefined ? String(val).trim() : ""
-  const match = /^(\d{1,2}):(\d{2})$/.exec(str)
-  if (match) {
-    return `${(match[1] ?? "0").padStart(2, "0")}:${match[2] ?? "00"}`
-  }
-  return undefined
+const DAY_NAME_MAP: Record<string, number> = {
+  dom: 0, domingo: 0,
+  seg: 1, segunda: 1,
+  ter: 2, terca: 2, "terça": 2,
+  qua: 3, quarta: 3,
+  qui: 4, quinta: 4,
+  sex: 5, sexta: 5,
+  sab: 6, "sáb": 6, sabado: 6, "sábado": 6,
 }
 
-function findColIndex(headers: Record<number, string>, keys: string[]): number | undefined {
-  for (const [col, header] of Object.entries(headers)) {
-    if (keys.some((k) => k.toLowerCase() === header.toLowerCase())) {
-      return Number(col)
+interface WorkDaysParseResult {
+  days: number[]
+  errors: string[]
+}
+
+interface ScheduleParseResult {
+  workStartTime?: string | undefined
+  workEndTime?: string | undefined
+  workDays?: number[] | undefined
+  errors: string[]
+}
+
+function normalizeImportTimeInput(raw: string): string | null {
+  const cleaned = raw.trim()
+  if (/^\d{2}:\d{2}$/.test(cleaned)) return cleaned
+  const colonMatch = /^(\d{1,2}):(\d{2})$/.exec(cleaned)
+  if (colonMatch) {
+    const h = colonMatch[1] ?? ""
+    const m = colonMatch[2] ?? ""
+    return `${h.padStart(2, "0")}:${m}`
+  }
+  const hMatch = /^(\d{1,2})[hH](\d{2})$/.exec(cleaned)
+  if (hMatch) {
+    const h = hMatch[1] ?? ""
+    const m = hMatch[2] ?? ""
+    return `${h.padStart(2, "0")}:${m}`
+  }
+  return null
+}
+
+function parseWorkDaysFromString(raw: string): WorkDaysParseResult {
+  const parts = raw.split(",").map((p) => p.trim().toLowerCase()).filter((p) => p.length > 0)
+  if (parts.length === 0) return { days: [], errors: [] }
+  const days: number[] = []
+  const errors: string[] = []
+  for (const part of parts) {
+    const num = Number(part)
+    if (Number.isFinite(num) && Number.isInteger(num) && num >= 0 && num <= 6) {
+      days.push(num)
+      continue
+    }
+    const dayNum = DAY_NAME_MAP[part]
+    if (dayNum !== undefined) {
+      days.push(dayNum)
+      continue
+    }
+    errors.push(`Dia inválido: "${part}"`)
+  }
+  return { days, errors }
+}
+
+function buildScheduleFromRawValues(rawStart: string, rawEnd: string, rawDays: string): ScheduleParseResult {
+  const errors: string[] = []
+  let workStartTime: string | undefined = undefined
+  let workEndTime: string | undefined = undefined
+  let workDays: number[] | undefined = undefined
+
+  if (rawStart !== "") {
+    const normalized = normalizeImportTimeInput(rawStart)
+    if (normalized === null) {
+      errors.push(`Horário de início inválido: "${rawStart}". Use o formato HH:MM.`)
+    } else {
+      workStartTime = normalized
     }
   }
-  return undefined
+
+  if (rawEnd !== "") {
+    const normalized = normalizeImportTimeInput(rawEnd)
+    if (normalized === null) {
+      errors.push(`Horário de fim inválido: "${rawEnd}". Use o formato HH:MM.`)
+    } else {
+      workEndTime = normalized
+    }
+  }
+
+  if (rawDays !== "") {
+    const { days, errors: dayErrors } = parseWorkDaysFromString(rawDays)
+    if (dayErrors.length > 0) {
+      errors.push(...dayErrors)
+    } else if (days.length > 0) {
+      workDays = days
+    }
+  }
+
+  return { workStartTime, workEndTime, workDays, errors }
 }
 
-function assignImportPreviewOptionalFields(
-  item: ImportPreviewItem,
-  email: string | undefined,
-  workStartTime: string | undefined,
-  workEndTime: string | undefined,
-): void {
-  if (email !== undefined) item.email = email
-  if (workStartTime !== undefined) item.workStartTime = workStartTime
-  if (workEndTime !== undefined) item.workEndTime = workEndTime
+type ScheduleFields = Pick<ImportPreviewItem, "workStartTime" | "workEndTime" | "workDays">
+
+function buildScheduleOptionalFields(src: {
+  workStartTime?: string | undefined
+  workEndTime?: string | undefined
+  workDays?: number[] | undefined
+}): Partial<ScheduleFields> {
+  const result: Partial<ScheduleFields> = {}
+  if (src.workStartTime !== undefined) result.workStartTime = src.workStartTime
+  if (src.workEndTime !== undefined) result.workEndTime = src.workEndTime
+  if (src.workDays !== undefined) result.workDays = src.workDays
+  return result
 }
 
-export async function parseImportPreview(buffer: ArrayBuffer, tenantId: string): Promise<ImportPreview> {
+interface RawRowData {
+  rowNumber: number
+  rawName: string
+  rawPhone: string
+  rawDeptName: string
+  rawEmail: string | undefined
+  schedule: ScheduleParseResult
+}
+
+function resolvePreviewItem(raw: RawRowData, validDepartmentNames: Set<string>): ImportPreviewItem {
+  const emailField = raw.rawEmail !== undefined ? { email: raw.rawEmail } : {}
+  const schedFields = buildScheduleOptionalFields(raw.schedule)
+
+  const rawItem = {
+    name: raw.rawName,
+    phone: raw.rawPhone,
+    departmentName: raw.rawDeptName,
+    ...emailField,
+    ...schedFields,
+  }
+
+  const schemaResult = importRowSchema.safeParse(rawItem)
+
+  if (raw.schedule.errors.length > 0 || !schemaResult.success) {
+    const schemaErrors = schemaResult.success ? [] : schemaResult.error.issues.map((e) => e.message)
+    return {
+      row: raw.rowNumber,
+      name: raw.rawName,
+      phone: raw.rawPhone,
+      departmentName: raw.rawDeptName,
+      valid: false,
+      errors: [...raw.schedule.errors, ...schemaErrors],
+      ...emailField,
+      ...schedFields,
+    }
+  }
+
+  const { data } = schemaResult
+  const dataEmailField = data.email !== undefined ? { email: data.email } : {}
+  const dataSchedFields = buildScheduleOptionalFields(data)
+
+  if (!validDepartmentNames.has(data.departmentName.toLowerCase())) {
+    return {
+      row: raw.rowNumber,
+      name: data.name,
+      phone: data.phone,
+      departmentName: data.departmentName,
+      valid: false,
+      errors: [`Departamento "${data.departmentName}" não encontrado`],
+      ...dataEmailField,
+      ...dataSchedFields,
+    }
+  }
+
+  return {
+    row: raw.rowNumber,
+    name: data.name,
+    phone: data.phone,
+    departmentName: data.departmentName,
+    valid: true,
+    errors: [],
+    ...dataEmailField,
+    ...dataSchedFields,
+  }
+}
+
+async function loadWorksheetFromBuffer(buffer: ArrayBuffer, ext: string): Promise<ExcelJS.Worksheet> {
   const workbook = new ExcelJS.Workbook()
+  if (ext === "csv") {
+    const text = Buffer.from(buffer).toString("utf-8").replace(/^\uFEFF/, "")
+    const stream = Readable.from(Buffer.from(text, "utf-8"))
+    return workbook.csv.read(stream)
+  }
   await workbook.xlsx.load(buffer)
-
   const sheet = workbook.worksheets[0]
   if (!sheet) throw new AppError("SHEET_NOT_FOUND", "Nenhuma planilha encontrada no arquivo.")
+  return sheet
+}
+
+function getCellStringValue(row: ExcelJS.Row, headers: Record<number, string>, keys: string[]): string {
+  for (const [col, header] of Object.entries(headers)) {
+    if (keys.some((k) => k.toLowerCase() === header.toLowerCase())) {
+      const val = row.getCell(Number(col)).value
+      if (val === null || val === undefined) return ""
+      if (val instanceof Date) {
+        const hh = String(val.getUTCHours()).padStart(2, "0")
+        const mm = String(val.getUTCMinutes()).padStart(2, "0")
+        return `${hh}:${mm}`
+      }
+      return String(val).trim()
+    }
+  }
+  return ""
+}
+
+export async function parseImportPreview(buffer: ArrayBuffer, tenantId: string, ext = "xlsx"): Promise<ImportPreview> {
+  const sheet = await loadWorksheetFromBuffer(buffer, ext)
 
   const departments = await findActiveDepartmentsByTenant(tenantId)
   const validDepartmentNames = new Set(departments.map((d) => d.name.toLowerCase()))
@@ -60,72 +229,20 @@ export async function parseImportPreview(buffer: ArrayBuffer, tenantId: string):
   sheet.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return
 
-    const get = (keys: string[]): string => {
-      const col = findColIndex(headers, keys)
-      if (col === undefined) return ""
-      const val = row.getCell(col).value
-      return val !== null && val !== undefined ? String(val).trim() : ""
-    }
+    const rawName = getCellStringValue(row, headers, ["name", "nome", "nome completo"])
+    const rawPhone = getCellStringValue(row, headers, ["phone", "telefone", "mensagem"])
+    const rawDeptName = getCellStringValue(row, headers, ["departmentname", "departamento", "setor"])
 
-    const getTime = (keys: string[]): string | undefined => {
-      const col = findColIndex(headers, keys)
-      if (col === undefined) return undefined
-      return parseCellTimeValue(row.getCell(col).value)
-    }
+    if (rawName === "" && rawPhone === "" && rawDeptName === "") return
 
-    const rawEmail = get(["email", "e-mail"]) || undefined
-    const rawWorkStartTime = getTime(["hora início", "hora inicio"])
-    const rawWorkEndTime = getTime(["hora fim"])
+    const rawEmailRaw = getCellStringValue(row, headers, ["email", "e-mail"])
+    const rawEmail = rawEmailRaw !== "" ? rawEmailRaw : undefined
+    const rawStartTime = getCellStringValue(row, headers, ["hora inicio", "hora início", "workstarttime", "inicio"])
+    const rawEndTime = getCellStringValue(row, headers, ["hora fim", "workendtime", "fim"])
+    const rawWorkDays = getCellStringValue(row, headers, ["dias de trabalho", "dias", "workdays"])
 
-    const rawItem = {
-      name: get(["nome", "nome completo", "name"]),
-      phone: get(["telefone", "mensagem", "phone"]),
-      departmentName: get(["setor", "departamento", "departmentName"]),
-      ...(rawEmail !== undefined ? { email: rawEmail } : {}),
-      ...(rawWorkStartTime !== undefined ? { workStartTime: rawWorkStartTime } : {}),
-      ...(rawWorkEndTime !== undefined ? { workEndTime: rawWorkEndTime } : {}),
-    }
-
-    const result = importRowSchema.safeParse(rawItem)
-    if (!result.success) {
-      const item: ImportPreviewItem = {
-        row: rowNumber,
-        name: rawItem.name,
-        phone: rawItem.phone,
-        departmentName: rawItem.departmentName,
-        valid: false,
-        errors: result.error.issues.map((e) => e.message),
-      }
-      assignImportPreviewOptionalFields(item, rawEmail, rawWorkStartTime, rawWorkEndTime)
-      items.push(item)
-      return
-    }
-
-    const departmentExists = validDepartmentNames.has(result.data.departmentName.toLowerCase())
-    if (!departmentExists) {
-      const item: ImportPreviewItem = {
-        row: rowNumber,
-        name: result.data.name,
-        phone: result.data.phone,
-        departmentName: result.data.departmentName,
-        valid: false,
-        errors: [`Departamento "${result.data.departmentName}" não encontrado`],
-      }
-      assignImportPreviewOptionalFields(item, result.data.email, result.data.workStartTime, result.data.workEndTime)
-      items.push(item)
-      return
-    }
-
-    const item: ImportPreviewItem = {
-      row: rowNumber,
-      name: result.data.name,
-      phone: result.data.phone,
-      departmentName: result.data.departmentName,
-      valid: true,
-      errors: [],
-    }
-    assignImportPreviewOptionalFields(item, result.data.email, result.data.workStartTime, result.data.workEndTime)
-    items.push(item)
+    const schedule = buildScheduleFromRawValues(rawStartTime, rawEndTime, rawWorkDays)
+    items.push(resolvePreviewItem({ rowNumber, rawName, rawPhone, rawDeptName, rawEmail, schedule }, validDepartmentNames))
   })
 
   return {
@@ -138,8 +255,9 @@ export async function parseImportPreview(buffer: ArrayBuffer, tenantId: string):
 export async function executeImport(
   tenantId: string,
   buffer: ArrayBuffer,
+  ext = "xlsx",
 ): Promise<ImportResult> {
-  const preview = await parseImportPreview(buffer, tenantId)
+  const preview = await parseImportPreview(buffer, tenantId, ext)
   const departments = await findActiveDepartmentsByTenant(tenantId)
   const deptMap = new Map(departments.map((d) => [d.name.toLowerCase(), d.id]))
 
@@ -166,6 +284,7 @@ export async function executeImport(
         ...(item.email !== undefined ? { email: item.email } : {}),
         ...(item.workStartTime !== undefined ? { workStartTime: item.workStartTime } : {}),
         ...(item.workEndTime !== undefined ? { workEndTime: item.workEndTime } : {}),
+        ...(item.workDays !== undefined ? { workDays: item.workDays } : {}),
       })
       created++
     } catch (error) {

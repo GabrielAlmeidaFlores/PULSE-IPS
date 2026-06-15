@@ -114,9 +114,9 @@ function makeTokenRecord(overrides?: Partial<TokenRecord>): TokenRecord {
         frequency: "weekly",
         scheduledDayOfMonth: null,
         dispatchTime: "09:00",
-        isActive: true,
-        respectEmployeeSchedule: true,
+        respectEmployeeSchedule: false,
         tokenExpiryHours: 48,
+        isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
         questions: [
@@ -432,9 +432,9 @@ function makeDispatchRecord(overrides?: Partial<DispatchRecord>): DispatchRecord
       frequency: "weekly",
       scheduledDayOfMonth: null,
       dispatchTime: "09:00",
-      isActive: true,
-      respectEmployeeSchedule: true,
+      respectEmployeeSchedule: false,
       tokenExpiryHours: 48,
+      isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),
       organization: {
