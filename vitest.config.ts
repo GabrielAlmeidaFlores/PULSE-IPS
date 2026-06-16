@@ -18,6 +18,7 @@ export default defineConfig({
       REDIS_HOST: "localhost",
       REDIS_PORT: "6379",
       RATE_LIMITER_PROVIDER: "memory",
+      HEALTH_SURVEY_MINIMUM_RESPONDENTS_FOR_DISPLAY: "5",
     },
     coverage: {
       provider: "v8",

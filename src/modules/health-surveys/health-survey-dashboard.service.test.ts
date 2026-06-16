@@ -22,7 +22,7 @@ import { findOrganizationById } from "@/modules/organizations/organization.repos
 
 vi.mock("@/modules/health-surveys/health-survey.repository")
 vi.mock("@/modules/organizations/organization.repository")
-vi.mock("@/env", () => ({ env: { NEXT_PUBLIC_APP_URL: "http://localhost:3000" } }))
+vi.mock("@/env", () => ({ env: { NEXT_PUBLIC_APP_URL: "http://localhost:3000", HEALTH_SURVEY_MINIMUM_RESPONDENTS_FOR_DISPLAY: 5 } }))
 
 const mockFindDispatchWithDashboard = vi.mocked(findHealthSurveyDispatchWithDashboard)
 const mockFindMultipleDispatches = vi.mocked(findHealthSurveyMultipleDispatchesWithDashboard)
