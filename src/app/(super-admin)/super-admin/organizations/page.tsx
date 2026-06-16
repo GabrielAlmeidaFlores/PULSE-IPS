@@ -7,6 +7,7 @@ import { SetTrialModalButton } from "@/app/(super-admin)/super-admin/organizatio
 
 const BILLING_LABELS: Record<string, string> = {
   active:    "Ativo",
+  trialing:  "Em trial",
   pending:   "Pendente",
   past_due:  "Em atraso",
   suspended: "Suspenso",
@@ -15,6 +16,7 @@ const BILLING_LABELS: Record<string, string> = {
 
 const BILLING_CLASSES: Record<string, string> = {
   active:    "admin-bg-green admin-accent-green",
+  trialing:  "badge-info",
   pending:   "admin-bg-amber admin-accent-amber",
   past_due:  "admin-bg-red admin-accent-red",
   suspended: "admin-bg-red admin-accent-red",
@@ -125,11 +127,13 @@ export default async function OrganizationsPage({
                   <td className="px-4 py-3 text-center hidden lg:table-cell">
                     <div className="flex items-center justify-center gap-2">
                       <TrialBadge trialExpiresAt={org.trialExpiresAt} />
-                      <SetTrialModalButton
-                        organizationId={org.id}
-                        organizationName={org.name}
-                        trialExpiresAt={org.trialExpiresAt}
-                      />
+                      {org.trialExpiresAt !== null && (
+                        <SetTrialModalButton
+                          organizationId={org.id}
+                          organizationName={org.name}
+                          trialExpiresAt={org.trialExpiresAt}
+                        />
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-3 font-mono text-right text-muted-foreground hidden sm:table-cell">

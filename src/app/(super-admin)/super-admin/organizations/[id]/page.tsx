@@ -1,4 +1,5 @@
 import { getOrganizationFullDetail, getOrganizationAuditLogs } from "@/modules/organizations/organization.service"
+import { getAllPlansAdmin } from "@/modules/plans/plan.service"
 import { buildPaginationParams } from "@/libs/utils/pagination"
 import type { OrgFullDetail } from "@/modules/organizations/organization.types"
 import Link from "next/link"
@@ -16,7 +17,9 @@ import {
 } from "lucide-react"
 import { CancelDeletionBanner } from "@/app/(super-admin)/super-admin/organizations/[id]/cancel-deletion-banner"
 import { OrgAuditLogs } from "@/app/(super-admin)/super-admin/organizations/[id]/org-audit-logs"
-import { SetTrialForm } from "@/app/(super-admin)/super-admin/organizations/[id]/set-trial-form"
+import { CancelSubscriptionButton } from "@/app/(super-admin)/super-admin/organizations/[id]/cancel-subscription-button"
+import { AssignPlanForm } from "@/app/(super-admin)/super-admin/organizations/[id]/assign-plan-form"
+import { RemoveTrialButton } from "@/app/(super-admin)/super-admin/organizations/[id]/remove-trial-button"
 
 interface Props {
   params: Promise<{ id: string }>
@@ -248,9 +251,10 @@ export default async function OrganizationDetailPage({
   const rawParams = await searchParams
   const { page, pageSize } = buildPaginationParams(rawParams["page"], rawParams["pageSize"])
 
-  const [org, auditResult] = await Promise.all([
+  const [org, auditResult, plans] = await Promise.all([
     getOrganizationFullDetail(id),
     getOrganizationAuditLogs(id, page, pageSize),
+    getAllPlansAdmin(),
   ])
 
   if (!org) {
@@ -523,9 +527,16 @@ export default async function OrganizationDetailPage({
                   </div>
                 </div>
                 {org.subscription !== null ? (
-                  <SubscriptionCard sub={org.subscription} />
+                  <>
+                    <SubscriptionCard sub={org.subscription} />
+                    {org.subscription.status !== "cancelled" && (
+                      <div className="px-5 py-3 border-t border-border">
+                        <CancelSubscriptionButton organizationId={org.id} />
+                      </div>
+                    )}
+                  </>
                 ) : (
-                  <div className="px-5 py-6 text-center">
+                  <div className="px-5 py-4 border-t border-border text-center">
                     <p className="text-[12px] text-muted-foreground">
                       Sem assinatura ativa
                     </p>
@@ -534,19 +545,29 @@ export default async function OrganizationDetailPage({
                     </p>
                   </div>
                 )}
+
+                <div className="px-5 py-3 border-t border-border">
+                  <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground mb-2">
+                    Atribuir plano
+                  </p>
+                  <AssignPlanForm organizationId={org.id} plans={plans} />
+                </div>
+
                 <div className="px-5 py-3 border-t border-border">
                   <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground mb-2">
                     Período de trial
                   </p>
-                  {org.trialExpiresAt !== null && (
-                    <p className="text-[12px] mb-2">
-                      <span className={org.trialExpiresAt > new Date() ? "text-status-success font-semibold" : "text-status-danger font-semibold"}>
+                  {org.trialExpiresAt !== null ? (
+                    <div className="flex items-center justify-between">
+                      <span className={org.trialExpiresAt > new Date() ? "text-[12px] text-status-success font-semibold" : "text-[12px] text-status-danger font-semibold"}>
                         {org.trialExpiresAt > new Date() ? "Ativo até " : "Expirado em "}
                         {formatDate(org.trialExpiresAt)}
                       </span>
-                    </p>
+                      <RemoveTrialButton organizationId={org.id} />
+                    </div>
+                  ) : (
+                    <p className="text-[12px] text-muted-foreground">Sem trial ativo</p>
                   )}
-                  <SetTrialForm organizationId={org.id} trialExpiresAt={org.trialExpiresAt} />
                 </div>
               </Card>
 
