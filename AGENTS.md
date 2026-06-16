@@ -495,7 +495,7 @@ src/
 │   ├── rate-limit.ts                       # Helpers para rate limiting em Server Actions: enforceRateLimit, checkRateLimit, getClientIp
 │   └── utils/
 │       ├── action-result.ts               # ActionResult interface
-│       ├── anonymity.ts                   # MINIMUM_RESPONDENTS_FOR_DISPLAY = 5
+│       ├── anonymity.ts                   # MINIMUM_RESPONDENTS_FOR_DISPLAY — lido de env.HEALTH_SURVEY_MINIMUM_RESPONDENTS_FOR_DISPLAY (padrão: 5)
 │       ├── client-ip.ts                   # extractClientIp(headers) — cf-connecting-ip → x-real-ip → x-forwarded-for
 │       ├── cn.ts                          # cn(...inputs) = twMerge(clsx(inputs))
 │       ├── json.ts                        # JsonValue — tipo JSON próprio da aplicação (não usa Prisma)
@@ -2902,7 +2902,7 @@ return (
 2. **Cada evento gera linha nova** — incluindo opt-out no formulário
 3. **Documento armazenado apenas como hash SHA-256** e somente no evento `accepted` (campo `documentHash`)
 4. **Sem `employee_id` em `health_survey_responses`** — desvinculamento garante anonimato
-5. **Mínimo de 5 respondentes** para exibir métricas (enforçado no service, nunca na UI)
+5. **Mínimo de respondentes configurável** para exibir métricas (enforçado no service, nunca na UI) — valor definido pela variável de ambiente `HEALTH_SURVEY_MINIMUM_RESPONDENTS_FOR_DISPLAY` (padrão: `5`)
 6. **`responded_at`** armazena apenas data (sem hora) — segunda camada de proteção ao anonimato
 
 ### Eventos e semântica do TCLE
@@ -3440,7 +3440,7 @@ Admin faz login
 ### 20.6 Anonimato nas métricas (enforçado no service)
 
 ```typescript
-const MINIMUM_RESPONDENTS_FOR_DISPLAY = 5
+import { MINIMUM_RESPONDENTS_FOR_DISPLAY } from "@/libs/utils/anonymity"
 
 async getDepartmentMetrics(tenantId, departmentId, periodId) {
   const response = await healthSurveyRepository.countResponses(...)
@@ -3690,6 +3690,9 @@ NEXT_PUBLIC_EMAIL_LEGAL=legal@pulseips.com.br
 # Logging
 LOG_LEVEL=info                            # nível pino: trace | debug | info | warn | error | fatal | silent (default: "info")
 NODE_ENV=production                       # development | test | production
+
+# Anonimato
+HEALTH_SURVEY_MINIMUM_RESPONDENTS_FOR_DISPLAY=5        # mínimo de respondentes para exibir métricas de um setor (padrão: 5)
 
 # Segurança (use apenas em ambientes controlados)
 DISABLE_SECURITY_HEADERS=true            # desabilita headers HTTP de segurança (ex: para proxy reverso)

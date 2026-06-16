@@ -45,6 +45,8 @@ export const env = createEnv({
 
     RATE_LIMITER_PROVIDER: z.enum(["redis", "memory"]).default("redis"),
 
+    HEALTH_SURVEY_MINIMUM_RESPONDENTS_FOR_DISPLAY: z.coerce.number().int().min(1).default(5),
+
     DISABLE_SECURITY_HEADERS: z
       .string()
       .optional()
@@ -119,6 +121,9 @@ export const env = createEnv({
     REDIS_PASSWORD: process.env.REDIS_PASSWORD,
 
     RATE_LIMITER_PROVIDER: process.env.RATE_LIMITER_PROVIDER ?? "redis",
+
+    HEALTH_SURVEY_MINIMUM_RESPONDENTS_FOR_DISPLAY:
+      process.env.HEALTH_SURVEY_MINIMUM_RESPONDENTS_FOR_DISPLAY,
 
     DISABLE_SECURITY_HEADERS: process.env.DISABLE_SECURITY_HEADERS,
     NODE_ENV: process.env.NODE_ENV ?? "development",

@@ -16,7 +16,7 @@ import {
 } from "@/modules/alerts/alert.repository"
 
 vi.mock("@/modules/alerts/alert.repository")
-vi.mock("@/env", () => ({ env: { NEXT_PUBLIC_APP_URL: "http://localhost:3000" } }))
+vi.mock("@/env", () => ({ env: { NEXT_PUBLIC_APP_URL: "http://localhost:3000", HEALTH_SURVEY_MINIMUM_RESPONDENTS_FOR_DISPLAY: 5 } }))
 
 const mockFindRecentResponses = vi.mocked(findAllTenantsRecentHealthSurveyResponsesForAlerts)
 const mockFindResponsesInWindow = vi.mocked(findAllTenantsResponsesInWindow)
