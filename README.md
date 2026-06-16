@@ -437,6 +437,10 @@ NEXT_PUBLIC_EMAIL_LEGAL="legal@pulseips.com.br"
 # Nível de log do servidor (trace | debug | info | warn | error | fatal | silent)
 LOG_LEVEL="info"
 # DISABLE_SECURITY_HEADERS="true"  # desabilita headers HTTP (use apenas atrás de proxy reverso)
+
+# ─── Anonimato ─────────────────────────────────────────────────────
+# Mínimo de respondentes para exibir métricas de um setor (padrão: 5)
+# HEALTH_SURVEY_MINIMUM_RESPONDENTS_FOR_DISPLAY="5"
 ```
 
 > Com `MESSAGING_PROVIDER=console` e `EMAIL_PROVIDER=console`, todas as mensagens são impressas no terminal. Nenhuma integração externa é necessária para desenvolvimento local.
@@ -610,7 +614,7 @@ Exemplos:
 
 ### Requisito mínimo de respondentes
 
-Métricas são exibidas apenas quando há **mínimo de 5 respondentes** no período. Abaixo desse limiar, o sistema retorna `{ available: false, reason: "insufficient_respondents" }` para proteger o anonimato individual.
+Métricas são exibidas apenas quando há **respondentes suficientes** no período — valor configurável via `HEALTH_SURVEY_MINIMUM_RESPONDENTS_FOR_DISPLAY` (padrão: `5`). Abaixo desse limiar, o sistema retorna `{ available: false, reason: "insufficient_respondents" }` para proteger o anonimato individual.
 
 ### Fonte única de verdade
 
