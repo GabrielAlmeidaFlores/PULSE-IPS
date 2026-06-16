@@ -773,7 +773,12 @@ export interface PendingHealthSurveyAdherenceDispatch {
 export function findAllTenantsHealthSurveyDispatches48hAgo(): Promise<PendingHealthSurveyAdherenceDispatch[]> {
   const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000)
   return prisma.healthSurveyDispatch.findMany({
-    where: { status: "available", dispatchedAt: { lte: cutoff }, adherenceCheckedAt: null },
+    where: {
+      status: "available",
+      dispatchedAt: { lte: cutoff },
+      adherenceCheckedAt: null,
+      organization: { billingStatus: { in: ["active", "trialing"] } },
+    },
     include: { deptDispatches: { select: { departmentId: true, totalRecipients: true } } },
   })
 }
