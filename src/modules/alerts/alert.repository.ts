@@ -121,7 +121,7 @@ export interface HealthSurveyResponseWithItems {
 
 export function findAllTenantsRecentHealthSurveyResponsesForAlerts(since: Date): Promise<HealthSurveyResponseWithItems[]> {
   return prisma.healthSurveyResponse.findMany({
-    where: { createdAt: { gte: since } },
+    where: { createdAt: { gte: since }, organization: { billingStatus: { in: ["active", "trialing"] } } },
     include: {
       items: { include: { question: { select: { scoreDirection: true } } } },
       dispatch: {
@@ -135,7 +135,7 @@ export function findAllTenantsRecentHealthSurveyResponsesForAlerts(since: Date):
 
 export function findAllTenantsResponsesInWindow(from: Date, to: Date): Promise<HealthSurveyResponseWithItems[]> {
   return prisma.healthSurveyResponse.findMany({
-    where: { createdAt: { gte: from, lt: to } },
+    where: { createdAt: { gte: from, lt: to }, organization: { billingStatus: { in: ["active", "trialing"] } } },
     include: {
       items: { include: { question: { select: { scoreDirection: true } } } },
       dispatch: {
@@ -233,7 +233,7 @@ export async function findAllTenantsDeptRecentDispatchAvgs(departmentId: string,
 
 export function findAllTenantsActiveDepartments(): Promise<{ id: string; tenantId: string; name: string }[]> {
   return prisma.department.findMany({
-    where: { isActive: true },
+    where: { isActive: true, organization: { billingStatus: { in: ["active", "trialing"] } } },
     select: { id: true, tenantId: true, name: true },
   })
 }

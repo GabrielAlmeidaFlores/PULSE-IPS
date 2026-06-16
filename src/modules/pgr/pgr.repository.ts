@@ -119,7 +119,10 @@ export async function createPgrQuestionResults(results: CreatePgrQuestionResultI
 
 export function findAllTenantsUpcomingPgrReviews(reminderDate: Date, reminderDateEnd: Date): Promise<(PgrReview & { organization: Organization })[]> {
   return prisma.pgrReview.findMany({
-    where: { nextReviewAt: { gte: reminderDate, lt: reminderDateEnd } },
+    where: {
+      nextReviewAt: { gte: reminderDate, lt: reminderDateEnd },
+      organization: { billingStatus: { in: ["active", "trialing"] } },
+    },
     include: { organization: true },
   })
 }

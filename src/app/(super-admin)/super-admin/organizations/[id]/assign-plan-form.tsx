@@ -7,8 +7,7 @@ import { NativeSelect } from "@/components/ui/native-select"
 import { Input } from "@/components/ui/input"
 import { assignPlanToOrgAction } from "@/app/(super-admin)/super-admin/organizations/[id]/actions"
 import type { PlanWithPricesAndFeatures } from "@/modules/plans/plan.service"
-import { ALL_DISPLAY_FEATURES, PLAN_FEATURE_LABELS } from "@/modules/plans/plan.types"
-import type { PlanFeature } from "@/modules/plans/plan.types"
+import { ALL_DISPLAY_FEATURES, PLAN_FEATURE_LABELS, type PlanFeature } from "@/modules/plans/plan.types"
 
 interface Props {
   organizationId: string
@@ -120,7 +119,7 @@ export function AssignPlanForm({ organizationId, plans }: Props): React.ReactEle
                 Colaboradores
               </p>
               <p className="text-[12px] font-black text-foreground">
-                {selectedPlan.maxEmployees !== null ? selectedPlan.maxEmployees : "∞"}
+                {selectedPlan.maxEmployees ?? "∞"}
               </p>
             </div>
 
