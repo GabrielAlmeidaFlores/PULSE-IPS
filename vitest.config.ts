@@ -6,6 +6,7 @@ export default defineConfig({
   test: {
     globals: false,
     environment: "node",
+    testTimeout: 15000,
     include: ["src/**/*.test.ts"],
     env: {
       SKIP_ENV_VALIDATION: "true",

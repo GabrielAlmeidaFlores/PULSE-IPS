@@ -32,6 +32,7 @@ async function enforceProxyRateLimit(request: NextRequest): Promise<NextResponse
   }
 
   const ip = extractClientIp(request.headers) ?? "unknown"
+
   const key = `${config.key}:${ip}`
 
   try {

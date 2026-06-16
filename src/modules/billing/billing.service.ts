@@ -1,10 +1,11 @@
-import { addMonths } from "date-fns"
+import { addMonths, addYears } from "date-fns"
+import { randomUUID } from "crypto"
 import { env } from "@/env"
 import { getBillingService } from "@/libs/integrations"
 import { AppError } from "@/libs/errors/app-error"
-import { findActiveSubscription, upsertSubscription, findPlanPriceForProvisioning, createSubscriptionFeatureSnapshot, findTenantSubscriptionFeatures } from "@/modules/billing/billing.repository"
-import { findOrganizationRequired, updateOrganizationBillingStatus, updateOrganizationCustomerId } from "@/modules/organizations/organization.repository"
-import { findPlanFeatures } from "@/modules/plans/plan.repository"
+import { findActiveSubscription, upsertSubscription, findPlanPriceForProvisioning, createSubscriptionFeatureSnapshot, findTenantSubscriptionFeatures, replaceSubscriptionFeatures, cancelOrganizationSubscription } from "@/modules/billing/billing.repository"
+import { findOrganizationRequired, updateOrganizationBillingStatus, updateOrganizationCustomerId, setOrganizationTrialExpiresAt } from "@/modules/organizations/organization.repository"
+import { findPlanFeatures, findPlanPriceById } from "@/modules/plans/plan.repository"
 import type { PlanFeature } from "@/modules/plans/plan.types"
 import type { SubscriptionWithPlan } from "@/modules/billing/billing.types"
 
@@ -101,4 +102,66 @@ export function getTenantPlanFeatures(tenantId: string): Promise<PlanFeature[]> 
 export async function hasTenantPlanFeature(tenantId: string, feature: PlanFeature): Promise<boolean> {
   const features = await findTenantSubscriptionFeatures(tenantId)
   return features.includes(feature)
+}
+
+export async function cancelOrgSubscriptionAsAdmin(tenantId: string): Promise<void> {
+  const sub = await findActiveSubscription(tenantId)
+  if (!sub) throw new AppError("NO_SUBSCRIPTION", "Organização sem assinatura ativa.")
+
+  const isStripeSubscription = sub.externalSubscriptionId.startsWith("sub_")
+
+  if (isStripeSubscription) {
+    const billing = getBillingService()
+    await billing.cancelSubscription(sub.externalSubscriptionId)
+  }
+
+  await cancelOrganizationSubscription(sub.externalSubscriptionId)
+  await updateOrganizationBillingStatus(tenantId, "cancelled")
+}
+
+export async function assignPlanToOrgAsAdmin(
+  tenantId: string,
+  planPriceId: string,
+  trialExpiresAt?: Date | null,
+): Promise<void> {
+  const planPrice = await findPlanPriceById(planPriceId)
+  if (!planPrice) throw new AppError("PLAN_PRICE_NOT_FOUND", "Preço do plano não encontrado.")
+
+  const existingSub = await findActiveSubscription(tenantId)
+  const isExistingManual =
+    existingSub !== null && !existingSub.externalSubscriptionId.startsWith("sub_")
+
+  const externalSubscriptionId = isExistingManual
+    ? existingSub.externalSubscriptionId
+    : `manual_${randomUUID()}`
+
+  const snapshotExternalPriceId = planPrice.externalPriceId ?? `manual_price_${planPrice.id}`
+
+  const now = new Date()
+  const currentPeriodEnd =
+    planPrice.interval === "year" ? addYears(now, 1) : addMonths(now, 1)
+
+  const sub = await upsertSubscription({
+    tenantId,
+    planId: planPrice.planId,
+    externalSubscriptionId,
+    status: "active",
+    currentPeriodStart: now,
+    currentPeriodEnd,
+    cancelAtPeriodEnd: false,
+    snapshotPlanName: planPrice.plan.name,
+    snapshotMaxEmployees: planPrice.plan.maxEmployees,
+    snapshotPriceInCents: planPrice.priceInCents,
+    snapshotInterval: planPrice.interval,
+    snapshotExternalPriceId,
+  })
+
+  const planFeatures = await findPlanFeatures(planPrice.planId)
+  await replaceSubscriptionFeatures(sub.id, planFeatures)
+
+  await updateOrganizationBillingStatus(tenantId, "active", planPrice.planId)
+
+  if (trialExpiresAt !== undefined) {
+    await setOrganizationTrialExpiresAt(tenantId, trialExpiresAt)
+  }
 }

@@ -288,3 +288,7 @@ export async function findOrganizationAuditLogsPaginated(
 export async function setOrganizationTrialExpiresAt(id: string, trialExpiresAt: Date | null): Promise<void> {
   await prisma.organization.update({ where: { id }, data: { trialExpiresAt } })
 }
+
+export async function setOrganizationMaxEmployeesOverride(id: string, value: number | null): Promise<void> {
+  await prisma.organization.update({ where: { id }, data: { maxEmployeesOverride: value } })
+}
