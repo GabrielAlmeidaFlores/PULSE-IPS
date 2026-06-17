@@ -199,14 +199,14 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
     <div className="flex flex-col h-full">
       <div className="border-b border-border bg-card px-6 py-4 shrink-0">
         <Link href="/pgr" className="text-xs text-muted-foreground hover:text-foreground transition-colors">← PGR</Link>
-        <div className="flex items-center justify-between mt-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-2">
           <div>
             <h1 className="text-sm font-bold uppercase tracking-widest capitalize">{periodLabel}</h1>
             <p className="text-xs text-muted-foreground mt-0.5">
               Gerado em {format(new Date(review.reviewedAt ?? review.createdAt), "dd/MM/yyyy 'às' HH:mm")}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <PgrDownloadButton reviewId={review.id} />
             {review.status === "generated" && <PgrMarkReviewedButton reviewId={review.id} />}
             {review.status === "reviewed" && (
@@ -434,7 +434,7 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                     </div>
 
                     {deptQuestions.length > 0 && (
-                      <div className="px-5 py-3 border-b border-border bg-muted/10 flex items-center gap-6">
+                      <div className="px-5 py-3 border-b border-border bg-muted/10 flex flex-wrap items-center gap-x-6 gap-y-2">
                         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground shrink-0">Distribuição:</p>
                         <div className="flex items-center gap-4">
                           <span className="inline-flex items-center gap-1.5 text-[11px] font-medium">
@@ -454,7 +454,7 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                           </span>
                         </div>
                         {(bestDeptQuestion ?? worstDeptQuestion) && (
-                          <div className="ml-auto flex items-center gap-4">
+                          <div className="flex items-center gap-4">
                             {bestDeptQuestion && (
                               <span className="text-[10px] text-muted-foreground">
                                 Melhor: <span className="font-bold text-status-success">P{bestDeptQuestion.order} ({bestDeptQuestion.avgScore}%)</span>

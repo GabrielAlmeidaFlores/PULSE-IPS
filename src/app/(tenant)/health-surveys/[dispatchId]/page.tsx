@@ -228,11 +228,11 @@ function DeptChartSection({
 
   return (
     <div className="border border-border bg-card overflow-hidden">
-      <div className="px-5 py-3 border-b border-border bg-muted/30 flex items-center justify-between">
+      <div className="px-5 py-3 border-b border-border bg-muted/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
         <div className="flex items-center gap-3">
           <h2 className="text-sm font-bold">{deptLabel}</h2>
         </div>
-        <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-muted-foreground">
           <span>
             {deptStats.totalResponses}/{deptStats.totalRecipients} respostas
           </span>
@@ -701,24 +701,26 @@ export default async function HealthSurveyDispatchDetailPage({
     <div className="flex flex-col h-full">
         <div className="border-b border-border bg-card px-6 py-4 shrink-0">
           <Link href="/health-surveys" className="text-xs text-muted-foreground hover:text-foreground transition-colors">← Pesquisas</Link>
-          <div className="flex items-center justify-between mt-2">
-            <div>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-2">
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h1 className="text-sm font-bold uppercase tracking-widest">
                   Dashboard de Pesquisas
                 </h1>
                 <span
-                  className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${STATUS_STYLE[anchorStats.status] ?? "bg-muted text-muted-foreground border-border"}`}
+                  className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border shrink-0 ${STATUS_STYLE[anchorStats.status] ?? "bg-muted text-muted-foreground border-border"}`}
                 >
                   {STATUS_LABELS[anchorStats.status] ?? anchorStats.status}
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">
                 {headerSubtitle}
               </p>
             </div>
             {allDeptOptions.length > 1 && (
-              <HealthSurveyDispatchDeptFilter departments={allDeptOptions} />
+              <div className="shrink-0">
+                <HealthSurveyDispatchDeptFilter departments={allDeptOptions} />
+              </div>
             )}
           </div>
         </div>
