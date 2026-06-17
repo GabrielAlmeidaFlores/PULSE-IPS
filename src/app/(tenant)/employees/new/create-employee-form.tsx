@@ -212,7 +212,7 @@ export function CreateEmployeeForm({ departments }: Props): React.ReactElement {
                 </NativeSelect>
               </div>
               {(shiftPreset === "custom" || shiftPreset !== "") && (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className={fieldCls}>Início</Label>
                     <Input type="time" {...form.register("workStartTime")} />

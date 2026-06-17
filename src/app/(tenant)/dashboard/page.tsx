@@ -82,17 +82,17 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
         <p className="text-xs text-muted-foreground mt-0.5">Insights sobre saúde ocupacional</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
 
-        <div className="grid grid-cols-4 gap-0 border border-border bg-card">
-          <div className="px-5 py-4 border-r border-border">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-0 border border-border bg-card">
+          <div className="px-5 py-4 border-r border-b md:border-b-0 border-border">
             <div className="flex items-center gap-2 mb-1">
               <Users className="w-3.5 h-3.5 text-muted-foreground" />
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Colaboradores</p>
             </div>
             <p className="text-3xl font-black text-primary">{kpis.totalEmployees}</p>
           </div>
-          <div className="px-5 py-4 border-r border-border">
+          <div className="px-5 py-4 md:border-r border-b md:border-b-0 border-border">
             <div className="flex items-center gap-2 mb-1">
               <Activity className="w-3.5 h-3.5 text-muted-foreground" />
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Índice de Saúde (30d)</p>
@@ -142,7 +142,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
             )}
 
             {deptCards.length > 0 && (
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="border border-status-success-border bg-status-success-subtle p-4 flex items-center gap-3">
                   <div className="w-9 h-9 rounded-full bg-status-success-subtle flex items-center justify-center shrink-0">
                     <TrendingUp className="w-4 h-4 text-status-success" />
@@ -177,7 +177,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
             )}
 
             {(topDept ?? bottomDept) && topDept?.deptId !== bottomDept?.deptId && (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {topDept && (
                   <div className="border border-border bg-card p-4">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Setor em destaque</p>
@@ -223,7 +223,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
               </ChartCard>
             )}
 
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {deptComparison.length > 0 && (
                 <ChartCard title="Índice de Saúde por Setor" subtitle="Comparação do período mais recente">
                   <div className="px-0">
@@ -247,7 +247,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
             )}
 
             {recentAlerts.length > 0 && (
-              <div className="border border-border bg-card overflow-hidden">
+              <div className="border border-border bg-card">
                 <div className="border-b border-border px-4 py-2.5 flex items-center justify-between bg-muted/40">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Alertas recentes</span>
                   <div className="flex items-center gap-3">
@@ -257,6 +257,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
                     <Link href="/alerts" className="text-[10px] text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2">Ver todos</Link>
                   </div>
                 </div>
+                <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-muted/40">
@@ -309,6 +310,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
                     })}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </>

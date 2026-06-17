@@ -26,7 +26,7 @@ export default async function SuperAdminsPage({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
         <div className="border border-border bg-card">
           <div className="overflow-x-auto">
           <table className="w-full text-[12px]" style={{ minWidth: 480 }}>

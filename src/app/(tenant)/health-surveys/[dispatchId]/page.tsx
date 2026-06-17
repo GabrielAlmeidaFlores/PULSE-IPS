@@ -723,7 +723,7 @@ export default async function HealthSurveyDispatchDetailPage({
           </div>
         </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
         <div className={`grid gap-0 border border-border bg-card ${mergedStats.avgScore !== null ? "grid-cols-2 md:grid-cols-5" : "grid-cols-2 md:grid-cols-4"}`}>
           {mergedStats.avgScore !== null && (
             <div className="px-5 py-4 border-r border-border">

@@ -109,7 +109,7 @@ export default function ImportPreviewPage(): React.ReactElement {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
         <div className="flex gap-4">
           <div className="flex items-center gap-1.5">
             <CheckCircle2 className="h-4 w-4 text-status-success" />
@@ -124,6 +124,7 @@ export default function ImportPreviewPage(): React.ReactElement {
         </div>
 
         <div className="border border-border bg-card">
+          <div className="overflow-x-auto">
           <table className="w-full text-[12px]">
             <thead>
               <tr className="border-b border-border bg-muted">
@@ -175,6 +176,7 @@ export default function ImportPreviewPage(): React.ReactElement {
               ))}
             </tbody>
           </table>
+          </div>
           <div className="border-t border-border px-4 py-2">
             <span className="text-[10px] text-muted-foreground">{preview.items.length} linhas processadas</span>
           </div>

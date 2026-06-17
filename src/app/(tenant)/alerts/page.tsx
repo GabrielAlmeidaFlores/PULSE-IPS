@@ -92,10 +92,10 @@ export default async function AlertsPage({ searchParams }: Props): Promise<React
         </div>
         <p className="text-xs text-muted-foreground mt-0.5">{stats.total} alertas</p>
       </div>
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
 
-        <div className="grid grid-cols-4 gap-0 border border-border bg-card">
-          <div className="px-5 py-4 border-r border-border">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-0 border border-border bg-card">
+          <div className="px-5 py-4 border-r border-b md:border-b-0 border-border">
             <div className="flex items-center gap-2 mb-1">
               <AlertTriangle className="w-3.5 h-3.5 text-muted-foreground" />
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Total</p>
@@ -103,7 +103,7 @@ export default async function AlertsPage({ searchParams }: Props): Promise<React
             <p className="text-3xl font-black text-foreground">{stats.total}</p>
             <p className="text-[10px] text-muted-foreground mt-0.5">alertas registrados</p>
           </div>
-          <div className="px-5 py-4 border-r border-border">
+          <div className="px-5 py-4 md:border-r border-b md:border-b-0 border-border">
             <div className="flex items-center gap-2 mb-1">
               <Clock className="w-3.5 h-3.5 text-muted-foreground" />
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Não resolvidos</p>

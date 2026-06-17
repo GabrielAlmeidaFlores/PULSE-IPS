@@ -32,7 +32,7 @@ export default async function EmployeeDetailPage({ params }: Props): Promise<Rea
           </span>
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6">
         <EmployeeDetail employee={employee} departments={departments} />
       </div>
     </div>

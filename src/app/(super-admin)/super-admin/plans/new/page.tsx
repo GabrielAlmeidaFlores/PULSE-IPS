@@ -18,7 +18,7 @@ export default function NewPlanPage(): React.ReactElement {
           <h1 className="text-[13px] font-black tracking-[0.2em] uppercase text-foreground">Novo Plano</h1>
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6">
         <CreatePlanForm />
       </div>
     </div>

@@ -220,7 +220,7 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
       </div>
 
       {!hasData ? (
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6">
           <div className="border border-border bg-card p-12 text-center">
             <p className="text-sm text-muted-foreground">Nenhuma resposta encontrada para este período.</p>
             <p className="text-xs text-muted-foreground mt-1">Verifique se há pesquisas concluídas no período selecionado.</p>
@@ -235,7 +235,7 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
           ]}
           overview={
             <>
-              <div className="grid grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 <div className="border border-border bg-card p-4 flex items-start gap-3">
                   <div className="w-8 h-8 rounded border border-border bg-muted/40 flex items-center justify-center shrink-0">
                     <Activity className="w-4 h-4 text-muted-foreground" />
@@ -291,7 +291,7 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="border border-status-success-border bg-status-success-subtle p-4 flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-status-success-subtle flex items-center justify-center shrink-0">
                     <TrendingUp className="w-5 h-5 text-status-success" />
@@ -325,7 +325,7 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
               </div>
 
               {(bestQuestion ?? worstQuestion) && (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {bestQuestion && (
                     <div className="border border-border bg-card p-4">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Melhor Indicador</p>
@@ -359,7 +359,7 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <ChartCard title="Índice de Saúde por Departamento" subtitle="Linhas de referência: saudável (62%) e crítico (37%)">
                   <PgrScoreComparisonChart depts={deptOverviewData} />
                 </ChartCard>
@@ -413,7 +413,7 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                     gauge={<ScoreGauge hi={deptHI} />}
                   >
 
-                    <div className="grid grid-cols-3 divide-x divide-border border-b border-border">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border border-b border-border">
                       <div className="px-5 py-3">
                         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Funcionários</p>
                         <p className="text-lg font-black font-mono mt-0.5">{dept.employeeCount}</p>
@@ -484,7 +484,7 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
 
                       return (
                         <>
-                          <div className="grid grid-cols-2 divide-x divide-border">
+                          <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border">
                             <div className="p-5">
                               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Índice de Saúde por Pergunta</p>
                               <PgrDeptQuestionsChart questions={deptQuestions} />
@@ -529,6 +529,7 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Consolidado de Departamentos</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">Todos os {depts.length} departamentos — ordenado por Índice de Saúde (menor primeiro)</p>
               </div>
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/20">
@@ -603,6 +604,7 @@ export default async function PgrDetailPage({ params }: PageProps): Promise<Reac
                   })}
                 </tbody>
               </table>
+              </div>
               <div className="px-5 py-3 border-t border-border bg-muted/20 flex flex-wrap gap-x-6 gap-y-1">
                 <p className="text-[10px] text-muted-foreground">
                   <span className="font-bold">Responderam de destinatários:</span> quantidade de colaboradores que responderam a pesquisa em relação ao total que recebeu o link. Participação é voluntária, por isso o número pode ser menor.

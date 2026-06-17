@@ -63,7 +63,7 @@ export default async function ActionPlansPage({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="border-b border-border bg-card px-6 py-4 flex items-center justify-between shrink-0">
+      <div className="border-b border-border bg-card px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
         <div>
           <div className="flex items-center gap-1.5">
             <h1 className="text-sm font-bold uppercase tracking-widest">Planos de Ação</h1>
@@ -94,9 +94,9 @@ export default async function ActionPlansPage({
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">{total} planos</p>
         </div>
-        <Link href="/action-plans/new" className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90 transition-colors border border-primary" style={{ borderRadius: 0 }}>Novo Plano</Link>
+        <Link href="/action-plans/new" className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90 transition-colors border border-primary text-center w-full sm:w-auto" style={{ borderRadius: 0 }}>Novo Plano</Link>
       </div>
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
         <ActionPlanSuggestionCards suggestions={suggestions} />
         <FilterBar
           fields={[
@@ -129,7 +129,11 @@ export default async function ActionPlansPage({
         >
           {plans.map((plan, i) => (
             <tr key={plan.id} className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors group ${i % 2 !== 0 ? "bg-muted/10" : ""}`}>
-              <td className="px-4 py-3 font-medium text-xs">{plan.title}</td>
+              <td className="px-4 py-3 font-medium text-xs">
+                <Link href={`/action-plans/${plan.id}`} className="hover:text-primary transition-colors">
+                  {plan.title}
+                </Link>
+              </td>
               <td className="px-4 py-3">
                 <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${PLAN_PRIORITY_STYLE[plan.priority] ?? BADGE_DEFAULT}`}>
                   {PLAN_PRIORITY_LABELS[plan.priority] ?? plan.priority}
