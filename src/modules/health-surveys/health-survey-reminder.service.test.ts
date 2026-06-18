@@ -31,6 +31,7 @@ const mockGetDayOfWeekInTimezone = vi.mocked(getDayOfWeekInTimezone)
 const mockIsAtWorkStartWindow = vi.mocked(isAtWorkStartWindow)
 
 const TENANT_ID = "tenant-abc"
+const ORG_TIMEZONE = "America/Sao_Paulo"
 const NOW = Date.now()
 
 function makeEligibleToken(overrides?: Partial<ReminderEligibleToken>): ReminderEligibleToken {
@@ -45,7 +46,7 @@ function makeEligibleToken(overrides?: Partial<ReminderEligibleToken>): Reminder
     workDays: [1, 2, 3, 4, 5],
     tokenExpiryHours: 48,
     respectEmployeeSchedule: false,
-    orgTimezone: "America/Sao_Paulo",
+    orgTimezone: ORG_TIMEZONE,
     orgSlug: "acme",
     employeeName: "Ana Silva",
     employeePhone: "+5511999999999",
@@ -131,7 +132,7 @@ describe("runHealthSurveyResponseReminder — respectEmployeeSchedule=true", () 
   const scheduleToken = makeEligibleToken({
     respectEmployeeSchedule: true,
     workDays: [1, 2, 3, 4, 5],
-    orgTimezone: "America/Sao_Paulo",
+    orgTimezone: ORG_TIMEZONE,
   })
 
   it("enfileira quando hoje é dia de trabalho e está na janela de início de turno", async () => {
@@ -141,8 +142,8 @@ describe("runHealthSurveyResponseReminder — respectEmployeeSchedule=true", () 
 
     await runHealthSurveyResponseReminder()
 
-    expect(mockGetDayOfWeekInTimezone).toHaveBeenCalledWith("America/Sao_Paulo")
-    expect(mockIsAtWorkStartWindow).toHaveBeenCalledWith("America/Sao_Paulo", "09:00")
+    expect(mockGetDayOfWeekInTimezone).toHaveBeenCalledWith(ORG_TIMEZONE)
+    expect(mockIsAtWorkStartWindow).toHaveBeenCalledWith(ORG_TIMEZONE, "09:00")
     expect(mockAddBulk).toHaveBeenCalledTimes(1)
   })
 
@@ -184,7 +185,7 @@ describe("runHealthSurveyResponseReminder — feature gate de messaging", () => 
     const tokenA = makeEligibleToken({ id: "t-a", tenantId: "tenant-a" })
     const tokenB = makeEligibleToken({ id: "t-b", tenantId: "tenant-b" })
     mockFindEligibleTokens.mockResolvedValue([tokenA, tokenB])
-    mockHasTenantPlanFeature.mockImplementation(async (tenantId) => tenantId === "tenant-a")
+    mockHasTenantPlanFeature.mockImplementation((tenantId: string) => Promise.resolve(tenantId === "tenant-a"))
 
     await runHealthSurveyResponseReminder()
 
@@ -197,11 +198,13 @@ describe("runHealthSurveyResponseReminder — feature gate de messaging", () => 
 describe("runHealthSurveyResponseReminder — idempotência", () => {
   it("chama markHealthSurveyTokensReminderSent ANTES de addBulk", async () => {
     const callOrder: string[] = []
-    mockMarkReminderSent.mockImplementation(async () => {
+    mockMarkReminderSent.mockImplementation(() => {
       callOrder.push("mark")
+      return Promise.resolve(undefined)
     })
-    mockAddBulk.mockImplementation(async () => {
+    mockAddBulk.mockImplementation(() => {
       callOrder.push("enqueue")
+      return Promise.resolve([])
     })
     mockFindEligibleTokens.mockResolvedValue([makeEligibleToken()])
 
@@ -229,7 +232,7 @@ describe("runHealthSurveyResponseReminder — payload do job", () => {
             recipientName: "Ana Silva",
             tenantId: TENANT_ID,
             employeeId: "emp-1",
-          }),
+          }) as Record<string, unknown>,
         }),
       ]),
     )

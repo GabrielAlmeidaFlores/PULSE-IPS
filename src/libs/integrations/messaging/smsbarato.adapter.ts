@@ -66,12 +66,12 @@ async function sendSms(phone: string, messageText: string): Promise<SendMessageR
 }
 
 export class SmsBaratoAdapter implements IMessagingService {
-  async sendHealthSurveyDispatch(params: HealthSurveyMessageParams): Promise<SendMessageResult> {
+  sendHealthSurveyDispatch(params: HealthSurveyMessageParams): Promise<SendMessageResult> {
     const messageText = buildMessageText(env.SURVEY_MESSAGE_TEMPLATE, params.recipientName, params.surveyLink)
     return sendSms(params.recipientPhone, messageText)
   }
 
-  async sendHealthSurveyReminder(params: HealthSurveyMessageParams): Promise<SendMessageResult> {
+  sendHealthSurveyReminder(params: HealthSurveyMessageParams): Promise<SendMessageResult> {
     const messageText = buildMessageText(env.SURVEY_REMINDER_MESSAGE_TEMPLATE, params.recipientName, params.surveyLink)
     return sendSms(params.recipientPhone, messageText)
   }

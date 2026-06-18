@@ -48,11 +48,11 @@ async function sendWa(
 }
 
 export class SmsBaratoWaAdapter implements IMessagingService {
-  async sendHealthSurveyDispatch(params: HealthSurveyMessageParams): Promise<SendMessageResult> {
+  sendHealthSurveyDispatch(params: HealthSurveyMessageParams): Promise<SendMessageResult> {
     return sendWa(params.recipientPhone, params.recipientName, params.surveyLink, env.SMSBARATO_WA_TEMPLATE)
   }
 
-  async sendHealthSurveyReminder(params: HealthSurveyMessageParams): Promise<SendMessageResult> {
+  sendHealthSurveyReminder(params: HealthSurveyMessageParams): Promise<SendMessageResult> {
     return sendWa(params.recipientPhone, params.recipientName, params.surveyLink, env.SMSBARATO_WA_REMINDER_TEMPLATE)
   }
 }
