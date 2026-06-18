@@ -69,7 +69,7 @@ export function ImportEmployeesForm(): React.ReactElement {
         </div>
         <div className="px-4 py-3 space-y-1.5 text-[12px] text-muted-foreground">
           <p>Envie um arquivo <span className="font-bold text-foreground">.xlsx</span> ou <span className="font-bold text-foreground">.csv</span> com as colunas abaixo:</p>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 mt-2">
             {[
               ["Nome", "Obrigatório"],
               ["Telefone", "Obrigatório — ex: +5511999999999"],

@@ -45,7 +45,7 @@ export default async function LogsPage({ searchParams }: Props): Promise<ReactEl
         </p>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
         <LogsFilters filters={filters} />
         <Suspense fallback={null}>
           <LogsTable data={data} />

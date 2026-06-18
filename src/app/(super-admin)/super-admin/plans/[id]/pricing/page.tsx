@@ -33,7 +33,7 @@ export default async function PlanPricingPage({ params }: Props): Promise<React.
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
         <div className="text-[11px] text-muted-foreground bg-muted/50 border border-border px-4 py-2.5">
           Ao atualizar um preço, o Stripe cria um novo Price e o anterior é desativado. Assinaturas existentes não são afetadas.
         </div>

@@ -62,8 +62,8 @@ function PriceRow({
       <span className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground w-16 shrink-0">
         {label}
       </span>
-      <div className="flex items-center flex-1 border border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
-        <span className="px-2 text-[12px] text-muted-foreground bg-muted border-r border-border select-none">
+      <div className="flex items-center flex-1 min-w-0 border border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+        <span className="px-2 text-[12px] text-muted-foreground bg-muted border-r border-border select-none shrink-0">
           R$
         </span>
         <input
@@ -73,7 +73,7 @@ function PriceRow({
           placeholder="0.00"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="flex-1 bg-input text-foreground text-[13px] px-2 py-1.5 focus:outline-none"
+          className="flex-1 min-w-0 w-full bg-input text-foreground text-[13px] px-2 py-1.5 focus:outline-none"
           style={{ borderRadius: 0 }}
         />
       </div>
@@ -282,7 +282,7 @@ export function PlanRowActions({ plan }: { plan: Plan }): React.ReactElement {
             onClick={() => setEditOpen(false)}
           />
           <div
-            className="relative z-10 w-full max-w-md border border-border bg-card shadow-xl overflow-y-auto max-h-[90vh]"
+            className="relative z-10 w-full max-w-md mx-4 sm:mx-0 border border-border bg-card shadow-xl overflow-y-auto overflow-x-hidden max-h-[90vh]"
             style={{ borderRadius: 0 }}
           >
             <div className="border-b border-border px-5 py-3 border-l-4 border-l-primary flex items-center justify-between">

@@ -41,14 +41,14 @@ export function PgrGenerateButton(): React.ReactElement {
 
   if (confirmReplace) {
     return (
-      <div className="flex items-center gap-2">
-        <span className="text-[11px] text-status-warning font-medium">
+      <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+        <span className="text-[11px] text-status-warning font-medium w-full sm:w-auto">
           Já existe um relatório para este período. Substituir?
         </span>
         <button
           onClick={handleConfirmReplace}
           disabled={isPending}
-          className="px-3 py-2 text-[11px] font-bold uppercase tracking-wider bg-status-danger text-status-danger-foreground hover:bg-status-danger/90 transition-colors disabled:opacity-50"
+          className="flex-1 sm:flex-none px-3 py-2 text-[11px] font-bold uppercase tracking-wider bg-status-danger text-status-danger-foreground hover:bg-status-danger/90 transition-colors disabled:opacity-50"
           style={{ borderRadius: 0 }}
         >
           {isPending ? "Substituindo..." : "Sim, substituir"}
@@ -56,7 +56,7 @@ export function PgrGenerateButton(): React.ReactElement {
         <button
           onClick={handleCancelReplace}
           disabled={isPending}
-          className="px-3 py-2 text-[11px] font-bold uppercase tracking-wider border border-border text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+          className="flex-1 sm:flex-none px-3 py-2 text-[11px] font-bold uppercase tracking-wider border border-border text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
           style={{ borderRadius: 0 }}
         >
           Cancelar
@@ -66,7 +66,7 @@ export function PgrGenerateButton(): React.ReactElement {
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 w-full sm:w-auto">
       <input
         type="month"
         value={period}
@@ -74,14 +74,14 @@ export function PgrGenerateButton(): React.ReactElement {
           setPeriod(e.target.value)
           setConfirmReplace(false)
         }}
-        className="bg-input border border-border text-foreground text-[12px] px-3 py-2 focus:outline-none focus:border-primary [color-scheme:light] dark:[color-scheme:dark]"
+        className="flex-1 sm:flex-none bg-input border border-border text-foreground text-[12px] px-3 py-2 focus:outline-none focus:border-primary [color-scheme:light] dark:[color-scheme:dark]"
         style={{ borderRadius: 0 }}
         disabled={isPending}
       />
       <button
         onClick={() => handleSubmit(false)}
         disabled={isPending || !period}
-        className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="flex-1 sm:flex-none px-4 py-2 text-[11px] font-bold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         style={{ borderRadius: 0 }}
       >
         {isPending ? "Gerando..." : "Gerar Relatório"}

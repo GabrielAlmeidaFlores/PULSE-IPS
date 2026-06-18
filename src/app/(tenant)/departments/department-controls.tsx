@@ -261,7 +261,7 @@ export function DepartmentControls({ departments, total }: Props): React.ReactEl
         </button>
       </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
         <FilterBar
           fields={[{ type: "text", key: "q", label: "Buscar", placeholder: "Nome do departamento...", width: "w-[240px]" }]}
           values={{ q: q.length > 0 ? q : undefined }}

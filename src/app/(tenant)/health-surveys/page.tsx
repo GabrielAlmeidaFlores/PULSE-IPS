@@ -86,7 +86,7 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
 
   return (
     <div className="flex flex-col h-full">
-      <div className="border-b border-border bg-card px-6 py-4 flex items-center justify-between shrink-0">
+      <div className="border-b border-border bg-card px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
         <div>
           <div className="flex items-center gap-1.5">
             <h1 className="text-sm font-bold uppercase tracking-widest">Pesquisas</h1>
@@ -119,10 +119,10 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
             {total} {total === 1 ? "disparo" : "disparos"}
           </p>
         </div>
-        <div className="flex gap-0">
+        <div className="flex gap-0 w-full sm:w-auto">
           <Link
             href="/health-surveys/configure"
-            className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            className="flex-1 sm:flex-none px-4 py-2 text-[11px] font-bold uppercase tracking-wider border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-center"
             style={{ borderRadius: 0 }}
           >
             Configurar
@@ -135,7 +135,7 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
 
         {configs.length === 0 && (
           <div className="border border-primary/30 bg-primary/5 px-4 py-3 flex items-start gap-3 mb-6">

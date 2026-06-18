@@ -20,7 +20,7 @@ export default async function NewHealthSurveyConfigPage(): Promise<React.ReactEl
           <p className="text-xs text-muted-foreground mt-0.5">Configure uma nova pesquisa de saúde ocupacional</p>
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6">
         <HealthSurveyConfigForm
           mode="create"
           departments={departments.map((d) => ({ id: d.id, name: d.name }))}

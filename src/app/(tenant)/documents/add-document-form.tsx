@@ -64,7 +64,7 @@ export function AddDocumentForm(): React.ReactElement {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90 transition-colors border border-primary"
+        className="w-full px-4 py-2 text-[11px] font-bold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90 transition-colors border border-primary"
         style={{ borderRadius: 0 }}
       >
         Adicionar
