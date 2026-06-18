@@ -21,16 +21,16 @@ export type JobName =
   | "health-survey-response-token-cleanup"
   | "action-plan-suggestion-generator"
   | "organization-deletion-executor"
+  | "health-survey-response-reminder"
 
 export interface SendMessageJobData {
   recipientPhone: string
-  messageText: string
-  recipientName?: string
-  surveyLink?: string
+  recipientName: string
+  surveyLink: string
   tenantId: string
   employeeId: string
   provider: string
-  type: "survey_dispatch"
+  type: "health_survey_dispatch" | "health_survey_reminder"
 }
 
 export function createJobQueue(): Queue<Record<string, never>, void, JobName> {

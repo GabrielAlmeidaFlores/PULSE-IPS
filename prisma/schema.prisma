@@ -385,25 +385,37 @@ model HealthSurveyDispatch {
 }
 
 model HealthSurveyResponseToken {
-  id            String    @id @default(uuid())
-  tenantId      String    @map("tenant_id")
-  dispatchId    String    @map("dispatch_id")
-  employeeId    String    @map("employee_id")
-  token         String    @unique
-  shortCode     String?   @map("short_code") @db.VarChar(7)
-  expiresAt     DateTime  @map("expires_at")
-  workStartTime String    @db.VarChar(5) @map("work_start_time")
-  workEndTime   String    @db.VarChar(5) @map("work_end_time")
-  usedAt        DateTime? @map("used_at")
-  createdAt     DateTime  @default(now()) @map("created_at")
+  id               String    @id @default(uuid())
+  tenantId         String    @map("tenant_id")
+  dispatchId       String    @map("dispatch_id")
+  employeeId       String    @map("employee_id")
+  token            String    @unique
+  shortCode        String?   @map("short_code") @db.VarChar(7)
+  expiresAt        DateTime  @map("expires_at")
+  workStartTime    String    @db.VarChar(5) @map("work_start_time")
+  workEndTime      String    @db.VarChar(5) @map("work_end_time")
+  usedAt           DateTime? @map("used_at")
+  reminderSentAt   DateTime? @map("reminder_sent_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
 
-  dispatch HealthSurveyDispatch  @relation(fields: [dispatchId], references: [id], onDelete: Cascade)
-  employee Employee        @relation(fields: [employeeId], references: [id])
+  dispatch HealthSurveyDispatch              @relation(fields: [dispatchId], references: [id], onDelete: Cascade)
+  employee Employee                          @relation(fields: [employeeId], references: [id])
+  workDays HealthSurveyResponseTokenWorkDay[]
 
   @@unique([tenantId, shortCode])
   @@index([tenantId])
   @@index([dispatchId, employeeId])
   @@map("health_survey_response_tokens")
+}
+
+model HealthSurveyResponseTokenWorkDay {
+  tokenId    String @map("token_id")
+  dayOfWeek  Int    @map("day_of_week")
+
+  token HealthSurveyResponseToken @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+
+  @@id([tokenId, dayOfWeek])
+  @@map("health_survey_response_token_work_days")
 }
 
 model HealthSurveyResponse {

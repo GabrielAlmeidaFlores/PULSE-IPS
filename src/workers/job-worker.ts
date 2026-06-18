@@ -11,6 +11,7 @@ import { deleteAllTenantsExpiredHealthSurveyTokens } from "@/modules/health-surv
 import { jobLogService } from "@/modules/job-logs/job-log.service"
 import { runActionPlanSuggestionGenerator } from "@/modules/action-plans/action-plan-suggestion.service"
 import { runOrganizationDeletionExecutor } from "@/modules/organizations/account-deletion.service"
+import { runHealthSurveyResponseReminder } from "@/modules/health-surveys/health-survey-reminder.service"
 import { createLogger } from "@/libs/utils/logger"
 import type { InsertJobLogInput } from "@/modules/job-logs/job-log.types"
 
@@ -69,17 +70,24 @@ async function processJob(jobName: JobName): Promise<void> {
       workerLogger.success("organization-deletion-executor", result)
       break
     }
+    case "health-survey-response-reminder": {
+      await runHealthSurveyResponseReminder()
+      workerLogger.success("health-survey-response-reminder: done")
+      break
+    }
   }
 }
 
 async function processMessageJob(data: SendMessageJobData): Promise<void> {
   const messaging = getMessagingService()
-  const result = await messaging.send({
+  const params = {
     recipientPhone: data.recipientPhone,
-    messageText: data.messageText,
-    ...(data.recipientName !== undefined ? { recipientName: data.recipientName } : {}),
-    ...(data.surveyLink !== undefined ? { surveyLink: data.surveyLink } : {}),
-  })
+    recipientName: data.recipientName,
+    surveyLink: data.surveyLink,
+  }
+  const result = data.type === "health_survey_dispatch"
+    ? await messaging.sendHealthSurveyDispatch(params)
+    : await messaging.sendHealthSurveyReminder(params)
   await createMessageLog(data.tenantId, {
     employeeId: data.employeeId,
     type: data.type,

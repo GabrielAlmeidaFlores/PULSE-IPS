@@ -39,3 +39,18 @@ export function isWithinWorkHours(
 export function isFutureDate(date: Date): boolean {
   return isAfter(date, new Date())
 }
+
+export function getDayOfWeekInTimezone(timezone: string): number {
+  const nowInTimezone = toZonedTime(new Date(), timezone)
+  return nowInTimezone.getDay()
+}
+
+export function isAtWorkStartWindow(timezone: string, workStartTime: string): boolean {
+  const nowInTimezone = toZonedTime(new Date(), timezone)
+  const currentHHMM = format(nowInTimezone, "HH:mm")
+  const [startH, startM] = workStartTime.split(":").map(Number) as [number, number]
+  const startTotalMinutes = startH * 60 + startM
+  const [curH, curM] = currentHHMM.split(":").map(Number) as [number, number]
+  const currentTotalMinutes = curH * 60 + curM
+  return currentTotalMinutes >= startTotalMinutes && currentTotalMinutes < startTotalMinutes + 60
+}

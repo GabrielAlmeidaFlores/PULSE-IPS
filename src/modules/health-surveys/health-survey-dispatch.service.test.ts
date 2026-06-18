@@ -664,8 +664,8 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
     expect(mockCreateHealthSurveyTokens).not.toHaveBeenCalled()
     expect(mockMarkDispatchDispatched).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID)
     expect(mockAddBulk).toHaveBeenCalledOnce()
-    const [jobs] = mockAddBulk.mock.calls[0] as [{ data: { messageText: string } }[]]
-    expect(jobs[0]?.data.messageText).toContain(PREEXISTING_TOKEN)
+    const [jobs] = mockAddBulk.mock.calls[0] as [{ data: { surveyLink: string } }[]]
+    expect(jobs[0]?.data.surveyLink).toContain(PREEXISTING_TOKEN)
 
     vi.useRealTimers()
   })
@@ -684,8 +684,8 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
     expect(mockCreateHealthSurveyTokens).toHaveBeenCalledOnce()
     expect(mockMarkDispatchDispatched).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID)
     expect(mockAddBulk).toHaveBeenCalledOnce()
-    const [jobs] = mockAddBulk.mock.calls[0] as [{ data: { messageText: string } }[]]
-    expect(jobs[0]?.data.messageText).not.toContain("expired-old-token")
+    const [jobs] = mockAddBulk.mock.calls[0] as [{ data: { surveyLink: string } }[]]
+    expect(jobs[0]?.data.surveyLink).not.toContain("expired-old-token")
 
     vi.useRealTimers()
   })

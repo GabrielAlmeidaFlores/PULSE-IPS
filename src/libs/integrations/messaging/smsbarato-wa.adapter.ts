@@ -1,9 +1,7 @@
 import { env } from "@/env"
 import type {
-  BulkMessageParams,
-  BulkMessageResult,
+  HealthSurveyMessageParams,
   IMessagingService,
-  SendMessageParams,
   SendMessageResult,
 } from "@/libs/integrations/messaging/messaging.interface"
 
@@ -15,61 +13,46 @@ function normalizeSmsBaratoWaPhone(phone: string): string {
   return digitsOnly
 }
 
-export class SmsBaratoWaAdapter implements IMessagingService {
-  async send(params: SendMessageParams): Promise<SendMessageResult> {
-    if (!env.SMSBARATO_API_KEY) {
-      return { externalId: null, status: "failed", error: "SMSBARATO_API_KEY não configurado" }
-    }
-
-    if (params.recipientName === undefined || params.surveyLink === undefined) {
-      return {
-        externalId: null,
-        status: "failed",
-        error: "Parâmetros recipientName e surveyLink são obrigatórios para o provedor smsbarato-wa",
-      }
-    }
-
-    const dest = normalizeSmsBaratoWaPhone(params.recipientPhone)
-    const queryParts = [
-      `chave=${encodeURIComponent(env.SMSBARATO_API_KEY)}`,
-      `template=${encodeURIComponent(env.SMSBARATO_WA_TEMPLATE)}`,
-      `dest=${encodeURIComponent(dest)}`,
-      `prm[]=${encodeURIComponent(params.recipientName)}`,
-      `prm[]=${params.surveyLink}`,
-    ]
-    const fullUrl = `${env.SMSBARATO_WA_BASE_URL}?${queryParts.join("&")}`
-
-    try {
-      const response = await fetch(fullUrl)
-      const body = (await response.text()).trim()
-
-      if (body.startsWith("ERRO")) {
-        return { externalId: null, status: "failed", error: body }
-      }
-
-      return { externalId: body, status: "queued" }
-    } catch (error) {
-      return { externalId: null, status: "failed", error: String(error) }
-    }
+async function sendWa(
+  phone: string,
+  recipientName: string,
+  surveyLink: string,
+  templateName: string,
+): Promise<SendMessageResult> {
+  if (!env.SMSBARATO_API_KEY) {
+    return { externalId: null, status: "failed", error: "SMSBARATO_API_KEY não configurado" }
   }
 
-  async sendBulk(params: BulkMessageParams): Promise<BulkMessageResult> {
-    const results = await Promise.allSettled(
-      params.recipients.map((r) => this.send(r)),
-    )
-    const resolved = results.map((r) =>
-      r.status === "fulfilled"
-        ? r.value
-        : ({
-            externalId: null,
-            status: "failed" as const,
-            error: "rejected",
-          } satisfies SendMessageResult),
-    )
-    return {
-      sent: resolved.filter((r) => r.status !== "failed").length,
-      failed: resolved.filter((r) => r.status === "failed").length,
-      results: resolved,
+  const dest = normalizeSmsBaratoWaPhone(phone)
+  const queryParts = [
+    `chave=${encodeURIComponent(env.SMSBARATO_API_KEY)}`,
+    `template=${encodeURIComponent(templateName)}`,
+    `dest=${encodeURIComponent(dest)}`,
+    `prm[]=${encodeURIComponent(recipientName)}`,
+    `prm[]=${surveyLink}`,
+  ]
+  const fullUrl = `${env.SMSBARATO_WA_BASE_URL}?${queryParts.join("&")}`
+
+  try {
+    const response = await fetch(fullUrl)
+    const body = (await response.text()).trim()
+
+    if (body.startsWith("ERRO")) {
+      return { externalId: null, status: "failed", error: body }
     }
+
+    return { externalId: body, status: "queued" }
+  } catch (error) {
+    return { externalId: null, status: "failed", error: String(error) }
+  }
+}
+
+export class SmsBaratoWaAdapter implements IMessagingService {
+  async sendHealthSurveyDispatch(params: HealthSurveyMessageParams): Promise<SendMessageResult> {
+    return sendWa(params.recipientPhone, params.recipientName, params.surveyLink, env.SMSBARATO_WA_TEMPLATE)
+  }
+
+  async sendHealthSurveyReminder(params: HealthSurveyMessageParams): Promise<SendMessageResult> {
+    return sendWa(params.recipientPhone, params.recipientName, params.surveyLink, env.SMSBARATO_WA_REMINDER_TEMPLATE)
   }
 }

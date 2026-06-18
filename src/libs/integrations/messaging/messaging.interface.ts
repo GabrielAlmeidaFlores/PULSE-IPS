@@ -1,8 +1,7 @@
-export interface SendMessageParams {
+export interface HealthSurveyMessageParams {
   recipientPhone: string
-  messageText: string
-  recipientName?: string
-  surveyLink?: string
+  recipientName: string
+  surveyLink: string
 }
 
 export interface SendMessageResult {
@@ -11,17 +10,7 @@ export interface SendMessageResult {
   error?: string
 }
 
-export interface BulkMessageParams {
-  recipients: { recipientPhone: string; messageText: string; recipientName?: string; surveyLink?: string }[]
-}
-
-export interface BulkMessageResult {
-  sent: number
-  failed: number
-  results: SendMessageResult[]
-}
-
 export interface IMessagingService {
-  send(params: SendMessageParams): Promise<SendMessageResult>
-  sendBulk(params: BulkMessageParams): Promise<BulkMessageResult>
+  sendHealthSurveyDispatch(params: HealthSurveyMessageParams): Promise<SendMessageResult>
+  sendHealthSurveyReminder(params: HealthSurveyMessageParams): Promise<SendMessageResult>
 }
