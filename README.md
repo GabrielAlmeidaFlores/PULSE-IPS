@@ -270,12 +270,13 @@ Processa os jobs agendados. Concorrência: **1** (jobs rodam sequencialmente par
 | `pgr-review-reminder` | `0 8 * * *` | 08:00 diário | Cria alerta de revisão do PGR quando vence em até 30 dias |
 | `stripe-webhook-retry` | `0 * * * *` | A cada hora | Reprocessa webhooks do Stripe que falharam |
 | `health-survey-response-token-cleanup` | `0 2 * * *` | 02:00 diário | Remove tokens de resposta expirados e não utilizados |
+| `health-survey-response-reminder` | `0 * * * *` | A cada hora | Envia lembrete de pesquisa para não-respondentes na janela de halfway |
 | `action-plan-suggestion-generator` | `0 6 * * *` | 06:00 diário | Gera sugestões de plano de ação com base em métricas de cada tenant |
 | `organization-deletion-executor` | `30 3 * * *` | 03:30 diário | Exclui permanentemente organizações com exclusão agendada vencida |
 
 #### Fila de mensagens (`pulse-messages`)
 
-Processa o envio de mensagens individualmente. Concorrência: **10** (10 mensagens simultâneas). Cada item contém: `to`, `body`, `tenantId`, `employeeId`, `provider` e `type`. Retentativas automáticas: 3x com backoff exponencial de 5s.
+Processa o envio de mensagens individualmente. Concorrência: **10** (10 mensagens simultâneas). Cada item contém: `recipientPhone`, `recipientName`, `surveyLink`, `tenantId`, `employeeId`, `provider` e `type` (`health_survey_dispatch` ou `health_survey_reminder`). Retentativas automáticas: 3x com backoff exponencial de 5s.
 
 ### Iniciando os workers
 
@@ -357,6 +358,7 @@ Todos os jobs também expõem um endpoint HTTP para acionamento manual (debug, t
 | `POST /api/jobs/pgr-review-reminder` | Cria alerta de revisão do PGR |
 | `POST /api/jobs/stripe-webhook-retry` | Reprocessa webhooks Stripe com falha |
 | `POST /api/jobs/health-survey-response-token-cleanup` | Remove tokens expirados |
+| `POST /api/jobs/health-survey-response-reminder` | Envia lembretes de pesquisa para não-respondentes |
 | `POST /api/jobs/action-plan-suggestion-generator` | Gera sugestões de plano de ação |
 | `POST /api/jobs/organization-deletion-executor` | Executa exclusão permanente de orgs |
 
@@ -405,11 +407,15 @@ SMSBARATO_BASE_URL="https://sistema81.smsbarato.com.br/send"
 # Requer SMSBARATO_API_KEY acima
 SMSBARATO_WA_BASE_URL="https://sistema81.smsbarato.com.br/sendwa"
 SMSBARATO_WA_TEMPLATE="pulse_survey"   # nome do template pré-aprovado no SMS Barato
+SMSBARATO_WA_REMINDER_TEMPLATE="pulse_survey_reminder"  # template de lembrete WA pré-aprovado no SMS Barato
 
 # Template da mensagem enviada ao funcionário com o link da pesquisa
 # {nome} é substituído pelo primeiro nome do colaborador; {link} pelo link único da pesquisa
 # O link enviado usa a URL amigável /health-survey/[orgSlug]/[shortCode] quando disponível
 SURVEY_MESSAGE_TEMPLATE="Oi {nome}! Tem 1 minutinho? Sua pesquisa de bem-estar esta aqui: {link}"
+
+# Template da mensagem de lembrete (quando o colaborador ainda não respondeu na janela de halfway)
+SURVEY_REMINDER_MESSAGE_TEMPLATE="Oi {nome}! So passando para lembrar que seu link ainda esta aberto: {link}"
 
 # ─── Provedor de e-mail ────────────────────────────────────────────
 # Opções: console | resend
@@ -687,7 +693,7 @@ const color = healthIndexAccent(hi)          // → classe CSS de cor
 2. O serviço detecta automaticamente os cabeçalhos (case-insensitive, suporta variações em português: "nome", "telefone", "mensagem", "setor", etc.). Colunas opcionais de jornada individual também são reconhecidas: `Hora Início`, `Hora Fim`, `Dias de Trabalho` — quando presentes, sobrepõem os valores do departamento para aquele colaborador.
 3. Cada linha é validada via Zod. O resultado é exibido em `/employees/import/preview` com duas listas: linhas válidas e inválidas (com motivo do erro).
 4. O usuário confirma o import. A action `importEmployeesAction` lê `tenantId` da sessão (nunca do cliente).
-5. Para cada linha válida: vincula ao departamento informado (por nome, case-insensitive) e cria o funcionário. Duplicatas de e-mail no mesmo tenant são ignoradas silenciosamente.
+5. Para cada linha válida: vincula ao departamento informado (por nome, case-insensitive) e cria o funcionário. Não há verificação de e-mail duplicado — a tabela `employees` não possui constraint única em `(tenant_id, email)`. O mesmo e-mail pode ser importado múltiplas vezes; o campo é opcional e não é o identificador primário do colaborador.
 6. Retorna um relatório com total importado e erros.
 
 **Pausa de funcionário:**
@@ -775,11 +781,14 @@ sendDispatchTokensAndMessages(dispatch)
 ```
 Fila pulse:messages
   └── Worker processMessageJob()
-        ├── Chama getMessagingService().send({ to, body })
-        │     ├── smsbarato: POST SMS Barato API (SMS)
-        │     ├── smsbarato-wa: POST SMS Barato API (WhatsApp — template)
-        │     └── Console: imprime no terminal (dev)
+        ├── type = "health_survey_dispatch"
+        │     └── getMessagingService().sendHealthSurveyDispatch({ recipientPhone, recipientName, surveyLink })
+        ├── type = "health_survey_reminder"
+        │     └── getMessagingService().sendHealthSurveyReminder({ recipientPhone, recipientName, surveyLink })
         └── Registra MessageLog (status: sent | failed)
+              ├── smsbarato: POST SMS Barato API (SMS)
+              ├── smsbarato-wa: POST SMS Barato API (WhatsApp — template)
+              └── Console: imprime no terminal (dev)
 ```
 
 **Conteúdo da mensagem:**

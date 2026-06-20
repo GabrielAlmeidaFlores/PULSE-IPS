@@ -182,6 +182,7 @@ async function resolveDispatchUnlock(
     } else {
       consentToken = randomUUID()
       await createHealthSurveyTokens([{
+        id: randomUUID(),
         tenantId,
         dispatchId: dispatch.id,
         employeeId: employee.id,
@@ -214,6 +215,7 @@ async function resolveDispatchUnlock(
 
   const newToken = randomUUID()
   await createHealthSurveyTokens([{
+    id: randomUUID(),
     tenantId,
     dispatchId: dispatch.id,
     employeeId: employee.id,

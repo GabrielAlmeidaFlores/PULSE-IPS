@@ -77,6 +77,7 @@ function makeTokenRecord(overrides?: Partial<TokenRecord>): TokenRecord {
     expiresAt: new Date(Date.now() + 1000 * 60 * 60),
     workStartTime: "09:00",
     workEndTime: "18:00",
+    reminderSentAt: null,
     createdAt: new Date("2024-01-15T09:00:00Z"),
     employee: {
       id: EMPLOYEE_ID,
@@ -504,6 +505,7 @@ function makeTokenRow(overrides?: Partial<TokenRow>): TokenRow {
     expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 48),
     workStartTime: "09:00",
     workEndTime: "18:00",
+    reminderSentAt: null,
     createdAt: new Date(),
   }
   return { ...base, ...overrides }

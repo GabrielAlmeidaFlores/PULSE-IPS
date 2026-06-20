@@ -7,7 +7,7 @@
 > 📝 **MANUTENÇÃO ATIVA DESTE DOCUMENTO — Obrigatório:** Sempre que um agente de IA implementar um padrão novo, uma boa prática que não estava documentada, uma decisão arquitetural, ou qualquer convenção que surgiu organicamente do código, **ele deve atualizar este AGENTS.md imediatamente**, na mesma sessão de trabalho, sem precisar de instrução explícita do desenvolvedor. Este documento deve sempre refletir o estado real do código. Se você implementou algo e não está descrito aqui — adicione. Se uma regra existente ficou desatualizada — corrija. O AGENTS.md é um documento vivo.
 
 **Versão da stack implementada:** Next.js 16 (App Router) + PostgreSQL + Prisma v7 + TypeScript strict  
-**Última revisão:** Maio de 2026
+**Última revisão:** Junho de 2026
 
 ---
 
@@ -390,7 +390,8 @@ src/
 │   │   ├── consent.schema.ts
 │   │   └── consent.types.ts
 │   ├── health-surveys/
-│   │   └── health-survey-dispatch.service.ts      # Agendamento e disparo
+│   │   ├── health-survey-dispatch.service.ts      # Agendamento e disparo automático/manual
+│   │   └── health-survey-reminder.service.ts      # Lembrete para não-respondentes (runHealthSurveyResponseReminder)
 │   ├── anonymous-reports/
 │   ├── action-plans/
 │   │   ├── action-plan.repository.ts
@@ -870,7 +871,6 @@ Dias de trabalho do departamento em `department_work_days` (join table — ver a
 | deleted_at | timestamptz | NULL = ativo; NOT NULL = soft-deleted (excluído da UI e de novos dispatches) |
 | created_at | timestamptz | NOT NULL |
 | updated_at | timestamptz | NOT NULL |
-| UNIQUE | (tenant_id, email) | |
 
 > `work_start_time` e `work_end_time` do colaborador sobrepõem os valores do departamento quando preenchidos (cadeia: `employee → department`). Dias de trabalho opcionais em `employee_work_days` (join table — ver abaixo); quando vazio, herda de `department_work_days`. Todos avaliados no `organizations.timezone` no momento do dispatch.
 
@@ -1230,7 +1230,7 @@ Registro de todas as mensagens enviadas. Fonte dos dados de métricas do Super A
 | id | uuid | PK |
 | tenant_id | uuid | NOT NULL, FK → organizations.id ON DELETE CASCADE |
 | employee_id | uuid | NULL — ID do colaborador destinatário (sem vínculo obrigatório para preservar o anonimato) |
-| type | varchar(30) | NOT NULL — `'survey_dispatch'` |
+| type | varchar(30) | NOT NULL — `'health_survey_dispatch'` \| `'health_survey_reminder'` |
 | provider | varchar(50) | NOT NULL — nome do provedor utilizado (ex: `'smsbarato'`, `'console'`) |
 | external_id | varchar(255) | ID retornado pelo provedor |
 | status | varchar(20) | NOT NULL — `'sent'` \| `'failed'` |
@@ -2354,21 +2354,34 @@ O Super Admin **não possui** mecanismo de "login como organização". Não exis
 
 ```typescript
 // libs/integrations/messaging/messaging.interface.ts
+export interface HealthSurveyMessageParams {
+  recipientPhone: string
+  recipientName: string
+  surveyLink: string
+}
+
 export interface IMessagingService {
-  send(params: SendMessageParams): Promise<SendMessageResult>
-  sendBulk(params: BulkMessageParams): Promise<BulkMessageResult>
+  sendHealthSurveyDispatch(params: HealthSurveyMessageParams): Promise<SendMessageResult>
+  sendHealthSurveyReminder(params: HealthSurveyMessageParams): Promise<SendMessageResult>
 }
 ```
+
+**Design:** a interface é específica ao domínio — cada método codifica a ação de negócio. Os adapters escolhem internamente o template e constroem o texto da mensagem. O código chamador nunca passa `templateName` nem `messageText`.
 
 **Implementação SMS Barato (SMS):** `MESSAGING_PROVIDER=smsbarato` → `SmsBaratoAdapter` ✅  
 **Implementação SMS Barato (WhatsApp):** `MESSAGING_PROVIDER=smsbarato-wa` → `SmsBaratoWaAdapter` ✅  
 **Desenvolvimento:** `MESSAGING_PROVIDER=console` → `ConsoleMessageAdapter` (imprime no terminal)  
 **Variáveis SMS Barato (SMS):** `SMSBARATO_API_KEY`, `SMSBARATO_BASE_URL` (default `"https://sistema81.smsbarato.com.br/send"`)  
-**Variáveis SMS Barato (WhatsApp):** `SMSBARATO_API_KEY` (compartilhada), `SMSBARATO_WA_BASE_URL` (default `"https://sistema81.smsbarato.com.br/sendwa"`), `SMSBARATO_WA_TEMPLATE` (nome do template pré-aprovado, default `"pulse_survey"`)  
+**Variáveis SMS Barato (WhatsApp):** `SMSBARATO_API_KEY` (compartilhada), `SMSBARATO_WA_BASE_URL` (default `"https://sistema81.smsbarato.com.br/sendwa"`), `SMSBARATO_WA_TEMPLATE` (dispatch — default `"pulse_survey"`), `SMSBARATO_WA_REMINDER_TEMPLATE` (lembrete — default `"pulse_survey_reminder"`)  
+**Variáveis de template SMS:** `SURVEY_MESSAGE_TEMPLATE` (template de texto do dispatch, com `{nome}` e `{link}`), `SURVEY_REMINDER_MESSAGE_TEMPLATE` (template de texto do lembrete)  
 **Restrições SMS Barato (SMS):** texto máximo de 150 chars (sem contar a URL); acentos e quebras de linha removidos automaticamente pelo adapter; `dest` deve ser apenas dígitos com DDD (sem `+55`)  
-**Restrições SMS Barato (WhatsApp):** usa template pré-aprovado no painel SMS Barato; os parâmetros do template são enviados na ordem esperada pelo template configurado; `dest` igual ao SMS (apenas dígitos com DDD)
+**Restrições SMS Barato (WhatsApp):** usa templates pré-aprovados no painel SMS Barato; os parâmetros são enviados na ordem esperada pelo template configurado; `dest` igual ao SMS (apenas dígitos com DDD)
 
 > **Regra de terminologia:** os termos "SMS", "WhatsApp" e "CPF" **nunca devem aparecer em código, banco de dados ou UI**. Substituições obrigatórias: SMS/WhatsApp → `mensagem`/`message`; CPF → `document`/`documento`. Essa proibição se aplica a nomes de arquivos, classes, funções, variáveis, campos de banco, labels de UI e mensagens de erro.
+
+> **Nomes de templates do provedor externo (SMS Barato)** são valores de configuração de infraestrutura — não são identificadores de domínio da aplicação. As variáveis `SMSBARATO_WA_TEMPLATE` e `SMSBARATO_WA_REMINDER_TEMPLATE` usam nomes como `"pulse_survey"` e `"pulse_survey_reminder"`, que não seguem o prefixo `health_survey_`. Isso é intencional: esses valores são definidos no painel externo do provedor, não no código.
+
+> **Regra de prefixo `health_survey_` em tipos de mensagem:** todo valor de `MessageLogType` e de `SendMessageJobData.type` relacionado a pesquisas de saúde **deve obrigatoriamente** usar o prefixo `health_survey_`, nunca apenas `survey_`. Valores corretos: `'health_survey_dispatch'`, `'health_survey_reminder'`. Valores como `'survey_dispatch'` ou `'survey_reminder'` são proibidos — o prefixo `health_survey_` garante que o domínio seja inequívoco em logs, painéis de monitoramento e queries de banco.
 ### Email
 
 ```typescript
@@ -3094,6 +3107,7 @@ Processos recorrentes gerenciados pelo **BullMQ** com Redis como broker.
 | `pgr-review-reminder` | Diário (08:00) | 30 dias antes de `next_review_at`; cria alerta `pgr_review_due` |
 | `stripe-webhook-retry` | A cada hora | Reprocessa `billing_webhook_events` com `error IS NOT NULL` e `processed = false` |
 | `health-survey-response-token-cleanup` | Diário (02:00) | Remove `health_survey_response_tokens` expirados e não utilizados |
+| `health-survey-response-reminder` | A cada hora | Envia lembrete de pesquisa para colaboradores que ainda não responderam e estão na janela de halfway |
 | `action-plan-suggestion-generator` | Diário (06:00) | Gera sugestões de planos de ação com base em métricas de cada tenant |
 | `organization-deletion-executor` | Diário (03:30) | Exclui permanentemente organizações com `deletionScheduledAt <= now()` |
 
@@ -3465,11 +3479,35 @@ Super Admin publica nova versão do TCLE (is_current = true)
 
 > Não existe job `consent-renotifier`. O re-consentimento acontece naturalmente no próximo acesso ao link da pesquisa, sem envio ativo de mensagens adicionais.
 
-### 20.8 Reenvio para não-respondentes
+### 20.8 Lembrete para não-respondentes
 
-> **Funcionalidade não implementada.** O fluxo de reenvio automático para não-respondentes está planejado mas ainda não foi desenvolvido. Não existe `resendToNonRespondents` no service nem o tipo `'survey_resend'` no `MessageLogType` da aplicação atual.
+O job `health-survey-response-reminder` (a cada hora) envia um lembrete automático para colaboradores que **ainda não responderam** e cujo token está na janela de halfway.
 
-O canal disponível hoje para atingir não-respondentes é o **link assinado** (seção 20.9) — o RH pode redistribuir o link manualmente pelo canal de sua preferência.
+```
+Job health-survey-response-reminder (a cada hora)
+  └─ findAllTenantsTokensEligibleForReminderCheck()
+       Filtra no banco: usedAt IS NULL, expiresAt > now, reminderSentAt IS NULL,
+         shortCode IS NOT NULL, dispatch.status = 'available',
+         org.billingStatus IN ('active', 'trialing')
+  └─ Filtro de timing (JS-side):
+       now >= expiresAt - tokenExpiryHours/2 * 3600000  (janela de halfway)
+       now < expiresAt
+  └─ Filtro de jornada (JS-side, apenas quando respectEmployeeSchedule = true):
+       getDayOfWeekInTimezone(orgTimezone) IN workDays
+       isAtWorkStartWindow(orgTimezone, workStartTime)
+  └─ Agrupa por tenantId
+  └─ Por tenant: hasTenantPlanFeature(tenantId, "messaging")
+       SEM feature → pular
+       COM feature:
+         markHealthSurveyTokensReminderSent(tokenIds)  ← ANTES do enqueue (idempotência)
+         messageQueue.addBulk([{ name: "send-message", data: { type: "health_survey_reminder", ... } }])
+```
+
+**Idempotência:** `reminderSentAt` é marcado **antes** de enfileirar as mensagens. Se o worker reiniciar após o mark mas antes do addBulk, o lembrete não é reenviado. Preferimos perder um lembrete a duplicar o envio.
+
+**Timing:** o lembrete é enviado a partir do ponto médio da validade do token (`tokenExpiryHours / 2` antes do vencimento). Para um token de 48h, o lembrete é enviado entre 24h após o disparo e a expiração.
+
+**Módulo:** `src/modules/health-surveys/health-survey-reminder.service.ts` → `runHealthSurveyResponseReminder()`
 
 ### 20.9 Acesso via Link Assinado (sem mensagem)
 
@@ -3643,10 +3681,12 @@ SMSBARATO_API_KEY=...                       # chave de integração fornecida pe
 SMSBARATO_BASE_URL=https://sistema81.smsbarato.com.br/send  # SMS — endpoint da API (opcional — tem default)
 SMSBARATO_WA_BASE_URL=https://sistema81.smsbarato.com.br/sendwa  # WhatsApp — endpoint (opcional — tem default)
 SMSBARATO_WA_TEMPLATE=pulse_survey          # nome do template pré-aprovado no painel SMS Barato (opcional)
+SMSBARATO_WA_REMINDER_TEMPLATE=pulse_survey_reminder  # nome do template de lembrete WA (opcional)
 
 # Mensagem de pesquisa de saúde (template com {nome} e {link}) — usado pelo SmsBaratoAdapter (SMS)
-# Para smsbarato-wa, o template é definido no painel SMS Barato (SMSBARATO_WA_TEMPLATE)
+# Para smsbarato-wa, o template é definido no painel SMS Barato (SMSBARATO_WA_TEMPLATE / SMSBARATO_WA_REMINDER_TEMPLATE)
 SURVEY_MESSAGE_TEMPLATE="Oi {nome}! Tem 1 minutinho? Sua pesquisa de bem-estar está aqui: {link}"
+SURVEY_REMINDER_MESSAGE_TEMPLATE="Oi {nome}! Só passando para lembrar que seu link ainda está aberto: {link}"
 
 # Storage
 STORAGE_PROVIDER=s3                       # "s3" | "console" (default: "console")
