@@ -116,7 +116,7 @@ export function JobLogsTable({ rows, total, orgMap }: Props): React.ReactElement
                 {expandedId === row.id && (
                   <tr style={{ borderBottom: "1px solid var(--border)" }}>
                     <td colSpan={7} className="bg-muted/20 px-4 py-3 space-y-3">
-                      <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-muted-foreground">
                         <div>
                           <span className="font-semibold text-foreground">Job ID:</span>{" "}
                           <span className="font-mono">{row.jobId}</span>

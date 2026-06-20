@@ -129,6 +129,7 @@ describe("optOutFromHealthSurveyToken — opt-out via health survey link", () =>
     expiresAt: new Date(),
     workStartTime: "09:00",
     workEndTime: "18:00",
+    reminderSentAt: null,
     createdAt: new Date(),
   }
 

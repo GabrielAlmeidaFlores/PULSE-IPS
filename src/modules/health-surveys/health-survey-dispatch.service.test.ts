@@ -88,7 +88,7 @@ function makePendingDispatch(workDays = [1, 2, 3, 4, 5], tokenExpiryHours = 48):
   return {
     id: DISPATCH_ID,
     tenantId: TENANT_ID,
-    organization: { timezone: "America/Sao_Paulo", slug: "test-org" },
+    organization: { timezone: "America/Sao_Paulo", slug: "test-org", name: "Test Org" },
     healthSurveyConfiguration: {
       id: "config-1",
       dispatchTime: "12:00",
@@ -111,7 +111,7 @@ function makeAutoDispatchConfig(overrides?: Partial<ActiveHealthSurveyConfigForD
     lastDispatchedAt: null,
     respectEmployeeSchedule: false,
     tokenExpiryHours: 48,
-    organization: { timezone: "America/Sao_Paulo", slug: "test-org" },
+    organization: { timezone: "America/Sao_Paulo", slug: "test-org", name: "Test Org" },
     departments: [{ ...AUTO_DISPATCH_DEPT }],
     questions: [],
     ...overrides,
@@ -664,8 +664,8 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
     expect(mockCreateHealthSurveyTokens).not.toHaveBeenCalled()
     expect(mockMarkDispatchDispatched).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID)
     expect(mockAddBulk).toHaveBeenCalledOnce()
-    const [jobs] = mockAddBulk.mock.calls[0] as [{ data: { messageText: string } }[]]
-    expect(jobs[0]?.data.messageText).toContain(PREEXISTING_TOKEN)
+    const [jobs] = mockAddBulk.mock.calls[0] as [{ data: { surveyLink: string } }[]]
+    expect(jobs[0]?.data.surveyLink).toContain(PREEXISTING_TOKEN)
 
     vi.useRealTimers()
   })
@@ -684,8 +684,8 @@ describe("runHealthSurveyDispatcher — consent-based adherence and messaging fi
     expect(mockCreateHealthSurveyTokens).toHaveBeenCalledOnce()
     expect(mockMarkDispatchDispatched).toHaveBeenCalledWith(TENANT_ID, DISPATCH_ID)
     expect(mockAddBulk).toHaveBeenCalledOnce()
-    const [jobs] = mockAddBulk.mock.calls[0] as [{ data: { messageText: string } }[]]
-    expect(jobs[0]?.data.messageText).not.toContain("expired-old-token")
+    const [jobs] = mockAddBulk.mock.calls[0] as [{ data: { surveyLink: string } }[]]
+    expect(jobs[0]?.data.surveyLink).not.toContain("expired-old-token")
 
     vi.useRealTimers()
   })

@@ -114,6 +114,7 @@ export interface CreateHealthSurveyResponseInput {
 }
 
 export interface CreateHealthSurveyTokenInput {
+  id: string
   tenantId: string
   dispatchId: string
   employeeId: string
@@ -122,6 +123,7 @@ export interface CreateHealthSurveyTokenInput {
   expiresAt: Date
   workStartTime: string
   workEndTime: string
+  workDays?: number[]
 }
 
 export interface CreateHealthSurveyAdherenceAlertInput {

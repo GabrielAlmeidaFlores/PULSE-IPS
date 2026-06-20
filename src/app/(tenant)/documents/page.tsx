@@ -39,7 +39,7 @@ export default async function DocumentsPage({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="border-b border-border bg-card px-6 py-4 flex items-center justify-between shrink-0">
+      <div className="border-b border-border bg-card px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
         <div>
           <div className="flex items-center gap-1.5">
             <h1 className="text-sm font-bold uppercase tracking-widest">Documentos</h1>
@@ -66,9 +66,11 @@ export default async function DocumentsPage({
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">{total} documentos</p>
         </div>
-        <AddDocumentForm />
+        <div className="w-full sm:w-auto">
+          <AddDocumentForm />
+        </div>
       </div>
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
         <FilterBar
           fields={[{ type: "text", key: "q", label: "Buscar", placeholder: "Título do documento...", width: "w-[240px]" }]}
           values={{ q: params["q"] }}

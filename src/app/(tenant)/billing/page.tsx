@@ -81,7 +81,7 @@ export default async function BillingPage(): Promise<React.ReactElement> {
         </div>
         <p className="text-xs text-muted-foreground mt-0.5">Gerenciamento de plano e faturamento</p>
       </div>
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
 
         {isInTrial && org?.trialExpiresAt !== undefined && org.trialExpiresAt !== null && (
           <div className="border border-status-info-border bg-status-info-subtle flex items-start gap-3 px-4 py-3">
@@ -110,30 +110,30 @@ export default async function BillingPage(): Promise<React.ReactElement> {
                   </span>
                 )},
                 { label: "Valor", value: `${(subscription.snapshotPriceInCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} / ${subscription.snapshotInterval}` },
-                { label: "Max. colaboradores", value: subscription.snapshotMaxEmployees },
-                { label: "Período atual", value: `${format(subscription.currentPeriodStart, "dd/MM/yyyy")  } até ${  format(subscription.currentPeriodEnd, "dd/MM/yyyy")}` },
+                { label: "Máx. colaboradores", value: subscription.snapshotMaxEmployees ?? "Ilimitado" },
+                { label: "Período atual", value: `${format(subscription.currentPeriodStart, "dd/MM/yyyy")} até ${format(subscription.currentPeriodEnd, "dd/MM/yyyy")}` },
               ].map((row) => (
-                <div key={row.label} className="flex items-center justify-between px-4 py-2.5">
+                <div key={row.label} className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-4 py-2.5 gap-0.5">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{row.label}</span>
                   <span className="text-sm font-medium">{row.value}</span>
                 </div>
               ))}
-              <div className="flex items-center justify-between px-4 py-2.5">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Funcionalidades</span>
-                <div className="flex items-center gap-3">
-                  {ALL_PLAN_FEATURES.map((feature) => {
-                    const enabled = activeFeatures.includes(feature)
-                    return (
-                      <span key={feature} className={`flex items-center gap-1 text-[11px] ${enabled ? "text-foreground" : "text-muted-foreground/50 line-through"}`}>
-                        {enabled && <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />}
-                        {PLAN_FEATURE_LABELS[feature]}
-                      </span>
-                    )
-                  })}
-                </div>
+            </div>
+            <div className="px-4 py-3 border-t border-border">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2.5">Funcionalidades incluídas</p>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                {ALL_PLAN_FEATURES.map((feature) => {
+                  const enabled = activeFeatures.includes(feature)
+                  return (
+                    <span key={feature} className={`flex items-center gap-1.5 text-[11px] ${enabled ? "text-foreground" : "text-muted-foreground/40 line-through"}`}>
+                      <CheckCircle2 className={`w-3 h-3 shrink-0 ${enabled ? "text-primary" : "text-muted-foreground/30"}`} />
+                      {PLAN_FEATURE_LABELS[feature]}
+                    </span>
+                  )
+                })}
               </div>
             </div>
-            <div className="px-4 py-3">
+            <div className="px-4 py-3 border-t border-border">
               <ManageSubscriptionButton />
             </div>
           </div>

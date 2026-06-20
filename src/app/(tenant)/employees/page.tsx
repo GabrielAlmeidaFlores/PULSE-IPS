@@ -40,7 +40,7 @@ export default async function EmployeesPage({ searchParams }: Props): Promise<Re
 
   return (
     <div className="flex flex-col h-full">
-      <div className="border-b border-border bg-card px-6 py-4 flex items-center justify-between shrink-0">
+      <div className="border-b border-border bg-card px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
         <div>
           <div className="flex items-center gap-1.5">
             <h1 className="text-sm font-bold uppercase tracking-widest">Funcionários</h1>
@@ -71,16 +71,16 @@ export default async function EmployeesPage({ searchParams }: Props): Promise<Re
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">{total} colaboradores</p>
         </div>
-        <div className="flex gap-0">
-          <Link href="/employees/import" className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+        <div className="flex gap-0 w-full sm:w-auto">
+          <Link href="/employees/import" className="flex-1 sm:flex-none px-4 py-2 text-[11px] font-bold uppercase tracking-wider border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-center">
             Importar
           </Link>
-          <Link href="/employees/new" className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90 transition-colors border border-primary">
+          <Link href="/employees/new" className="flex-1 sm:flex-none px-4 py-2 text-[11px] font-bold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90 transition-colors border border-primary text-center">
             Adicionar
           </Link>
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
         <EmployeeListFilters
           filters={{ ...(q !== undefined && { q }), ...(departmentId !== undefined && { departmentId }), ...(statusFilter !== undefined && { status: statusFilter }), ...(consentFilter !== undefined && { consent: consentFilter }) }}
           departments={departments.map((d) => ({ id: d.id, name: d.name }))}

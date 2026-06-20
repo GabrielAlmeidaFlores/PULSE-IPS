@@ -28,7 +28,7 @@ export default async function PlanFeaturesPage({ params }: PlanFeaturesPageProps
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6">
         <PlanFeaturesForm planId={plan.id} currentFeatures={plan.features} />
       </div>
     </div>

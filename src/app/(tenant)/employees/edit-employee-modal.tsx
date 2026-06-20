@@ -288,7 +288,7 @@ export function EditEmployeeModal({
                       })}
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className="text-[10px] font-bold uppercase tracking-widest">
                         Início

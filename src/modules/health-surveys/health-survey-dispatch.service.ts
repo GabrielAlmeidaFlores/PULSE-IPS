@@ -4,6 +4,7 @@ import { formatInTimeZone, fromZonedTime, toZonedTime } from "date-fns-tz"
 import { getMessageQueue } from "@/libs/queue"
 import { env } from "@/env"
 import { createLogger } from "@/libs/utils/logger"
+import { getDayOfWeekInTimezone } from "@/libs/utils/date"
 import {
   findAllTenantsPendingHealthSurveyDispatches,
   findAllTenantsActiveHealthSurveyConfigsForAutoDispatch,
@@ -48,10 +49,6 @@ interface EmployeeDispatchScheduleEntry {
   delayMs: number
 }
 
-function buildMessageFromTemplate(template: string, employeeName: string, surveyUrl: string): string {
-  return template.replace("{nome}", employeeName).replace("{link}", surveyUrl)
-}
-
 function generateHealthSurveyTokenShortCode(): string {
   return randomInt(1000000, 10000000).toString()
 }
@@ -59,10 +56,6 @@ function generateHealthSurveyTokenShortCode(): string {
 function getDayOfWeekForDate(date: Date, timezone: string): number {
   const dayName = new Intl.DateTimeFormat("en-US", { timeZone: timezone, weekday: "short" }).format(date)
   return DAY_OF_WEEK_MAP[dayName] ?? 0
-}
-
-function getDayOfWeekInTimezone(timezone: string): number {
-  return getDayOfWeekForDate(new Date(), timezone)
 }
 
 function getDayOfMonthInTimezone(timezone: string): number {
@@ -168,6 +161,7 @@ async function sendDispatchTokensAndMessagesForDepartment(
   dispatchId: string,
   tenantId: string,
   orgSlug: string,
+  orgName: string,
   departmentId: string,
   eligibleEmployees: HealthSurveyDispatchEmployee[],
   department: { workStartTime: string; workEndTime: string; workDays: number[] },
@@ -208,7 +202,9 @@ async function sendDispatchTokensAndMessagesForDepartment(
     .map((emp) => {
       const schedule = scheduleMap.get(emp.id)
       const expiresAt = schedule !== undefined ? schedule.expiresAt : addHours(now, tokenExpiryHours)
+      const effectiveWorkDays = emp.workDays.length > 0 ? emp.workDays : department.workDays
       return {
+        id: randomUUID(),
         tenantId,
         dispatchId,
         employeeId: emp.id,
@@ -217,6 +213,7 @@ async function sendDispatchTokensAndMessagesForDepartment(
         expiresAt,
         workStartTime: emp.workStartTime ?? department.workStartTime,
         workEndTime: emp.workEndTime ?? department.workEndTime,
+        workDays: effectiveWorkDays,
       }
     })
 
@@ -241,13 +238,13 @@ async function sendDispatchTokensAndMessagesForDepartment(
           name: "send-message" as const,
           data: {
             recipientPhone: emp.phone,
-            messageText: buildMessageFromTemplate(env.SURVEY_MESSAGE_TEMPLATE, emp.name, healthSurveyUrl),
             recipientName: emp.name,
+            orgName,
             surveyLink: healthSurveyUrl,
             tenantId,
             employeeId: emp.id,
             provider: env.MESSAGING_PROVIDER,
-            type: "survey_dispatch" as const,
+            type: "health_survey_dispatch" as const,
           },
           ...(delayMs > 0 ? { opts: { delay: delayMs } } : {}),
         }
@@ -267,6 +264,7 @@ async function fireDispatch(
   configId: string,
   tenantId: string,
   orgSlug: string,
+  orgName: string,
   departments: HealthSurveyDispatchDepartment[],
   timezone: string,
   respectEmployeeSchedule: boolean,
@@ -298,6 +296,7 @@ async function fireDispatch(
       dispatch.id,
       tenantId,
       orgSlug,
+      orgName,
       dept.id,
       dept.employees,
       dept,
@@ -322,6 +321,7 @@ export async function runHealthSurveyDispatcher(): Promise<{ dispatched: number;
     const config = dispatch.healthSurveyConfiguration
     const timezone = dispatch.organization.timezone
     const orgSlug = dispatch.organization.slug
+    const orgName = dispatch.organization.name
     const respectEmployeeSchedule = config.respectEmployeeSchedule
     const tokenExpiryHours = config.tokenExpiryHours
 
@@ -355,6 +355,7 @@ export async function runHealthSurveyDispatcher(): Promise<{ dispatched: number;
             dispatch.id,
             dispatch.tenantId,
             orgSlug,
+            orgName,
             dept.id,
             eligibleEmployees,
             { workStartTime: dept.workStartTime, workEndTime: dept.workEndTime, workDays: deptWorkDays },
@@ -402,6 +403,7 @@ export async function runHealthSurveyAutoDispatchScheduler(): Promise<{ triggere
         config.id,
         config.tenantId,
         config.organization.slug,
+        config.organization.name,
         config.departments,
         timezone,
         config.respectEmployeeSchedule,

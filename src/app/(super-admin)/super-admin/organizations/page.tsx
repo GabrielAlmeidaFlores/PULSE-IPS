@@ -68,7 +68,7 @@ export default async function OrganizationsPage({
   return (
     <div className="flex flex-col h-full">
       <div className="px-6 py-3 border-b border-border bg-card shrink-0">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h1 className="text-[13px] font-black tracking-[0.2em] uppercase text-foreground">Organizações</h1>
             <p className="text-[11px] text-muted-foreground">
@@ -77,7 +77,7 @@ export default async function OrganizationsPage({
           </div>
           <Link
             href="/super-admin/organizations/new"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-[10px] font-black tracking-widest uppercase hover:bg-primary/90 transition-colors"
+            className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-[10px] font-black tracking-widest uppercase hover:bg-primary/90 transition-colors w-full sm:w-auto"
             style={{ borderRadius: 0 }}
           >
             <Plus className="h-3.5 w-3.5" />
@@ -86,7 +86,7 @@ export default async function OrganizationsPage({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
         <FilterBar
           fields={[{ type: "text", key: "q", label: "Buscar", placeholder: "Nome da organização...", width: "w-[240px]" }]}
           values={{ q: params["q"] }}
@@ -118,7 +118,11 @@ export default async function OrganizationsPage({
                   key={org.id}
                   className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors group"
                 >
-                  <td className="px-4 py-3 font-semibold text-foreground truncate max-w-[180px]">{org.name}</td>
+                  <td className="px-4 py-3 font-semibold text-foreground truncate max-w-[180px]">
+                    <Link href={`/super-admin/organizations/${org.id}`} className="hover:text-primary transition-colors">
+                      {org.name}
+                    </Link>
+                  </td>
                   <td className="px-4 py-3 font-mono text-muted-foreground hidden sm:table-cell">{org.slug}</td>
                   <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">{org.plan?.name ?? "—"}</td>
                   <td className="px-4 py-3 text-center">

@@ -73,7 +73,7 @@ export default async function SuperAdminDashboardPage(): Promise<React.ReactElem
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-card shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 md:px-6 py-3 border-b border-border bg-card shrink-0">
         <div>
           <h1 className="text-[13px] font-black tracking-[0.2em] uppercase text-foreground">
             Platform Dashboard
@@ -82,28 +82,28 @@ export default async function SuperAdminDashboardPage(): Promise<React.ReactElem
             Visão operacional em tempo real
           </p>
         </div>
-        <div className="flex items-center gap-0">
+        <div className="flex items-center gap-0 shrink-0">
           <Link
             href="/super-admin/organizations"
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-[11px] font-bold tracking-widest uppercase border border-primary hover:bg-primary/90 transition-colors"
+            className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-primary text-primary-foreground text-[11px] font-bold tracking-widest uppercase border border-primary hover:bg-primary/90 transition-colors"
             style={{ borderRadius: 0 }}
           >
-            <Building2 className="h-3.5 w-3.5" />
-            Organizações
+            <Building2 className="h-3.5 w-3.5 shrink-0" />
+            <span className="hidden sm:inline">Organizações</span>
           </Link>
           <Link
             href="/super-admin/plans"
-            className="flex items-center gap-2 px-4 py-2 bg-card text-foreground text-[11px] font-bold tracking-widest uppercase border border-border hover:bg-muted transition-colors"
+            className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-card text-foreground text-[11px] font-bold tracking-widest uppercase border border-border hover:bg-muted transition-colors"
             style={{ borderRadius: 0 }}
           >
-            <BarChart2 className="h-3.5 w-3.5" />
-            Planos
+            <BarChart2 className="h-3.5 w-3.5 shrink-0" />
+            <span className="hidden sm:inline">Planos</span>
           </Link>
           <ExportButton />
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
         <div>
           <SectionLabel>Métricas Principais</SectionLabel>
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-px bg-border">
@@ -157,6 +157,7 @@ export default async function SuperAdminDashboardPage(): Promise<React.ReactElem
           <div className="xl:col-span-8">
             <SectionLabel>Organizações — Últimas 10</SectionLabel>
             <div className="border border-border bg-card">
+              <div className="overflow-x-auto">
               <table className="w-full text-[12px]">
                 <thead>
                   <tr className="border-b border-border bg-muted">
@@ -223,6 +224,7 @@ export default async function SuperAdminDashboardPage(): Promise<React.ReactElem
                   ))}
                 </tbody>
               </table>
+              </div>
               <div className="border-t border-border px-4 py-2 flex items-center justify-between">
                 <span className="text-[10px] text-muted-foreground">
                   Exibindo as 10 mais recentes de {m.totalOrganizations} total

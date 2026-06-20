@@ -61,6 +61,7 @@ export default defineConfig({
         "src/modules/departments/department.service.ts",
         "src/modules/auth/invite.service.ts",
         "src/modules/action-plans/action-plan-suggestion.service.ts",
+        "src/modules/health-surveys/health-survey-reminder.service.ts",
         "src/modules/documents/document.service.ts",
         "src/modules/pgr/pgr.service.ts",
         "src/modules/dashboard/dashboard.service.ts",

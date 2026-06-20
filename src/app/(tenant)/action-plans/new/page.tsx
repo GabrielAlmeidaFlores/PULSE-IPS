@@ -16,7 +16,7 @@ export default async function NewActionPlanPage(): Promise<React.ReactElement> {
         <h1 className="text-sm font-bold uppercase tracking-widest">Novo Plano de Ação</h1>
         <p className="text-xs text-muted-foreground mt-0.5">Preencha os dados abaixo para criar um plano</p>
       </div>
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6">
         <CreateActionPlanForm />
       </div>
     </div>

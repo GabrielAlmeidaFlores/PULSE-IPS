@@ -223,6 +223,7 @@ export function PlanPricingManager({ planId, prices }: Props): React.ReactElemen
         </div>
       )}
       <div className="border border-border bg-card">
+        <div className="overflow-x-auto">
         <table className="w-full text-[12px]">
           <thead>
             <tr className="border-b border-border bg-muted">
@@ -246,6 +247,7 @@ export function PlanPricingManager({ planId, prices }: Props): React.ReactElemen
             ))}
           </tbody>
         </table>
+        </div>
       </div>
       <AddPriceForm planId={planId} />
     </div>

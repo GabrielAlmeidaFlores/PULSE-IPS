@@ -183,7 +183,7 @@ function LiveJobsTable({ jobs }: { jobs: LiveJobSummary[] }): React.ReactElement
                   {isExpanded && (
                     <tr style={{ borderBottom: "1px solid var(--border)" }}>
                       <td colSpan={6} className="bg-muted/20 px-4 py-3 space-y-3">
-                        <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-muted-foreground">
                           <div>
                             <span className="font-semibold text-foreground">Job ID:</span>{" "}
                             <span className="font-mono">{job.id}</span>

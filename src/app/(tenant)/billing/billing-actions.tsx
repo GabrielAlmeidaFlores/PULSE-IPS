@@ -36,7 +36,7 @@ export function PlanCard({ externalPriceId, planName, priceLabel, maxEmployees, 
       <button
         disabled
         style={{ borderRadius: 0 }}
-        className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest border border-primary/30 bg-primary/10 text-primary cursor-default"
+        className="w-full px-3 py-2 text-[11px] font-bold uppercase tracking-widest border border-primary/30 bg-primary/10 text-primary cursor-default text-center"
       >
         Plano atual
       </button>
@@ -48,7 +48,7 @@ export function PlanCard({ externalPriceId, planName, priceLabel, maxEmployees, 
         target="_blank"
         rel="noopener noreferrer"
         style={{ borderRadius: 0 }}
-        className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        className="block w-full px-3 py-2 text-[11px] font-bold uppercase tracking-widest border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-center"
       >
         Falar com consultor
       </a>
@@ -59,7 +59,7 @@ export function PlanCard({ externalPriceId, planName, priceLabel, maxEmployees, 
         onClick={handleCheckout}
         disabled={pending}
         style={{ borderRadius: 0 }}
-        className={`px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest border border-primary bg-primary text-primary-foreground hover:opacity-90${pending ? " opacity-40 cursor-not-allowed" : ""}`}
+        className={`w-full px-3 py-2 text-[11px] font-bold uppercase tracking-widest border border-primary bg-primary text-primary-foreground hover:opacity-90 text-center${pending ? " opacity-40 cursor-not-allowed" : ""}`}
       >
         {pending ? "Aguarde..." : "Assinar"}
       </button>
@@ -74,10 +74,7 @@ export function PlanCard({ externalPriceId, planName, priceLabel, maxEmployees, 
           {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
           {maxEmployees !== null && <p className="text-xs text-muted-foreground mt-0.5">Até {maxEmployees} colaboradores</p>}
         </div>
-        <div className="flex flex-col items-end gap-2 shrink-0">
-          {hasPrice && <span className="text-sm font-semibold text-foreground">{priceLabel}</span>}
-          {actionElement}
-        </div>
+        {hasPrice && <span className="text-sm font-semibold text-foreground shrink-0">{priceLabel}</span>}
       </div>
 
       <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1 border-t border-border">
@@ -102,6 +99,10 @@ export function PlanCard({ externalPriceId, planName, priceLabel, maxEmployees, 
           )
         })}
       </div>
+
+      <div className="pt-1">
+        {actionElement}
+      </div>
     </div>
   )
 }
@@ -121,7 +122,7 @@ export function ManageSubscriptionButton(): React.ReactElement {
       onClick={handlePortal}
       disabled={pending}
       style={{ borderRadius: 0 }}
-      className={`px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest border border-border text-muted-foreground hover:text-foreground hover:bg-muted ${  pending ? "opacity-40 cursor-not-allowed" : ""}`}
+      className={`w-full sm:w-auto px-3 py-2 text-[11px] font-bold uppercase tracking-widest border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors${pending ? " opacity-40 cursor-not-allowed" : ""}`}
     >
       {pending ? "Redirecionando..." : "Gerenciar assinatura"}
     </button>

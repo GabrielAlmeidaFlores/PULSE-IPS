@@ -154,7 +154,7 @@ export function LogsTable({ data }: Props): React.ReactElement {
                   {isExpanded && (
                     <tr style={{ borderBottom: "1px solid var(--border)" }}>
                       <td colSpan={7} className="bg-muted/20 px-4 py-3 space-y-3">
-                        <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
                           <div>
                             <span className="font-semibold text-foreground">ID:</span>{" "}
                             <span className="font-mono text-muted-foreground">{row.id}</span>

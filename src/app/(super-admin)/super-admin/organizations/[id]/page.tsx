@@ -175,14 +175,14 @@ function TopStat({
     neutral: "text-foreground",
   }[color];
   return (
-    <Card className="p-5">
+    <Card className="p-3 sm:p-5">
       <div className="flex items-start gap-3">
         <div className={`mt-0.5 ${iconCls}`}>{icon}</div>
         <div>
           <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground mb-1">
             {label}
           </p>
-          <p className={`text-3xl font-black leading-none ${valCls}`}>
+          <p className={`text-2xl sm:text-3xl font-black leading-none ${valCls}`}>
             {value}
           </p>
           {note !== undefined && (
@@ -281,32 +281,33 @@ export default async function OrganizationDetailPage({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-4 px-6 py-3.5 border-b border-border bg-card shrink-0">
+      <div className="flex flex-col gap-1.5 px-4 md:px-6 py-3.5 border-b border-border bg-card shrink-0">
         <Link
           href="/super-admin/organizations"
-          className="flex items-center gap-1.5 text-[10px] font-bold tracking-widest uppercase text-muted-foreground hover:text-foreground transition-colors"
+          className="flex items-center gap-1.5 text-[10px] font-bold tracking-widest uppercase text-muted-foreground hover:text-foreground transition-colors w-fit"
         >
-          <ArrowLeft className="h-3.5 w-3.5" />
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
           Organizações
         </Link>
-        <div className="h-4 w-px bg-border" />
-        <div className="flex-1 min-w-0">
-          <h1 className="text-[14px] font-black tracking-widest uppercase text-foreground truncate">
-            {org.name}
-          </h1>
-          <p className="text-[11px] font-mono text-muted-foreground">
-            {org.slug}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <StatusBadge
-            label={BILLING_LABELS[effectiveBillingStatus] ?? effectiveBillingStatus}
-            color={billingStatusColor(effectiveBillingStatus)}
-          />
-          <StatusBadge
-            label={org.isActive ? "Ativa" : "Inativa"}
-            color={org.isActive ? "green" : "muted"}
-          />
+        <div className="flex items-center justify-between gap-3 min-w-0">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-[14px] font-black tracking-widest uppercase text-foreground truncate">
+              {org.name}
+            </h1>
+            <p className="text-[11px] font-mono text-muted-foreground">
+              {org.slug}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <StatusBadge
+              label={BILLING_LABELS[effectiveBillingStatus] ?? effectiveBillingStatus}
+              color={billingStatusColor(effectiveBillingStatus)}
+            />
+            <StatusBadge
+              label={org.isActive ? "Ativa" : "Inativa"}
+              color={org.isActive ? "green" : "muted"}
+            />
+          </div>
         </div>
       </div>
 
@@ -317,8 +318,8 @@ export default async function OrganizationDetailPage({
             deletionScheduledAt={org.deletionScheduledAt}
           />
         )}
-        <div className="p-6 space-y-6 max-w-5xl mx-auto">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-4 md:p-6 space-y-6 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <TopStat
               icon={<Users className="h-5 w-5" />}
               label="Colaboradores ativos"
@@ -359,7 +360,7 @@ export default async function OrganizationDetailPage({
                   icon={<Building2 className="h-4 w-4" />}
                   title="Dados da organização"
                 />
-                <div className="px-5 py-4 grid grid-cols-2 gap-x-8 gap-y-3">
+                <div className="px-5 py-4 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-0.5">
                       Nome
@@ -433,7 +434,7 @@ export default async function OrganizationDetailPage({
                   icon={<Activity className="h-4 w-4" />}
                   title="Resumo de atividade"
                 />
-                <div className="px-5 py-4 grid grid-cols-3 gap-4">
+                <div className="px-5 py-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="text-center py-2">
                     <p className="text-2xl font-black text-status-success">
                       {org.dispatchCount}

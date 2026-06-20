@@ -46,22 +46,25 @@ interface Props {
 
 type TermsType = "platform" | "tcle" | "privacy"
 
-const TABS: { id: TermsType; label: string; icon: React.ReactElement; description: string }[] = [
+const TABS: { id: TermsType; label: string; shortLabel: string; icon: React.ReactElement; description: string }[] = [
   {
     id: "platform",
     label: "Termos da Plataforma",
+    shortLabel: "Termos",
     icon: <FileText className="h-4 w-4" />,
     description: "Aceitos pelos admins e gestores de RH ao acessar o Pulse",
   },
   {
     id: "tcle",
     label: "TCLE dos Colaboradores",
+    shortLabel: "TCLE",
     icon: <Shield className="h-4 w-4" />,
     description: "Aceitos pelos colaboradores antes de responder pesquisas",
   },
   {
     id: "privacy",
     label: "Política de Privacidade",
+    shortLabel: "Privacidade",
     icon: <Lock className="h-4 w-4" />,
     description: "Exibida publicamente na plataforma",
   },
@@ -85,7 +88,7 @@ export function TermsHub({
         <p className="text-[11px] text-muted-foreground">Gerencie os termos da plataforma, o TCLE dos colaboradores e a política de privacidade</p>
       </div>
 
-      <div className="flex border-b border-border bg-card shrink-0">
+      <div className="flex border-b border-border bg-card shrink-0 overflow-x-auto">
         {TABS.map((tab) => {
           const isActive = activeTab === tab.id
           return (
@@ -93,7 +96,7 @@ export function TermsHub({
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2.5 px-6 py-3.5 text-[11px] font-bold tracking-widest uppercase transition-colors border-b-2 ${
+              className={`flex items-center gap-2 shrink-0 px-4 sm:px-6 py-3.5 text-[11px] font-bold tracking-widest uppercase transition-colors border-b-2 ${
                 isActive
                   ? "border-b-primary text-primary bg-primary/5"
                   : "border-b-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50"
@@ -101,7 +104,8 @@ export function TermsHub({
               style={{ borderRadius: 0 }}
             >
               {tab.icon}
-              {tab.label}
+              <span className="sm:hidden">{tab.shortLabel}</span>
+              <span className="hidden sm:inline">{tab.label}</span>
               {tab.id === "platform" && activePlatform && (
                 <span className="text-[9px] font-bold bg-status-success-subtle text-status-success border border-status-success-border px-1.5 py-0.5 tracking-wider">
                   v{activePlatform.version}
@@ -122,7 +126,7 @@ export function TermsHub({
         })}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6">
         {activeTab === "platform" && (
           <>
             <div className="flex items-start gap-2 p-3 mb-6 bg-status-warning-subtle border border-status-warning-border" style={{ borderRadius: 0 }}>

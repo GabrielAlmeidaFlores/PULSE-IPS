@@ -448,7 +448,7 @@ export function findAllTenantsPendingHealthSurveyDispatches(): Promise<
         }
       }[]
     }
-    organization: { timezone: string; billingStatus: string; slug: string }
+    organization: { timezone: string; billingStatus: string; slug: string; name: string }
   })[]
 > {
   return prisma.healthSurveyDispatch.findMany({
@@ -474,7 +474,7 @@ export function findAllTenantsPendingHealthSurveyDispatches(): Promise<
           },
         },
       },
-      organization: { select: { timezone: true, billingStatus: true, slug: true } },
+      organization: { select: { timezone: true, billingStatus: true, slug: true, name: true } },
     },
   })
 }
@@ -638,7 +638,17 @@ export async function createHealthSurveyResponseWithItems(data: CreateHealthSurv
 }
 
 export async function createHealthSurveyTokens(tokens: CreateHealthSurveyTokenInput[]): Promise<void> {
-  await prisma.healthSurveyResponseToken.createMany({ data: tokens })
+  if (tokens.length === 0) return
+  const tokenRows = tokens.map(({ workDays: _wd, ...rest }) => rest)
+  const workDayRows = tokens.flatMap((t) =>
+    (t.workDays ?? []).map((day) => ({ tokenId: t.id, dayOfWeek: day })),
+  )
+  await prisma.$transaction([
+    prisma.healthSurveyResponseToken.createMany({ data: tokenRows }),
+    ...(workDayRows.length > 0
+      ? [prisma.healthSurveyResponseTokenWorkDay.createMany({ data: workDayRows })]
+      : []),
+  ])
 }
 
 export async function refreshHealthSurveyTokenWorkHours(
@@ -697,7 +707,7 @@ export interface ActiveHealthSurveyConfigForDispatch {
   workDays: number[]
   respectEmployeeSchedule: boolean
   tokenExpiryHours: number
-  organization: { timezone: string; slug: string }
+  organization: { timezone: string; slug: string; name: string }
   departments: HealthSurveyDispatchDepartment[]
   questions: HealthSurveyQuestion[]
   lastDispatchedAt: Date | null
@@ -709,7 +719,7 @@ export async function findAllTenantsActiveHealthSurveyConfigsForAutoDispatch(): 
   const configs = await prisma.healthSurveyConfiguration.findMany({
     where: { isActive: true },
     include: {
-      organization: { select: { timezone: true, billingStatus: true, slug: true } },
+      organization: { select: { timezone: true, billingStatus: true, slug: true, name: true } },
       questions: { orderBy: { order: "asc" } },
       workDays: true,
       configDepartments: {
@@ -742,7 +752,7 @@ export async function findAllTenantsActiveHealthSurveyConfigsForAutoDispatch(): 
       scheduledDayOfMonth: c.scheduledDayOfMonth,
       dispatchTime: c.dispatchTime,
       workDays: c.workDays.map((w) => w.dayOfWeek),
-      organization: { timezone: c.organization.timezone, slug: c.organization.slug },
+      organization: { timezone: c.organization.timezone, slug: c.organization.slug, name: c.organization.name },
       departments: c.configDepartments.map((cd) => ({
         id: cd.department.id,
         workStartTime: cd.department.workStartTime,
@@ -825,5 +835,87 @@ export async function markHealthSurveyDispatchAdherenceChecked(tenantId: string,
   await prisma.healthSurveyDispatch.updateMany({
     where: { id: dispatchId, tenantId },
     data: { adherenceCheckedAt: new Date() },
+  })
+}
+
+export interface ReminderEligibleToken {
+  id: string
+  tenantId: string
+  employeeId: string
+  expiresAt: Date
+  shortCode: string
+  workStartTime: string
+  workEndTime: string
+  workDays: number[]
+  tokenExpiryHours: number
+  respectEmployeeSchedule: boolean
+  orgTimezone: string
+  orgSlug: string
+  orgName: string
+  employeeName: string
+  employeePhone: string
+}
+
+export async function findAllTenantsTokensEligibleForReminderCheck(): Promise<ReminderEligibleToken[]> {
+  const now = new Date()
+  const rows = await prisma.healthSurveyResponseToken.findMany({
+    where: {
+      usedAt: null,
+      expiresAt: { gt: now },
+      reminderSentAt: null,
+      shortCode: { not: null },
+      dispatch: {
+        status: "available",
+        organization: { billingStatus: { in: ["active", "trialing"] } },
+      },
+    },
+    select: {
+      id: true,
+      tenantId: true,
+      employeeId: true,
+      expiresAt: true,
+      shortCode: true,
+      workStartTime: true,
+      workEndTime: true,
+      workDays: { select: { dayOfWeek: true } },
+      dispatch: {
+        select: {
+          healthSurveyConfiguration: {
+            select: { tokenExpiryHours: true, respectEmployeeSchedule: true },
+          },
+          organization: { select: { timezone: true, slug: true, name: true } },
+        },
+      },
+      employee: { select: { name: true, phone: true } },
+    },
+  })
+  return rows
+    .filter(
+      (r): r is typeof r & { shortCode: string } => r.shortCode !== null,
+    )
+    .map((r) => ({
+      id: r.id,
+      tenantId: r.tenantId,
+      employeeId: r.employeeId,
+      expiresAt: r.expiresAt,
+      shortCode: r.shortCode,
+      workStartTime: r.workStartTime,
+      workEndTime: r.workEndTime,
+      workDays: r.workDays.map((w) => w.dayOfWeek),
+      tokenExpiryHours: r.dispatch.healthSurveyConfiguration.tokenExpiryHours,
+      respectEmployeeSchedule: r.dispatch.healthSurveyConfiguration.respectEmployeeSchedule,
+      orgTimezone: r.dispatch.organization.timezone,
+      orgSlug: r.dispatch.organization.slug,
+      orgName: r.dispatch.organization.name,
+      employeeName: r.employee.name,
+      employeePhone: r.employee.phone,
+    }))
+}
+
+export async function markHealthSurveyTokensReminderSent(tokenIds: string[]): Promise<void> {
+  if (tokenIds.length === 0) return
+  await prisma.healthSurveyResponseToken.updateMany({
+    where: { id: { in: tokenIds } },
+    data: { reminderSentAt: new Date() },
   })
 }
