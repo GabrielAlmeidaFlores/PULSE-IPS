@@ -83,6 +83,7 @@ async function processMessageJob(data: SendMessageJobData): Promise<void> {
   const params = {
     recipientPhone: data.recipientPhone,
     recipientName: data.recipientName,
+    orgName: data.orgName,
     surveyLink: data.surveyLink,
   }
   const result = data.type === "health_survey_dispatch"

@@ -88,7 +88,7 @@ function makePendingDispatch(workDays = [1, 2, 3, 4, 5], tokenExpiryHours = 48):
   return {
     id: DISPATCH_ID,
     tenantId: TENANT_ID,
-    organization: { timezone: "America/Sao_Paulo", slug: "test-org" },
+    organization: { timezone: "America/Sao_Paulo", slug: "test-org", name: "Test Org" },
     healthSurveyConfiguration: {
       id: "config-1",
       dispatchTime: "12:00",
@@ -111,7 +111,7 @@ function makeAutoDispatchConfig(overrides?: Partial<ActiveHealthSurveyConfigForD
     lastDispatchedAt: null,
     respectEmployeeSchedule: false,
     tokenExpiryHours: 48,
-    organization: { timezone: "America/Sao_Paulo", slug: "test-org" },
+    organization: { timezone: "America/Sao_Paulo", slug: "test-org", name: "Test Org" },
     departments: [{ ...AUTO_DISPATCH_DEPT }],
     questions: [],
     ...overrides,

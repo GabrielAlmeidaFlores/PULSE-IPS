@@ -161,6 +161,7 @@ async function sendDispatchTokensAndMessagesForDepartment(
   dispatchId: string,
   tenantId: string,
   orgSlug: string,
+  orgName: string,
   departmentId: string,
   eligibleEmployees: HealthSurveyDispatchEmployee[],
   department: { workStartTime: string; workEndTime: string; workDays: number[] },
@@ -238,6 +239,7 @@ async function sendDispatchTokensAndMessagesForDepartment(
           data: {
             recipientPhone: emp.phone,
             recipientName: emp.name,
+            orgName,
             surveyLink: healthSurveyUrl,
             tenantId,
             employeeId: emp.id,
@@ -262,6 +264,7 @@ async function fireDispatch(
   configId: string,
   tenantId: string,
   orgSlug: string,
+  orgName: string,
   departments: HealthSurveyDispatchDepartment[],
   timezone: string,
   respectEmployeeSchedule: boolean,
@@ -293,6 +296,7 @@ async function fireDispatch(
       dispatch.id,
       tenantId,
       orgSlug,
+      orgName,
       dept.id,
       dept.employees,
       dept,
@@ -317,6 +321,7 @@ export async function runHealthSurveyDispatcher(): Promise<{ dispatched: number;
     const config = dispatch.healthSurveyConfiguration
     const timezone = dispatch.organization.timezone
     const orgSlug = dispatch.organization.slug
+    const orgName = dispatch.organization.name
     const respectEmployeeSchedule = config.respectEmployeeSchedule
     const tokenExpiryHours = config.tokenExpiryHours
 
@@ -350,6 +355,7 @@ export async function runHealthSurveyDispatcher(): Promise<{ dispatched: number;
             dispatch.id,
             dispatch.tenantId,
             orgSlug,
+            orgName,
             dept.id,
             eligibleEmployees,
             { workStartTime: dept.workStartTime, workEndTime: dept.workEndTime, workDays: deptWorkDays },
@@ -397,6 +403,7 @@ export async function runHealthSurveyAutoDispatchScheduler(): Promise<{ triggere
         config.id,
         config.tenantId,
         config.organization.slug,
+        config.organization.name,
         config.departments,
         timezone,
         config.respectEmployeeSchedule,

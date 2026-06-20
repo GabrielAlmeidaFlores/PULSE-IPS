@@ -448,7 +448,7 @@ export function findAllTenantsPendingHealthSurveyDispatches(): Promise<
         }
       }[]
     }
-    organization: { timezone: string; billingStatus: string; slug: string }
+    organization: { timezone: string; billingStatus: string; slug: string; name: string }
   })[]
 > {
   return prisma.healthSurveyDispatch.findMany({
@@ -474,7 +474,7 @@ export function findAllTenantsPendingHealthSurveyDispatches(): Promise<
           },
         },
       },
-      organization: { select: { timezone: true, billingStatus: true, slug: true } },
+      organization: { select: { timezone: true, billingStatus: true, slug: true, name: true } },
     },
   })
 }
@@ -707,7 +707,7 @@ export interface ActiveHealthSurveyConfigForDispatch {
   workDays: number[]
   respectEmployeeSchedule: boolean
   tokenExpiryHours: number
-  organization: { timezone: string; slug: string }
+  organization: { timezone: string; slug: string; name: string }
   departments: HealthSurveyDispatchDepartment[]
   questions: HealthSurveyQuestion[]
   lastDispatchedAt: Date | null
@@ -719,7 +719,7 @@ export async function findAllTenantsActiveHealthSurveyConfigsForAutoDispatch(): 
   const configs = await prisma.healthSurveyConfiguration.findMany({
     where: { isActive: true },
     include: {
-      organization: { select: { timezone: true, billingStatus: true, slug: true } },
+      organization: { select: { timezone: true, billingStatus: true, slug: true, name: true } },
       questions: { orderBy: { order: "asc" } },
       workDays: true,
       configDepartments: {
@@ -752,7 +752,7 @@ export async function findAllTenantsActiveHealthSurveyConfigsForAutoDispatch(): 
       scheduledDayOfMonth: c.scheduledDayOfMonth,
       dispatchTime: c.dispatchTime,
       workDays: c.workDays.map((w) => w.dayOfWeek),
-      organization: { timezone: c.organization.timezone, slug: c.organization.slug },
+      organization: { timezone: c.organization.timezone, slug: c.organization.slug, name: c.organization.name },
       departments: c.configDepartments.map((cd) => ({
         id: cd.department.id,
         workStartTime: cd.department.workStartTime,
@@ -851,6 +851,7 @@ export interface ReminderEligibleToken {
   respectEmployeeSchedule: boolean
   orgTimezone: string
   orgSlug: string
+  orgName: string
   employeeName: string
   employeePhone: string
 }
@@ -882,7 +883,7 @@ export async function findAllTenantsTokensEligibleForReminderCheck(): Promise<Re
           healthSurveyConfiguration: {
             select: { tokenExpiryHours: true, respectEmployeeSchedule: true },
           },
-          organization: { select: { timezone: true, slug: true } },
+          organization: { select: { timezone: true, slug: true, name: true } },
         },
       },
       employee: { select: { name: true, phone: true } },
@@ -905,6 +906,7 @@ export async function findAllTenantsTokensEligibleForReminderCheck(): Promise<Re
       respectEmployeeSchedule: r.dispatch.healthSurveyConfiguration.respectEmployeeSchedule,
       orgTimezone: r.dispatch.organization.timezone,
       orgSlug: r.dispatch.organization.slug,
+      orgName: r.dispatch.organization.name,
       employeeName: r.employee.name,
       employeePhone: r.employee.phone,
     }))

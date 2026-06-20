@@ -66,6 +66,7 @@ export async function runHealthSurveyResponseReminder(): Promise<void> {
         data: {
           recipientPhone: token.employeePhone,
           recipientName: token.employeeName,
+          orgName: token.orgName,
           surveyLink: surveyUrl,
           tenantId: token.tenantId,
           employeeId: token.employeeId,

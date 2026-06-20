@@ -23,8 +23,8 @@ export const env = createEnv({
       .string()
       .url()
       .default("https://sistema81.smsbarato.com.br/sendwa"),
-    SMSBARATO_WA_TEMPLATE: z.string().min(1).default("pulse_survey"),
-    SMSBARATO_WA_REMINDER_TEMPLATE: z.string().min(1).default("pulse_survey_reminder"),
+    SMSBARATO_WA_TEMPLATE: z.string().min(1).default("pulse_survey_2"),
+    SMSBARATO_WA_REMINDER_TEMPLATE: z.string().min(1).default("pulse_survey_reminder_2"),
 
     SURVEY_MESSAGE_TEMPLATE: z
       .string()
@@ -110,8 +110,8 @@ export const env = createEnv({
     SMSBARATO_WA_BASE_URL:
       process.env.SMSBARATO_WA_BASE_URL ??
       "https://sistema81.smsbarato.com.br/sendwa",
-    SMSBARATO_WA_TEMPLATE: process.env.SMSBARATO_WA_TEMPLATE ?? "pulse_survey",
-    SMSBARATO_WA_REMINDER_TEMPLATE: process.env.SMSBARATO_WA_REMINDER_TEMPLATE ?? "pulse_survey_reminder",
+    SMSBARATO_WA_TEMPLATE: process.env.SMSBARATO_WA_TEMPLATE ?? "pulse_survey_2",
+    SMSBARATO_WA_REMINDER_TEMPLATE: process.env.SMSBARATO_WA_REMINDER_TEMPLATE ?? "pulse_survey_reminder_2",
 
     SURVEY_MESSAGE_TEMPLATE: process.env.SURVEY_MESSAGE_TEMPLATE,
     SURVEY_REMINDER_MESSAGE_TEMPLATE: process.env.SURVEY_REMINDER_MESSAGE_TEMPLATE,

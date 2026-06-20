@@ -16,6 +16,7 @@ function normalizeSmsBaratoWaPhone(phone: string): string {
 async function sendWa(
   phone: string,
   recipientName: string,
+  orgName: string,
   surveyLink: string,
   templateName: string,
 ): Promise<SendMessageResult> {
@@ -29,7 +30,9 @@ async function sendWa(
     `template=${encodeURIComponent(templateName)}`,
     `dest=${encodeURIComponent(dest)}`,
     `prm[]=${encodeURIComponent(recipientName)}`,
+    `prm[]=${encodeURIComponent(orgName)}`,
     `prm[]=${surveyLink}`,
+    `prm[]=${encodeURIComponent(orgName)}`,
   ]
   const fullUrl = `${env.SMSBARATO_WA_BASE_URL}?${queryParts.join("&")}`
 
@@ -49,10 +52,10 @@ async function sendWa(
 
 export class SmsBaratoWaAdapter implements IMessagingService {
   sendHealthSurveyDispatch(params: HealthSurveyMessageParams): Promise<SendMessageResult> {
-    return sendWa(params.recipientPhone, params.recipientName, params.surveyLink, env.SMSBARATO_WA_TEMPLATE)
+    return sendWa(params.recipientPhone, params.recipientName, params.orgName, params.surveyLink, env.SMSBARATO_WA_TEMPLATE)
   }
 
   sendHealthSurveyReminder(params: HealthSurveyMessageParams): Promise<SendMessageResult> {
-    return sendWa(params.recipientPhone, params.recipientName, params.surveyLink, env.SMSBARATO_WA_REMINDER_TEMPLATE)
+    return sendWa(params.recipientPhone, params.recipientName, params.orgName, params.surveyLink, env.SMSBARATO_WA_REMINDER_TEMPLATE)
   }
 }

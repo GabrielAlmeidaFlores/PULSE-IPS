@@ -26,6 +26,7 @@ export type JobName =
 export interface SendMessageJobData {
   recipientPhone: string
   recipientName: string
+  orgName: string
   surveyLink: string
   tenantId: string
   employeeId: string

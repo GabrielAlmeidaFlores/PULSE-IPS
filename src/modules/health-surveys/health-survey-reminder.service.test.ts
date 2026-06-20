@@ -48,6 +48,7 @@ function makeEligibleToken(overrides?: Partial<ReminderEligibleToken>): Reminder
     respectEmployeeSchedule: false,
     orgTimezone: ORG_TIMEZONE,
     orgSlug: "acme",
+    orgName: "Acme Corp",
     employeeName: "Ana Silva",
     employeePhone: "+5511999999999",
     ...overrides,

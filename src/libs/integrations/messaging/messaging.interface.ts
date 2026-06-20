@@ -1,6 +1,7 @@
 export interface HealthSurveyMessageParams {
   recipientPhone: string
   recipientName: string
+  orgName: string
   surveyLink: string
 }
 
