@@ -10,6 +10,7 @@ const redisConnection: ConnectionOptions = {
 
 export const QUEUE_NAME = "pulse-jobs" as const
 export const MESSAGE_QUEUE_NAME = "pulse-messages" as const
+export const EMAIL_QUEUE_NAME = "pulse-emails" as const
 
 export type JobName =
   | "health-survey-dispatcher"
@@ -22,6 +23,9 @@ export type JobName =
   | "action-plan-suggestion-generator"
   | "organization-deletion-executor"
   | "health-survey-response-reminder"
+  | "climate-survey-dispatcher"
+  | "climate-survey-response-reminder"
+  | "climate-survey-response-token-cleanup"
 
 export interface SendMessageJobData {
   recipientPhone: string
@@ -31,7 +35,35 @@ export interface SendMessageJobData {
   tenantId: string
   employeeId: string
   provider: string
-  type: "health_survey_dispatch" | "health_survey_reminder"
+  type: "health_survey_dispatch" | "health_survey_reminder" | "climate_survey_dispatch" | "climate_survey_reminder"
+  dispatchId?: string
+}
+
+export interface ProcessSendMessageJobContext {
+  data: SendMessageJobData
+  jobId: string | null
+  attemptsMade: number
+  maxAttempts: number
+}
+
+export interface SendEmailJobData {
+  recipientEmail: string
+  recipientName: string
+  orgName: string
+  surveyLink: string
+  tenantId: string
+  employeeId: string
+  provider: string
+  type: "climate_survey_dispatch" | "climate_survey_reminder"
+  tokenExpiryHours: number
+  dispatchId?: string
+}
+
+export interface ProcessSendEmailJobContext {
+  data: SendEmailJobData
+  jobId: string | null
+  attemptsMade: number
+  maxAttempts: number
 }
 
 export function createJobQueue(): Queue<Record<string, never>, void, JobName> {
@@ -72,12 +104,17 @@ export function getMessageQueue(): Queue<SendMessageJobData> {
 }
 
 export function createMessageWorker(
-  processor: (data: SendMessageJobData) => Promise<void>,
+  processor: (context: ProcessSendMessageJobContext) => Promise<void>,
 ): Worker<SendMessageJobData> {
   return new Worker<SendMessageJobData>(
     MESSAGE_QUEUE_NAME,
     async (job) => {
-      await processor(job.data)
+      await processor({
+        data: job.data,
+        jobId: job.id ?? null,
+        attemptsMade: job.attemptsMade,
+        maxAttempts: job.opts.attempts ?? 3,
+      })
     },
     { connection: redisConnection, concurrency: 10 },
   )
@@ -89,4 +126,40 @@ export function createJobQueueReader(): Queue<Record<string, never>, void, JobNa
 
 export function createMessageQueueReader(): Queue<SendMessageJobData> {
   return new Queue<SendMessageJobData>(MESSAGE_QUEUE_NAME, { connection: redisConnection })
+}
+
+let _emailQueue: Queue<SendEmailJobData> | null = null
+
+export function getEmailQueue(): Queue<SendEmailJobData> {
+  _emailQueue ??= new Queue<SendEmailJobData>(EMAIL_QUEUE_NAME, {
+    connection: redisConnection,
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: { type: "exponential", delay: 5000 },
+      removeOnComplete: { count: 1000 },
+      removeOnFail: { count: 5000 },
+    },
+  })
+  return _emailQueue
+}
+
+export function createEmailWorker(
+  processor: (context: ProcessSendEmailJobContext) => Promise<void>,
+): Worker<SendEmailJobData> {
+  return new Worker<SendEmailJobData>(
+    EMAIL_QUEUE_NAME,
+    async (job) => {
+      await processor({
+        data: job.data,
+        jobId: job.id ?? null,
+        attemptsMade: job.attemptsMade,
+        maxAttempts: job.opts.attempts ?? 3,
+      })
+    },
+    { connection: redisConnection, concurrency: 10 },
+  )
+}
+
+export function createEmailQueueReader(): Queue<SendEmailJobData> {
+  return new Queue<SendEmailJobData>(EMAIL_QUEUE_NAME, { connection: redisConnection })
 }

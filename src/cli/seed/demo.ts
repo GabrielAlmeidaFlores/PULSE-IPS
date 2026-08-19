@@ -274,6 +274,15 @@ async function main(): Promise<void> {
 
   logger.info("🗑️  Limpando dados antigos...")
   await prisma.organization.update({ where: { id: tenantId }, data: { slug: ORG_SLUG_NEW, name: ORG_NAME_NEW } })
+  await prisma.climateSurveyResponseItem.deleteMany({ where: { climateSurveyResponse: { tenantId } } })
+  await prisma.climateSurveyAnalyticsEvent.deleteMany({ where: { tenantId } })
+  await prisma.climateSurveyResponseSession.deleteMany({ where: { tenantId } })
+  await prisma.climateSurveyResponse.deleteMany({ where: { tenantId } })
+  await prisma.climateSurveyResponseToken.deleteMany({ where: { tenantId } })
+  await prisma.climateSurveyDispatch.deleteMany({ where: { tenantId } })
+  await prisma.climateSurveyQuestion.deleteMany({ where: { tenantId } })
+  await prisma.climateSurveyConfiguration.deleteMany({ where: { tenantId } })
+  await prisma.emailLog.deleteMany({ where: { tenantId } })
   await prisma.healthSurveyResponseItem.deleteMany({ where: { healthSurveyResponse: { tenantId } } })
   await prisma.healthSurveyResponse.deleteMany({ where: { tenantId } })
   await prisma.healthSurveyResponseToken.deleteMany({ where: { tenantId } })
@@ -312,8 +321,11 @@ async function main(): Promise<void> {
   const rhUser = await prisma.organizationUser.create({
     data: { id: randomUUID(), tenantId, email: RH_EMAIL, passwordHash: rhPasswordHash, name: "RH Demo", role: "rh", isActive: true, emailVerifiedAt: START },
   })
-  await prisma.platformTermsAcceptance.create({
-    data: { id: randomUUID(), termsVersionId: platformTermsVersion.id, userId: adminUser.id, acceptedAt: START, ipAddress: "127.0.0.1", userAgent: "seed/demo" },
+  await prisma.platformTermsAcceptance.createMany({
+    data: [
+      { id: randomUUID(), termsVersionId: platformTermsVersion.id, userId: adminUser.id, acceptedAt: START, ipAddress: "127.0.0.1", userAgent: "seed/demo" },
+      { id: randomUUID(), termsVersionId: platformTermsVersion.id, userId: rhUser.id, acceptedAt: START, ipAddress: "127.0.0.1", userAgent: "seed/demo" },
+    ],
   })
   logger.info(`✅ Usuários: ${ADMIN_EMAIL}, ${RH_EMAIL}`)
 
@@ -342,7 +354,7 @@ async function main(): Promise<void> {
     },
   })
 
-  const PROFESSIONAL_FEATURES = ["action_plans", "documents", "anonymous_reports", "pgr", "messaging"] as const
+  const PROFESSIONAL_FEATURES = ["action_plans", "documents", "anonymous_reports", "pgr", "messaging", "climate_surveys"] as const
   await prisma.subscriptionFeature.createMany({
     data: PROFESSIONAL_FEATURES.map((feature) => ({ subscriptionId: subscription.id, feature })),
   })
@@ -433,7 +445,7 @@ async function main(): Promise<void> {
   }
 
   type DeptDispatchRow = {
-    id: string; dispatchId: string; departmentId: string; tenantId: string
+    id: string; dispatchId: string; departmentId: string
     totalRecipients: number; totalResponses: number
   }
 
@@ -442,7 +454,7 @@ async function main(): Promise<void> {
     token: string; expiresAt: Date; usedAt: Date; workStartTime: string; workEndTime: string; createdAt: Date
   }
 
-  type ResponseRow = { id: string; tenantId: string; dispatchId: string; createdAt: Date }
+  type ResponseRow = { id: string; tenantId: string; dispatchId: string; departmentId: string; createdAt: Date }
   type ItemRow = { id: string; healthSurveyResponseId: string; questionId: string; score: number }
 
   const alertsToCreate: AlertRow[] = []
@@ -484,7 +496,6 @@ async function main(): Promise<void> {
         id: randomUUID(),
         dispatchId,
         departmentId: deptId,
-        tenantId,
         totalRecipients: empIds.length,
         totalResponses: respondents.length,
       })
@@ -505,7 +516,7 @@ async function main(): Promise<void> {
           createdAt: dispatchDate,
         })
 
-        allResponses.push({ id: responseId, tenantId, dispatchId, createdAt: usedAt })
+        allResponses.push({ id: responseId, tenantId, dispatchId, departmentId: deptId, createdAt: usedAt })
 
         for (const qId of globalQIds) {
           allItems.push({
@@ -909,6 +920,188 @@ async function main(): Promise<void> {
   }
   logger.info("✅ Revisões PGR criadas (5 períodos).")
 
+  logger.info("🌡️  Criando Pesquisa de Clima Organizacional...")
+  const climateQuestionsSeed = [
+    { text: "Você está satisfeito com o ambiente de trabalho?", dimension: "job_satisfaction" },
+    { text: "Você se sente motivado nas atividades que realiza?", dimension: "job_satisfaction" },
+    { text: "Você recomendaria a empresa como um bom lugar para trabalhar?", dimension: "job_satisfaction" },
+    { text: "Você se sente bem informado sobre mudanças importantes?", dimension: "internal_communication" },
+    { text: "Os canais de comunicação são eficazes?", dimension: "internal_communication" },
+    { text: "A comunicação aumenta seu senso de pertencimento?", dimension: "internal_communication" },
+    { text: "Você recebe apoio dos colegas?", dimension: "relationships" },
+    { text: "Existe respeito entre os colaboradores?", dimension: "relationships" },
+    { text: "Você confia nos superiores para resolver conflitos?", dimension: "relationships" },
+    { text: "Você se sente valorizado pela liderança?", dimension: "recognition_reward" },
+    { text: "Seus esforços são reconhecidos além do financeiro?", dimension: "recognition_reward" },
+    { text: "Você está satisfeito com os benefícios?", dimension: "recognition_reward" },
+    { text: "Existem oportunidades de crescimento?", dimension: "professional_development" },
+    { text: "Você entende os critérios de promoção?", dimension: "professional_development" },
+    { text: "Os gestores apoiam seu desenvolvimento?", dimension: "professional_development" },
+    { text: "Você consegue equilibrar vida pessoal e trabalho?", dimension: "work_life_balance" },
+    { text: "Tem flexibilidade suficiente?", dimension: "work_life_balance" },
+    { text: "A empresa apoia saúde mental e física?", dimension: "work_life_balance" },
+    { text: "Você se identifica com os valores da empresa?", dimension: "organizational_culture" },
+    { text: "Existe colaboração entre equipes?", dimension: "organizational_culture" },
+    { text: "O ambiente é respeitoso e inclusivo?", dimension: "organizational_culture" },
+    { text: "Você confia nas decisões da liderança?", dimension: "leadership_trust" },
+    { text: "A liderança se preocupa com o bem-estar das pessoas?", dimension: "leadership_trust" },
+    { text: "A liderança inspira e motiva?", dimension: "leadership_trust" },
+  ]
+
+  const climateConfig = await prisma.climateSurveyConfiguration.create({
+    data: {
+      id: randomUUID(),
+      tenantId,
+      name: "Pesquisa de Clima Organizacional",
+      description: "Avaliação trimestral de clima por tópicos",
+      frequency: "quarterly",
+      dispatchTime: "10:00",
+      tokenExpiryHours: 96,
+      sendViaMessaging: true,
+      sendViaSignedLink: true,
+      isActive: true,
+      createdAt: addDays(NOW, -40),
+    },
+  })
+
+  await prisma.climateSurveyConfigDepartment.createMany({
+    data: Object.values(deptMap).map((departmentId) => ({
+      configId: climateConfig.id,
+      departmentId,
+    })),
+  })
+
+  await prisma.climateSurveyConfigWorkDay.createMany({
+    data: [1, 2, 3, 4, 5].map((dayOfWeek) => ({ configId: climateConfig.id, dayOfWeek })),
+  })
+
+  const climateQuestionIds: string[] = []
+  for (let i = 0; i < climateQuestionsSeed.length; i += 1) {
+    const q = climateQuestionsSeed[i]
+    if (!q) continue
+    const created = await prisma.climateSurveyQuestion.create({
+      data: {
+        id: randomUUID(),
+        tenantId,
+        climateSurveyConfigurationId: climateConfig.id,
+        text: q.text,
+        order: i + 1,
+        scoreDirection: "higher_is_better",
+        dimension: q.dimension,
+        isActive: true,
+      },
+    })
+    climateQuestionIds.push(created.id)
+  }
+
+  const climateWaveDates = [addDays(NOW, -35), addDays(NOW, -7)]
+  let climateResponseCount = 0
+
+  for (const waveDate of climateWaveDates) {
+    const climateDispatchId = randomUUID()
+    await prisma.climateSurveyDispatch.create({
+      data: {
+        id: climateDispatchId,
+        tenantId,
+        climateSurveyConfigurationId: climateConfig.id,
+        scheduledAt: waveDate,
+        dispatchedAt: waveDate,
+        adherenceCheckedAt: addDays(waveDate, 2),
+        status: "available",
+        source: "manual",
+        signedLinkToken: randomUUID(),
+        createdAt: waveDate,
+      },
+    })
+
+    for (const deptProfile of DEPT_PROFILES) {
+      const deptId = deptMap[deptProfile.deptName]
+      const empIds = employeeMap[deptProfile.deptName] ?? []
+      if (!deptId || empIds.length === 0) continue
+
+      const respondentCount = Math.max(5, Math.round(empIds.length * 0.75))
+      const respondents = empIds.slice(0, Math.min(respondentCount, empIds.length))
+
+      await prisma.climateSurveyDeptDispatch.create({
+        data: {
+          id: randomUUID(),
+          dispatchId: climateDispatchId,
+          departmentId: deptId,
+          totalRecipients: empIds.length,
+          totalResponses: respondents.length,
+        },
+      })
+
+      for (const empId of respondents) {
+        const tokenId = randomUUID()
+        const responseId = randomUUID()
+        const usedAt = addHours(waveDate, rand(1, 8))
+        const shortCode = String(rand(1000000, 9999999))
+
+        await prisma.climateSurveyResponseToken.create({
+          data: {
+            id: tokenId,
+            tenantId,
+            dispatchId: climateDispatchId,
+            employeeId: empId,
+            token: randomUUID(),
+            shortCode,
+            expiresAt: addDays(waveDate, 4),
+            workStartTime: deptProfile.workStartTime,
+            workEndTime: deptProfile.workEndTime,
+            usedAt,
+            createdAt: waveDate,
+          },
+        })
+
+        await prisma.climateSurveyResponse.create({
+          data: {
+            id: responseId,
+            tenantId,
+            dispatchId: climateDispatchId,
+            departmentId: deptId,
+            createdAt: setMinutes(setHours(usedAt, 0), 0),
+          },
+        })
+        climateResponseCount += 1
+
+        await prisma.climateSurveyResponseItem.createMany({
+          data: climateQuestionIds.map((questionId) => ({
+            id: randomUUID(),
+            climateSurveyResponseId: responseId,
+            questionId,
+            score: clamp(Math.round(3.5 + (Math.random() - 0.35) * 2)),
+          })),
+        })
+      }
+    }
+
+    await prisma.climateSurveyAnalyticsEvent.create({
+      data: {
+        id: randomUUID(),
+        tenantId,
+        event: "campanha_disparada",
+        configId: climateConfig.id,
+        dispatchId: climateDispatchId,
+        quantity: 1,
+        createdAt: waveDate,
+      },
+    })
+  }
+
+  await prisma.climateSurveyAnalyticsEvent.create({
+    data: {
+      id: randomUUID(),
+      tenantId,
+      event: "pesquisa_criada",
+      configId: climateConfig.id,
+      quantity: 1,
+      createdAt: climateConfig.createdAt,
+    },
+  })
+
+  logger.info(`✅ Clima: 1 config, ${climateQuestionsSeed.length} perguntas, 2 ondas, ${climateResponseCount} respostas.`)
+
   await prisma.$disconnect()
 
   logger.info("")
@@ -921,6 +1114,7 @@ async function main(): Promise<void> {
   logger.info("  Departamentos:  7 (Tecnologia, Comercial, RH, Financeiro, Operações, Marketing + Suporte [mês 14])")
   logger.info("  Colaboradores:  46")
   logger.info("  Configuração:   1 (Pesquisa de Saúde Ocupacional — semanal, todos os setores)")
+  logger.info("  Clima:          1 config + 2 ondas com respostas")
   logger.info(`  Dispatches:     ${allDispatches.length}`)
   logger.info(`  Respostas:      ${allResponses.length}`)
   logger.info(`  Itens de resp:  ${allItems.length}`)

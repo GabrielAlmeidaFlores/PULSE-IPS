@@ -129,7 +129,7 @@ export function HealthSurveyScoreDistributionBar({ question }: DistributionProps
             <div
               key={d.score}
               style={{ width: `${pct}%`, backgroundColor: colorMap[d.score] ?? "var(--muted-foreground)" }}
-              className="flex items-center justify-center text-[9px] font-bold text-white transition-all cursor-default"
+              className="flex items-center justify-center text-[9px] font-bold text-score-label transition-all cursor-default"
               onMouseEnter={(e) => {
                 const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
                 setTooltip({

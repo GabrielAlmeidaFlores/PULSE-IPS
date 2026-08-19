@@ -576,7 +576,7 @@ const PLANS = [
     description: "Para empresas em expansão. Até 150 colaboradores, todos os recursos do Starter mais exportação de relatórios PGR em PDF e envio de mensagens.",
     maxEmployees: 150,
     externalProductId: "prod_professional_pulse",
-    features: ["action_plans", "documents", "anonymous_reports", "pgr", "messaging"] as const,
+    features: ["action_plans", "documents", "anonymous_reports", "pgr", "messaging", "climate_surveys"] as const,
     prices: [
       { interval: "month", priceInCents: 69900, externalPriceId: "price_professional_monthly" },
       { interval: "year",  priceInCents: 671040, externalPriceId: "price_professional_annual" },
@@ -587,7 +587,7 @@ const PLANS = [
     description: "Para grandes empresas. Até 300 colaboradores, suporte prioritário, SLA garantido e onboarding dedicado.",
     maxEmployees: 300,
     externalProductId: "prod_enterprise_pulse",
-    features: ["action_plans", "documents", "anonymous_reports", "pgr", "messaging"] as const,
+    features: ["action_plans", "documents", "anonymous_reports", "pgr", "messaging", "climate_surveys"] as const,
     prices: [
       { interval: "month", priceInCents: 149900, externalPriceId: "price_enterprise_monthly" },
       { interval: "year",  priceInCents: 1439040, externalPriceId: "price_enterprise_annual" },

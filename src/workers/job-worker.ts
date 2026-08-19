@@ -1,22 +1,32 @@
-import { createJobWorker, createMessageWorker, QUEUE_NAME, MESSAGE_QUEUE_NAME, type JobName, type SendMessageJobData } from "@/libs/queue"
-import { getMessagingService } from "@/libs/integrations"
+import { createJobWorker, createMessageWorker, createEmailWorker, QUEUE_NAME, MESSAGE_QUEUE_NAME, EMAIL_QUEUE_NAME, type JobName, type ProcessSendMessageJobContext, type ProcessSendEmailJobContext } from "@/libs/queue"
 import { prisma } from "@/libs/db"
 import { runHealthSurveyDispatcher, checkHealthSurveyDispatchAdherence, runHealthSurveyAutoDispatchScheduler } from "@/modules/health-surveys/health-survey-dispatch.service"
+import { runClimateSurveyDispatcher, runClimateSurveyAutoDispatchScheduler } from "@/modules/climate-surveys/climate-survey-dispatch.service"
 import { detectLowScoreAlerts, detectScoreDropAlerts, detectNegativeTrendAlerts } from "@/modules/alerts/alert.service"
 import { unpauseAllTenantsDueEmployees } from "@/modules/employees/employee.service"
 import { sendPgrReviewReminders } from "@/modules/pgr/pgr.service"
 import { retryFailedWebhookEvents } from "@/modules/billing/webhook.handler"
-import { createMessageLog } from "@/modules/messaging/message-log.repository"
+import {
+  processOutboundSurveyMessage,
+  recordOutboundSurveyMessageFinalFailure,
+} from "@/modules/messaging/messaging.service"
+import {
+  processOutboundSurveyEmail,
+  recordOutboundSurveyEmailFinalFailure,
+} from "@/modules/messaging/survey-email.service"
 import { deleteAllTenantsExpiredHealthSurveyTokens } from "@/modules/health-surveys/health-survey.repository"
+import { deleteAllTenantsExpiredClimateSurveyTokens } from "@/modules/climate-surveys/climate-survey.repository"
 import { jobLogService } from "@/modules/job-logs/job-log.service"
 import { runActionPlanSuggestionGenerator } from "@/modules/action-plans/action-plan-suggestion.service"
 import { runOrganizationDeletionExecutor } from "@/modules/organizations/account-deletion.service"
 import { runHealthSurveyResponseReminder } from "@/modules/health-surveys/health-survey-reminder.service"
+import { runClimateSurveyResponseReminder } from "@/modules/climate-surveys/climate-survey-reminder.service"
 import { createLogger } from "@/libs/utils/logger"
 import type { InsertJobLogInput } from "@/modules/job-logs/job-log.types"
 
 const jobLogger = createLogger("job-worker")
 const msgLogger = createLogger("msg-worker")
+const emailLogger = createLogger("email-worker")
 const workerLogger = createLogger("worker")
 
 async function processJob(jobName: JobName): Promise<void> {
@@ -26,6 +36,11 @@ async function processJob(jobName: JobName): Promise<void> {
     case "health-survey-dispatcher": {
       const [dispatchResult, autoResult] = await Promise.all([runHealthSurveyDispatcher(), runHealthSurveyAutoDispatchScheduler()])
       workerLogger.success("health-survey-dispatcher", { dispatch: dispatchResult, auto: autoResult })
+      break
+    }
+    case "climate-survey-dispatcher": {
+      const [dispatchResult, autoResult] = await Promise.all([runClimateSurveyDispatcher(), runClimateSurveyAutoDispatchScheduler()])
+      workerLogger.success("climate-survey-dispatcher", { dispatch: dispatchResult, auto: autoResult })
       break
     }
     case "health-survey-adherence-checker": {
@@ -60,6 +75,11 @@ async function processJob(jobName: JobName): Promise<void> {
       workerLogger.success(`health-survey-response-token-cleanup: deleted ${result.count} expired tokens`)
       break
     }
+    case "climate-survey-response-token-cleanup": {
+      const result = await deleteAllTenantsExpiredClimateSurveyTokens()
+      workerLogger.success(`climate-survey-response-token-cleanup: deleted ${result.count} expired tokens`)
+      break
+    }
     case "action-plan-suggestion-generator": {
       const result = await runActionPlanSuggestionGenerator()
       workerLogger.success("action-plan-suggestion-generator", result)
@@ -75,26 +95,25 @@ async function processJob(jobName: JobName): Promise<void> {
       workerLogger.success("health-survey-response-reminder: done")
       break
     }
+    case "climate-survey-response-reminder": {
+      await runClimateSurveyResponseReminder()
+      workerLogger.success("climate-survey-response-reminder: done")
+      break
+    }
   }
 }
 
-async function processMessageJob(data: SendMessageJobData): Promise<void> {
-  const messaging = getMessagingService()
-  const params = {
-    recipientPhone: data.recipientPhone,
-    recipientName: data.recipientName,
-    orgName: data.orgName,
-    surveyLink: data.surveyLink,
-  }
-  const result = data.type === "health_survey_dispatch"
-    ? await messaging.sendHealthSurveyDispatch(params)
-    : await messaging.sendHealthSurveyReminder(params)
-  await createMessageLog(data.tenantId, {
-    employeeId: data.employeeId,
-    type: data.type,
-    provider: data.provider,
-    status: result.status === "failed" ? "failed" : "sent",
-    ...(result.externalId !== null ? { externalId: result.externalId } : {}),
+async function processMessageJob(context: ProcessSendMessageJobContext): Promise<void> {
+  await processOutboundSurveyMessage({
+    data: context.data,
+    queueJobId: context.jobId,
+  })
+}
+
+async function processEmailJob(context: ProcessSendEmailJobContext): Promise<void> {
+  await processOutboundSurveyEmail({
+    data: context.data,
+    queueJobId: context.jobId,
   })
 }
 
@@ -130,6 +149,7 @@ function buildJobLogInput(
 
 const jobWorker = createJobWorker(processJob)
 const messageWorker = createMessageWorker(processMessageJob)
+const emailWorker = createEmailWorker(processEmailJob)
 
 jobWorker.on("completed", (job, result): void => {
   jobLogger.success(`completed: ${job.name} (id: ${job.id})`, result)
@@ -172,6 +192,12 @@ messageWorker.on("failed", (job, err): void => {
   const maskedPhone = `***${String(job?.data.recipientPhone).slice(-4)}`
   msgLogger.error(`failed to ${maskedPhone} (attempt ${job?.attemptsMade ?? 0}) — ${err.message}`)
   if (job !== undefined) {
+    const maxAttempts = job.opts.attempts ?? 3
+    if (job.attemptsMade >= maxAttempts) {
+      recordOutboundSurveyMessageFinalFailure(job.data, job.id ?? null, err.message).catch((logErr: Error) => {
+        msgLogger.error(`failed to write message log: ${logErr.message}`)
+      })
+    }
     const logInput = buildJobLogInput(job, MESSAGE_QUEUE_NAME, "failed", undefined, err)
     if (logInput !== null) {
       jobLogService.insertJobLog(logInput).catch((logErr: Error) => {
@@ -185,12 +211,46 @@ messageWorker.on("error", (err): void => {
   msgLogger.error("worker error", err)
 })
 
+emailWorker.on("completed", (job): void => {
+  const maskedEmail = job.data.recipientEmail.replace(/^[^@]+/, "***")
+  emailLogger.success(`sent to ${maskedEmail} (id: ${job.id})`)
+  const logInput = buildJobLogInput(job, EMAIL_QUEUE_NAME, "completed", { recipientEmail: maskedEmail, type: job.data.type })
+  if (logInput !== null) {
+    jobLogService.insertJobLog(logInput).catch((err: Error) => {
+      emailLogger.error(`failed to write job log: ${err.message}`)
+    })
+  }
+})
+
+emailWorker.on("failed", (job, err): void => {
+  const maskedEmail = job?.data.recipientEmail.replace(/^[^@]+/, "***") ?? "***"
+  emailLogger.error(`failed to ${maskedEmail} (attempt ${job?.attemptsMade ?? 0}) — ${err.message}`)
+  if (job !== undefined) {
+    const maxAttempts = job.opts.attempts ?? 3
+    if (job.attemptsMade >= maxAttempts) {
+      recordOutboundSurveyEmailFinalFailure(job.data, job.id ?? null, err.message).catch((logErr: Error) => {
+        emailLogger.error(`failed to write email log: ${logErr.message}`)
+      })
+    }
+    const logInput = buildJobLogInput(job, EMAIL_QUEUE_NAME, "failed", undefined, err)
+    if (logInput !== null) {
+      jobLogService.insertJobLog(logInput).catch((logErr: Error) => {
+        emailLogger.error(`failed to write job log: ${logErr.message}`)
+      })
+    }
+  }
+})
+
+emailWorker.on("error", (err): void => {
+  emailLogger.error("worker error", err)
+})
+
 workerLogger.info("Pulse job worker started. Waiting for jobs...")
 
 function gracefulShutdown(signal: string): void {
   void (async () => {
     workerLogger.warn(`${signal} received, shutting down gracefully...`)
-    await Promise.all([jobWorker.close(), messageWorker.close()])
+    await Promise.all([jobWorker.close(), messageWorker.close(), emailWorker.close()])
     await prisma.$disconnect()
     process.exit(0)
   })()

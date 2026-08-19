@@ -1,4 +1,11 @@
-import { QUEUE_NAME, MESSAGE_QUEUE_NAME, createJobQueueReader, createMessageQueueReader } from "@/libs/queue"
+import {
+  QUEUE_NAME,
+  MESSAGE_QUEUE_NAME,
+  EMAIL_QUEUE_NAME,
+  createJobQueueReader,
+  createMessageQueueReader,
+  createEmailQueueReader,
+} from "@/libs/queue"
 import type { IQueueReader, QueueOverview, QueueStatus, LiveJobSummary, RepeatableJobInfo, QueueCounts } from "@/modules/queue-status/queue-status.types"
 
 const LIVE_JOB_LIMIT = 100
@@ -63,16 +70,18 @@ async function buildQueueStatus(queue: IQueueReader, queueName: string): Promise
 async function getQueueOverview(): Promise<QueueOverview> {
   const jobQueue = createJobQueueReader()
   const messageQueue = createMessageQueueReader()
+  const emailQueue = createEmailQueueReader()
 
   try {
-    const [jobStatus, messageStatus] = await Promise.all([
+    const [jobStatus, messageStatus, emailStatus] = await Promise.all([
       buildQueueStatus(jobQueue, QUEUE_NAME),
       buildQueueStatus(messageQueue, MESSAGE_QUEUE_NAME),
+      buildQueueStatus(emailQueue, EMAIL_QUEUE_NAME),
     ])
 
-    return { queues: [jobStatus, messageStatus] }
+    return { queues: [jobStatus, messageStatus, emailStatus] }
   } finally {
-    await Promise.all([jobQueue.close(), messageQueue.close()])
+    await Promise.all([jobQueue.close(), messageQueue.close(), emailQueue.close()])
   }
 }
 

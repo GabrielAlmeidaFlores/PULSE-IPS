@@ -12,10 +12,29 @@ function createPrismaClient(): PrismaClient {
   })
 }
 
+function isUsablePrismaClient(client: PrismaClient): boolean {
+  return (
+    typeof client.climateSurveyDispatch?.findFirst === "function" &&
+    typeof client.emailLog?.findFirst === "function" &&
+    typeof client.healthSurveyDispatch?.findFirst === "function"
+  )
+}
+
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient()
+function getPrismaClient(): PrismaClient {
+  const existing = globalForPrisma.prisma
+  if (existing !== undefined && isUsablePrismaClient(existing)) {
+    return existing
+  }
 
-if (env.NODE_ENV !== "production") globalForPrisma.prisma = prisma
+  const client = createPrismaClient()
+  if (env.NODE_ENV !== "production") {
+    globalForPrisma.prisma = client
+  }
+  return client
+}
+
+export const prisma = getPrismaClient()

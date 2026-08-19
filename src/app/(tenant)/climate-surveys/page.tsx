@@ -1,0 +1,266 @@
+import { redirect } from "next/navigation"
+import Link from "next/link"
+import { getSession } from "@/modules/auth/session"
+import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
+import { getClimateSurveyModuleDashboard } from "@/modules/climate-surveys/climate-survey-dashboard.service"
+import { getClimateSurveyConfigs } from "@/modules/climate-surveys/climate-survey-config.service"
+import { getOrganization } from "@/modules/organizations/organization.service"
+import { formatInTimeZone } from "date-fns-tz"
+import { ChartCard } from "@/components/chart-card"
+import { PageHelp } from "@/components/page-help"
+import { ClimateSurveyTopicRadarChart } from "@/app/(tenant)/climate-surveys/components/climate-survey-topic-radar-chart"
+import { ClimateSurveyWaveEvolutionChart } from "@/app/(tenant)/climate-surveys/components/climate-survey-wave-evolution-chart"
+import { ClimateSurveyEnpsDonutChart } from "@/app/(tenant)/climate-surveys/components/climate-survey-enps-donut-chart"
+import { ClimateSurveyTopicDepartmentHeatmap } from "@/app/(tenant)/climate-surveys/components/climate-survey-topic-department-heatmap"
+import type { ClimateSurveyMetricStatus } from "@/modules/climate-surveys/climate-survey.types"
+import { MINIMUM_RESPONDENTS_FOR_DISPLAY } from "@/libs/utils/anonymity"
+
+function kpiToneClass(status: ClimateSurveyMetricStatus): string {
+  if (status === "above_goal") return "border-status-success-border bg-status-success-subtle"
+  if (status === "attention") return "border-status-warning-border bg-status-warning-subtle"
+  if (status === "critical") return "border-status-danger-border bg-status-danger-subtle"
+  return "border-border bg-card"
+}
+
+function kpiValueClass(status: ClimateSurveyMetricStatus): string {
+  if (status === "above_goal") return "text-status-success"
+  if (status === "attention") return "text-status-warning"
+  if (status === "critical") return "text-status-danger"
+  return "text-foreground"
+}
+
+function formatKpi(value: number | null, suffix = ""): string {
+  if (value === null) return "—"
+  return `${value}${suffix}`
+}
+
+export default async function ClimateSurveyDashboardPage(): Promise<React.ReactElement> {
+  const session = await getSession()
+  if (!session) redirect("/login")
+  if (!(await hasTenantPlanFeature(session.tenantId, "climate_surveys"))) redirect("/dashboard")
+
+  const [dashboard, configs, org] = await Promise.all([
+    getClimateSurveyModuleDashboard(session.tenantId),
+    getClimateSurveyConfigs(session.tenantId),
+    getOrganization(session.tenantId),
+  ])
+
+  const timezone = org?.timezone ?? "America/Sao_Paulo"
+  const wave = dashboard.wave
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="border-b border-border bg-card px-6 py-4 shrink-0">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-sm font-bold uppercase tracking-widest">Dashboard — Pesquisa de Clima</h1>
+              <PageHelp
+                content={
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">KPIs</p>
+                      <p className="text-[12px] text-foreground leading-relaxed">
+                        Adesão = respondentes / destinatários. Favorabilidade = (Concordo + Concordo Totalmente) / total × 100. Score de clima = média dos pesos Likert (1.0 / 0.8 / 0.6 / 0.4 / 0.2) × 100. eNPS = % promotores − % detratores (nota 0–10: 9–10 / 7–8 / 0–6).
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Cores</p>
+                      <p className="text-[12px] text-foreground leading-relaxed">
+                        Verde: acima da meta. Amarelo: atenção. Vermelho: crítico. Meta corporativa padrão: {dashboard.corporateGoalPercent}%.
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Anonimato</p>
+                      <p className="text-[12px] text-foreground leading-relaxed">
+                        Scores e favorabilidade só aparecem com pelo menos {MINIMUM_RESPONDENTS_FOR_DISPLAY} respondentes.
+                      </p>
+                    </div>
+                  </div>
+                }
+              />
+            </div>
+            {wave !== null ? (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Última onda ativa: <span className="text-foreground font-medium">{wave.configName}</span>
+                {" · "}
+                {formatInTimeZone(wave.dispatchedAt ?? wave.scheduledAt, timezone, "dd/MM/yyyy HH:mm")}
+                {wave.departmentNames.length > 0 ? ` · ${wave.departmentNames.join(", ")}` : null}
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground mt-0.5">Nenhuma onda ativa no momento</p>
+            )}
+          </div>
+          {wave !== null && (
+            <Link
+              href={`/climate-surveys/${wave.id}`}
+              className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-center"
+              style={{ borderRadius: 0 }}
+            >
+              Ver onda
+            </Link>
+          )}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
+        {wave === null ? (
+          <div className="border border-dashed border-border bg-card px-5 py-10 text-center">
+            <p className="text-sm font-bold text-muted-foreground">Sem dados de clima para exibir</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {configs.length === 0
+                ? "Configure o banco de perguntas e dispare a primeira onda."
+                : "Agende um disparo em Disparo & Canais para gerar o dashboard."}
+            </p>
+            <Link
+              href={configs.length === 0 ? "/climate-surveys/configure/new" : "/climate-surveys/dispatches"}
+              className="inline-block mt-4 px-4 py-2 text-[11px] font-bold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              style={{ borderRadius: 0 }}
+            >
+              {configs.length === 0 ? "Configurar agora" : "Ir para disparos"}
+            </Link>
+          </div>
+        ) : (
+          <>
+            {!dashboard.hasEnoughRespondents && (
+              <div className="border border-status-warning-border bg-status-warning-subtle px-4 py-3">
+                <p className="text-[11px] font-bold uppercase tracking-widest text-status-warning">Respondentes insuficientes</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Favorabilidade, eNPS, radar e heatmap ficam ocultos até haver pelo menos {MINIMUM_RESPONDENTS_FOR_DISPLAY} respostas na onda.
+                </p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+              <div className={`border px-4 py-4 ${kpiToneClass(dashboard.kpis.adherenceStatus)}`}>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Adesão</p>
+                <p className={`text-3xl font-bold tabular-nums mt-2 ${kpiValueClass(dashboard.kpis.adherenceStatus)}`}>
+                  {formatKpi(dashboard.kpis.adherencePercent, "%")}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-1">% de respondentes</p>
+              </div>
+              <div className="border border-border bg-card px-4 py-4">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Total de respostas</p>
+                <p className="text-3xl font-bold tabular-nums mt-2 text-foreground">{dashboard.kpis.totalResponses}</p>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  de {dashboard.kpis.totalRecipients} destinatários
+                </p>
+              </div>
+              <div className={`border px-4 py-4 ${kpiToneClass(dashboard.kpis.favorabilityStatus)}`}>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Favorabilidade</p>
+                <p className={`text-3xl font-bold tabular-nums mt-2 ${kpiValueClass(dashboard.kpis.favorabilityStatus)}`}>
+                  {formatKpi(dashboard.kpis.favorabilityPercent, "%")}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-1">% de respostas positivas (4–5)</p>
+              </div>
+              <div className={`border px-4 py-4 ${kpiToneClass(dashboard.kpis.enpsStatus)}`}>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">eNPS</p>
+                <p className={`text-3xl font-bold tabular-nums mt-2 ${kpiValueClass(dashboard.kpis.enpsStatus)}`}>
+                  {formatKpi(dashboard.kpis.enps)}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-1">promotores − detratores</p>
+              </div>
+            </div>
+
+            <div className="border border-border bg-card px-4 py-4 space-y-3">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Funil da onda</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Abertura, clique, início e conclusão da participação
+                </p>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Taxa de abertura</p>
+                  <p className="text-xl font-bold tabular-nums mt-1">{formatKpi(dashboard.funnel.openRatePercent, "%")}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Taxa de clique</p>
+                  <p className="text-xl font-bold tabular-nums mt-1">{formatKpi(dashboard.funnel.clickRatePercent, "%")}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Taxa de início</p>
+                  <p className="text-xl font-bold tabular-nums mt-1">{formatKpi(dashboard.funnel.startRatePercent, "%")}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Taxa de conclusão</p>
+                  <p className="text-xl font-bold tabular-nums mt-1">{formatKpi(dashboard.funnel.completionRatePercent, "%")}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Tempo médio</p>
+                  <p className="text-xl font-bold tabular-nums mt-1">
+                    {dashboard.funnel.averageResponseTimeSeconds === null
+                      ? "—"
+                      : `${Math.round(dashboard.funnel.averageResponseTimeSeconds / 60)} min`}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Abandonos</p>
+                  <p className="text-xl font-bold tabular-nums mt-1">
+                    {dashboard.funnel.abandonmentByQuestion.reduce((sum, row) => sum + row.abandonedCount, 0)}
+                  </p>
+                </div>
+              </div>
+              {dashboard.funnel.abandonmentByQuestion.length > 0 && (
+                <div className="border-t border-border pt-3">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
+                    Abandono por pergunta
+                  </p>
+                  <ul className="space-y-1">
+                    {dashboard.funnel.abandonmentByQuestion.map((row) => (
+                      <li
+                        key={`${String(row.questionOrder)}-${row.questionId ?? "none"}`}
+                        className="text-xs text-muted-foreground flex justify-between gap-3"
+                      >
+                        <span>
+                          {row.questionOrder === null
+                            ? "Antes da 1ª pergunta"
+                            : `Pergunta ${row.questionOrder}`}
+                        </span>
+                        <span className="tabular-nums text-foreground">
+                          {row.abandonedCount}
+                          {row.abandonmentPercentOfStarts !== null
+                            ? ` (${row.abandonmentPercentOfStarts}%)`
+                            : ""}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              <ChartCard
+                title="Radar por tópico"
+                subtitle={`Comparação com a meta corporativa (${dashboard.corporateGoalPercent}%)`}
+              >
+                <ClimateSurveyTopicRadarChart
+                  points={dashboard.radar}
+                  corporateGoalPercent={dashboard.corporateGoalPercent}
+                />
+              </ChartCard>
+              <ChartCard title="eNPS" subtitle="Distribuição de promotores, neutros e detratores">
+                <ClimateSurveyEnpsDonutChart breakdown={dashboard.enpsBreakdown} />
+              </ChartCard>
+            </div>
+
+            <ChartCard title="Evolução entre ondas" subtitle="Clima, favorabilidade, adesão e eNPS ao longo do tempo">
+              <ClimateSurveyWaveEvolutionChart
+                points={dashboard.evolution}
+                corporateGoalPercent={dashboard.corporateGoalPercent}
+              />
+            </ChartCard>
+
+            <ChartCard
+              title="Heatmap tópicos × departamentos"
+              subtitle="Verde: acima da meta · Amarelo: atenção · Vermelho: crítico"
+            >
+              <ClimateSurveyTopicDepartmentHeatmap heatmap={dashboard.heatmap} />
+            </ChartCard>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
