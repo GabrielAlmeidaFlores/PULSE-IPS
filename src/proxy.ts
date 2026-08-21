@@ -66,13 +66,21 @@ function generateNonce(): string {
 }
 
 function buildCspDirectives(nonce: string): string {
+  const isDevelopment = env.NODE_ENV === "development"
+  const scriptSrc = isDevelopment
+    ? `script-src 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval' https://js.stripe.com`
+    : `script-src 'nonce-${nonce}' 'strict-dynamic' https://js.stripe.com`
+  const connectSrc = isDevelopment
+    ? "connect-src 'self' ws: wss: http://localhost:* https://api.stripe.com"
+    : "connect-src 'self' https://api.stripe.com"
+
   return [
     "default-src 'self'",
-    `script-src 'nonce-${nonce}' 'strict-dynamic' https://js.stripe.com`,
+    scriptSrc,
     `style-src 'self' 'unsafe-inline' 'nonce-${nonce}'`,
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
-    "connect-src 'self' https://api.stripe.com",
+    connectSrc,
     "frame-src https://js.stripe.com https://hooks.stripe.com",
     "object-src 'none'",
     "base-uri 'self'",
@@ -104,6 +112,7 @@ const PUBLIC_PATHS = [
   "/invite",
   "/consent",
   "/health-survey",
+  "/climate-survey",
   "/report",
   "/checkout",
   "/accept-terms",
@@ -112,6 +121,7 @@ const PUBLIC_PATHS = [
   "/platform-terms",
   "/consent-terms",
   "/api/webhooks",
+  "/api/track",
   "/api/health",
   "/api/csp-report",
   "/data-deletion",
@@ -123,6 +133,7 @@ const TENANT_PATHS = [
   "/employees",
   "/departments",
   "/health-surveys",
+  "/climate-surveys",
   "/reports",
   "/action-plans",
   "/documents",

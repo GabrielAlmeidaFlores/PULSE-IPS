@@ -72,6 +72,7 @@ export async function runHealthSurveyResponseReminder(): Promise<void> {
           employeeId: token.employeeId,
           provider: env.MESSAGING_PROVIDER,
           type: "health_survey_reminder" as const,
+          dispatchId: token.dispatchId,
         },
       }
     })

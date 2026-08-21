@@ -30,6 +30,10 @@ export function createActionPlan(tenantId: string, data: CreateActionPlanInput):
       ...(data.dueDate !== undefined && { dueDate: data.dueDate }),
       ...(data.alertId !== undefined && { alertId: data.alertId }),
       ...(data.reportId !== undefined && { reportId: data.reportId }),
+      ...(data.climateSurveyDispatchId !== undefined && { climateSurveyDispatchId: data.climateSurveyDispatchId }),
+      ...(data.climateSurveyDimension !== undefined && { climateSurveyDimension: data.climateSurveyDimension }),
+      ...(data.assigneeId !== undefined && { assigneeId: data.assigneeId }),
+      ...(data.status !== undefined && { status: data.status }),
     },
   }) as unknown as Promise<ActionPlan>
 }
@@ -48,6 +52,9 @@ export function updateActionPlan(
       ...(data.status !== undefined && { status: data.status }),
       ...(data.priority !== undefined && { priority: data.priority }),
       ...(data.completedAt !== undefined && { completedAt: data.completedAt }),
+      ...(data.assigneeId !== undefined && { assigneeId: data.assigneeId }),
+      ...(data.climateSurveyDimension !== undefined && { climateSurveyDimension: data.climateSurveyDimension }),
+      ...(data.climateSurveyDispatchId !== undefined && { climateSurveyDispatchId: data.climateSurveyDispatchId }),
     },
   })
 }
@@ -88,6 +95,10 @@ export function createActionPlanWithTasks(
         ...(data.dueDate !== undefined && { dueDate: data.dueDate }),
         ...(data.alertId !== undefined && { alertId: data.alertId }),
         ...(data.reportId !== undefined && { reportId: data.reportId }),
+        ...(data.climateSurveyDispatchId !== undefined && { climateSurveyDispatchId: data.climateSurveyDispatchId }),
+        ...(data.climateSurveyDimension !== undefined && { climateSurveyDimension: data.climateSurveyDimension }),
+        ...(data.assigneeId !== undefined && { assigneeId: data.assigneeId }),
+        ...(data.status !== undefined && { status: data.status }),
       },
     })
     if (taskTitles.length > 0) {
@@ -218,6 +229,14 @@ export async function findSuggestionContextData(tenantId: string): Promise<Sugge
 export interface ActionPlanListingFilters {
   q?: string
   status?: string
+  fromClimateSurvey?: boolean
+  assigneeId?: string
+  climateSurveyDimension?: string
+}
+
+export interface ActionPlanWithAssignee extends ActionPlanWithTasks {
+  assignee: { id: string; name: string } | null
+  climateSurveyDispatch: { id: string; climateSurveyConfiguration: { name: string } } | null
 }
 
 export async function findActionPlansForListingPage(
@@ -233,9 +252,82 @@ export async function findActionPlansForListingPage(
   if (filters.status !== undefined) {
     where.status = filters.status
   }
+  if (filters.fromClimateSurvey === true) {
+    where.climateSurveyDispatchId = { not: null }
+  }
+  if (filters.assigneeId !== undefined) {
+    where.assigneeId = filters.assigneeId
+  }
+  if (filters.climateSurveyDimension !== undefined) {
+    where.climateSurveyDimension = filters.climateSurveyDimension
+  }
   const [items, total] = await Promise.all([
     prisma.actionPlan.findMany({ where, include: { tasks: true }, orderBy: { createdAt: "desc" }, skip, take }),
     prisma.actionPlan.count({ where }),
   ])
   return { items: items as unknown as ActionPlanWithTasks[], total }
+}
+
+export async function findClimateSurveyActionPlans(
+  tenantId: string,
+  filters: ActionPlanListingFilters,
+): Promise<ActionPlanWithAssignee[]> {
+  const where: Prisma.ActionPlanWhereInput = {
+    tenantId,
+    climateSurveyDispatchId: { not: null },
+  }
+  if (filters.q !== undefined) {
+    where.title = { contains: filters.q, mode: "insensitive" }
+  }
+  if (filters.status !== undefined) {
+    where.status = filters.status
+  }
+  if (filters.assigneeId !== undefined) {
+    where.assigneeId = filters.assigneeId
+  }
+  if (filters.climateSurveyDimension !== undefined) {
+    where.climateSurveyDimension = filters.climateSurveyDimension
+  }
+
+  const items = await prisma.actionPlan.findMany({
+    where,
+    include: {
+      tasks: true,
+      assignee: { select: { id: true, name: true } },
+      climateSurveyDispatch: {
+        select: {
+          id: true,
+          climateSurveyConfiguration: { select: { name: true } },
+        },
+      },
+    },
+    orderBy: [{ status: "asc" }, { dueDate: "asc" }, { createdAt: "desc" }],
+  })
+
+  return items as unknown as ActionPlanWithAssignee[]
+}
+
+export async function countClimateSurveyActionPlanIndicators(tenantId: string): Promise<{
+  completed: number
+  inProgress: number
+  overdue: number
+}> {
+  const now = new Date()
+  const [completed, inProgress, overdue] = await Promise.all([
+    prisma.actionPlan.count({
+      where: { tenantId, climateSurveyDispatchId: { not: null }, status: "completed" },
+    }),
+    prisma.actionPlan.count({
+      where: { tenantId, climateSurveyDispatchId: { not: null }, status: "in_progress" },
+    }),
+    prisma.actionPlan.count({
+      where: {
+        tenantId,
+        climateSurveyDispatchId: { not: null },
+        status: { not: "completed" },
+        dueDate: { lt: now },
+      },
+    }),
+  ])
+  return { completed, inProgress, overdue }
 }

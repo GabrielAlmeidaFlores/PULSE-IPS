@@ -101,6 +101,10 @@ model Organization {
   healthSurveyQuestions       HealthSurveyQuestion[]
   healthSurveyResponses       HealthSurveyResponse[]
   healthSurveyConfigs         HealthSurveyConfiguration[]
+  climateSurveyDispatches     ClimateSurveyDispatch[]
+  climateSurveyQuestions      ClimateSurveyQuestion[]
+  climateSurveyResponses      ClimateSurveyResponse[]
+  climateSurveyConfigs        ClimateSurveyConfiguration[]
   documents             Document[]
   actionPlans           ActionPlan[]
   actionPlanTasks       ActionPlanTask[]
@@ -109,6 +113,9 @@ model Organization {
   alerts                Alert[]
   auditLogs             AuditLog[]
   messageLogs           MessageLog[]
+  emailLogs             EmailLog[]
+  climateSurveyAnalyticsEvents ClimateSurveyAnalyticsEvent[]
+  climateSurveyResponseSessions ClimateSurveyResponseSession[]
   pgrReviews            PgrReview[]
   consents              EmployeeConsent[]
 
@@ -132,6 +139,7 @@ model OrganizationUser {
   termsAcceptances               PlatformTermsAcceptance[]
   dismissedActionPlanSuggestions ActionPlanSuggestion[]    @relation("ActionPlanSuggestionDismisser")
   uploadedDocumentVersions       DocumentVersion[]         @relation("DocumentVersionUploader")
+  assignedActionPlans            ActionPlan[]              @relation("ActionPlanAssignee")
   assignedActionPlanTasks        ActionPlanTask[]          @relation("ActionPlanTaskAssignee")
   resolvedAlerts                 Alert[]                   @relation("AlertResolver")
   auditLogs                      AuditLog[]                @relation("AuditLogActor")
@@ -237,6 +245,9 @@ model Department {
   healthSurveyConfigDepartments HealthSurveyConfigDepartment[]
   healthSurveyDeptDispatches    HealthSurveyDeptDispatch[]
   healthSurveyResponses         HealthSurveyResponse[] @relation("HealthSurveyResponseDepartment")
+  climateSurveyConfigDepartments ClimateSurveyConfigDepartment[]
+  climateSurveyDeptDispatches    ClimateSurveyDeptDispatch[]
+  climateSurveyResponses         ClimateSurveyResponse[] @relation("ClimateSurveyResponseDepartment")
   alerts               Alert[]
   workDays             DepartmentWorkDay[]
   pgrDeptResults       PgrDeptResult[]
@@ -267,6 +278,7 @@ model Employee {
   department   Department            @relation(fields: [departmentId], references: [id])
   consents     EmployeeConsent[]
   healthSurveyResponseTokens HealthSurveyResponseToken[]
+  climateSurveyResponseTokens ClimateSurveyResponseToken[]
   workDays     EmployeeWorkDay[]
 
   @@index([tenantId])
@@ -477,6 +489,232 @@ model HealthSurveyDeptDispatch {
   @@map("health_survey_dept_dispatches")
 }
 
+model ClimateSurveyConfigWorkDay {
+  configId  String                     @map("config_id")
+  dayOfWeek Int                        @map("day_of_week")
+  config    ClimateSurveyConfiguration @relation(fields: [configId], references: [id], onDelete: Cascade)
+
+  @@id([configId, dayOfWeek])
+  @@map("climate_survey_config_work_days")
+}
+
+model ClimateSurveyConfiguration {
+  id                      String   @id @default(uuid())
+  tenantId                String   @map("tenant_id")
+  name                    String   @default("Pesquisa de Clima")
+  description             String?
+  frequency               String
+  scheduledDayOfMonth     Int?     @map("scheduled_day_of_month")
+  dispatchTime            String   @default("09:00") @db.VarChar(5) @map("dispatch_time")
+  respectEmployeeSchedule Boolean  @default(false) @map("respect_employee_schedule")
+  tokenExpiryHours        Int      @default(48) @map("token_expiry_hours")
+  sendViaMessaging        Boolean  @default(true) @map("send_via_messaging")
+  sendViaSignedLink       Boolean  @default(true) @map("send_via_signed_link")
+  workDays                ClimateSurveyConfigWorkDay[]
+  isActive                Boolean  @default(true) @map("is_active")
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  organization      Organization                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  configDepartments ClimateSurveyConfigDepartment[]
+  questions         ClimateSurveyQuestion[]
+  dispatches        ClimateSurveyDispatch[]
+
+  @@index([tenantId])
+  @@map("climate_survey_configurations")
+}
+
+model ClimateSurveyQuestion {
+  id                           String  @id @default(uuid())
+  tenantId                     String  @map("tenant_id")
+  climateSurveyConfigurationId String  @map("climate_survey_configuration_id")
+  text                         String
+  order                        Int
+  scoreDirection               String  @default("higher_is_better") @map("score_direction")
+  dimension                    String  @default("organizational_culture")
+  isActive                     Boolean @default(true) @map("is_active")
+
+  organization                 Organization              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  climateSurveyConfiguration   ClimateSurveyConfiguration @relation(fields: [climateSurveyConfigurationId], references: [id], onDelete: Cascade)
+  responseItems                ClimateSurveyResponseItem[]
+
+  @@index([tenantId])
+  @@index([tenantId, climateSurveyConfigurationId])
+  @@index([dimension])
+  @@map("climate_survey_questions")
+}
+
+model ClimateSurveyDispatch {
+  id                           String    @id @default(uuid())
+  tenantId                     String    @map("tenant_id")
+  climateSurveyConfigurationId String    @map("climate_survey_configuration_id")
+  scheduledAt                  DateTime  @map("scheduled_at")
+  dispatchedAt                 DateTime? @map("dispatched_at")
+  adherenceCheckedAt           DateTime? @map("adherence_checked_at")
+  status                       String    @default("scheduled")
+  source                       String    @default("auto") @map("source")
+  signedLinkToken              String?   @unique @db.VarChar(255) @map("signed_link_token")
+  createdAt                    DateTime  @default(now()) @map("created_at")
+
+  organization               Organization               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  climateSurveyConfiguration ClimateSurveyConfiguration @relation(fields: [climateSurveyConfigurationId], references: [id])
+  tokens                     ClimateSurveyResponseToken[]
+  responses                  ClimateSurveyResponse[]
+  deptDispatches             ClimateSurveyDeptDispatch[]
+  actionPlans                ActionPlan[]               @relation("ActionPlanOriginClimateSurveyDispatch")
+  analyticsEvents            ClimateSurveyAnalyticsEvent[]
+  responseSessions           ClimateSurveyResponseSession[]
+
+  @@index([tenantId])
+  @@index([climateSurveyConfigurationId])
+  @@index([tenantId, status, scheduledAt])
+  @@index([createdAt])
+  @@map("climate_survey_dispatches")
+}
+
+model ClimateSurveyResponseToken {
+  id             String    @id @default(uuid())
+  tenantId       String    @map("tenant_id")
+  dispatchId     String    @map("dispatch_id")
+  employeeId     String    @map("employee_id")
+  token          String    @unique
+  shortCode      String?   @map("short_code") @db.VarChar(7)
+  expiresAt      DateTime  @map("expires_at")
+  workStartTime  String    @db.VarChar(5) @map("work_start_time")
+  workEndTime    String    @db.VarChar(5) @map("work_end_time")
+  usedAt         DateTime? @map("used_at")
+  reminderSentAt DateTime? @map("reminder_sent_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  dispatch ClimateSurveyDispatch              @relation(fields: [dispatchId], references: [id], onDelete: Cascade)
+  employee Employee                           @relation(fields: [employeeId], references: [id])
+  workDays ClimateSurveyResponseTokenWorkDay[]
+  responseSession ClimateSurveyResponseSession?
+
+  @@unique([tenantId, shortCode])
+  @@index([tenantId])
+  @@index([dispatchId, employeeId])
+  @@index([createdAt])
+  @@map("climate_survey_response_tokens")
+}
+
+model ClimateSurveyResponseTokenWorkDay {
+  tokenId   String @map("token_id")
+  dayOfWeek Int    @map("day_of_week")
+
+  token ClimateSurveyResponseToken @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+
+  @@id([tokenId, dayOfWeek])
+  @@map("climate_survey_response_token_work_days")
+}
+
+model ClimateSurveyResponse {
+  id           String   @id @default(uuid())
+  tenantId     String   @map("tenant_id")
+  dispatchId   String   @map("dispatch_id")
+  departmentId String?  @map("department_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  organization Organization              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  dispatch     ClimateSurveyDispatch     @relation(fields: [dispatchId], references: [id])
+  department   Department?               @relation("ClimateSurveyResponseDepartment", fields: [departmentId], references: [id])
+  items        ClimateSurveyResponseItem[]
+
+  @@index([tenantId])
+  @@index([dispatchId])
+  @@index([createdAt])
+  @@index([tenantId, createdAt])
+  @@map("climate_survey_responses")
+}
+
+model ClimateSurveyResponseItem {
+  id                      String @id @default(uuid())
+  climateSurveyResponseId String @map("climate_survey_response_id")
+  questionId              String @map("question_id")
+  score                   Int
+
+  climateSurveyResponse ClimateSurveyResponse @relation(fields: [climateSurveyResponseId], references: [id], onDelete: Cascade)
+  question              ClimateSurveyQuestion @relation(fields: [questionId], references: [id])
+
+  @@index([climateSurveyResponseId])
+  @@index([questionId])
+  @@map("climate_survey_response_items")
+}
+
+model ClimateSurveyConfigDepartment {
+  configId     String @map("config_id")
+  departmentId String @map("department_id")
+
+  config     ClimateSurveyConfiguration @relation(fields: [configId], references: [id], onDelete: Cascade)
+  department Department                 @relation(fields: [departmentId], references: [id])
+
+  @@id([configId, departmentId])
+  @@index([departmentId])
+  @@map("climate_survey_config_departments")
+}
+
+model ClimateSurveyDeptDispatch {
+  id              String   @id @default(uuid())
+  dispatchId      String   @map("dispatch_id")
+  departmentId    String   @map("department_id")
+  totalRecipients Int      @default(0) @map("total_recipients")
+  totalResponses  Int      @default(0) @map("total_responses")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  dispatch   ClimateSurveyDispatch @relation(fields: [dispatchId], references: [id], onDelete: Cascade)
+  department Department            @relation(fields: [departmentId], references: [id])
+
+  @@unique([dispatchId, departmentId])
+  @@index([departmentId])
+  @@map("climate_survey_dept_dispatches")
+}
+
+model ClimateSurveyAnalyticsEvent {
+  id            String   @id @default(uuid())
+  tenantId      String   @map("tenant_id")
+  event         String
+  configId      String?  @map("config_id")
+  dispatchId    String?  @map("dispatch_id")
+  actionPlanId  String?  @map("action_plan_id")
+  questionId    String?  @map("question_id")
+  questionOrder Int?     @map("question_order")
+  emailLogId    String?  @map("email_log_id")
+  sessionId     String?  @map("session_id")
+  quantity      Int      @default(1)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  organization Organization           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  dispatch     ClimateSurveyDispatch? @relation(fields: [dispatchId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, event, createdAt])
+  @@index([tenantId, dispatchId, event])
+  @@index([tenantId, configId, event])
+  @@map("climate_survey_analytics_events")
+}
+
+model ClimateSurveyResponseSession {
+  id                String    @id @default(uuid())
+  tenantId          String    @map("tenant_id")
+  dispatchId        String    @map("dispatch_id")
+  tokenId           String    @unique @map("token_id")
+  startedAt         DateTime  @map("started_at")
+  completedAt       DateTime? @map("completed_at")
+  lastQuestionId    String?   @map("last_question_id")
+  lastQuestionOrder Int?      @map("last_question_order")
+  questionCount     Int       @map("question_count")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  organization Organization              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  dispatch     ClimateSurveyDispatch     @relation(fields: [dispatchId], references: [id], onDelete: Cascade)
+  token        ClimateSurveyResponseToken @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, dispatchId])
+  @@index([tenantId, completedAt])
+  @@map("climate_survey_response_sessions")
+}
+
 model AnonymousReport {
   id         String    @id @default(uuid())
   tenantId   String    @map("tenant_id")
@@ -497,26 +735,35 @@ model AnonymousReport {
 }
 
 model ActionPlan {
-  id          String    @id @default(uuid())
-  tenantId    String    @map("tenant_id")
-  alertId     String?   @map("alert_id")
-  reportId    String?   @map("report_id")
-  title       String
-  description String?
-  status      String    @default("open")
-  priority    String    @default("medium")
-  dueDate     DateTime? @map("due_date")
-  completedAt DateTime? @map("completed_at")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id                       String    @id @default(uuid())
+  tenantId                 String    @map("tenant_id")
+  alertId                  String?   @map("alert_id")
+  reportId                 String?   @map("report_id")
+  climateSurveyDispatchId  String?   @map("climate_survey_dispatch_id")
+  climateSurveyDimension   String?   @map("climate_survey_dimension")
+  assigneeId               String?   @map("assignee_id")
+  title                    String
+  description              String?
+  status                   String    @default("open")
+  priority                 String    @default("medium")
+  dueDate                  DateTime? @map("due_date")
+  completedAt              DateTime? @map("completed_at")
+  createdAt                DateTime  @default(now()) @map("created_at")
+  updatedAt                DateTime  @updatedAt @map("updated_at")
 
-  organization Organization               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  alert        Alert?                     @relation("ActionPlanOriginAlert", fields: [alertId], references: [id])
-  report       AnonymousReport?           @relation("ActionPlanOriginReport", fields: [reportId], references: [id])
-  tasks        ActionPlanTask[]
-  suggestion   ActionPlanSuggestion?      @relation("ActionPlanSuggestionConvertedPlan")
+  organization          Organization           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  alert                 Alert?                 @relation("ActionPlanOriginAlert", fields: [alertId], references: [id])
+  report                AnonymousReport?       @relation("ActionPlanOriginReport", fields: [reportId], references: [id])
+  climateSurveyDispatch ClimateSurveyDispatch? @relation("ActionPlanOriginClimateSurveyDispatch", fields: [climateSurveyDispatchId], references: [id])
+  assignee              OrganizationUser?      @relation("ActionPlanAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  tasks                 ActionPlanTask[]
+  suggestion            ActionPlanSuggestion?  @relation("ActionPlanSuggestionConvertedPlan")
 
   @@index([tenantId])
+  @@index([climateSurveyDispatchId])
+  @@index([climateSurveyDimension])
+  @@index([assigneeId])
+  @@index([createdAt])
   @@map("action_plans")
 }
 
@@ -652,19 +899,61 @@ model AuditLog {
 }
 
 model MessageLog {
-  id         String   @id @default(uuid())
-  tenantId   String   @map("tenant_id")
-  employeeId String?  @map("employee_id")
-  type       String
-  provider   String
-  externalId String?  @map("external_id")
-  status     String
-  sentAt     DateTime @default(now()) @map("sent_at")
+  id           String    @id @default(uuid())
+  tenantId     String    @map("tenant_id")
+  employeeId   String?   @map("employee_id")
+  dispatchId   String?   @map("dispatch_id")
+  type         String
+  provider     String
+  externalId   String?   @map("external_id")
+  surveyLink   String?   @map("survey_link") @db.VarChar(500)
+  status       String
+  errorMessage String?   @map("error_message")
+  queueJobId   String?   @map("queue_job_id")
+  sentAt       DateTime  @default(now()) @map("sent_at")
+  deliveredAt  DateTime? @map("delivered_at")
+  readAt       DateTime? @map("read_at")
+  failedAt     DateTime? @map("failed_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
+  @@index([tenantId, dispatchId])
+  @@index([externalId])
+  @@index([queueJobId])
+  @@index([tenantId, sentAt(sort: Desc)])
   @@map("message_logs")
+}
+
+model EmailLog {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  employeeId      String?   @map("employee_id")
+  dispatchId      String?   @map("dispatch_id")
+  type            String
+  provider        String
+  externalId      String?   @map("external_id")
+  recipientEmail  String    @map("recipient_email") @db.VarChar(255)
+  surveyLink      String    @map("survey_link") @db.VarChar(500)
+  trackingToken   String    @unique @map("tracking_token")
+  status          String
+  errorMessage    String?   @map("error_message")
+  queueJobId      String?   @map("queue_job_id")
+  sentAt          DateTime  @default(now()) @map("sent_at")
+  openedAt        DateTime? @map("opened_at")
+  clickedAt       DateTime? @map("clicked_at")
+  failedAt        DateTime? @map("failed_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, dispatchId])
+  @@index([externalId])
+  @@index([queueJobId])
+  @@index([tenantId, sentAt(sort: Desc)])
+  @@map("email_logs")
 }
 
 model PgrReview {

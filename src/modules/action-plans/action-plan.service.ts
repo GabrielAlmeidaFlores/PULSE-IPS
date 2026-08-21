@@ -64,6 +64,9 @@ export async function createPlanWithTasks(
 interface ActionPlanListingQuery {
   q?: string
   status?: string
+  fromClimateSurvey?: boolean
+  assigneeId?: string
+  climateSurveyDimension?: string
   page: number
   pageSize: number
 }
@@ -76,5 +79,8 @@ export function getActionPlansPaginated(
   const filters: ActionPlanListingFilters = {}
   if (query.q !== undefined) filters.q = query.q
   if (query.status !== undefined) filters.status = query.status
+  if (query.fromClimateSurvey === true) filters.fromClimateSurvey = true
+  if (query.assigneeId !== undefined) filters.assigneeId = query.assigneeId
+  if (query.climateSurveyDimension !== undefined) filters.climateSurveyDimension = query.climateSurveyDimension
   return findActionPlansForListingPage(tenantId, filters, skip, query.pageSize)
 }
