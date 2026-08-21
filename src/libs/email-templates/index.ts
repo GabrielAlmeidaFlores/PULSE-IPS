@@ -45,6 +45,21 @@ interface AccountDeletionScheduledProps extends Record<string, string> {
   supportEmail: string
 }
 
+interface ClimateSurveyDispatchEmailProps extends Record<string, string> {
+  employeeName: string
+  orgName: string
+  surveyUrl: string
+  openPixelUrl: string
+  expiryHours: string
+}
+
+interface ClimateSurveyReminderEmailProps extends Record<string, string> {
+  employeeName: string
+  orgName: string
+  surveyUrl: string
+  openPixelUrl: string
+}
+
 type EmailTemplate =
   | { name: "org-invite"; props: OrgInviteProps }
   | { name: "email-verification"; props: EmailVerificationProps }
@@ -54,6 +69,8 @@ type EmailTemplate =
   | { name: "plan-cancelled"; props: PlanCancelledProps }
   | { name: "account-deletion-confirm"; props: AccountDeletionConfirmProps }
   | { name: "account-deletion-scheduled"; props: AccountDeletionScheduledProps }
+  | { name: "climate-survey-dispatch"; props: ClimateSurveyDispatchEmailProps }
+  | { name: "climate-survey-reminder"; props: ClimateSurveyReminderEmailProps }
 
 function applyVars(html: string, vars: Record<string, string>): string {
   return Object.entries(vars).reduce(

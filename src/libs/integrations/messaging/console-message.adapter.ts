@@ -19,4 +19,16 @@ export class ConsoleMessageAdapter implements IMessagingService {
     logger.info("FAKE REMINDER MESSAGE", { recipientPhone: params.recipientPhone, recipientName: params.recipientName, surveyLink: params.surveyLink, id: externalId })
     return Promise.resolve({ externalId, status: "sent" })
   }
+
+  sendClimateSurveyDispatch(params: HealthSurveyMessageParams): Promise<SendMessageResult> {
+    const externalId = `fake-climate-${Date.now()}`
+    logger.info("FAKE CLIMATE DISPATCH MESSAGE", { recipientPhone: params.recipientPhone, recipientName: params.recipientName, surveyLink: params.surveyLink, id: externalId })
+    return Promise.resolve({ externalId, status: "sent" })
+  }
+
+  sendClimateSurveyReminder(params: HealthSurveyMessageParams): Promise<SendMessageResult> {
+    const externalId = `fake-climate-${Date.now()}`
+    logger.info("FAKE CLIMATE REMINDER MESSAGE", { recipientPhone: params.recipientPhone, recipientName: params.recipientName, surveyLink: params.surveyLink, id: externalId })
+    return Promise.resolve({ externalId, status: "sent" })
+  }
 }

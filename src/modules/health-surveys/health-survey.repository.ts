@@ -842,6 +842,7 @@ export interface ReminderEligibleToken {
   id: string
   tenantId: string
   employeeId: string
+  dispatchId: string
   expiresAt: Date
   shortCode: string
   workStartTime: string
@@ -873,6 +874,7 @@ export async function findAllTenantsTokensEligibleForReminderCheck(): Promise<Re
       id: true,
       tenantId: true,
       employeeId: true,
+      dispatchId: true,
       expiresAt: true,
       shortCode: true,
       workStartTime: true,
@@ -897,6 +899,7 @@ export async function findAllTenantsTokensEligibleForReminderCheck(): Promise<Re
       id: r.id,
       tenantId: r.tenantId,
       employeeId: r.employeeId,
+      dispatchId: r.dispatchId,
       expiresAt: r.expiresAt,
       shortCode: r.shortCode,
       workStartTime: r.workStartTime,

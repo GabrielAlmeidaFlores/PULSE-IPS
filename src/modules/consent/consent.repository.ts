@@ -131,6 +131,22 @@ export async function atomicAcceptConsentFromToken(
   })
 }
 
+export async function atomicAcceptConsentFromClimateSurveyToken(
+  tokenId: string,
+  tenantId: string,
+  employeeId: string,
+  consentTermVersionId: string,
+): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    const token = await tx.climateSurveyResponseToken.findUnique({ where: { id: tokenId } })
+    if (!token || token.usedAt) return
+
+    await tx.employeeConsent.create({
+      data: { tenantId, employeeId, consentTermVersionId, event: "accepted", source: "climate_survey_form" },
+    })
+  })
+}
+
 export async function findEmployeeIdsForConsentState(tenantId: string, consentFilter: string): Promise<string[]> {
   if (consentFilter === "not_sent") {
     const [withConsent, allEmployees] = await Promise.all([

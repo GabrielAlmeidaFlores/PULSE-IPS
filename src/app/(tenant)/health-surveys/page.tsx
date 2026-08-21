@@ -1,19 +1,19 @@
-import { redirect } from "next/navigation"
 import Link from "next/link"
-import { getSession } from "@/modules/auth/session"
-import { getHealthSurveyDispatchesPaginated, type HealthSurveyDispatchWithConfig } from "@/modules/health-surveys/health-survey-dashboard.service"
-import { getHealthSurveyConfigs } from "@/modules/health-surveys/health-survey-config.service"
-import { buildPaginationParams } from "@/libs/utils/pagination"
+import { redirect } from "next/navigation"
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz"
-import { ScheduleHealthSurveyDispatchButton } from "@/app/(tenant)/health-surveys/schedule-health-survey-dispatch-button"
-import { getOrganization } from "@/modules/organizations/organization.service"
-import { HealthSurveyListFilters } from "@/app/(tenant)/health-surveys/health-survey-list-filters"
-import { CopyDispatchLinkButton } from "@/app/(tenant)/health-surveys/components/copy-dispatch-link-button"
-import { adherenceRateBarClass } from "@/libs/utils/health-index"
-import { DataTable, TablePagination } from "@/libs/design-system"
-import { PageHelp } from "@/components/page-help"
-import { CheckCircle2, XCircle, ChevronRight } from "lucide-react"
+import { CheckCircle2, ChevronRight, Users, XCircle } from "lucide-react"
 import { env } from "@/env"
+import { DataTable, TablePagination } from "@/libs/design-system"
+import { adherenceRateBarClass } from "@/libs/utils/health-index"
+import { buildPaginationParams } from "@/libs/utils/pagination"
+import { getSession } from "@/modules/auth/session"
+import { getHealthSurveyConfigs } from "@/modules/health-surveys/health-survey-config.service"
+import { getHealthSurveyDispatchesPaginated, type HealthSurveyDispatchWithConfig } from "@/modules/health-surveys/health-survey-dashboard.service"
+import { getOrganization } from "@/modules/organizations/organization.service"
+import { ScheduleHealthSurveyDispatchButton } from "@/app/(tenant)/health-surveys/schedule-health-survey-dispatch-button"
+import { CopyDispatchLinkButton } from "@/app/(tenant)/health-surveys/components/copy-dispatch-link-button"
+import { HealthSurveyListFilters } from "@/app/(tenant)/health-surveys/health-survey-list-filters"
+import { PageHelp } from "@/components/page-help"
 
 interface HealthSurveysListPageProps {
   searchParams: Promise<Record<string, string | undefined>>
@@ -106,7 +106,9 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
                 </div>
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Taxa de adesão</p>
-                  <p className="text-[12px] text-foreground leading-relaxed">Percentual de colaboradores que responderam. Taxa abaixo de <strong>80%</strong> após 48h gera um alerta automático de baixa adesão. O RH pode reenviar o link para quem ainda não respondeu.</p>
+                  <p className="text-[12px] text-foreground leading-relaxed">Percentual de destinatários elegíveis que responderam. A tabela mostra separadamente quem respondeu, quem ainda não respondeu e o total de destinatários elegíveis.</p>
+                  <p className="text-[12px] text-foreground leading-relaxed mt-1">São elegíveis os colaboradores ativos, vinculados aos setores da pesquisa, considerados pela programação de jornada e que não recusaram ou saíram da pesquisa. Por isso, esse total pode variar entre disparos.</p>
+                  <p className="text-[12px] text-foreground leading-relaxed mt-1">Taxa abaixo de <strong>80%</strong> após 48h gera um alerta automático de baixa adesão. O RH pode reenviar o link para quem ainda não respondeu.</p>
                 </div>
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Anonimato garantido</p>
@@ -177,14 +179,14 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
               { label: "Data", className: "w-28" },
               { label: "Setores", className: "w-36" },
               { label: "Status", className: "w-32" },
-              { label: "Respostas", className: "w-28" },
+              { label: "Participação", className: "w-44" },
               { label: "Adesão", className: "w-32" },
               { label: "Link de acesso", className: "w-32 text-center" },
               { label: "", className: "w-8" },
             ]}
             total={total}
             pagination={<TablePagination total={total} />}
-            minWidth={760}
+            minWidth={900}
           >
             {dispatches.map((d, i) => {
               const { totalRecipients, totalResponses, deptNames } = buildDispatchRow(d)
@@ -229,14 +231,21 @@ export default async function HealthSurveysListPage({ searchParams }: HealthSurv
                     </Link>
                   </td>
                   <td className="px-4 py-3">
-                    <Link href={`/health-surveys/${d.id}`} className="flex items-center gap-3 text-[11px]">
+                    <Link href={`/health-surveys/${d.id}`} className="flex flex-col items-start gap-1 text-[11px]">
                       <span className="flex items-center gap-1 text-muted-foreground">
                         <CheckCircle2 className="h-3 w-3 text-status-success" />
+                        <span>Respondidas:</span>
                         <span className="font-bold text-foreground">{totalResponses}</span>
                       </span>
                       <span className="flex items-center gap-1 text-muted-foreground">
                         <XCircle className="h-3 w-3 text-status-danger" />
+                        <span>Não respondidas:</span>
                         <span className="font-bold text-foreground">{notResponded}</span>
+                      </span>
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <Users className="h-3 w-3" />
+                        <span>Destinatários elegíveis:</span>
+                        <span className="font-bold text-foreground">{totalRecipients}</span>
                       </span>
                     </Link>
                   </td>

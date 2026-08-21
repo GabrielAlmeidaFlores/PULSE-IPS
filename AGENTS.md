@@ -140,6 +140,8 @@ Feita exclusivamente pelo Super Admin. Campos:
 | employees | — | CRUD | CR + U | |
 | health_survey_configurations | — | CRUD | CRUD | |
 | health_survey_dispatches | — | CR | CR | |
+| climate_survey_configurations | — | CRUD | CRUD | Feature de plano `climate_surveys` |
+| climate_survey_dispatches | — | CR | CR | Feature de plano `climate_surveys` |
 | anonymous_reports | — | CRU + D | CRU | |
 | action_plans | — | CRUD | CRU | |
 | documents | — | CRUD | CR | |
@@ -256,6 +258,9 @@ src/
 │   ├── (public)/                           # Rotas públicas (sem autenticação)
 │   │   ├── health-survey/[token]/page.tsx         # Formulário de pesquisa + Consent Gate inline (sem login)
 │   │   ├── health-survey/[orgSlug]/[shortCode]/page.tsx  # Pretty URL — alias para /health-survey/[token]
+│   │   ├── climate-survey/[token]/page.tsx        # Formulário de clima + Consent Gate (sem login)
+│   │   ├── climate-survey/[token]/[shortCode]/page.tsx  # Pretty URL — orgSlug no 1º segmento + shortCode
+│   │   ├── climate-survey/link/[linkToken]/page.tsx  # Unlock por telefone/documento
 │   │   └── report/[orgSlug]/page.tsx       # Canal de relato anônimo
 │   ├── platform-terms/page.tsx             # Termos de Uso — página pública standalone (linked no footer)
 │   ├── privacy-policy/page.tsx             # Política de Privacidade — página pública standalone
@@ -340,6 +345,7 @@ src/
 │   │   │   └── [id]/page.tsx
 │   │   ├── departments/
 │   │   ├── health-surveys/
+│   │   ├── climate-surveys/                # Feature gate: climate_surveys — Sidebar: Pesquisa de Clima (Board, Adesão, Banco de Perguntas, Disparo & Canais, Plano de Ação)
 │   │   ├── reports/
 │   │   ├── action-plans/
 │   │   ├── documents/
@@ -350,6 +356,7 @@ src/
 │   │
 │   └── api/
 │       ├── webhooks/stripe/route.ts        # POST — recebe eventos Stripe (assinado)
+│       ├── webhooks/messaging/route.ts     # POST/GET — status de entrega de mensagens (enviado/entregue/lido/falhou)
 │       ├── jobs/[job-name]/route.ts        # Manual trigger de jobs (x-cron-secret)
 │       ├── auth/logout/route.ts            # GET/POST — logout via rota de API
 │       ├── health/route.ts                 # GET — health check do banco de dados
@@ -392,6 +399,22 @@ src/
 │   ├── health-surveys/
 │   │   ├── health-survey-dispatch.service.ts      # Agendamento e disparo automático/manual
 │   │   └── health-survey-reminder.service.ts      # Lembrete para não-respondentes (runHealthSurveyResponseReminder)
+│   ├── climate-surveys/
+│   │   ├── climate-survey.repository.ts
+│   │   ├── climate-survey-config.service.ts
+│   │   ├── climate-survey-dispatch.service.ts
+│   │   ├── climate-survey-response.service.ts
+│   │   ├── climate-survey-dashboard.service.ts
+│   │   ├── climate-survey-action-plan.service.ts
+│   │   ├── climate-survey-metrics.ts
+│   │   ├── climate-survey-adherence.service.ts
+│   │   ├── climate-survey-campaign.service.ts
+│   │   ├── climate-survey-reminder.service.ts
+│   │   ├── climate-survey-anonymity.service.ts
+│   │   ├── climate-survey-analytics.service.ts
+│   │   ├── climate-survey-analytics.repository.ts
+│   │   ├── climate-survey-analytics.types.ts
+│   │   └── climate-survey.types.ts
 │   ├── anonymous-reports/
 │   ├── action-plans/
 │   │   ├── action-plan.repository.ts
@@ -438,14 +461,18 @@ src/
 │   │   ├── request-log.service.ts
 │   │   └── request-log.types.ts
 │   ├── messaging/
-│   │   ├── message-log.repository.ts       # Append-only — createMessageLog(tenantId, data), MessageLogType
-│   │   └── (sem service — acesso direto ao repositório pelos workers)
+│   │   ├── message-log.repository.ts       # create + update de status por external_id / queue_job_id
+│   │   ├── messaging.service.ts            # envio outbound + aplicação de status do webhook
+│   │   ├── email-log.repository.ts         # create + open/click tracking de e-mails de pesquisa
+│   │   └── survey-email.service.ts         # envio outbound via getEmailService + tracking first-party
+│   │   ├── messaging.service.ts            # processOutboundSurveyMessage, applyMessageDeliveryStatus, listDispatchMessageLogs
+│   │   └── messaging.service.test.ts
 │   └── audit/
 │       ├── audit.repository.ts             # Apenas INSERT — sem update/delete
 │       └── audit.types.ts
 │
 ├── libs/
-│   ├── db/index.ts                         # Prisma client singleton (com PG adapter)
+│   ├── db/index.ts                         # Prisma client singleton (com PG adapter; em dev recria se o client estiver stale sem delegates novos)
 │   ├── logger.ts                           # Logger estruturado (pino) — usado pela app principal
 │   ├── local-storage.ts                    # Utilitário SSR-safe para localStorage (ver seção 23)
 │   ├── design-system/
@@ -631,7 +658,7 @@ Funcionalidades incluídas em cada plano. Append por transação — ao atualiza
 | Coluna | Tipo | Constraints |
 |---|---|---|
 | plan_id | uuid | NOT NULL, FK → plans.id ON DELETE CASCADE |
-| feature | varchar(30) | NOT NULL — `'action_plans'` \| `'documents'` \| `'anonymous_reports'` \| `'pgr'` \| `'messaging'` |
+| feature | varchar(30) | NOT NULL — `'action_plans'` \| `'documents'` \| `'anonymous_reports'` \| `'pgr'` \| `'messaging'` \| `'climate_surveys'` |
 | PK | (plan_id, feature) | |
 
 > Alterar `plan_features` **não afeta** clientes que já assinaram — as features vigentes ficam em `subscription_features`, que é atualizado apenas quando o cliente faz upgrade/downgrade de plano via Stripe.
@@ -643,7 +670,7 @@ Snapshot imutável das funcionalidades no momento da contratação. Mesmo princ�
 | Coluna | Tipo | Constraints |
 |---|---|---|
 | subscription_id | uuid | NOT NULL, FK → organization_subscriptions.id ON DELETE CASCADE |
-| feature | varchar(30) | NOT NULL — mesmos valores de `plan_features` (inclui `'messaging'`) |
+| feature | varchar(30) | NOT NULL — mesmos valores de `plan_features` (inclui `'messaging'` e `'climate_surveys'`) |
 | PK | (subscription_id, feature) | |
 
 > Inserido na criação da assinatura e atualizado quando o cliente troca de plano (webhook `customer.subscription.updated`). Garante que as features refletem o plano **atualmente vigente** — não o plano original de contratação. Alterações feitas pelo Super Admin em `plan_features` de um plano **não afetam** assinantes existentes; apenas a troca de plano pelo cliente atualiza este snapshot.
@@ -885,7 +912,7 @@ Dias de trabalho do departamento em `department_work_days` (join table — ver a
 | employee_id | uuid | NOT NULL, FK → employees.id |
 | consent_term_version_id | uuid | NOT NULL, FK → consent_term_versions.id |
 | event | varchar(20) | `'accepted'` \| `'refused'` \| `'revoked'` \| `'opted_out'` |
-| source | varchar(20) | `'message_link'` \| `'health_survey_form'` \| `'system'` |
+| source | varchar(20) | `'message_link'` \| `'health_survey_form'` \| `'climate_survey_form'` \| `'system'` |
 | document_hash | varchar(255) | SHA-256 do documento (ex: CPF) — apenas no evento `accepted` |
 | created_at | timestamptz | NOT NULL |
 
@@ -1057,6 +1084,115 @@ Após o uso, `used_at` é preenchido, mas **nenhum vínculo** é criado entre to
 | question_id | uuid | NOT NULL, FK → health_survey_questions.id |
 | score | smallint | NOT NULL, CHECK (score BETWEEN 1 AND 5) |
 
+#### `climate_survey_configurations`
+
+Configuração de Pesquisa de Clima Organizacional — módulo paralelo às pesquisas de saúde. Feature de plano: `climate_surveys`.
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| tenant_id | uuid | NOT NULL |
+| name | varchar | NOT NULL, default `'Pesquisa de Clima'` |
+| description | text | NULL |
+| frequency | varchar(20) | `'daily'` \| `'twice_weekly'` \| `'weekly'` \| `'biweekly'` \| `'monthly'` |
+| scheduled_day_of_month | integer | NULL — dia do mês (1–28) para frequência `'monthly'` |
+| dispatch_time | varchar(5) | NOT NULL, default `'09:00'` |
+| respect_employee_schedule | boolean | NOT NULL, default false |
+| token_expiry_hours | integer | NOT NULL, default 48 |
+| send_via_messaging | boolean | NOT NULL, default true — canal de mensagem (exige também feature `messaging`) |
+| send_via_signed_link | boolean | NOT NULL, default true — gera `signed_link_token` na onda |
+| is_active | boolean | NOT NULL |
+| INDEX | (tenant_id) | |
+| created_at / updated_at | timestamptz | NOT NULL |
+
+Join tables: `climate_survey_config_departments`, `climate_survey_config_work_days` (mesmo padrão das health surveys).
+
+> **Mapeamento vs modelo conceitual `clima_*`:** não existem tabelas com nomes em português. Equivalências: `clima_surveys` → `climate_survey_configurations` (`name`, `is_active`≈status, `frequency`≈recorrência; sem `created_by` / `data_inicio` / `data_fim` dedicados — a janela da onda fica em `climate_survey_dispatches.scheduled_at` / `dispatched_at`). `clima_topics` → campo `dimension` em `climate_survey_questions` (catálogo fixo de 8 tópicos no TypeScript; sem tabela `climate_topics`). `clima_questions` + `clima_survey_questions` → `climate_survey_questions` (1:N na config, com `order`; sem join M:N reutilizável). `clima_campaigns` → `climate_survey_dispatches` (canais na **config**, não por onda). `clima_recipients` → `climate_survey_response_tokens` (`employee_id`, `token`, `used_at`; status de envio em `message_logs` / `email_logs`). `clima_answers` → `climate_survey_responses` + `climate_survey_response_items` (**sem `token` nem `employee_id` nas respostas** — anonimato). `clima_action_plans` → `action_plans` com `climate_survey_dispatch_id` (sem `topic_id` / `responsavel_id` no plano; responsável fica em `action_tasks.assignee_id`).
+
+#### `climate_survey_questions`
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| tenant_id | uuid | NOT NULL |
+| climate_survey_configuration_id | uuid | NOT NULL, FK → climate_survey_configurations.id ON DELETE CASCADE |
+| text | text | NOT NULL |
+| order | integer | NOT NULL |
+| score_direction | varchar(30) | `'higher_is_better'` \| `'lower_is_better'` |
+| dimension | varchar | NOT NULL, default `'organizational_culture'` — `'job_satisfaction'` \| `'internal_communication'` \| `'relationships'` \| `'recognition_reward'` \| `'professional_development'` \| `'work_life_balance'` \| `'organizational_culture'` \| `'leadership_trust'` |
+| is_active | boolean | NOT NULL, default true |
+
+**Índices:** `(tenant_id)`, `(tenant_id, climate_survey_configuration_id)`, `(dimension)`
+
+#### `climate_survey_dispatches`
+
+Onda de pesquisa de clima. Espelha `health_survey_dispatches`.
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| tenant_id | uuid | NOT NULL |
+| climate_survey_configuration_id | uuid | NOT NULL |
+| scheduled_at | timestamptz | NOT NULL |
+| dispatched_at | timestamptz | |
+| adherence_checked_at | timestamptz | |
+| status | varchar(20) | `'scheduled'` \| `'available'` \| `'failed'` \| `'cancelled'` |
+| source | varchar(10) | `'auto'` \| `'manual'` |
+| signed_link_token | varchar(255) | UNIQUE, NULL quando `send_via_signed_link = false` |
+| created_at | timestamptz | NOT NULL |
+
+**Índices:** `(tenant_id)`, `(climate_survey_configuration_id)`, `(tenant_id, status, scheduled_at)`, `(created_at)`
+
+Totais por setor em `climate_survey_dept_dispatches`. Tokens em `climate_survey_response_tokens` (com `short_code`, janela de trabalho, `reminder_sent_at`; `token` UNIQUE). Respostas anônimas em `climate_survey_responses` (**sem `employee_id`**) + `climate_survey_response_items`.
+
+**Índices de lookup (anonimato + adesão):**
+- `climate_survey_response_tokens`: `(tenant_id)`, `(dispatch_id, employee_id)`, `(created_at)` + UNIQUE `(token)`
+- `climate_survey_responses`: `(tenant_id)`, `(dispatch_id)`, `(created_at)`, `(tenant_id, created_at)`
+- `climate_survey_response_items`: `(climate_survey_response_id)`, `(question_id)`
+- `action_plans`: `(tenant_id)`, `(climate_survey_dispatch_id)`, `(created_at)`
+
+#### `climate_survey_analytics_events`
+
+Stream append-only de eventos de funil da Pesquisa de Clima. Nomes de evento no banco seguem o catálogo de produto em português (`pesquisa_criada`, `email_aberto`, etc.); tabelas/código em inglês.
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| tenant_id | uuid | NOT NULL |
+| event | varchar | NOT NULL — ver catálogo abaixo |
+| config_id | uuid | |
+| dispatch_id | uuid | FK → climate_survey_dispatches |
+| action_plan_id | uuid | |
+| question_id | uuid | |
+| question_order | integer | |
+| email_log_id | uuid | |
+| session_id | uuid | |
+| quantity | integer | NOT NULL, default 1 — ex.: lembretes em lote |
+| created_at | timestamptz | NOT NULL |
+
+**Catálogo de eventos:** `pesquisa_criada`, `pergunta_selecionada`, `campanha_disparada`, `email_aberto`, `link_clicado`, `resposta_iniciada`, `resposta_concluida`, `lembrete_disparado`, `acao_criada`, `acao_concluida`.
+
+**Índices:** `(tenant_id, event, created_at)`, `(tenant_id, dispatch_id, event)`, `(tenant_id, config_id, event)`
+
+#### `climate_survey_response_sessions`
+
+Sessão de participação (por token) para tempo médio e abandono por pergunta. Vincula `token_id` (participação) — **não** vincula resposta anônima.
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| tenant_id | uuid | NOT NULL |
+| dispatch_id | uuid | NOT NULL |
+| token_id | uuid | UNIQUE, FK → climate_survey_response_tokens |
+| started_at | timestamptz | NOT NULL |
+| completed_at | timestamptz | |
+| last_question_id | uuid | |
+| last_question_order | integer | |
+| question_count | integer | NOT NULL |
+| created_at / updated_at | timestamptz | NOT NULL |
+
+**Índices:** `(tenant_id, dispatch_id)`, `(tenant_id, completed_at)`
+
 #### `anonymous_reports`
 
 Relatos anônimos enviados pelo canal público. O campo `category` é texto livre (não FK), não existe tabela `report_categories`.
@@ -1087,10 +1223,17 @@ Relatos anônimos enviados pelo canal público. O campo `category` é texto livr
 | priority | varchar(20) | NOT NULL, default `'medium'` — `'low'` \| `'medium'` \| `'high'` |
 | alert_id | uuid | FK → alerts.id |
 | report_id | uuid | FK → anonymous_reports.id |
+| climate_survey_dispatch_id | uuid | FK → climate_survey_dispatches.id — origem opcional via CTA da onda (`ActionPlanOriginClimateSurveyDispatch`) |
+| climate_survey_dimension | varchar | NULL — tópico de clima (`ClimateSurveyDimension`) quando a ação é do módulo de clima |
+| assignee_id | uuid | NULL, FK → organization_users.id — responsável da ação (`ActionPlanAssignee`) |
 | due_date | timestamptz | |
 | completed_at | timestamptz | |
 | created_at | timestamptz | NOT NULL |
 | updated_at | timestamptz | NOT NULL |
+
+**Índices:** `(tenant_id)`, `(climate_survey_dispatch_id)`, `(climate_survey_dimension)`, `(assignee_id)`, `(created_at)`
+
+> Status na UI de clima: `open` = Planejado · `in_progress` = Em andamento · `completed` = Concluído. Prioridade: `high`/`medium`/`low` = Alta/Média/Baixa.
 
 #### `action_tasks`
 
@@ -1223,20 +1366,59 @@ Preservação de versões anteriores de documentos. Cada upload cria uma versão
 
 #### `message_logs`
 
-Registro de todas as mensagens enviadas. Fonte dos dados de métricas do Super Admin.
+Registro de todas as mensagens enviadas (envio individual por colaborador). Fonte dos dados de métricas do Super Admin e do log completo do disparo.
 
 | Coluna | Tipo | Constraints |
 |---|---|---|
 | id | uuid | PK |
 | tenant_id | uuid | NOT NULL, FK → organizations.id ON DELETE CASCADE |
 | employee_id | uuid | NULL — ID do colaborador destinatário (sem vínculo obrigatório para preservar o anonimato) |
-| type | varchar(30) | NOT NULL — `'health_survey_dispatch'` \| `'health_survey_reminder'` |
-| provider | varchar(50) | NOT NULL — nome do provedor utilizado (ex: `'smsbarato'`, `'console'`) |
-| external_id | varchar(255) | ID retornado pelo provedor |
-| status | varchar(20) | NOT NULL — `'sent'` \| `'failed'` |
+| dispatch_id | uuid | NULL — onda de pesquisa (health ou climate) associada ao envio |
+| type | varchar(30) | NOT NULL — `'health_survey_dispatch'` \| `'health_survey_reminder'` \| `'climate_survey_dispatch'` \| `'climate_survey_reminder'` |
+| provider | varchar(50) | NOT NULL — nome do provedor utilizado (ex: `'smsbarato-wa'`, `'smsbarato'`, `'console'`) |
+| external_id | varchar(255) | ID retornado pelo provedor (chave para webhook de status) |
+| survey_link | varchar(500) | Link único da pesquisa enviado ao colaborador |
+| status | varchar(20) | NOT NULL — `'queued'` \| `'sent'` \| `'delivered'` \| `'read'` \| `'failed'` |
+| error_message | text | Detalhe da falha (quando `status = 'failed'`) |
+| queue_job_id | varchar(255) | ID do job BullMQ `send-message` |
 | sent_at | timestamptz | NOT NULL |
+| delivered_at | timestamptz | NULL |
+| read_at | timestamptz | NULL |
+| failed_at | timestamptz | NULL |
+| updated_at | timestamptz | NOT NULL |
 
-**Índices:** `(tenant_id, sent_at DESC)` — para contagem global no Super Admin
+**Índices:** `(tenant_id)`, `(tenant_id, dispatch_id)`, `(external_id)`, `(queue_job_id)`, `(tenant_id, sent_at DESC)`
+
+**Ciclo de status:** criação em `sent` (ou `failed`) no worker → webhook `/api/webhooks/messaging` atualiza para `delivered` / `read` / `failed` sem regredir (ex.: `read` não volta para `delivered`). Falhas temporárias do provedor lançam `MessagingTemporaryError` e o BullMQ reenvia (3 tentativas, backoff exponencial 5s).
+
+#### `email_logs`
+
+Registro de e-mails de pesquisa de clima enviados via `getEmailService()` (Resend/console). Inclui tracking first-party de abertura e clique.
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| tenant_id | uuid | NOT NULL, FK → organizations.id ON DELETE CASCADE |
+| employee_id | uuid | NULL |
+| dispatch_id | uuid | NULL — onda de clima associada |
+| type | varchar(30) | NOT NULL — `'climate_survey_dispatch'` \| `'climate_survey_reminder'` |
+| provider | varchar(50) | NOT NULL — valor de `EMAIL_PROVIDER` |
+| external_id | varchar(255) | ID retornado pelo provedor de e-mail |
+| recipient_email | varchar(255) | NOT NULL |
+| survey_link | varchar(500) | NOT NULL — link único da pesquisa (antes do redirect de tracking) |
+| tracking_token | uuid | NOT NULL, UNIQUE — usado em `/api/track/email/[trackingToken]/{open\|click}` |
+| status | varchar(20) | NOT NULL — `'sent'` \| `'failed'` \| `'opened'` \| `'clicked'` |
+| error_message | text | |
+| queue_job_id | varchar(255) | ID do job BullMQ `send-email` |
+| sent_at | timestamptz | NOT NULL |
+| opened_at | timestamptz | |
+| clicked_at | timestamptz | |
+| failed_at | timestamptz | |
+| updated_at | timestamptz | NOT NULL |
+
+**Índices:** `(tenant_id)`, `(tenant_id, dispatch_id)`, `(external_id)`, `(queue_job_id)`, `(tenant_id, sent_at DESC)`
+
+**Tracking:** `GET /api/track/email/[trackingToken]/open` devolve GIF 1×1 e marca `opened`; `GET /api/track/email/[trackingToken]/click` registra clique e redireciona para `survey_link`. Rotas públicas (sem autenticação).
 
 #### `job_logs`
 
@@ -1337,10 +1519,11 @@ Resultado por pergunta gerado na revisão PGR. Permite análise de tendência po
 | **Tenant — estrutura** | `organizations`, `organization_subscriptions`, `organization_users`, `departments` |
 | **Tenant — colaboradores** | `employees`, `employee_consents` |
 | **Tenant — pesquisas** | `health_survey_configurations`, `health_survey_config_departments`, `health_survey_questions`, `health_survey_dispatches`, `health_survey_dept_dispatches`, `health_survey_response_tokens`, `health_survey_responses`, `health_survey_response_items` |
+| **Tenant — clima organizacional** | `climate_survey_configurations`, `climate_survey_config_departments`, `climate_survey_config_work_days`, `climate_survey_questions`, `climate_survey_dispatches`, `climate_survey_dept_dispatches`, `climate_survey_response_tokens`, `climate_survey_response_token_work_days`, `climate_survey_responses`, `climate_survey_response_items`, `climate_survey_analytics_events`, `climate_survey_response_sessions` |
 | **Tenant — ocorrências** | `anonymous_reports`, `action_plans`, `action_tasks`, `action_plan_suggestions`, `action_plan_suggestion_tasks` |
 | **Tenant — documentos e PGR** | `documents`, `document_versions`, `pgr_reviews`, `pgr_dept_results`, `pgr_question_results` |
 | **Tenant — operacional** | `alerts`, `audit_logs` |
-| **Plataforma** | `message_logs`, `job_logs`, `request_logs` |
+| **Plataforma** | `message_logs`, `email_logs`, `job_logs`, `request_logs` |
 
 ---
 
@@ -2290,7 +2473,7 @@ O arquivo `src/proxy.ts` com export `proxy` substitui o antigo `middleware.ts` n
 - Bloquear acesso de `org_user` ao `/super-admin/*`
 - Bloquear acesso de `super_admin` ao `/(tenant)/*`
 
-**Caminhos públicos** (sem autenticação): `/login`, `/forgot-password`, `/reset-password/*`, `/invite/*`, `/health-survey/*`, `/report/*`, `/checkout`, `/accept-terms`, `/learn-more`, `/privacy-policy`, `/platform-terms`, `/consent-terms`, `/data-deletion`, `/api/webhooks/*`, `/api/health`
+**Caminhos públicos** (sem autenticação): `/login`, `/forgot-password`, `/reset-password/*`, `/invite/*`, `/health-survey/*`, `/climate-survey/*`, `/report/*`, `/checkout`, `/accept-terms`, `/learn-more`, `/privacy-policy`, `/platform-terms`, `/consent-terms`, `/data-deletion`, `/api/webhooks/*`, `/api/health`, `/api/track/*`
 
 ### Fluxo de login (tenant)
 
@@ -2363,6 +2546,8 @@ export interface HealthSurveyMessageParams {
 export interface IMessagingService {
   sendHealthSurveyDispatch(params: HealthSurveyMessageParams): Promise<SendMessageResult>
   sendHealthSurveyReminder(params: HealthSurveyMessageParams): Promise<SendMessageResult>
+  sendClimateSurveyDispatch(params: ClimateSurveyMessageParams): Promise<SendMessageResult>
+  sendClimateSurveyReminder(params: ClimateSurveyMessageParams): Promise<SendMessageResult>
 }
 ```
 
@@ -2372,16 +2557,18 @@ export interface IMessagingService {
 **Implementação SMS Barato (WhatsApp):** `MESSAGING_PROVIDER=smsbarato-wa` → `SmsBaratoWaAdapter` ✅  
 **Desenvolvimento:** `MESSAGING_PROVIDER=console` → `ConsoleMessageAdapter` (imprime no terminal)  
 **Variáveis SMS Barato (SMS):** `SMSBARATO_API_KEY`, `SMSBARATO_BASE_URL` (default `"https://sistema81.smsbarato.com.br/send"`)  
-**Variáveis SMS Barato (WhatsApp):** `SMSBARATO_API_KEY` (compartilhada), `SMSBARATO_WA_BASE_URL` (default `"https://sistema81.smsbarato.com.br/sendwa"`), `SMSBARATO_WA_TEMPLATE` (dispatch — default `"pulse_survey"`), `SMSBARATO_WA_REMINDER_TEMPLATE` (lembrete — default `"pulse_survey_reminder"`)  
+**Variáveis SMS Barato (WhatsApp):** `SMSBARATO_API_KEY` (compartilhada), `SMSBARATO_WA_BASE_URL` (default `"https://sistema81.smsbarato.com.br/sendwa"`), `SMSBARATO_WA_TEMPLATE` (dispatch — default `"pulse_survey_2"`), `SMSBARATO_WA_REMINDER_TEMPLATE` (lembrete — default `"pulse_survey_reminder_2"`)  
+**Webhook de status:** `MESSAGING_WEBHOOK_SECRET` — protege `POST/GET /api/webhooks/messaging` (header `x-messaging-webhook-secret` ou query `secret`). Aceita payload plano `{ id, status, error?, timestamp? }` ou formato Meta Cloud API (`entry[].changes[].value.statuses[]`). Status mapeados: enviado/`sent`, entregue/`delivered`, lido/`read`, falhou/`failed`.  
+**Fila:** cada destinatário gera um job BullMQ `send-message` com `surveyLink` único + `dispatchId`; `processOutboundSurveyMessage` grava `message_logs` e falhas temporárias disparam retentativa automática.  
 **Variáveis de template SMS:** `SURVEY_MESSAGE_TEMPLATE` (template de texto do dispatch, com `{nome}` e `{link}`), `SURVEY_REMINDER_MESSAGE_TEMPLATE` (template de texto do lembrete)  
 **Restrições SMS Barato (SMS):** texto máximo de 150 chars (sem contar a URL); acentos e quebras de linha removidos automaticamente pelo adapter; `dest` deve ser apenas dígitos com DDD (sem `+55`)  
-**Restrições SMS Barato (WhatsApp):** usa templates pré-aprovados no painel SMS Barato; os parâmetros são enviados na ordem esperada pelo template configurado; `dest` igual ao SMS (apenas dígitos com DDD)
+**Restrições SMS Barato (WhatsApp):** usa templates pré-aprovados no painel SMS Barato; os parâmetros são enviados na ordem esperada pelo template configurado (inclui o **link único** da pesquisa); `dest` igual ao SMS (apenas dígitos com DDD)
 
 > **Regra de terminologia:** os termos "SMS", "WhatsApp" e "CPF" **nunca devem aparecer em código, banco de dados ou UI**. Substituições obrigatórias: SMS/WhatsApp → `mensagem`/`message`; CPF → `document`/`documento`. Essa proibição se aplica a nomes de arquivos, classes, funções, variáveis, campos de banco, labels de UI e mensagens de erro.
 
 > **Nomes de templates do provedor externo (SMS Barato)** são valores de configuração de infraestrutura — não são identificadores de domínio da aplicação. As variáveis `SMSBARATO_WA_TEMPLATE` e `SMSBARATO_WA_REMINDER_TEMPLATE` usam nomes como `"pulse_survey"` e `"pulse_survey_reminder"`, que não seguem o prefixo `health_survey_`. Isso é intencional: esses valores são definidos no painel externo do provedor, não no código.
 
-> **Regra de prefixo `health_survey_` em tipos de mensagem:** todo valor de `MessageLogType` e de `SendMessageJobData.type` relacionado a pesquisas de saúde **deve obrigatoriamente** usar o prefixo `health_survey_`, nunca apenas `survey_`. Valores corretos: `'health_survey_dispatch'`, `'health_survey_reminder'`. Valores como `'survey_dispatch'` ou `'survey_reminder'` são proibidos — o prefixo `health_survey_` garante que o domínio seja inequívoco em logs, painéis de monitoramento e queries de banco.
+> **Regra de prefixo em tipos de mensagem:** todo valor de `MessageLogType` e de `SendMessageJobData.type` relacionado a pesquisas **deve usar o prefixo do domínio**. Pesquisas de saúde: `'health_survey_dispatch'`, `'health_survey_reminder'`. Pesquisas de clima: `'climate_survey_dispatch'`, `'climate_survey_reminder'`. Valores genéricos como `'survey_dispatch'` são proibidos.
 ### Email
 
 ```typescript
@@ -2407,6 +2594,8 @@ export interface IEmailService {
 | `account_deletion_confirm` | Admin solicita exclusão da conta |
 | `account_deletion_scheduled` | Exclusão agendada confirmada |
 | `email_verification` | Verificação de e-mail |
+| `climate-survey-dispatch` | Disparo de pesquisa de clima (canal E-mail) — CTA com link de tracking + pixel de abertura |
+| `climate-survey-reminder` | Lembrete de pesquisa de clima para não-respondentes (canal E-mail) |
 
 #### Sincronização obrigatória com o Design System
 
@@ -2774,6 +2963,7 @@ O componente shadcn `<Input>` já aplica `[color-scheme:light] dark:[color-schem
 | Relatos Anônimos | `anonymous_reports` | `/reports` |
 | PGR | `pgr` | `/pgr`, `/pgr/[id]`, alertas `pgr_review_due` |
 | Mensagens | `messaging` | Disparo automático de mensagens ao criar pesquisa. Sem essa feature, o RH distribui apenas via link assinado. |
+| Pesquisa de Clima | `climate_surveys` | `/climate-surveys` (Board), `/climate-surveys/adherence` (Adesão), `/climate-surveys/configure` (Banco de Perguntas), `/climate-surveys/dispatches` (Disparo & Canais), `/climate-surveys/action-plans`, `/climate-surveys/[dispatchId]`, rotas públicas `/climate-survey/*` |
 
 **Guard de acesso em páginas tenant:** o `(tenant)/layout.tsx` carrega `getTenantPlanFeatures(tenantId)` e passa para o `Sidebar`, que filtra os itens de navegação. Cada página de funcionalidade gateada chama `hasTenantPlanFeature(tenantId, feature)` e redireciona para `/dashboard` se o tenant não possui a funcionalidade no plano adquirido.
 
@@ -3110,6 +3300,9 @@ Processos recorrentes gerenciados pelo **BullMQ** com Redis como broker.
 | `health-survey-response-reminder` | A cada hora | Envia lembrete de pesquisa para colaboradores que ainda não responderam e estão na janela de halfway |
 | `action-plan-suggestion-generator` | Diário (06:00) | Gera sugestões de planos de ação com base em métricas de cada tenant |
 | `organization-deletion-executor` | Diário (03:30) | Exclui permanentemente organizações com `deletionScheduledAt <= now()` |
+| `climate-survey-dispatcher` | A cada 5min | Auto-scheduler + processamento de ondas manuais de clima (respeita canais e feature `climate_surveys`/`messaging`) |
+| `climate-survey-response-reminder` | A cada hora | Lembrete halfway para tokens de clima não respondidos |
+| `climate-survey-response-token-cleanup` | Diário (02:00) | Remove tokens de clima expirados e não utilizados |
 
 ### Nomenclatura de Jobs — regra obrigatória
 
@@ -3650,6 +3843,129 @@ Client Component (pgr-generate-button.tsx) recebe DUPLICATE_PGR_PERIOD
 
 **Regra de imutabilidade histórica:** o PGR usa respostas de `health_survey_response_items` referenciadas por `question_id`. Mesmo que perguntas sejam desativadas depois, o histórico é preservado porque `findDispatchesForPgr` não filtra `isActive` nas perguntas. A geração de um novo relatório para um período já existente (via `forceRegenerate`) é atômica — nunca deixa o banco em estado parcial.
 
+### 20.14 Pesquisa de Clima Organizacional
+
+Módulo paralelo às pesquisas de saúde (`src/modules/climate-surveys/`), gateado pela feature de plano `climate_surveys`. Colaboradores respondem **sem login**, via mensagem e/ou link assinado — mesmo padrão de anonimato (sem `employee_id` nas respostas; scores ocultos se `< MINIMUM_RESPONDENTS_FOR_DISPLAY`).
+
+```
+RH (feature climate_surveys) → Sidebar “Pesquisa de Clima”
+ ├─ Dashboard `/climate-surveys` — KPIs + radar + evolução + eNPS + heatmap
+ ├─ Adesão `/climate-surveys/adherence` — tabela por área, canais, lembrete manual
+ ├─ Banco de Perguntas `/climate-surveys/configure`
+ ├─ Disparo & Canais `/climate-surveys/dispatches` — compositor de campanha + histórico
+ └─ Plano de Ação `/climate-surveys/action-plans` (feature action_plans)
+     · tópicos abaixo da meta (auto, da última onda)
+     · CRUD de ações: título, descrição, responsável, prioridade, status, prazo
+     · filtros por responsável/status · indicadores: concluídas / em andamento / atrasadas
+RH → /climate-surveys/configure
+  └─ Lista de pesquisas · Nova/Editar: banco de perguntas em accordion por tópico (checkbox),
+     painel lateral com contadores em tempo real (perguntas, tópicos, tempo estimado ≈20s/pergunta),
+     ações Salvar / Pré-visualizar; mín. 1 pergunta por tópico selecionado; recomendado 3–5 por tópico
+  └─ Agenda onda (manual) ou auto-scheduler (job climate-survey-dispatcher)
+       ├─ Tokens + short_code; mensagens só se sendViaMessaging AND feature messaging
+       ├─ E-mail automático se sendViaSignedLink e colaborador tem `employees.email`
+       │    (fila `pulse-emails` / job `send-email`; template HTML + tracking open/click em `email_logs`)
+       └─ signed_link_token só se sendViaSignedLink (distribuição manual complementar)
+Colaborador → /climate-survey/[token] | /climate-survey/[orgSlug]/[shortCode] | /climate-survey/link/[linkToken]
+  └─ Consent Gate (source climate_survey_form no opt-out) → formulário mobile-first
+       (1 pergunta por vez, barra de progresso, Likert 5 pontos com labels de concordância,
+        auto-salva e avança ao tocar, botão Voltar, aviso fixo de anonimato)
+       → tela de agradecimento (ícone, anonimato, resultados consolidados, Fechar)
+RH → /climate-surveys/[dispatchId]
+  └─ Dashboard por setor/dimensão; CTA “Criar plano de ação” (feature action_plans) vincula climateSurveyDispatchId
+```
+
+**Dashboard do módulo (`getClimateSurveyModuleDashboard`):**
+
+| Bloco | Conteúdo |
+|---|---|
+| KPIs | Adesão %, total de respostas, favorabilidade % (scores 4–5), eNPS |
+| Radar | 8 tópicos vs meta corporativa (`CLIMATE_SURVEY_CORPORATE_GOAL_PERCENT` = 70) — score = média dos pesos Likert × 100 |
+| Linha | Evolução entre ondas (clima ponderado, favorabilidade, adesão, eNPS) |
+| Rosca eNPS | Promotores / Neutros / Detratores |
+| Heatmap | Tópicos × departamentos (verde ≥ meta, amarelo ≥ meta−20, vermelho crítico) |
+
+**Fórmulas de métricas (`climate-survey-metrics.ts`) — obrigatórias:**
+
+| Métrica | Fórmula |
+|---|---|
+| Favorabilidade | `(Concordo + Concordo Totalmente) / total × 100` — scores normalizados ≥ 4 |
+| Peso Likert | Concordo Totalmente `1.0` · Concordo `0.8` · Neutro `0.6` · Discordo `0.4` · Discordo Totalmente `0.2` |
+| Score de clima | média dos pesos × 100 |
+| Nota eNPS (0–10) | peso Likert × 10 (equivale a Likert × 2) |
+| eNPS | `% promotores − % detratores` — promotores nota 9–10 · neutros 7–8 · detratores 0–6 |
+
+Agregações disponíveis: **por pergunta**, **por tópico (`dimension`)**, **por departamento** e **geral da empresa/onda**. O eNPS agregado classifica a média das notas do respondente no escopo (não a resposta isolada), exceto quando o escopo já é uma única pergunta.
+
+**Tópicos (`ClimateSurveyDimension`):** `job_satisfaction`, `internal_communication`, `relationships`, `recognition_reward`, `professional_development`, `work_life_balance`, `organizational_culture`, `leadership_trust`.
+
+**Adesão (`getClimateSurveyAdherenceOverview` / `/climate-surveys/adherence`):**
+
+| Bloco | Conteúdo |
+|---|---|
+| Tabela por área | Colaboradores, respostas, % adesão, canais, status |
+| Status | Excelente ≥ 90% · Boa ≥ 75% · Reforçar &lt; 75% |
+| Canais | `Mensagem` (tokens com `shortCode`) · `E-mail` (link assinado; fallback = adesão geral quando os tokens já têm `shortCode`) |
+| Card lembrete | Lista áreas &lt; 75%; ação “Disparar lembrete agora” → `sendClimateSurveyRemindersForDispatch` (Mensagem se feature `messaging` + canal; E-mail se canal ativo e colaborador com e-mail) |
+
+**Disparo & Canais (`launchClimateSurveyCampaign` / `/climate-surveys/dispatches`):**
+
+| Bloco | Conteúdo |
+|---|---|
+| Canais | Mensagem (`sendViaMessaging`) · E-mail (`sendViaSignedLink`: e-mail automático com link único + link assinado manual) — UI nunca usa “WhatsApp”/“SMS” |
+| Recorrência | `once` (sem auto-scheduler) · `quarterly` (90d) · `semiannual` (180d) |
+| Timing | Enviar agora · Agendar · Lembrete 48h (força `tokenExpiryHours ≥ 96`) |
+| Departamentos | Incluir/excluir + canal preferencial (UI) + headcount ativo |
+| Resumo | Destinatários, canais, recorrência, data/hora + prévia do template `SURVEY_MESSAGE_TEMPLATE` |
+
+**E-mail de pesquisa (`survey-email.service` / fila `pulse-emails`):**
+
+| Etapa | Detalhe |
+|---|---|
+| Envio | `processOutboundSurveyEmail` via `getEmailService()`; HTML em `assets/email/template/climate-survey-*.html` |
+| Link único | Mesmo short URL da mensagem (`/climate-survey/[orgSlug]/[shortCode]`); CTA do HTML aponta para `/api/track/email/.../click` |
+| Abertura | Pixel `/api/track/email/.../open` → `email_logs.status = opened` |
+| Clique | Redirect tracking → `email_logs.status = clicked` (+ `openedAt` implícito se ainda nulo) |
+| Reenvio | Job `climate-survey-response-reminder` e CTA de adesão enfileiram `climate_survey_reminder` por e-mail para não-respondentes |
+
+**Analytics de funil (`climate-survey-analytics.service`):**
+
+| Evento (valor persistido) | Quando |
+|---|---|
+| `pesquisa_criada` | Criação de `climate_survey_configurations` |
+| `pergunta_selecionada` | Cada pergunta ativa na criação/edição da config |
+| `campanha_disparada` | Após `markClimateSurveyDispatchDispatched` (auto ou manual) |
+| `email_aberto` / `link_clicado` | Tracking first-party em `registerEmailOpen` / `registerEmailClick` |
+| `resposta_iniciada` | Abertura do formulário público (`startClimateSurveyResponseSession`) |
+| `resposta_concluida` | Submit anônimo bem-sucedido |
+| `lembrete_disparado` | Após enqueue de lembrete (quantity = envios) |
+| `acao_criada` / `acao_concluida` | Plano de ação de clima criado / status → `completed` |
+
+| Métrica | Fórmula |
+|---|---|
+| Taxa de abertura | e-mails com abertura / e-mails enviados (não `failed`) × 100 |
+| Taxa de clique | e-mails com clique / e-mails enviados × 100 |
+| Taxa de início | sessões iniciadas / destinatários da onda × 100 |
+| Taxa de conclusão | sessões concluídas / destinatários × 100 |
+| Tempo médio de resposta | média (`completed_at − started_at`) das sessões concluídas |
+| Abandono por pergunta | sessões sem `completed_at`, agrupadas por `last_question_order` (null = antes da 1ª) |
+
+Exibido no Dashboard `/climate-surveys` (bloco Funil da onda). Falhas de insert de evento são logadas e **não** quebram o fluxo de negócio.
+
+**Anonimato real das respostas (obrigatório):**
+
+| Regra | Implementação |
+|---|---|
+| Sem usuário na resposta | `climate_survey_responses` **não** tem `employee_id`; apenas `dispatch_id` + `department_id` (setor agregado) + itens Likert |
+| Token só para participação | `climate_survey_response_tokens` guarda `employee_id` + `used_at` para elegibilidade, lembretes e adesão — **nunca** vinculado à linha de resposta |
+| Tabelas separadas | Participação = tokens; respostas = `climate_survey_responses` + `climate_survey_response_items` (criação atômica: marca token + INSERT anônimo) |
+| Data sem horário | `created_at` da resposta usa `toAnonymousSurveyResponseDate()` (UTC meia-noite) para reduzir correlação temporal com `used_at` |
+| Limiar ≥ 5 | `canRevealSurveyGroupResults` / `MINIMUM_RESPONDENTS_FOR_DISPLAY` — scores, favorabilidade, eNPS, radar, heatmap e distribuições ocultos abaixo do limiar (por onda e por célula/setor) |
+| Sem rastreamento individual no dashboard | UI/services só agregados; sem listagem de respondentes ou respostas por colaborador |
+| Sem export identificável | `assertClimateSurveyIdentifiableExportForbidden()` — proibido exportar respostas com identidade |
+
+**Jobs:** `climate-survey-dispatcher`, `climate-survey-response-reminder`, `climate-survey-response-token-cleanup`.
+
 ---
 
 ## 21. Variáveis de Ambiente
@@ -3680,8 +3996,9 @@ MESSAGING_PROVIDER=smsbarato                # "smsbarato" | "smsbarato-wa" | "co
 SMSBARATO_API_KEY=...                       # chave de integração fornecida pelo suporte SMS Barato
 SMSBARATO_BASE_URL=https://sistema81.smsbarato.com.br/send  # SMS — endpoint da API (opcional — tem default)
 SMSBARATO_WA_BASE_URL=https://sistema81.smsbarato.com.br/sendwa  # WhatsApp — endpoint (opcional — tem default)
-SMSBARATO_WA_TEMPLATE=pulse_survey          # nome do template pré-aprovado no painel SMS Barato (opcional)
-SMSBARATO_WA_REMINDER_TEMPLATE=pulse_survey_reminder  # nome do template de lembrete WA (opcional)
+SMSBARATO_WA_TEMPLATE=pulse_survey_2          # nome do template pré-aprovado no painel SMS Barato (opcional)
+SMSBARATO_WA_REMINDER_TEMPLATE=pulse_survey_reminder_2  # nome do template de lembrete WA (opcional)
+MESSAGING_WEBHOOK_SECRET=...                  # protege /api/webhooks/messaging (mín. 16 chars; opcional fora de produção)
 
 # Mensagem de pesquisa de saúde (template com {nome} e {link}) — usado pelo SmsBaratoAdapter (SMS)
 # Para smsbarato-wa, o template é definido no painel SMS Barato (SMSBARATO_WA_TEMPLATE / SMSBARATO_WA_REMINDER_TEMPLATE)
@@ -3817,6 +4134,20 @@ storage.remove(storage.KEYS.lastOrgSlug)     // apaga
 | `lastOrgSlug` | `pulse:last-org-slug` | Último slug de organização usado no login |
 | `surveyIdentifier` | `pulse:survey-identifier` | Identificador (telefone ou documento) usado no último acesso via link assinado de pesquisa |
 
+### sessionStorage — rascunho de pesquisa de clima
+
+Rascunhos do formulário público usam **sessionStorage** (escopo da aba) via os helpers `storage.getSession` / `setSession` / `removeSession`:
+
+| Prefixo | Chave completa | Descrição |
+|---|---|---|
+| `SESSION_KEY_PREFIXES.climateSurveyDraft` | `pulse:climate-survey-draft:{token}` | Scores Likert + índice da pergunta em andamento — restaurado no refresh; limpo no submit/opt-out |
+
+```typescript
+storage.setSession(storage.climateSurveyDraftKey(token), JSON.stringify({ scores, currentIndex }))
+storage.getSession(storage.climateSurveyDraftKey(token))
+storage.removeSession(storage.climateSurveyDraftKey(token))
+```
+
 ### Regras obrigatórias
 
 1. **Prefixo `pulse:`** — todas as chaves usam o prefixo `pulse:` para evitar colisão com outras libs.
@@ -3824,6 +4155,7 @@ storage.remove(storage.KEYS.lastOrgSlug)     // apaga
 3. **try/catch silencioso** — falhas de storage (private browsing, storage cheio) são ignoradas silenciosamente.
 4. **Somente em Client Components** — importar `@/libs/local-storage` apenas em arquivos com `"use client"`.
 5. **Sem lógica de negócio** — o utilitário é apenas I/O. Decisões sobre o que salvar ficam no componente.
+6. **Nunca `window.sessionStorage` direto** — use `storage.getSession` / `setSession` / `removeSession`.
 
 ### Adicionar nova chave
 
@@ -3848,6 +4180,9 @@ localStorage.setItem("pulse:last-org-slug", slug)
 | `src/app/(auth)/checkout/checkout-form.tsx` | Submit bem-sucedido (antes do redirect Stripe) | Salva `lastOrgSlug` com o slug cadastrado |
 | `src/app/(public)/health-survey/link/[linkToken]/health-survey-unlock-form.tsx` | Mount (via `useSyncExternalStore`) | Lê `surveyIdentifier` → pré-preenche campo "Telefone ou documento" |
 | `src/app/(public)/health-survey/link/[linkToken]/health-survey-unlock-form.tsx` | Acesso bem-sucedido (sem erro) | Salva `surveyIdentifier` com o identificador validado |
+| `src/app/(public)/climate-survey/[token]/climate-survey-form.tsx` | Resposta Likert / Voltar | Salva rascunho em `sessionStorage` (`pulse:climate-survey-draft:{token}`) |
+| `src/app/(public)/climate-survey/[token]/climate-survey-form.tsx` | Mount (via `useSyncExternalStore`) | Restaura scores e índice após refresh |
+| `src/app/(public)/climate-survey/[token]/climate-survey-form.tsx` | Submit / opt-out bem-sucedido | Remove o rascunho |
 
 ### Padrão para leitura de localStorage em Client Components
 
@@ -4835,6 +5170,7 @@ Definidas em `:root` (light) e `.dark` em `src/app/globals.css`:
 | `--status-warning` | Âmbar — atenção, queda, pendente | texto, SVG fill |
 | `--status-warning-subtle` | Âmbar claro — fundo de badge/card | background |
 | `--status-warning-border` | Âmbar médio — borda de badge | border |
+| `--status-warning-foreground` | Branco (light) / escuro (dark) — texto sobre fundo warning | texto em botões com `bg-status-warning` |
 | `--status-danger` | Vermelho — erro, crítico, falhou | texto, SVG fill |
 | `--status-danger-subtle` | Vermelho claro — fundo de badge/card | background |
 | `--status-danger-border` | Vermelho médio — borda de badge | border |
@@ -4842,6 +5178,7 @@ Definidas em `:root` (light) e `.dark` em `src/app/globals.css`:
 | `--status-info` | Azul — informativo, agendado | texto, SVG fill |
 | `--status-info-subtle` | Azul claro — fundo de badge/card | background |
 | `--status-info-border` | Azul médio — borda de badge | border |
+| `--score-label` | Branco — rótulo sobre barras de score (1–5) | texto em segmentos de distribuição |
 
 ### Classes Tailwind geradas (`@theme inline`)
 
@@ -4852,6 +5189,7 @@ text-status-success      bg-status-success      border-status-success
 text-status-warning      bg-status-warning      border-status-warning
 text-status-danger       bg-status-danger       border-status-danger
 text-status-info         bg-status-info         border-status-info
+text-status-warning-foreground  text-status-danger-foreground  text-score-label
 (idem para -subtle e -border)
 ```
 
@@ -5236,6 +5574,7 @@ Para exclusões simples, o `ConfirmDeleteModal` (`src/components/confirm-delete-
 | Excluir qualquer registro | Departamento, colaborador, plano, documento, relato, etc. |
 | Desativar colaborador | Zona de perigo em `/employees/[id]` |
 | Desativar pesquisa de saúde | Botão em `/health-surveys/configure` |
+| Desativar pesquisa de clima | Botão em `/climate-surveys/configure` |
 | Desativar/ativar plano | Botão Power em `/super-admin/plans` |
 | Remover preço de plano | Botão Trash em `/super-admin/plans/[id]/pricing` |
 | Excluir conta da organização | `/settings` — fluxo com código de confirmação por e-mail |
@@ -5274,6 +5613,14 @@ health_survey_responses           → sem employee_id + department_id nullable (
 - `group_token` removido — não é mais necessário para agrupar dispatches do mesmo run
 - 1 `signed_link_token` por dispatch — o link público serve para todos os setores cobertos pela config
 
+### 37.2 Módulo Pesquisa de Clima Organizacional
+
+**Contexto:** demanda de pesquisas de clima distintas das pesquisas de saúde ocupacional, com dimensões (liderança, comunicação, etc.) e canais configuráveis por config.
+
+**Modelo implementado:** tabelas `climate_survey_*` espelhando o pipeline de health surveys, sem reutilizar as mesmas tabelas. Feature de plano `climate_surveys` (health surveys permanecem sempre habilitadas). Ondas = dispatches; CTA para plano de ação via `action_plans.climate_survey_dispatch_id`.
+
+**Decisão deliberada — não criar `clima_*` duplicadas:** um modelo conceitual com `clima_surveys` / `clima_topics` / `clima_campaigns` / `clima_answers.token` foi rejeitado em favor do schema já em produção (`climate_survey_*`), por (1) nomes em inglês + `tenant_id` (convenções do Pulse), (2) anonimato real (respostas sem `token`/`employee_id`), (3) paralelismo com health surveys. Tópicos = `dimension` na pergunta; campanha = dispatch; destinatário = response token; respostas = response + response_items.
+
 ---
 
 ## 38. Segurança — Decisões e Limitações Conhecidas
@@ -5286,7 +5633,13 @@ A diretiva CSP `style-src 'unsafe-inline'` está presente intencionalmente e **n
 
 **Para remover `unsafe-inline` no futuro:** converter todos os `style={{}}` para Tailwind classes ou CSS modules. Estimativa: 360+ componentes.
 
-### 38.2 `CF-Connecting-IP` — requer proteção a nível de infraestrutura
+### 38.2 `script-src 'unsafe-eval'` — apenas em development
+
+Em `NODE_ENV=development`, o CSP inclui `'unsafe-eval'` em `script-src` e amplia `connect-src` com `ws:` / `wss:` / `http://localhost:*`. O React (Flight / Turbopack) usa `eval()` no modo de desenvolvimento para reconstruir call stacks e hot reload; sem isso a app quebra no browser.
+
+**Produção:** `'unsafe-eval'` **não** é incluído. Em produção o React nunca usa `eval()`.
+
+### 38.3 `CF-Connecting-IP` — requer proteção a nível de infraestrutura
 
 O código confia em `CF-Connecting-IP` como IP autoritativo do cliente (arquivo `src/libs/utils/client-ip.ts`). O Cloudflare bloqueia clientes que tentam forjar esse header — **mas apenas quando as requisições chegam via Cloudflare**. Se o origin IP for descoberto e acessado diretamente, o atacante pode fornecer qualquer `CF-Connecting-IP` e burlar o rate limiting por IP.
 
@@ -5296,7 +5649,7 @@ O código confia em `CF-Connecting-IP` como IP autoritativo do cliente (arquivo 
 
 Sem essa configuração de infraestrutura, o rate limiting por IP pode ser contornado por qualquer atacante que descubra o IP de origem (via certificate transparency logs, Shodan, DNS histórico, etc.).
 
-### 38.3 Multipart/form-data em rotas de página — proteção no proxy
+### 38.4 Multipart/form-data em rotas de página — proteção no proxy
 
 O `proxy.ts` rejeita com HTTP 415 qualquer POST com `Content-Type: multipart/form-data` para as rotas de autenticação (`/login`, `/forgot-password`, `/super-admin/login`) quando o header `next-action` não está presente. Isso previne que ferramentas de fuzzing causem HTTP 500 nessas rotas via payloads multipart inválidos.
 

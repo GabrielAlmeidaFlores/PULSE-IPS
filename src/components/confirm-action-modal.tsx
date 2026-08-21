@@ -25,7 +25,7 @@ export function ConfirmActionModal({
 }: Props): React.ReactElement {
   const confirmClass =
     variant === "warning"
-      ? "px-4 py-2 text-[11px] font-bold uppercase tracking-wider bg-status-warning text-white hover:bg-status-warning/90 disabled:opacity-50 transition-colors"
+      ? "px-4 py-2 text-[11px] font-bold uppercase tracking-wider bg-status-warning text-status-warning-foreground hover:bg-status-warning/90 disabled:opacity-50 transition-colors"
       : "px-4 py-2 text-[11px] font-bold uppercase tracking-wider bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50 transition-colors"
 
   return (

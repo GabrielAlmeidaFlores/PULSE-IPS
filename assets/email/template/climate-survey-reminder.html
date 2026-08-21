@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>Lembrete — pesquisa de clima — {{orgName}}</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f1f5f9;">
+      <tr>
+        <td align="center" style="padding:40px 16px;">
+          <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
+
+            <tr>
+              <td style="background-color:#1a1a2e;padding:20px 36px;">
+                <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td style="vertical-align:baseline;">
+                      <img src="https://pulseips.com.br/logo-horizontal-dark.svg" alt="Pulse IPS" width="142" height="20" style="display:block;border:0;" />
+                    </td>
+                    <td align="right" style="vertical-align:middle;">
+                      <span style="font-size:10px;color:#4b5563;letter-spacing:0.08em;text-transform:uppercase;font-weight:600;">Clima Organizacional</span>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="background-color:#3DB98A;padding:28px 36px 24px;">
+                <p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#d1faf0;letter-spacing:0.1em;text-transform:uppercase;">Lembrete</p>
+                <p style="margin:0;font-size:22px;font-weight:800;color:#ffffff;line-height:1.3;">Sua pesquisa ainda está aberta</p>
+                <p style="margin:6px 0 0;font-size:13px;color:#d1faf0;">{{orgName}} aguarda sua resposta</p>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="background-color:#ffffff;padding:32px 36px 28px;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;">
+                <p style="margin:0 0 16px;font-size:14px;color:#374151;line-height:1.7;">
+                  Olá, <strong style="color:#1a1a2e;">{{employeeName}}</strong>!
+                </p>
+                <p style="margin:0 0 16px;font-size:14px;color:#374151;line-height:1.7;">
+                  Notamos que você ainda não respondeu à pesquisa de clima da
+                  <strong style="color:#1a1a2e;">{{orgName}}</strong>. Leva poucos minutos e suas respostas continuam anônimas.
+                </p>
+                <p style="margin:0 0 28px;font-size:14px;color:#374151;line-height:1.7;">
+                  O link permanece válido por mais algumas horas.
+                </p>
+
+                <table cellpadding="0" cellspacing="0" border="0" style="margin-bottom:28px;">
+                  <tr>
+                    <td style="background-color:#3DB98A;">
+                      <a href="{{surveyUrl}}" style="display:inline-block;padding:14px 32px;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;letter-spacing:0.04em;">Responder agora →</a>
+                    </td>
+                  </tr>
+                </table>
+
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f8fafc;border:1px solid #e5e7eb;">
+                  <tr>
+                    <td style="padding:14px 18px;">
+                      <p style="margin:0;font-size:11px;color:#6b7280;line-height:1.7;">
+                        <strong style="color:#374151;">Não consegue clicar no botão?</strong><br />
+                        Copie e cole este link no seu navegador:<br />
+                        <span style="color:#3DB98A;word-break:break-all;">{{surveyUrl}}</span>
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="background-color:#f8fafc;padding:16px 36px;border:1px solid #e5e7eb;border-top:none;">
+                <p style="margin:0 0 4px;font-size:11px;color:#9ca3af;">
+                  <a href="{{appUrl}}" style="color:#6b7280;font-weight:700;text-decoration:none;">Pulse IPS</a>
+                  <span style="color:#d1d5db;"> · </span>
+                  <span style="color:#9ca3af;">Monitoramento de Saúde Ocupacional</span>
+                </p>
+                <p style="margin:0;font-size:10px;color:#d1d5db;">Este é um e-mail automático. Não responda a esta mensagem.</p>
+              </td>
+            </tr>
+
+          </table>
+          <img src="{{openPixelUrl}}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;" />
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

@@ -1,4 +1,8 @@
 import { env } from "@/env"
+import {
+  isRetryableMessagingFailure,
+  MessagingTemporaryError,
+} from "@/libs/integrations/messaging/messaging-temporary-error"
 import type {
   HealthSurveyMessageParams,
   IMessagingService,
@@ -55,13 +59,31 @@ async function sendSms(phone: string, messageText: string): Promise<SendMessageR
     const response = await fetch(url.toString())
     const body = (await response.text()).trim()
 
+    if (!response.ok) {
+      const errorText = body.length > 0 ? body : `HTTP ${String(response.status)}`
+      if (response.status >= 500 || isRetryableMessagingFailure(errorText)) {
+        throw new MessagingTemporaryError(errorText)
+      }
+      return { externalId: null, status: "failed", error: errorText }
+    }
+
     if (body.startsWith("ERRO")) {
+      if (isRetryableMessagingFailure(body)) {
+        throw new MessagingTemporaryError(body)
+      }
       return { externalId: null, status: "failed", error: body }
     }
 
-    return { externalId: body, status: "queued" }
+    return { externalId: body, status: "sent" }
   } catch (error) {
-    return { externalId: null, status: "failed", error: String(error) }
+    if (error instanceof MessagingTemporaryError) {
+      throw error
+    }
+    const message = error instanceof Error ? error.message : String(error)
+    if (isRetryableMessagingFailure(message)) {
+      throw new MessagingTemporaryError(message)
+    }
+    return { externalId: null, status: "failed", error: message }
   }
 }
 
@@ -74,5 +96,13 @@ export class SmsBaratoAdapter implements IMessagingService {
   sendHealthSurveyReminder(params: HealthSurveyMessageParams): Promise<SendMessageResult> {
     const messageText = buildMessageText(env.SURVEY_REMINDER_MESSAGE_TEMPLATE, params.recipientName, params.surveyLink)
     return sendSms(params.recipientPhone, messageText)
+  }
+
+  sendClimateSurveyDispatch(params: HealthSurveyMessageParams): Promise<SendMessageResult> {
+    return this.sendHealthSurveyDispatch(params)
+  }
+
+  sendClimateSurveyReminder(params: HealthSurveyMessageParams): Promise<SendMessageResult> {
+    return this.sendHealthSurveyReminder(params)
   }
 }

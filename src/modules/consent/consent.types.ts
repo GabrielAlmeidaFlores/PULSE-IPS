@@ -1,5 +1,5 @@
 export type ConsentEvent = "accepted" | "refused" | "opted_out" | "revoked"
-export type ConsentSource = "message_link" | "admin" | "import" | "health_survey_form"
+export type ConsentSource = "message_link" | "admin" | "import" | "health_survey_form" | "climate_survey_form"
 
 export interface ConsentTermVersion {
   id: string

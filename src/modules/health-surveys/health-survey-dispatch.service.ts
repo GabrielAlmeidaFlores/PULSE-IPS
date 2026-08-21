@@ -245,6 +245,7 @@ async function sendDispatchTokensAndMessagesForDepartment(
             employeeId: emp.id,
             provider: env.MESSAGING_PROVIDER,
             type: "health_survey_dispatch" as const,
+            dispatchId,
           },
           ...(delayMs > 0 ? { opts: { delay: delayMs } } : {}),
         }
