@@ -43,7 +43,7 @@ vi.mock("@/modules/climate-surveys/climate-survey-analytics.service", () => ({
     averageResponseTimeSeconds: null,
     abandonmentByQuestion: [],
   })),
-  getClimateSurveyFunnelMetrics: vi.fn(async () => ({
+  getClimateSurveyFunnelMetrics: vi.fn(() => Promise.resolve({
     dispatchId: "d-1",
     emailsSent: 10,
     emailsOpened: 5,

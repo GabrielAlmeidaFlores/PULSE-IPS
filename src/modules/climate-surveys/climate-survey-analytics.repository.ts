@@ -7,7 +7,7 @@ import type {
   UpdateClimateSurveyResponseSessionProgressInput,
 } from "@/modules/climate-surveys/climate-survey-analytics.types"
 
-export async function insertClimateSurveyAnalyticsEvent(
+export function insertClimateSurveyAnalyticsEvent(
   tenantId: string,
   input: RecordClimateSurveyAnalyticsEventInput,
 ): Promise<ClimateSurveyAnalyticsEventRecord> {
@@ -57,7 +57,7 @@ export function findClimateSurveyResponseSessionByTokenId(
   })
 }
 
-export async function createClimateSurveyResponseSession(
+export function createClimateSurveyResponseSession(
   tenantId: string,
   input: CreateClimateSurveyResponseSessionInput,
 ): Promise<ClimateSurveyResponseSessionRecord> {

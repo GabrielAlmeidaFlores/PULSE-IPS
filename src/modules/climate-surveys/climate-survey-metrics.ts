@@ -217,7 +217,7 @@ export function computeClimateSurveyMetricsBreakdown(
       question.id,
       aggregateNormalizedScores(
         byQuestionScores.get(question.id) ?? [],
-        byQuestionResponses.get(question.id) ?? new Map(),
+        byQuestionResponses.get(question.id) ?? new Map<string, number[]>(),
       ),
     )
   }
@@ -228,7 +228,7 @@ export function computeClimateSurveyMetricsBreakdown(
       dimension,
       aggregateNormalizedScores(
         byTopicScores.get(dimension) ?? [],
-        byTopicResponses.get(dimension) ?? new Map(),
+        byTopicResponses.get(dimension) ?? new Map<string, number[]>(),
       ),
     )
   }
@@ -237,7 +237,10 @@ export function computeClimateSurveyMetricsBreakdown(
   for (const [departmentId, scores] of byDepartmentScores.entries()) {
     byDepartment.set(
       departmentId,
-      aggregateNormalizedScores(scores, byDepartmentResponses.get(departmentId) ?? new Map()),
+      aggregateNormalizedScores(
+        scores,
+        byDepartmentResponses.get(departmentId) ?? new Map<string, number[]>(),
+      ),
     )
   }
 

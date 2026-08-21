@@ -178,9 +178,9 @@ function buildDispatchStats(data: ClimateSurveyDispatchDashboardData, filterDept
     ? computeClimateSurveyMetricsBreakdown(filteredItems, metricQuestions)
     : {
         overall: emptyAggregatedMetrics(),
-        byQuestion: new Map(),
-        byTopic: new Map(),
-        byDepartment: new Map(),
+        byQuestion: new Map<string, ClimateSurveyAggregatedMetrics>(),
+        byTopic: new Map<ClimateSurveyDimension, ClimateSurveyAggregatedMetrics>(),
+        byDepartment: new Map<string, ClimateSurveyAggregatedMetrics>(),
       }
   const questions = buildQuestionStats(data.questions, filteredItems, metrics.byQuestion, hasEnoughRespondents)
   const allNormalized = hasEnoughRespondents
@@ -476,9 +476,9 @@ export async function getClimateSurveyModuleDashboard(tenantId: string): Promise
     ? computeClimateSurveyMetricsBreakdown(latest.responseItems, buildMetricQuestionInputs(latest.questions))
     : {
         overall: emptyAggregatedMetrics(),
-        byQuestion: new Map(),
-        byTopic: new Map(),
-        byDepartment: new Map(),
+        byQuestion: new Map<string, ClimateSurveyAggregatedMetrics>(),
+        byTopic: new Map<ClimateSurveyDimension, ClimateSurveyAggregatedMetrics>(),
+        byDepartment: new Map<string, ClimateSurveyAggregatedMetrics>(),
       }
   const evolution = [...waves].reverse().map((wave) => buildWaveEvolutionPoint(wave))
   const funnel = await getClimateSurveyFunnelMetrics(tenantId, latest.id)

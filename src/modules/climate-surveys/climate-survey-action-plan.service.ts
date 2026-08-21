@@ -265,7 +265,10 @@ export async function updateClimateSurveyActionPlan(
   actorId?: string,
 ): Promise<void> {
   const existing = await findActionPlanById(tenantId, planId)
-  if (existing === null || existing.climateSurveyDispatchId === null) {
+  if (existing === null) {
+    throw new AppError("ACTION_PLAN_NOT_FOUND", "Ação de clima não encontrada.")
+  }
+  if (existing.climateSurveyDispatchId === null) {
     throw new AppError("ACTION_PLAN_NOT_FOUND", "Ação de clima não encontrada.")
   }
   const climateDispatchId = existing.climateSurveyDispatchId
