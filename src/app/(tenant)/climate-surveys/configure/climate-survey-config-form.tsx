@@ -19,10 +19,12 @@ import {
   matchCatalogIdsFromQuestions,
 } from "@/app/(tenant)/climate-surveys/configure/climate-survey-question-catalog"
 import {
+  ClimateSurveyCustomQuestionList,
   ClimateSurveyQuestionBankAccordion,
   ClimateSurveyQuestionBankPreviewModal,
   ClimateSurveyQuestionBankSidePanel,
   validateClimateSurveyQuestionSelection,
+  type ClimateSurveyCustomQuestionDraft,
 } from "@/app/(tenant)/climate-surveys/configure/climate-survey-question-bank"
 
 interface DepartmentOption {
@@ -139,8 +141,6 @@ export function ClimateSurveyConfigForm({ mode, departments, initialConfig, init
   const [respectEmployeeSchedule, setRespectEmployeeSchedule] = useState(initialConfig?.respectEmployeeSchedule ?? false)
   const [tokenExpiryHours, setTokenExpiryHours] = useState(initialConfig?.tokenExpiryHours ?? 48)
   const [tokenExpiryHoursRaw, setTokenExpiryHoursRaw] = useState(String(initialConfig?.tokenExpiryHours ?? 48))
-  const [sendViaMessaging, setSendViaMessaging] = useState(initialConfig?.sendViaMessaging ?? true)
-  const [sendViaSignedLink, setSendViaSignedLink] = useState(initialConfig?.sendViaSignedLink ?? true)
   const [workDays, setWorkDays] = useState(() => {
     if (initialConfig !== null && initialConfig !== undefined) {
       return new Set(initialConfig.workDays.map((w) => w.dayOfWeek))
@@ -149,24 +149,52 @@ export function ClimateSurveyConfigForm({ mode, departments, initialConfig, init
   })
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<Set<string>>(() => {
     if (initialConfig === null || initialConfig === undefined) return new Set(DEFAULT_SELECTED_IDS)
-    const matched = matchCatalogIdsFromQuestions(
+    if (initialConfig.questions.length === 0) return new Set(DEFAULT_SELECTED_IDS)
+    return matchCatalogIdsFromQuestions(
       initialConfig.questions.map((q) => ({
         text: q.text,
         dimension: toClimateSurveyDimension(q.dimension),
       })),
     )
-    return matched.size > 0 ? matched : new Set(DEFAULT_SELECTED_IDS)
   })
 
-  const selectedQuestions = useMemo(
+  const [customQuestions, setCustomQuestions] = useState<ClimateSurveyCustomQuestionDraft[]>(() => {
+    if (initialConfig === null || initialConfig === undefined) return []
+    const catalogQuestionKeys = new Set(
+      CLIMATE_SURVEY_QUESTION_CATALOG.map((q) => `${q.text}::${q.dimension}`),
+    )
+    return initialConfig.questions
+      .filter((q) => !catalogQuestionKeys.has(`${q.text}::${toClimateSurveyDimension(q.dimension)}`))
+      .map((q, index) => ({
+        localId: `custom-${String(index)}`,
+        text: q.text,
+        scoreDirection: q.scoreDirection === "lower_is_better" ? "lower_is_better" : "higher_is_better",
+        dimension: toClimateSurveyDimension(q.dimension),
+      }))
+  })
+
+  const selectedCatalogQuestions = useMemo(
     () => CLIMATE_SURVEY_QUESTION_CATALOG.filter((q) => selectedQuestionIds.has(q.id)),
     [selectedQuestionIds],
   )
 
+  const previewQuestions = useMemo(
+    () => [
+      ...selectedCatalogQuestions,
+      ...customQuestions.map((q) => ({
+        id: q.localId,
+        text: q.text,
+        scoreDirection: q.scoreDirection,
+        dimension: q.dimension,
+      })),
+    ],
+    [selectedCatalogQuestions, customQuestions],
+  )
+
   const selectedTopicCount = useMemo(() => {
-    const topics = new Set(selectedQuestions.map((q) => q.dimension))
+    const topics = new Set(previewQuestions.map((q) => q.dimension))
     return topics.size
-  }, [selectedQuestions])
+  }, [previewQuestions])
 
   function toggleDay(value: number): void {
     setWorkDays((prev) => {
@@ -210,27 +238,28 @@ export function ClimateSurveyConfigForm({ mode, departments, initialConfig, init
       toast.error(`Selecione exatamente ${String(maxDays)} ${maxDays === 1 ? "dia" : "dias"} para a frequência escolhida.`)
       return
     }
-    if (!sendViaMessaging && !sendViaSignedLink) {
-      toast.error("Selecione ao menos um canal de envio")
+
+    if (customQuestions.some((q) => q.text.trim() === "")) {
+      toast.error("Informe o texto de todas as perguntas personalizadas.")
       return
     }
 
-    const selectionError = validateClimateSurveyQuestionSelection(selectedQuestions)
+    const selectionError = validateClimateSurveyQuestionSelection(previewQuestions)
     if (selectionError !== null) {
       toast.error(selectionError)
       return
     }
 
-    const underRecommended = [...new Set(selectedQuestions.map((q) => q.dimension))].some((dimension) => {
-      const count = selectedQuestions.filter((q) => q.dimension === dimension).length
+    const underRecommended = [...new Set(selectedCatalogQuestions.map((q) => q.dimension))].some((dimension) => {
+      const count = selectedCatalogQuestions.filter((q) => q.dimension === dimension).length
       return count > 0 && count < CLIMATE_SURVEY_RECOMMENDED_QUESTIONS_PER_TOPIC_MIN
     })
     if (underRecommended) {
       toast.message(`Recomendamos ${String(CLIMATE_SURVEY_RECOMMENDED_QUESTIONS_PER_TOPIC_MIN)} a ${String(CLIMATE_SURVEY_RECOMMENDED_QUESTIONS_PER_TOPIC_MAX)} perguntas por tópico.`)
     }
 
-    const questions = selectedQuestions.map((q, index) => ({
-      text: q.text,
+    const questions = previewQuestions.map((q, index) => ({
+      text: q.text.trim(),
       order: index + 1,
       scoreDirection: q.scoreDirection,
       dimension: q.dimension,
@@ -249,8 +278,8 @@ export function ClimateSurveyConfigForm({ mode, departments, initialConfig, init
         workDays: Array.from(workDays).sort((a, b) => a - b),
         respectEmployeeSchedule,
         tokenExpiryHours,
-        sendViaMessaging,
-        sendViaSignedLink,
+        sendViaMessaging: true,
+        sendViaSignedLink: false,
         questions,
       })
       if (result?.error) {
@@ -336,10 +365,6 @@ export function ClimateSurveyConfigForm({ mode, departments, initialConfig, init
                 <div>
                   <p className="font-bold uppercase tracking-widest text-[10px] text-primary mb-1">Frequência</p>
                   <p className="text-foreground">Defina quando a pesquisa será enviada automaticamente.</p>
-                </div>
-                <div>
-                  <p className="font-bold uppercase tracking-widest text-[10px] text-primary mb-1">Canais</p>
-                  <p className="text-foreground">Mensagem automática e/ou link assinado para distribuição manual.</p>
                 </div>
               </div>
             } />
@@ -484,31 +509,6 @@ export function ClimateSurveyConfigForm({ mode, departments, initialConfig, init
                 style={{ borderRadius: 0 }}
               />
             </div>
-            <div className="space-y-2 border-t border-border pt-4">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Canais de envio</p>
-              <label className="flex items-start gap-2.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={sendViaMessaging}
-                  onChange={(e) => setSendViaMessaging(e.target.checked)}
-                  className="accent-primary mt-0.5 shrink-0"
-                />
-                <span className="text-[12px] text-foreground leading-snug">
-                  <span className="font-semibold">Enviar por mensagem</span>
-                </span>
-              </label>
-              <label className="flex items-start gap-2.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={sendViaSignedLink}
-                  onChange={(e) => setSendViaSignedLink(e.target.checked)}
-                  className="accent-primary mt-0.5 shrink-0"
-                />
-                <span className="text-[12px] text-foreground leading-snug">
-                  <span className="font-semibold">Disponibilizar link assinado</span>
-                </span>
-              </label>
-            </div>
           </div>
         </div>
 
@@ -530,7 +530,7 @@ export function ClimateSurveyConfigForm({ mode, departments, initialConfig, init
               } />
             </div>
             <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground shrink-0">
-              {selectedQuestions.length} selecionada(s)
+              {previewQuestions.length} selecionada(s)
             </span>
           </div>
           <div className="p-3">
@@ -539,11 +539,14 @@ export function ClimateSurveyConfigForm({ mode, departments, initialConfig, init
               onChange={setSelectedQuestionIds}
             />
           </div>
+          <div className="p-3 pt-0">
+            <ClimateSurveyCustomQuestionList questions={customQuestions} onChange={setCustomQuestions} />
+          </div>
         </div>
 
         <div className="lg:hidden space-y-2">
           <ClimateSurveyQuestionBankSidePanel
-            selectedQuestions={selectedQuestions}
+            selectedQuestions={previewQuestions}
             selectedTopicCount={selectedTopicCount}
             onPreview={() => setPreviewOpen(true)}
             onSave={handleSubmit}
@@ -562,7 +565,7 @@ export function ClimateSurveyConfigForm({ mode, departments, initialConfig, init
 
       <div className="hidden lg:block space-y-2">
         <ClimateSurveyQuestionBankSidePanel
-          selectedQuestions={selectedQuestions}
+          selectedQuestions={previewQuestions}
           selectedTopicCount={selectedTopicCount}
           onPreview={() => setPreviewOpen(true)}
           onSave={handleSubmit}
@@ -582,7 +585,7 @@ export function ClimateSurveyConfigForm({ mode, departments, initialConfig, init
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
         surveyName={name.trim() || "Pesquisa de Clima"}
-        questions={selectedQuestions}
+        questions={previewQuestions}
       />
     </div>
   )

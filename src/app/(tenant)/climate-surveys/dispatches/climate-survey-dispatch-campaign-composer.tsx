@@ -7,10 +7,8 @@ import { fromZonedTime } from "date-fns-tz"
 import { NativeSelect } from "@/components/ui/native-select"
 import { launchClimateSurveyCampaignAction } from "@/app/(tenant)/climate-surveys/dispatches/actions"
 import {
-  CLIMATE_SURVEY_CAMPAIGN_CHANNEL_LABELS,
   CLIMATE_SURVEY_CAMPAIGN_FREQUENCIES,
   CLIMATE_SURVEY_FREQUENCY_LABELS,
-  type ClimateSurveyCampaignChannel,
   type ClimateSurveyCampaignSetup,
   type ClimateSurveyCampaignTimingMode,
   type ClimateSurveyFrequency,
@@ -64,8 +62,6 @@ export function ClimateSurveyDispatchCampaignComposer({ setup, orgTimezone }: Pr
   const [configId, setConfigId] = useState(firstConfig?.id ?? "")
   const selectedConfig = setup.configs.find((c) => c.id === configId) ?? firstConfig
 
-  const [sendViaMessaging, setSendViaMessaging] = useState(selectedConfig?.sendViaMessaging ?? true)
-  const [sendViaSignedLink, setSendViaSignedLink] = useState(selectedConfig?.sendViaSignedLink ?? true)
   const [frequency, setFrequency] = useState<ClimateSurveyFrequency>(() =>
     mapConfigFrequency(selectedConfig?.frequency ?? "once"),
   )
@@ -74,20 +70,11 @@ export function ClimateSurveyDispatchCampaignComposer({ setup, orgTimezone }: Pr
   const [includedDeptIds, setIncludedDeptIds] = useState<Set<string>>(
     () => new Set(selectedConfig?.departmentIds ?? setup.departments.map((d) => d.id)),
   )
-  const [preferredChannelByDept, setPreferredChannelByDept] = useState<Record<string, ClimateSurveyCampaignChannel>>(() => {
-    const initial: Record<string, ClimateSurveyCampaignChannel> = {}
-    for (const department of setup.departments) {
-      initial[department.id] = selectedConfig?.sendViaMessaging === false ? "email" : "messaging"
-    }
-    return initial
-  })
 
   function handleConfigChange(nextConfigId: string): void {
     setConfigId(nextConfigId)
     const next = setup.configs.find((c) => c.id === nextConfigId)
     if (next === undefined) return
-    setSendViaMessaging(next.sendViaMessaging)
-    setSendViaSignedLink(next.sendViaSignedLink)
     setFrequency(mapConfigFrequency(next.frequency))
     setIncludedDeptIds(new Set(next.departmentIds.length > 0 ? next.departmentIds : setup.departments.map((d) => d.id)))
   }
@@ -108,13 +95,6 @@ export function ClimateSurveyDispatchCampaignComposer({ setup, orgTimezone }: Pr
 
   const totalRecipients = includedDepartments.reduce((sum, d) => sum + d.employeeCount, 0)
 
-  const selectedChannelLabels = useMemo(() => {
-    const labels: string[] = []
-    if (sendViaMessaging) labels.push(CLIMATE_SURVEY_CAMPAIGN_CHANNEL_LABELS.messaging)
-    if (sendViaSignedLink) labels.push(CLIMATE_SURVEY_CAMPAIGN_CHANNEL_LABELS.email)
-    return labels
-  }, [sendViaMessaging, sendViaSignedLink])
-
   const sendAtLabel = useMemo(() => {
     if (timingMode === "now") return "Imediato"
     if (timingMode === "reminder_48h") return "Imediato · lembrete em 48h"
@@ -128,15 +108,11 @@ export function ClimateSurveyDispatchCampaignComposer({ setup, orgTimezone }: Pr
       toast.error("Selecione uma pesquisa.")
       return
     }
-    if (!sendViaMessaging && !sendViaSignedLink) {
-      toast.error("Selecione ao menos um canal.")
-      return
-    }
     if (includedDeptIds.size === 0) {
       toast.error("Inclua ao menos um departamento.")
       return
     }
-    if (sendViaMessaging && !setup.hasMessagingFeature) {
+    if (!setup.hasMessagingFeature) {
       toast.error("Seu plano não inclui envio de mensagens.")
       return
     }
@@ -147,8 +123,8 @@ export function ClimateSurveyDispatchCampaignComposer({ setup, orgTimezone }: Pr
     startTransition(async () => {
       const result = await launchClimateSurveyCampaignAction({
         configId,
-        sendViaMessaging,
-        sendViaSignedLink,
+        sendViaMessaging: true,
+        sendViaSignedLink: false,
         frequency,
         timingMode,
         scheduledAt: utcScheduledAt.toISOString(),
@@ -191,42 +167,6 @@ export function ClimateSurveyDispatchCampaignComposer({ setup, orgTimezone }: Pr
                   <option key={config.id} value={config.id}>{config.name}</option>
                 ))}
               </NativeSelect>
-            </div>
-
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Canais</p>
-              <div className="space-y-2">
-                <label className="flex items-start gap-2.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={sendViaMessaging}
-                    onChange={(e) => setSendViaMessaging(e.target.checked)}
-                    disabled={!setup.hasMessagingFeature}
-                    className="accent-primary mt-0.5"
-                  />
-                  <span className="text-[12px] text-foreground">
-                    <span className="font-semibold">{CLIMATE_SURVEY_CAMPAIGN_CHANNEL_LABELS.messaging}</span>
-                    <span className="block text-[11px] text-muted-foreground">
-                      Envio automático para o colaborador
-                      {!setup.hasMessagingFeature ? " (indisponível no plano)" : ""}
-                    </span>
-                  </span>
-                </label>
-                <label className="flex items-start gap-2.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={sendViaSignedLink}
-                    onChange={(e) => setSendViaSignedLink(e.target.checked)}
-                    className="accent-primary mt-0.5"
-                  />
-                  <span className="text-[12px] text-foreground">
-                    <span className="font-semibold">{CLIMATE_SURVEY_CAMPAIGN_CHANNEL_LABELS.email}</span>
-                    <span className="block text-[11px] text-muted-foreground">
-                      Envio automático com link único (colaboradores com e-mail) e link assinado para distribuição manual
-                    </span>
-                  </span>
-                </label>
-              </div>
             </div>
 
             <div>
@@ -304,34 +244,16 @@ export function ClimateSurveyDispatchCampaignComposer({ setup, orgTimezone }: Pr
               <tr className="border-b border-border">
                 <th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Departamento</th>
                 <th className="px-4 py-2 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Colaboradores</th>
-                <th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Canal preferencial</th>
                 <th className="px-4 py-2 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Campanha</th>
               </tr>
             </thead>
             <tbody>
               {setup.departments.map((department) => {
                 const included = includedDeptIds.has(department.id)
-                const preferred = preferredChannelByDept[department.id] ?? "messaging"
                 return (
                   <tr key={department.id} className="border-b border-border last:border-0">
                     <td className="px-4 py-3 font-medium text-foreground">{department.name}</td>
                     <td className="px-4 py-3 text-center tabular-nums">{department.employeeCount}</td>
-                    <td className="px-4 py-3">
-                      <NativeSelect
-                        value={preferred}
-                        onChange={(e) =>
-                          setPreferredChannelByDept((prev) => ({
-                            ...prev,
-                            [department.id]: e.target.value as ClimateSurveyCampaignChannel,
-                          }))
-                        }
-                        containerClassName="w-auto min-w-[140px]"
-                        disabled={!included}
-                      >
-                        <option value="messaging">{CLIMATE_SURVEY_CAMPAIGN_CHANNEL_LABELS.messaging}</option>
-                        <option value="email">{CLIMATE_SURVEY_CAMPAIGN_CHANNEL_LABELS.email}</option>
-                      </NativeSelect>
-                    </td>
                     <td className="px-4 py-3 text-center">
                       <label className="inline-flex items-center gap-2 cursor-pointer">
                         <input
@@ -377,10 +299,8 @@ export function ClimateSurveyDispatchCampaignComposer({ setup, orgTimezone }: Pr
             <p className="text-3xl font-bold tabular-nums mt-1">{totalRecipients}</p>
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Canais</p>
-            <p className="text-sm font-medium mt-1">
-              {selectedChannelLabels.length > 0 ? selectedChannelLabels.join(" · ") : "—"}
-            </p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Canal</p>
+            <p className="text-sm font-medium mt-1">Mensagem</p>
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Recorrência</p>
