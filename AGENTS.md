@@ -523,7 +523,7 @@ src/
 │   ├── rate-limit.ts                       # Helpers para rate limiting em Server Actions: enforceRateLimit, checkRateLimit, getClientIp
 │   └── utils/
 │       ├── action-result.ts               # ActionResult interface
-│       ├── anonymity.ts                   # MINIMUM_RESPONDENTS_FOR_DISPLAY — lido de env.HEALTH_SURVEY_MINIMUM_RESPONDENTS_FOR_DISPLAY (padrão: 5)
+│       ├── anonymity.ts                   # MINIMUM_RESPONDENTS_FOR_DISPLAY (health, env HEALTH_SURVEY_MINIMUM_RESPONDENTS_FOR_DISPLAY, padrão 5) + clima por percentual: CLIMATE_SURVEY_MIN_RESPONDENTS_FLOOR=3, climateSurveyRequiredRespondents(), canRevealClimateSurveyGroupResults()
 │       ├── client-ip.ts                   # extractClientIp(headers) — cf-connecting-ip → x-real-ip → x-forwarded-for
 │       ├── cn.ts                          # cn(...inputs) = twMerge(clsx(inputs))
 │       ├── json.ts                        # JsonValue — tipo JSON próprio da aplicação (não usa Prisma)
@@ -774,6 +774,7 @@ O tenant. `id` é o `tenant_id` de todas as demais tabelas.
 | external_customer_id | varchar(255) | UNIQUE — ID do customer no provedor de billing |
 | billing_status | varchar(20) | `'pending'` \| `'active'` \| `'past_due'` \| `'suspended'` \| `'cancelled'` |
 | max_employees_override | integer | NULL = usa limite do plano |
+| climate_survey_min_respondents_percent | integer | NOT NULL, default 40 — percentual mínimo de participação (sobre destinatários) para exibir resultados de Pesquisa de Clima; piso absoluto de 3 respondentes; configurável pelo admin em `/settings` |
 | trial_expires_at | timestamptz | NULL = sem trial ativo; NOT NULL = trial ativo até essa data (bypass do billing wall) |
 | deletion_scheduled_at | timestamptz | NULL = sem exclusão agendada; NOT NULL = exclusão permanente pendente |
 | is_active | boolean | NOT NULL, default true |
@@ -3105,7 +3106,7 @@ return (
 2. **Cada evento gera linha nova** — incluindo opt-out no formulário
 3. **Documento armazenado apenas como hash SHA-256** e somente no evento `accepted` (campo `documentHash`)
 4. **Sem `employee_id` em `health_survey_responses`** — desvinculamento garante anonimato
-5. **Mínimo de respondentes configurável** para exibir métricas (enforçado no service, nunca na UI) — valor definido pela variável de ambiente `HEALTH_SURVEY_MINIMUM_RESPONDENTS_FOR_DISPLAY` (padrão: `5`)
+5. **Mínimo de respondentes configurável** para exibir métricas (enforçado no service, nunca na UI) — health surveys usam a variável de ambiente `HEALTH_SURVEY_MINIMUM_RESPONDENTS_FOR_DISPLAY` (padrão: `5`); Pesquisa de Clima usa percentual sobre destinatários configurável por org (`organizations.climate_survey_min_respondents_percent`, padrão `40`%, piso absoluto de `3` respondentes — helpers em `src/libs/utils/anonymity.ts`)
 6. **`responded_at`** armazena apenas data (sem hora) — segunda camada de proteção ao anonimato
 
 ### Eventos e semântica do TCLE
@@ -3845,7 +3846,7 @@ Client Component (pgr-generate-button.tsx) recebe DUPLICATE_PGR_PERIOD
 
 ### 20.14 Pesquisa de Clima Organizacional
 
-Módulo paralelo às pesquisas de saúde (`src/modules/climate-surveys/`), gateado pela feature de plano `climate_surveys`. Colaboradores respondem **sem login**, via mensagem e/ou link assinado — mesmo padrão de anonimato (sem `employee_id` nas respostas; scores ocultos se `< MINIMUM_RESPONDENTS_FOR_DISPLAY`).
+Módulo paralelo às pesquisas de saúde (`src/modules/climate-surveys/`), gateado pela feature de plano `climate_surveys`. Colaboradores respondem **sem login**, via mensagem e/ou link assinado — mesmo padrão de anonimato (sem `employee_id` nas respostas; scores ocultos se a participação fica abaixo do percentual mínimo por org).
 
 ```
 RH (feature climate_surveys) → Sidebar “Pesquisa de Clima”
@@ -3960,7 +3961,7 @@ Exibido no Dashboard `/climate-surveys` (bloco Funil da onda). Falhas de insert 
 | Token só para participação | `climate_survey_response_tokens` guarda `employee_id` + `used_at` para elegibilidade, lembretes e adesão — **nunca** vinculado à linha de resposta |
 | Tabelas separadas | Participação = tokens; respostas = `climate_survey_responses` + `climate_survey_response_items` (criação atômica: marca token + INSERT anônimo) |
 | Data sem horário | `created_at` da resposta usa `toAnonymousSurveyResponseDate()` (UTC meia-noite) para reduzir correlação temporal com `used_at` |
-| Limiar ≥ 5 | `canRevealSurveyGroupResults` / `MINIMUM_RESPONDENTS_FOR_DISPLAY` — scores, favorabilidade, eNPS, radar, heatmap e distribuições ocultos abaixo do limiar (por onda e por célula/setor) |
+| Limiar por percentual | `canRevealClimateSurveyGroupResults` / `climateSurveyRequiredRespondents` — revela quando `respostas ≥ max(3, ceil(destinatários × organizações.climate_survey_min_respondents_percent / 100))`; scores, favorabilidade, eNPS, radar, heatmap e distribuições ocultos abaixo do limiar (por onda e por célula/setor) |
 | Sem rastreamento individual no dashboard | UI/services só agregados; sem listagem de respondentes ou respostas por colaborador |
 | Sem export identificável | `assertClimateSurveyIdentifiableExportForbidden()` — proibido exportar respostas com identidade |
 

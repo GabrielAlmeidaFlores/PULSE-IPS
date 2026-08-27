@@ -13,7 +13,7 @@ import { ClimateSurveyWaveEvolutionChart } from "@/app/(tenant)/climate-surveys/
 import { ClimateSurveyEnpsDonutChart } from "@/app/(tenant)/climate-surveys/components/climate-survey-enps-donut-chart"
 import { ClimateSurveyTopicDepartmentHeatmap } from "@/app/(tenant)/climate-surveys/components/climate-survey-topic-department-heatmap"
 import type { ClimateSurveyMetricStatus } from "@/modules/climate-surveys/climate-survey.types"
-import { MINIMUM_RESPONDENTS_FOR_DISPLAY } from "@/libs/utils/anonymity"
+import { CLIMATE_SURVEY_MIN_RESPONDENTS_FLOOR } from "@/libs/utils/anonymity"
 
 function kpiToneClass(status: ClimateSurveyMetricStatus): string {
   if (status === "above_goal") return "border-status-success-border bg-status-success-subtle"
@@ -73,7 +73,7 @@ export default async function ClimateSurveyDashboardPage(): Promise<React.ReactE
                     <div>
                       <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Anonimato</p>
                       <p className="text-[12px] text-foreground leading-relaxed">
-                        Scores e favorabilidade só aparecem com pelo menos {MINIMUM_RESPONDENTS_FOR_DISPLAY} respondentes.
+                        Scores e favorabilidade só aparecem ao atingir {dashboard.minRespondentsPercent}% de participação (mínimo de {CLIMATE_SURVEY_MIN_RESPONDENTS_FLOOR} respondentes).
                       </p>
                     </div>
                   </div>
@@ -122,11 +122,11 @@ export default async function ClimateSurveyDashboardPage(): Promise<React.ReactE
           </div>
         ) : (
           <>
-            {!dashboard.hasEnoughRespondents && (
+            {dashboard.kpis.totalRecipients > 0 && !dashboard.hasEnoughRespondents && (
               <div className="border border-status-warning-border bg-status-warning-subtle px-4 py-3">
                 <p className="text-[11px] font-bold uppercase tracking-widest text-status-warning">Respondentes insuficientes</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Favorabilidade, eNPS, radar e heatmap ficam ocultos até haver pelo menos {MINIMUM_RESPONDENTS_FOR_DISPLAY} respostas na onda.
+                  Favorabilidade, eNPS, radar e heatmap ficam ocultos até haver pelo menos {dashboard.requiredRespondents} respostas na onda (mínimo de {dashboard.minRespondentsPercent}% de participação).
                 </p>
               </div>
             )}

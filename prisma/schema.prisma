@@ -82,6 +82,7 @@ model Organization {
   externalCustomerId   String?  @unique @map("external_customer_id")
   billingStatus        String    @default("pending") @map("billing_status")
   maxEmployeesOverride Int?      @map("max_employees_override")
+  climateSurveyMinRespondentsPercent Int @default(40) @map("climate_survey_min_respondents_percent")
   timezone             String    @default("America/Sao_Paulo")
   trialExpiresAt       DateTime? @map("trial_expires_at")
   isActive             Boolean   @default(true) @map("is_active")

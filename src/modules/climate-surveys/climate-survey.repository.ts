@@ -376,6 +376,7 @@ export interface ClimateSurveyDispatchDashboardData {
   frequency: string
   signedLinkToken: string | null
   departments: { id: string; name: string }[]
+  deptRecipients: { departmentId: string; totalRecipients: number }[]
   questions: { id: string; text: string; order: number; scoreDirection: string; dimension: string }[]
   responseItems: ClimateSurveyDispatchResponseItem[]
 }
@@ -453,6 +454,7 @@ export async function findClimateSurveyDispatchWithDashboard(tenantId: string, d
     frequency: dispatch.climateSurveyConfiguration.frequency,
     signedLinkToken: dispatch.signedLinkToken ?? null,
     departments: dispatch.climateSurveyConfiguration.configDepartments.map((cd) => ({ id: cd.department.id, name: cd.department.name })),
+    deptRecipients: dispatch.deptDispatches.map((dd) => ({ departmentId: dd.departmentId, totalRecipients: dd.totalRecipients })),
     questions,
     responseItems,
   }
@@ -499,6 +501,7 @@ export async function findClimateSurveyMultipleDispatchesWithDashboard(
       frequency: dispatch.climateSurveyConfiguration.frequency,
       signedLinkToken: dispatch.signedLinkToken ?? null,
       departments: dispatch.climateSurveyConfiguration.configDepartments.map((cd) => ({ id: cd.department.id, name: cd.department.name })),
+      deptRecipients: dispatch.deptDispatches.map((dd) => ({ departmentId: dd.departmentId, totalRecipients: dd.totalRecipients })),
       questions,
       responseItems: dispatch.responses.flatMap((r) =>
         r.items.map((item) => ({ questionId: item.questionId, score: item.score, departmentId: r.departmentId, responseId: r.id })),

@@ -6,6 +6,7 @@ export interface Organization {
   externalCustomerId: string | null
   billingStatus: string
   maxEmployeesOverride: number | null
+  climateSurveyMinRespondentsPercent: number
   timezone: string
   trialExpiresAt: Date | null
   isActive: boolean
@@ -26,6 +27,7 @@ export interface UpdateOrganizationInput {
   timezone?: string
   isActive?: boolean
   maxEmployeesOverride?: number | null
+  climateSurveyMinRespondentsPercent?: number
 }
 
 export interface OrgUserSummary {
