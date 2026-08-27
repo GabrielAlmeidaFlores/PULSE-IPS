@@ -3859,14 +3859,14 @@ RH (feature climate_surveys) → Sidebar “Pesquisa de Clima”
      · CRUD de ações: título, descrição, responsável, prioridade, status, prazo
      · filtros por responsável/status · indicadores: concluídas / em andamento / atrasadas
 RH → /climate-surveys/configure
-  └─ Lista de pesquisas · Nova/Editar: banco de perguntas em accordion por tópico (checkbox),
+  └─ Lista de pesquisas · Nova/Editar: banco de perguntas em accordion por tópico (checkbox)
+     + seção "Perguntas personalizadas" (texto, tópico e direção do score, add/remover inline),
      painel lateral com contadores em tempo real (perguntas, tópicos, tempo estimado ≈20s/pergunta),
-     ações Salvar / Pré-visualizar; mín. 1 pergunta por tópico selecionado; recomendado 3–5 por tópico
+     ações Salvar / Pré-visualizar; mín. 1 pergunta (catálogo + personalizadas), máx. 40; recomendado 3–5 por tópico
   └─ Agenda onda (manual) ou auto-scheduler (job climate-survey-dispatcher)
-       ├─ Tokens + short_code; mensagens só se sendViaMessaging AND feature messaging
-       ├─ E-mail automático se sendViaSignedLink e colaborador tem `employees.email`
-       │    (fila `pulse-emails` / job `send-email`; template HTML + tracking open/click em `email_logs`)
-       └─ signed_link_token só se sendViaSignedLink (distribuição manual complementar)
+       ├─ Tokens + short_code; envio por mensagem (sendViaMessaging=true) quando feature messaging ativa
+       └─ Sem e-mail/link assinado em campanhas novas: a UI de clima não expõe seleção de canal
+          (compositor e config sempre enviam `sendViaMessaging=true`, `sendViaSignedLink=false`)
 Colaborador → /climate-survey/[token] | /climate-survey/[orgSlug]/[shortCode] | /climate-survey/link/[linkToken]
   └─ Consent Gate (source climate_survey_form no opt-out) → formulário mobile-first
        (1 pergunta por vez, barra de progresso, Likert 5 pontos com labels de concordância,
@@ -3913,7 +3913,7 @@ Agregações disponíveis: **por pergunta**, **por tópico (`dimension`)**, **po
 
 | Bloco | Conteúdo |
 |---|---|
-| Canais | Mensagem (`sendViaMessaging`) · E-mail (`sendViaSignedLink`: e-mail automático com link único + link assinado manual) — UI nunca usa “WhatsApp”/“SMS” |
+| Canais | Só Mensagem — a UI não expõe seleção de canal; campanhas novas usam `sendViaMessaging=true`, `sendViaSignedLink=false` (sem e-mail nem link assinado em campanhas novas; o backend de e-mail permanece para os demais fluxos/legado) |
 | Recorrência | `once` (sem auto-scheduler) · `quarterly` (90d) · `semiannual` (180d) |
 | Timing | Enviar agora · Agendar · Lembrete 48h (força `tokenExpiryHours ≥ 96`) |
 | Departamentos | Incluir/excluir + canal preferencial (UI) + headcount ativo |

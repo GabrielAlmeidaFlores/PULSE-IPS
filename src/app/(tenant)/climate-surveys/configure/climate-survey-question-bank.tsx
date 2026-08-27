@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { ChevronDown, Eye } from "lucide-react"
+import { ChevronDown, Eye, Plus, Trash2 } from "lucide-react"
 import { Dialog, DialogClose, DialogContent, DialogOverlay, DialogPortal, DialogTitle } from "@/components/ui/dialog"
+import { NativeSelect } from "@/components/ui/native-select"
 import {
   CLIMATE_SURVEY_RECOMMENDED_QUESTIONS_PER_TOPIC_MAX,
   CLIMATE_SURVEY_RECOMMENDED_QUESTIONS_PER_TOPIC_MIN,
@@ -10,11 +11,24 @@ import {
   getClimateSurveyCatalogByTopic,
   type ClimateSurveyCatalogQuestion,
 } from "@/app/(tenant)/climate-surveys/configure/climate-survey-question-catalog"
-import type { ClimateSurveyDimension } from "@/modules/climate-surveys/climate-survey.types"
+import {
+  CLIMATE_SURVEY_DIMENSION_LABELS,
+  CLIMATE_SURVEY_DIMENSION_ORDER,
+  toClimateSurveyDimension,
+  type ClimateSurveyDimension,
+  type ScoreDirection,
+} from "@/modules/climate-surveys/climate-survey.types"
 
 interface Props {
   selectedIds: Set<string>
   onChange: (next: Set<string>) => void
+}
+
+export interface ClimateSurveyCustomQuestionDraft {
+  localId: string
+  text: string
+  scoreDirection: ScoreDirection
+  dimension: ClimateSurveyDimension
 }
 
 function topicRecommendationMessage(count: number): string | null {
@@ -301,4 +315,98 @@ export function validateClimateSurveyQuestionSelection(selectedQuestions: Climat
   }
 
   return null
+}
+
+interface CustomQuestionListProps {
+  questions: ClimateSurveyCustomQuestionDraft[]
+  onChange: (next: ClimateSurveyCustomQuestionDraft[]) => void
+}
+
+const customQuestionInputCls =
+  "w-full bg-input border border-input-border text-foreground text-sm px-3 py-2.5 placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+
+export function ClimateSurveyCustomQuestionList({ questions, onChange }: CustomQuestionListProps): React.ReactElement {
+  function addCustomQuestion(): void {
+    onChange([
+      ...questions,
+      {
+        localId: crypto.randomUUID(),
+        text: "",
+        scoreDirection: "higher_is_better",
+        dimension: "organizational_culture",
+      },
+    ])
+  }
+
+  function updateCustomQuestion(localId: string, patch: Partial<ClimateSurveyCustomQuestionDraft>): void {
+    onChange(questions.map((q) => (q.localId === localId ? { ...q, ...patch } : q)))
+  }
+
+  function removeCustomQuestion(localId: string): void {
+    onChange(questions.filter((q) => q.localId !== localId))
+  }
+
+  return (
+    <div className="mt-3 border-t border-border pt-3 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Perguntas personalizadas</p>
+        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          {questions.length} adicionada(s)
+        </span>
+      </div>
+      {questions.length === 0 && (
+        <p className="text-[11px] text-muted-foreground">
+          Nenhuma pergunta personalizada. Adicione perguntas próprias além dos tópicos do catálogo.
+        </p>
+      )}
+      {questions.map((question) => (
+        <div key={question.localId} className="border border-border bg-muted/20 p-3 space-y-2">
+          <div className="flex items-start gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 flex-1">
+              <NativeSelect
+                value={question.dimension}
+                onChange={(e) => updateCustomQuestion(question.localId, { dimension: toClimateSurveyDimension(e.target.value) })}
+              >
+                {CLIMATE_SURVEY_DIMENSION_ORDER.map((dimension) => (
+                  <option key={dimension} value={dimension}>{CLIMATE_SURVEY_DIMENSION_LABELS[dimension]}</option>
+                ))}
+              </NativeSelect>
+              <NativeSelect
+                value={question.scoreDirection}
+                onChange={(e) => updateCustomQuestion(question.localId, { scoreDirection: e.target.value as ScoreDirection })}
+              >
+                <option value="higher_is_better">Maior é melhor</option>
+                <option value="lower_is_better">Menor é melhor</option>
+              </NativeSelect>
+            </div>
+            <button
+              type="button"
+              onClick={() => removeCustomQuestion(question.localId)}
+              className="shrink-0 p-1 text-muted-foreground hover:text-status-danger transition-colors"
+              style={{ borderRadius: 0 }}
+              title="Remover pergunta"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <input
+            value={question.text}
+            onChange={(e) => updateCustomQuestion(question.localId, { text: e.target.value })}
+            placeholder="Digite o texto da pergunta personalizada..."
+            className={customQuestionInputCls}
+            style={{ borderRadius: 0 }}
+          />
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={addCustomQuestion}
+        className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold uppercase tracking-widest border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        style={{ borderRadius: 0 }}
+      >
+        <Plus className="h-3.5 w-3.5" />
+        Adicionar pergunta personalizada
+      </button>
+    </div>
+  )
 }

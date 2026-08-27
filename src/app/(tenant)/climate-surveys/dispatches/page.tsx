@@ -99,9 +99,9 @@ export default async function ClimateSurveysListPage({ searchParams }: ClimateSu
             <PageHelp content={
               <div className="space-y-3">
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Canais</p>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Canal</p>
                   <p className="text-[12px] text-foreground leading-relaxed">
-                    Mensagem = envio automático. E-mail = envio automático para colaboradores com e-mail cadastrado (link único) e link assinado para distribuição manual.
+                    Mensagem = envio automático para o colaborador.
                   </p>
                 </div>
                 <div>
