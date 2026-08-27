@@ -77,6 +77,8 @@ export interface ClimateSurveyDispatchDashboardStats {
   enps: number | null
   enpsBreakdown: ClimateSurveyEnpsBreakdown
   signedLinkToken: string | null
+  minRespondentsPercent: number
+  requiredRespondents: number
   questions: {
     id: string
     text: string
@@ -163,6 +165,8 @@ export interface ClimateSurveyModuleDashboard {
     enpsStatus: ClimateSurveyMetricStatus
   }
   corporateGoalPercent: number
+  minRespondentsPercent: number
+  requiredRespondents: number
   radar: ClimateSurveyTopicRadarPoint[]
   evolution: ClimateSurveyWaveEvolutionPoint[]
   enpsBreakdown: ClimateSurveyEnpsBreakdown

@@ -52,7 +52,7 @@ import {
 import {
   healthIndexAccent,
 } from "@/libs/utils/health-index";
-import { MINIMUM_RESPONDENTS_FOR_DISPLAY } from "@/libs/utils/anonymity";
+import { CLIMATE_SURVEY_MIN_RESPONDENTS_FLOOR, climateSurveyRequiredRespondents } from "@/libs/utils/anonymity";
 import { BADGE_AMBER, BADGE_BASE, BADGE_DEFAULT, BADGE_GREEN, BADGE_RED } from "@/libs/design-system/alert-labels";
 import { env } from "@/env";
 
@@ -112,6 +112,7 @@ interface MergedStatsBase {
   scheduledAt: Date;
   dispatchedAt: Date | null;
   frequency: string;
+  minRespondentsPercent: number;
 }
 
 interface MergedQuestionAccumulator {
@@ -338,6 +339,8 @@ function mergeDispatchStats(
     enps: overallMetrics.enps,
     enpsBreakdown: overallMetrics.enpsBreakdown,
     signedLinkToken: null,
+    minRespondentsPercent: base.minRespondentsPercent,
+    requiredRespondents: climateSurveyRequiredRespondents(totalRecipients, base.minRespondentsPercent),
     questions,
     dimensionScores: buildMergedDimensionScores(questions),
     departmentScores: mergeDepartmentScores(statsArray),
@@ -367,8 +370,8 @@ function DeptChartSection({
   deptStats,
 }: DeptChartSectionProps): React.ReactElement {
   const hasResponses = deptStats.totalResponses > 0;
-  const awaitingThreshold = hasResponses && deptStats.totalResponses < MINIMUM_RESPONDENTS_FOR_DISPLAY;
-  const hasEnoughForStats = deptStats.totalResponses >= MINIMUM_RESPONDENTS_FOR_DISPLAY;
+  const awaitingThreshold = hasResponses && deptStats.totalResponses < deptStats.requiredRespondents;
+  const hasEnoughForStats = deptStats.totalResponses >= deptStats.requiredRespondents;
   const deptAdherence = Math.round(deptStats.adherenceRate * 100);
   const deptLabel = deptStats.departments.length > 0
     ? deptStats.departments.map((d) => d.name).join(", ")
@@ -413,9 +416,10 @@ function DeptChartSection({
           <span className="text-status-warning text-sm mt-px shrink-0">⚠</span>
           <p className="text-xs text-status-warning leading-relaxed">
             As estatísticas são exibidas somente quando há pelo menos{" "}
-            <strong>{MINIMUM_RESPONDENTS_FOR_DISPLAY} respondentes</strong> — proteção ao anonimato dos colaboradores.
+            <strong>{deptStats.requiredRespondents} respondentes</strong> — proteção ao anonimato dos colaboradores
+            (mínimo de {deptStats.minRespondentsPercent}% de participação e {CLIMATE_SURVEY_MIN_RESPONDENTS_FLOOR} respondentes).
             Faltam{" "}
-            <strong>{MINIMUM_RESPONDENTS_FOR_DISPLAY - deptStats.totalResponses} resposta{MINIMUM_RESPONDENTS_FOR_DISPLAY - deptStats.totalResponses === 1 ? "" : "s"}</strong>{" "}
+            <strong>{deptStats.requiredRespondents - deptStats.totalResponses} resposta{deptStats.requiredRespondents - deptStats.totalResponses === 1 ? "" : "s"}</strong>{" "}
             para liberar os dados.
           </p>
         </div>
@@ -450,7 +454,7 @@ function DeptChartSection({
           ) : (
             <p className="text-xs text-muted-foreground text-center py-8">
               {awaitingThreshold
-                ? `Aguardando mais ${MINIMUM_RESPONDENTS_FOR_DISPLAY - deptStats.totalResponses} resposta${MINIMUM_RESPONDENTS_FOR_DISPLAY - deptStats.totalResponses === 1 ? "" : "s"} para liberar as estatísticas.`
+                ? `Aguardando mais ${deptStats.requiredRespondents - deptStats.totalResponses} resposta${deptStats.requiredRespondents - deptStats.totalResponses === 1 ? "" : "s"} para liberar as estatísticas.`
                 : "Nenhuma resposta registrada ainda."}
             </p>
           )}
@@ -637,6 +641,7 @@ async function buildDispatchComparisonData(
         scheduledAt: firstDispatch ? new Date(firstDispatch.scheduledAt) : new Date(),
         dispatchedAt: null,
         frequency: firstStat.frequency,
+        minRespondentsPercent: firstStat.minRespondentsPercent,
       };
       const dayMerged = mergeDispatchStats(dayStats, base);
       return {
@@ -776,6 +781,7 @@ export default async function ClimateSurveyDispatchDetailPage({
     scheduledAt: anchorStats.scheduledAt,
     dispatchedAt: anchorStats.dispatchedAt,
     frequency: anchorStats.frequency,
+    minRespondentsPercent: anchorStats.minRespondentsPercent,
   };
   const mergedStats = {
     ...mergeDispatchStats(aggrStats, mergedStatsBase),

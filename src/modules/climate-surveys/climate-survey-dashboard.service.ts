@@ -37,7 +37,7 @@ import {
   normalizeClimateSurveyLikertScore,
   type ClimateSurveyAggregatedMetrics,
 } from "@/modules/climate-surveys/climate-survey-metrics"
-import { canRevealSurveyGroupResults } from "@/libs/utils/anonymity"
+import { canRevealClimateSurveyGroupResults, climateSurveyRequiredRespondents } from "@/libs/utils/anonymity"
 import { AppError } from "@/libs/errors/app-error"
 import {
   emptyClimateSurveyFunnelMetrics,
@@ -163,7 +163,11 @@ function buildDepartmentScores(
   })
 }
 
-function buildDispatchStats(data: ClimateSurveyDispatchDashboardData, filterDeptIds?: string[]): ClimateSurveyDispatchDashboardStats {
+function buildDispatchStats(
+  data: ClimateSurveyDispatchDashboardData,
+  minRespondentsPercent: number,
+  filterDeptIds?: string[],
+): ClimateSurveyDispatchDashboardStats {
   const filteredItems =
     filterDeptIds !== undefined && filterDeptIds.length > 0
       ? data.responseItems.filter((i) => i.departmentId !== null && filterDeptIds.includes(i.departmentId))
@@ -172,7 +176,16 @@ function buildDispatchStats(data: ClimateSurveyDispatchDashboardData, filterDept
     filterDeptIds !== undefined && filterDeptIds.length > 0
       ? Math.round(filteredItems.length / Math.max(data.questions.length, 1))
       : data.totalResponses
-  const hasEnoughRespondents = canRevealSurveyGroupResults(estimatedResponseCount)
+  const scopeRecipients =
+    filterDeptIds !== undefined && filterDeptIds.length > 0
+      ? data.deptRecipients
+          .filter((dr) => filterDeptIds.includes(dr.departmentId))
+          .reduce((sum, dr) => sum + dr.totalRecipients, 0)
+      : data.totalRecipients
+  const requiredRespondents = scopeRecipients > 0
+    ? climateSurveyRequiredRespondents(scopeRecipients, minRespondentsPercent)
+    : 0
+  const hasEnoughRespondents = canRevealClimateSurveyGroupResults(estimatedResponseCount, scopeRecipients, minRespondentsPercent)
   const metricQuestions = buildMetricQuestionInputs(data.questions)
   const metrics = hasEnoughRespondents
     ? computeClimateSurveyMetricsBreakdown(filteredItems, metricQuestions)
@@ -212,6 +225,8 @@ function buildDispatchStats(data: ClimateSurveyDispatchDashboardData, filterDept
     enps: metrics.overall.enps.score,
     enpsBreakdown: metrics.overall.enps,
     signedLinkToken: data.signedLinkToken,
+    minRespondentsPercent,
+    requiredRespondents,
     questions,
     dimensionScores: buildDimensionScores(questions, metrics.byTopic, hasEnoughRespondents),
     departmentScores: buildDepartmentScores(data.departments, metrics.byDepartment, hasEnoughRespondents),
@@ -333,9 +348,12 @@ export async function getClimateSurveyDispatchDashboard(
   dispatchId: string,
   filterDeptIds?: string[],
 ): Promise<ClimateSurveyDispatchDashboardStats | null> {
-  const data = await findClimateSurveyDispatchWithDashboard(tenantId, dispatchId)
+  const [data, org] = await Promise.all([
+    findClimateSurveyDispatchWithDashboard(tenantId, dispatchId),
+    findOrganizationById(tenantId),
+  ])
   if (!data) return null
-  return buildDispatchStats(data, filterDeptIds)
+  return buildDispatchStats(data, org?.climateSurveyMinRespondentsPercent ?? 40, filterDeptIds)
 }
 
 export async function getClimateSurveyMultipleDispatchDashboards(
@@ -343,8 +361,12 @@ export async function getClimateSurveyMultipleDispatchDashboards(
   dispatchIds: string[],
   filterDeptIds?: string[],
 ): Promise<ClimateSurveyDispatchDashboardStats[]> {
-  const dataList = await findClimateSurveyMultipleDispatchesWithDashboard(tenantId, dispatchIds)
-  return dataList.map((data) => buildDispatchStats(data, filterDeptIds))
+  const [dataList, org] = await Promise.all([
+    findClimateSurveyMultipleDispatchesWithDashboard(tenantId, dispatchIds),
+    findOrganizationById(tenantId),
+  ])
+  const minRespondentsPercent = org?.climateSurveyMinRespondentsPercent ?? 40
+  return dataList.map((data) => buildDispatchStats(data, minRespondentsPercent, filterDeptIds))
 }
 
 function buildRadarPoints(topicMetrics: Map<ClimateSurveyDimension, ClimateSurveyAggregatedMetrics>): ClimateSurveyTopicRadarPoint[] {
@@ -365,9 +387,12 @@ function buildHeatmap(
   items: ClimateSurveyDispatchResponseItem[],
   questions: ClimateSurveyDispatchDashboardData["questions"],
   departments: { id: string; name: string }[],
+  deptRecipients: { departmentId: string; totalRecipients: number }[],
   hasEnoughRespondents: boolean,
+  minRespondentsPercent: number,
 ): ClimateSurveyModuleDashboard["heatmap"] {
   const metricQuestions = buildMetricQuestionInputs(questions)
+  const deptRecipientsMap = new Map(deptRecipients.map((dr) => [dr.departmentId, dr.totalRecipients]))
   const cells: ClimateSurveyHeatmapCell[] = []
 
   for (const dimension of CLIMATE_SURVEY_DIMENSION_ORDER) {
@@ -382,7 +407,11 @@ function buildHeatmap(
         1,
       )
       const estimatedRespondents = Math.round(deptTopicItems.length / topicQuestionCount)
-      const canShow = hasEnoughRespondents && canRevealSurveyGroupResults(estimatedRespondents) && deptTopicItems.length > 0
+      const scopeRecipients = deptRecipientsMap.get(department.id) ?? 0
+      const canShow =
+        hasEnoughRespondents &&
+        canRevealClimateSurveyGroupResults(estimatedRespondents, scopeRecipients, minRespondentsPercent) &&
+        deptTopicItems.length > 0
       const metrics = canShow
         ? computeClimateSurveyMetricsBreakdown(deptTopicItems, metricQuestions).byTopic.get(dimension)
         : undefined
@@ -407,8 +436,11 @@ function buildHeatmap(
   }
 }
 
-function buildWaveEvolutionPoint(data: ClimateSurveyDispatchDashboardData): ClimateSurveyWaveEvolutionPoint {
-  const hasEnough = canRevealSurveyGroupResults(data.totalResponses)
+function buildWaveEvolutionPoint(
+  data: ClimateSurveyDispatchDashboardData,
+  minRespondentsPercent: number,
+): ClimateSurveyWaveEvolutionPoint {
+  const hasEnough = canRevealClimateSurveyGroupResults(data.totalResponses, data.totalRecipients, minRespondentsPercent)
   const metrics = hasEnough
     ? computeClimateSurveyMetricsBreakdown(data.responseItems, buildMetricQuestionInputs(data.questions)).overall
     : emptyAggregatedMetrics()
@@ -435,7 +467,11 @@ function resolveEnpsStatus(score: number | null): ClimateSurveyModuleDashboard["
 }
 
 export async function getClimateSurveyModuleDashboard(tenantId: string): Promise<ClimateSurveyModuleDashboard> {
-  const waves = await findRecentAvailableClimateSurveyDispatchesForOverview(tenantId, 8)
+  const [org, waves] = await Promise.all([
+    findOrganizationById(tenantId),
+    findRecentAvailableClimateSurveyDispatchesForOverview(tenantId, 8),
+  ])
+  const minRespondentsPercent = org?.climateSurveyMinRespondentsPercent ?? 40
   const latest = waves[0] ?? null
   const emptyEnps = emptyEnpsBreakdown()
 
@@ -453,6 +489,8 @@ export async function getClimateSurveyModuleDashboard(tenantId: string): Promise
         enpsStatus: "unavailable",
       },
       corporateGoalPercent: CLIMATE_SURVEY_CORPORATE_GOAL_PERCENT,
+      minRespondentsPercent,
+      requiredRespondents: 0,
       radar: buildRadarPoints(new Map()),
       evolution: [],
       enpsBreakdown: emptyEnps,
@@ -469,7 +507,14 @@ export async function getClimateSurveyModuleDashboard(tenantId: string): Promise
     }
   }
 
-  const hasEnoughRespondents = canRevealSurveyGroupResults(latest.totalResponses)
+  const hasEnoughRespondents = canRevealClimateSurveyGroupResults(
+    latest.totalResponses,
+    latest.totalRecipients,
+    minRespondentsPercent,
+  )
+  const requiredRespondents = latest.totalRecipients > 0
+    ? climateSurveyRequiredRespondents(latest.totalRecipients, minRespondentsPercent)
+    : 0
   const adherencePercent =
     latest.totalRecipients > 0 ? Math.round((latest.totalResponses / latest.totalRecipients) * 100) : 0
   const metrics = hasEnoughRespondents
@@ -480,7 +525,7 @@ export async function getClimateSurveyModuleDashboard(tenantId: string): Promise
         byTopic: new Map<ClimateSurveyDimension, ClimateSurveyAggregatedMetrics>(),
         byDepartment: new Map<string, ClimateSurveyAggregatedMetrics>(),
       }
-  const evolution = [...waves].reverse().map((wave) => buildWaveEvolutionPoint(wave))
+  const evolution = [...waves].reverse().map((wave) => buildWaveEvolutionPoint(wave, minRespondentsPercent))
   const funnel = await getClimateSurveyFunnelMetrics(tenantId, latest.id)
 
   return {
@@ -503,10 +548,19 @@ export async function getClimateSurveyModuleDashboard(tenantId: string): Promise
       enpsStatus: resolveEnpsStatus(metrics.overall.enps.score),
     },
     corporateGoalPercent: CLIMATE_SURVEY_CORPORATE_GOAL_PERCENT,
+    minRespondentsPercent,
+    requiredRespondents,
     radar: buildRadarPoints(metrics.byTopic),
     evolution,
     enpsBreakdown: metrics.overall.enps,
-    heatmap: buildHeatmap(latest.responseItems, latest.questions, latest.departments, hasEnoughRespondents),
+    heatmap: buildHeatmap(
+      latest.responseItems,
+      latest.questions,
+      latest.departments,
+      latest.deptRecipients,
+      hasEnoughRespondents,
+      minRespondentsPercent,
+    ),
     hasEnoughRespondents,
     funnel,
   }

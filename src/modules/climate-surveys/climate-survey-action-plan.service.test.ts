@@ -91,6 +91,8 @@ describe("getClimateSurveyActionPlanBoard", () => {
         enpsStatus: "attention",
       },
       corporateGoalPercent: 70,
+      minRespondentsPercent: 40,
+      requiredRespondents: 5,
       radar: [
         {
           dimension: "leadership_trust",
@@ -179,6 +181,8 @@ describe("getClimateSurveyActionPlanBoard", () => {
         enpsStatus: "unavailable",
       },
       corporateGoalPercent: 70,
+      minRespondentsPercent: 40,
+      requiredRespondents: 0,
       radar: [],
       evolution: [],
       enpsBreakdown: { promoters: 0, neutrals: 0, detractors: 0, total: 0, score: null },

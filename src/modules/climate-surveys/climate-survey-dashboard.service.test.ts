@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 import {
   getClimateSurveyDispatches,
   scheduleClimateSurveyDispatch,
@@ -76,6 +76,11 @@ const TENANT_ID = "tenant-1"
 const DATE_FROM_ISO = "2024-01-01"
 const DEFAULT_TIMEZONE = "America/Sao_Paulo"
 
+beforeEach(() => {
+  vi.clearAllMocks()
+  mockFindOrganizationById.mockResolvedValue(null)
+})
+
 const QUESTIONS = [
   { id: "q-1", text: "Como você está?", order: 1, scoreDirection: "higher_is_better", dimension: "belonging" },
   { id: "q-2", text: "Carga de trabalho", order: 2, scoreDirection: "lower_is_better", dimension: "workload" },
@@ -99,6 +104,7 @@ const DISPATCH_DATA = {
   totalResponses: 7,
   signedLinkToken: null,
   departments: [{ id: "dept-1", name: "Vendas" }],
+  deptRecipients: [{ departmentId: "dept-1", totalRecipients: 10 }],
   questions: QUESTIONS,
   responseItems: RESPONSE_ITEMS,
 }
@@ -136,7 +142,7 @@ describe("getClimateSurveyDispatchDashboard", () => {
     expect(q1?.scoreDirection).toBe("higher_is_better")
   })
 
-  it("oculta scores quando o grupo tem menos de 5 respostas", async () => {
+  it("oculta scores quando a participação está abaixo do percentual mínimo", async () => {
     mockFindDispatchWithDashboard.mockResolvedValue({
       ...DISPATCH_DATA,
       totalResponses: 3,
@@ -149,6 +155,40 @@ describe("getClimateSurveyDispatchDashboard", () => {
     expect(result?.questions.every((q) => q.avgScore === null)).toBe(true)
     expect(result?.dimensionScores.every((d) => d.avgScore === null)).toBe(true)
     expect(result?.totalResponses).toBe(3)
+    expect(result?.minRespondentsPercent).toBe(40)
+    expect(result?.requiredRespondents).toBe(4)
+  })
+
+  it("honra o percentual mínimo configurado na organização", async () => {
+    mockFindDispatchWithDashboard.mockResolvedValue(DISPATCH_DATA)
+    mockFindOrganizationById.mockResolvedValue({
+      id: TENANT_ID,
+      name: "Org",
+      slug: "org",
+      timezone: DEFAULT_TIMEZONE,
+      climateSurveyMinRespondentsPercent: 100,
+      maxEmployeesOverride: null,
+    } as Awaited<ReturnType<typeof findOrganizationById>>)
+
+    const result = await getClimateSurveyDispatchDashboard(TENANT_ID, "d-1")
+
+    expect(result?.requiredRespondents).toBe(10)
+    expect(result?.minRespondentsPercent).toBe(100)
+    expect(result?.avgScore).toBeNull()
+  })
+
+  it("não revela dados e mantém requiredRespondents finito quando não há destinatários", async () => {
+    mockFindDispatchWithDashboard.mockResolvedValue({
+      ...DISPATCH_DATA,
+      totalRecipients: 0,
+      deptRecipients: [{ departmentId: "dept-1", totalRecipients: 0 }],
+    })
+
+    const result = await getClimateSurveyDispatchDashboard(TENANT_ID, "d-1")
+
+    expect(result?.requiredRespondents).toBe(0)
+    expect(result?.avgScore).toBeNull()
+    expect(Number.isFinite(result?.requiredRespondents)).toBe(true)
   })
 
   it("normalizes lower_is_better scores (6 - score)", async () => {
@@ -373,7 +413,7 @@ describe("getClimateSurveyDispatchDashboard — filterDeptIds", () => {
     expect(q1?.avgScore).toBeCloseTo(5.0)
   })
 
-  it("oculta estatísticas quando respondentes filtrados são insuficientes (< 5)", async () => {
+  it("oculta estatísticas quando respondentes filtrados estão abaixo do percentual mínimo", async () => {
     const sparseItems = [
       { questionId: "q-1", score: 5, departmentId: "dept-1", responseId: "r-1" },
       { questionId: "q-1", score: 5, departmentId: "dept-1", responseId: "r-2" },
@@ -496,6 +536,10 @@ describe("getClimateSurveyModuleDashboard", () => {
         { id: "dept-1", name: "Vendas" },
         { id: "dept-2", name: "Ops" },
       ],
+      deptRecipients: [
+        { departmentId: "dept-1", totalRecipients: 5 },
+        { departmentId: "dept-2", totalRecipients: 5 },
+      ],
       questions: [
         { id: "q-1", text: "Satisfação", order: 1, scoreDirection: "higher_is_better", dimension: "job_satisfaction" },
         { id: "q-2", text: "Comunicação", order: 2, scoreDirection: "higher_is_better", dimension: "internal_communication" },
@@ -531,13 +575,14 @@ describe("getClimateSurveyModuleDashboard", () => {
     expect(result.funnel.openRatePercent).toBe(50)
   })
 
-  it("não revela scores nem contagens de células com menos de 5 respostas", async () => {
+  it("não revela scores nem contagens de células com participação abaixo do percentual mínimo", async () => {
     const waveData = {
       ...DISPATCH_DATA,
       id: "d-small",
       totalRecipients: 10,
       totalResponses: 3,
       departments: [{ id: "dept-1", name: "Vendas" }],
+      deptRecipients: [{ departmentId: "dept-1", totalRecipients: 10 }],
       questions: [
         { id: "q-1", text: "Satisfação", order: 1, scoreDirection: "higher_is_better", dimension: "job_satisfaction" },
       ],
@@ -557,5 +602,29 @@ describe("getClimateSurveyModuleDashboard", () => {
     expect(result.kpis.enps).toBeNull()
     expect(result.heatmap.cells.every((cell) => cell.scorePercent === null)).toBe(true)
     expect(result.heatmap.cells.every((cell) => cell.responseCount === null)).toBe(true)
+  })
+
+  it("mantém requiredRespondents finito quando a onda não tem destinatários", async () => {
+    const waveData = {
+      ...DISPATCH_DATA,
+      id: "d-no-recipients",
+      totalRecipients: 0,
+      totalResponses: 0,
+      departments: [{ id: "dept-1", name: "Vendas" }],
+      deptRecipients: [{ departmentId: "dept-1", totalRecipients: 0 }],
+      questions: [
+        { id: "q-1", text: "Satisfação", order: 1, scoreDirection: "higher_is_better", dimension: "job_satisfaction" },
+      ],
+      responseItems: [],
+    } as Awaited<ReturnType<typeof findRecentAvailableClimateSurveyDispatchesForOverview>>[number]
+
+    mockFindRecentAvailableForOverview.mockResolvedValue([waveData])
+
+    const result = await getClimateSurveyModuleDashboard(TENANT_ID)
+
+    expect(result.hasEnoughRespondents).toBe(false)
+    expect(result.requiredRespondents).toBe(0)
+    expect(Number.isFinite(result.requiredRespondents)).toBe(true)
+    expect(result.kpis.totalRecipients).toBe(0)
   })
 })

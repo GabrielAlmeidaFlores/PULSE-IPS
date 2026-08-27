@@ -92,7 +92,11 @@ export default async function SettingsPage(): Promise<React.ReactElement> {
           </div>
         </div>
         <div className="mt-6">
-          <SettingsForm name={org?.name ?? ""} timezone={org?.timezone ?? "America/Sao_Paulo"} />
+          <SettingsForm
+            name={org?.name ?? ""}
+            timezone={org?.timezone ?? "America/Sao_Paulo"}
+            minRespondentsPercent={org?.climateSurveyMinRespondentsPercent ?? 40}
+          />
         </div>
         <div className="mt-6">
           <TeamManagement users={users} pendingInvites={pendingInvites} />
