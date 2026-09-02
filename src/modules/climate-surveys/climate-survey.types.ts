@@ -396,6 +396,7 @@ export interface UpdateClimateSurveyConfigInput {
 export interface SubmitClimateSurveyInput {
   token: string
   answers: { questionId: string; score: number }[]
+  openComment?: string
 }
 
 export interface CreateClimateSurveyResponseInput {
@@ -404,6 +405,7 @@ export interface CreateClimateSurveyResponseInput {
   departmentId: string | null
   tokenId: string
   answers: { questionId: string; score: number }[]
+  openComment?: string
 }
 
 export interface CreateClimateSurveyTokenInput {

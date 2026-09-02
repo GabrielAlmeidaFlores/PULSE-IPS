@@ -410,6 +410,38 @@ describe("submitClimateSurveyResponse — happy path", () => {
     })
   })
 
+  it("propaga comentário aberto quando preenchido (com trim)", async () => {
+    await submitClimateSurveyResponse({ ...SUBMIT_INPUT, openComment: "  Ambiente ótimo  " })
+
+    expect(mockCreateResponse).toHaveBeenCalledWith({
+      tenantId: TENANT_ID,
+      dispatchId: DISPATCH_ID,
+      departmentId: "dept-1",
+      tokenId: "token-1",
+      answers: SUBMIT_INPUT.answers,
+      openComment: "Ambiente ótimo",
+    })
+  })
+
+  it("não inclui openComment quando vazio ou só espaços", async () => {
+    await submitClimateSurveyResponse({ ...SUBMIT_INPUT, openComment: "   " })
+
+    expect(mockCreateResponse).toHaveBeenCalledWith({
+      tenantId: TENANT_ID,
+      dispatchId: DISPATCH_ID,
+      departmentId: "dept-1",
+      tokenId: "token-1",
+      answers: SUBMIT_INPUT.answers,
+    })
+  })
+
+  it("rejeita comentário aberto acima de 1000 caracteres", async () => {
+    await expect(
+      submitClimateSurveyResponse({ ...SUBMIT_INPUT, openComment: "a".repeat(1001) }),
+    ).rejects.toMatchObject({ code: "OPEN_COMMENT_TOO_LONG" })
+    expect(mockCreateResponse).not.toHaveBeenCalled()
+  })
+
   it("nunca persiste employeeId na resposta — apenas token e setor", async () => {
     await submitClimateSurveyResponse(SUBMIT_INPUT)
 

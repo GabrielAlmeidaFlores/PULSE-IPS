@@ -9,6 +9,7 @@ interface Question {
   text: string
   order: number
   scoreDirection: "higher_is_better" | "lower_is_better"
+  dimension: string
 }
 
 interface Props {

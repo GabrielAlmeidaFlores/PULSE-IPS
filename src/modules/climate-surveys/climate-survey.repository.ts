@@ -724,6 +724,7 @@ export async function createClimateSurveyResponseWithItems(data: CreateClimateSu
         dispatchId: data.dispatchId,
         createdAt: toAnonymousSurveyResponseDate(),
         ...(data.departmentId !== null ? { departmentId: data.departmentId } : {}),
+        ...(data.openComment !== undefined ? { openComment: data.openComment } : {}),
         items: {
           create: data.answers.map((a) => ({
             questionId: a.questionId,
@@ -910,6 +911,27 @@ export function countClimateSurveyResponsesForDispatch(tenantId: string, dispatc
 
 export function countClimateSurveyResponsesByDispatchAndDept(dispatchId: string, departmentId: string): Promise<number> {
   return prisma.climateSurveyResponse.count({ where: { dispatchId, departmentId } })
+}
+
+export interface ClimateSurveyOpenCommentRow {
+  id: string
+  openComment: string
+  createdAt: Date
+}
+
+export async function findClimateSurveyOpenCommentsByDispatchIds(
+  tenantId: string,
+  dispatchIds: string[],
+): Promise<ClimateSurveyOpenCommentRow[]> {
+  if (dispatchIds.length === 0) return []
+  const rows = await prisma.climateSurveyResponse.findMany({
+    where: { tenantId, dispatchId: { in: dispatchIds }, openComment: { not: null } },
+    select: { id: true, openComment: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+  })
+  return rows.flatMap((row) =>
+    row.openComment === null ? [] : [{ id: row.id, openComment: row.openComment, createdAt: row.createdAt }],
+  )
 }
 
 export async function createClimateSurveyAdherenceAlert(data: CreateClimateSurveyAdherenceAlertInput): Promise<void> {
