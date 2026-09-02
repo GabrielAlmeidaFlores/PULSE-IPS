@@ -1,10 +1,11 @@
 "use client"
 
-import { useMemo, useState, useTransition } from "react"
+import { useEffect, useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import Link from "next/link"
 import { PageHelp } from "@/components/page-help"
+import { ConfirmActionModal } from "@/components/confirm-action-modal"
 import { NativeSelect } from "@/components/ui/native-select"
 import {
   toClimateSurveyDimension,
@@ -121,6 +122,75 @@ function submitLabel(_mode: FormMode): string {
   return "Salvar pesquisa"
 }
 
+interface ConfigSaveStatusProps {
+  justSaved: boolean
+  hasUnsavedChanges: boolean
+}
+
+function ConfigSaveStatus({ justSaved, hasUnsavedChanges }: ConfigSaveStatusProps): React.ReactElement | null {
+  if (justSaved) {
+    return (
+      <span className="text-[10px] font-bold uppercase tracking-widest text-status-success">✓ Salvo</span>
+    )
+  }
+  if (hasUnsavedChanges) {
+    return (
+      <span className="text-[10px] font-bold uppercase tracking-widest text-status-warning">
+        Alterações não salvas
+      </span>
+    )
+  }
+  return null
+}
+
+interface CancelSurveyConfigLinkProps {
+  href: string
+  hasUnsavedChanges: boolean
+}
+
+function CancelSurveyConfigLink({ href, hasUnsavedChanges }: CancelSurveyConfigLinkProps): React.ReactElement {
+  const router = useRouter()
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const linkClassName =
+    "block text-center px-4 py-2.5 text-[11px] font-bold uppercase tracking-widest border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+
+  if (!hasUnsavedChanges) {
+    return (
+      <Link href={href} className={linkClassName} style={{ borderRadius: 0 }}>
+        Cancelar
+      </Link>
+    )
+  }
+
+  return (
+    <>
+      <Link
+        href={href}
+        onClick={(event) => {
+          event.preventDefault()
+          setConfirmOpen(true)
+        }}
+        className={linkClassName}
+        style={{ borderRadius: 0 }}
+      >
+        Cancelar
+      </Link>
+      <ConfirmActionModal
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          setConfirmOpen(false)
+          router.push(href)
+        }}
+        title="Descartar alterações?"
+        description="Você tem alterações não salvas nesta pesquisa. Deseja sair e descartá-las?"
+        confirmLabel="Descartar"
+        variant="warning"
+      />
+    </>
+  )
+}
+
 export function ClimateSurveyConfigForm({ mode, departments, initialConfig, initialDeptIds, onSubmit, cancelHref }: ClimateSurveyConfigFormProps): React.ReactElement {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -195,6 +265,40 @@ export function ClimateSurveyConfigForm({ mode, departments, initialConfig, init
     const topics = new Set(previewQuestions.map((q) => q.dimension))
     return topics.size
   }, [previewQuestions])
+
+  const [justSaved, setJustSaved] = useState(false)
+
+  function buildFormSnapshot(): string {
+    return JSON.stringify({
+      name,
+      description,
+      frequency,
+      scheduledDayOfMonth,
+      dispatchTime,
+      respectEmployeeSchedule,
+      tokenExpiryHours,
+      workDays: Array.from(workDays).sort((a, b) => a - b),
+      deptIds: allDepts ? "__all__" : Array.from(selectedDeptIds).sort(),
+      questionIds: Array.from(selectedQuestionIds).sort(),
+      customQuestions: customQuestions.map((q) => ({
+        text: q.text.trim(),
+        scoreDirection: q.scoreDirection,
+        dimension: q.dimension,
+      })),
+    })
+  }
+
+  const [initialFormSnapshot] = useState<string>(() => buildFormSnapshot())
+  const hasUnsavedChanges = buildFormSnapshot() !== initialFormSnapshot
+
+  useEffect(() => {
+    function warnBeforeUnload(event: BeforeUnloadEvent): void {
+      event.preventDefault()
+    }
+    if (!hasUnsavedChanges) return
+    window.addEventListener("beforeunload", warnBeforeUnload)
+    return () => window.removeEventListener("beforeunload", warnBeforeUnload)
+  }, [hasUnsavedChanges])
 
   function toggleDay(value: number): void {
     setWorkDays((prev) => {
@@ -285,8 +389,11 @@ export function ClimateSurveyConfigForm({ mode, departments, initialConfig, init
       if (result?.error) {
         toast.error(result.error)
       } else {
+        setJustSaved(true)
         toast.success(mode === "create" ? "Pesquisa criada com sucesso" : "Pesquisa atualizada com sucesso")
-        router.push("/climate-surveys/configure")
+        window.setTimeout(() => {
+          router.push("/climate-surveys/configure")
+        }, 700)
       }
     })
   }
@@ -513,7 +620,7 @@ export function ClimateSurveyConfigForm({ mode, departments, initialConfig, init
         </div>
 
         <div className="border border-border bg-card" style={{ borderRadius: 0 }}>
-          <div className="border-b border-border px-4 py-2.5 bg-muted flex items-center justify-between gap-2">
+          <div className="border-b border-border px-4 py-2.5 bg-muted flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
             <div className="flex items-center gap-1.5 min-w-0">
               <span className="text-[10px] font-black tracking-widest uppercase text-foreground">
                 Banco de perguntas
@@ -529,8 +636,11 @@ export function ClimateSurveyConfigForm({ mode, departments, initialConfig, init
                 </div>
               } />
             </div>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground shrink-0">
-              {previewQuestions.length} selecionada(s)
+            <span className="flex items-center gap-3 shrink-0">
+              <ConfigSaveStatus justSaved={justSaved} hasUnsavedChanges={hasUnsavedChanges} />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                {previewQuestions.length} selecionada(s)
+              </span>
             </span>
           </div>
           <div className="p-3">
@@ -553,13 +663,7 @@ export function ClimateSurveyConfigForm({ mode, departments, initialConfig, init
             saving={isPending}
             saveLabel={submitLabel(mode)}
           />
-          <Link
-            href={cancelHref}
-            className="block text-center px-4 py-2.5 text-[11px] font-bold uppercase tracking-widest border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            style={{ borderRadius: 0 }}
-          >
-            Cancelar
-          </Link>
+          <CancelSurveyConfigLink href={cancelHref} hasUnsavedChanges={hasUnsavedChanges} />
         </div>
       </div>
 
@@ -572,13 +676,7 @@ export function ClimateSurveyConfigForm({ mode, departments, initialConfig, init
           saving={isPending}
           saveLabel={submitLabel(mode)}
         />
-        <Link
-          href={cancelHref}
-          className="block text-center px-4 py-2.5 text-[11px] font-bold uppercase tracking-widest border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          style={{ borderRadius: 0 }}
-        >
-          Cancelar
-        </Link>
+        <CancelSurveyConfigLink href={cancelHref} hasUnsavedChanges={hasUnsavedChanges} />
       </div>
 
       <ClimateSurveyQuestionBankPreviewModal

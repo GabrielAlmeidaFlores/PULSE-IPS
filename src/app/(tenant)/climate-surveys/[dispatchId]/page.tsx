@@ -6,6 +6,7 @@ import {
   getClimateSurveyDispatchDashboard,
   getClimateSurveyDispatches,
   getClimateSurveyMultipleDispatchDashboards,
+  getClimateSurveyOpenComments,
   type ClimateSurveyDispatchWithConfig,
 } from "@/modules/climate-surveys/climate-survey-dashboard.service";
 import { getOrganization } from "@/modules/organizations/organization.service";
@@ -766,6 +767,16 @@ export default async function ClimateSurveyDispatchDetailPage({
   );
 
   const allDayDispatches = Array.from(sameDayConfigMap.values());
+  const anchorDispatchRecord = allDayDispatches.find((d) => d.id === dispatchId);
+  const anchorConfigId = anchorDispatchRecord?.climateSurveyConfiguration.id ?? null;
+  const commentDispatches =
+    anchorConfigId !== null
+      ? allDayDispatches.filter((d) => d.climateSurveyConfiguration.id === anchorConfigId)
+      : [];
+  const openComments = await getClimateSurveyOpenComments(
+    session.tenantId,
+    commentDispatches.map((d) => d.id),
+  );
   const deptRanking = buildDeptAdherenceRanking(allDayDispatches);
   const { recipients: filteredDeptRecipients, responses: filteredDeptResponses } = sumFilteredDeptTotals(
     allDayDispatches,
@@ -1051,6 +1062,28 @@ export default async function ClimateSurveyDispatchDetailPage({
                 })}
             </div>
           </ChartCard>
+        )}
+
+        {openComments.length > 0 && (
+          <div className="border border-border bg-card">
+            <div className="border-b border-border px-5 py-3 bg-muted/30">
+              <p className="text-[10px] font-black uppercase tracking-widest text-foreground">
+                Comentários anônimos
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Respostas abertas dos participantes, sem identificação de autor ou setor.
+              </p>
+            </div>
+            <div className="divide-y divide-border">
+              {openComments.map((comment) => (
+                <div key={comment.id} className="px-5 py-3">
+                  <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                    {comment.openComment}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </div>
     </div>

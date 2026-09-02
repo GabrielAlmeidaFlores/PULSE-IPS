@@ -614,6 +614,7 @@ model ClimateSurveyResponse {
   tenantId     String   @map("tenant_id")
   dispatchId   String   @map("dispatch_id")
   departmentId String?  @map("department_id")
+  openComment  String?  @map("open_comment")
   createdAt    DateTime @default(now()) @map("created_at")
 
   organization Organization              @relation(fields: [tenantId], references: [id], onDelete: Cascade)

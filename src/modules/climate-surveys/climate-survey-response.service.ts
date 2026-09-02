@@ -108,12 +108,18 @@ export async function submitClimateSurveyResponse(input: SubmitClimateSurveyInpu
     )
   }
 
+  const trimmedOpenComment = input.openComment !== undefined ? input.openComment.trim() : ""
+  if (trimmedOpenComment.length > 1000) {
+    throw new AppError("OPEN_COMMENT_TOO_LONG", "O comentário deve ter no máximo 1000 caracteres.")
+  }
+
   await createClimateSurveyResponseWithItems({
     tenantId: tokenRecord.tenantId,
     dispatchId: tokenRecord.dispatchId,
     departmentId: tokenRecord.employee.departmentId,
     tokenId: tokenRecord.id,
     answers: input.answers,
+    ...(trimmedOpenComment.length > 0 ? { openComment: trimmedOpenComment } : {}),
   })
 
   await completeClimateSurveyResponseAnalytics(

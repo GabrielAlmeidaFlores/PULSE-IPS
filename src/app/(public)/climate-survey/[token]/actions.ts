@@ -20,13 +20,19 @@ const climateSurveyAnswerSchema = z.object({
 const submitClimateSurveySchema = z.object({
   token: z.string().min(1).max(255),
   answers: z.array(climateSurveyAnswerSchema).min(1).max(50),
+  openComment: z.string().trim().max(1000).optional(),
 })
 
 export async function submitClimateSurveyAction(
   token: string,
   answers: { questionId: string; score: number }[],
+  openComment?: string,
 ): Promise<ActionResult> {
-  const parsed = submitClimateSurveySchema.safeParse({ token, answers })
+  const parsed = submitClimateSurveySchema.safeParse({
+    token,
+    answers,
+    ...(openComment !== undefined ? { openComment } : {}),
+  })
   if (!parsed.success) return { error: "Dados inválidos." }
 
   const ip = await getClientIp()
@@ -34,7 +40,11 @@ export async function submitClimateSurveyAction(
   if (rateLimitError !== null) return { error: rateLimitError }
 
   try {
-    await submitClimateSurveyResponse(parsed.data)
+    await submitClimateSurveyResponse({
+      token: parsed.data.token,
+      answers: parsed.data.answers,
+      ...(parsed.data.openComment !== undefined ? { openComment: parsed.data.openComment } : {}),
+    })
     return {}
   } catch (error) {
     return { error: error instanceof Error ? error.message : UNEXPECTED_ERROR_MESSAGE }

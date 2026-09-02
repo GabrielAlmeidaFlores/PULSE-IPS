@@ -9,6 +9,7 @@ import {
   findClimateSurveyDispatchesForDates,
   findClimateSurveyDispatchesPaginated,
   findClimateSurveyConfigById,
+  findClimateSurveyOpenCommentsByDispatchIds,
   findLatestActiveClimateSurveyDispatch,
   findRecentAvailableClimateSurveyDispatchesForOverview,
   type ClimateSurveyDispatchListingFilters,
@@ -235,6 +236,13 @@ function buildDispatchStats(
 
 export function getClimateSurveyDispatches(tenantId: string): ReturnType<typeof findClimateSurveyDispatchesByTenant> {
   return findClimateSurveyDispatchesByTenant(tenantId)
+}
+
+export function getClimateSurveyOpenComments(
+  tenantId: string,
+  dispatchIds: string[],
+): ReturnType<typeof findClimateSurveyOpenCommentsByDispatchIds> {
+  return findClimateSurveyOpenCommentsByDispatchIds(tenantId, dispatchIds)
 }
 
 export interface LatestActiveClimateSurveyWave {

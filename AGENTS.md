@@ -3869,9 +3869,13 @@ RH → /climate-surveys/configure
           (compositor e config sempre enviam `sendViaMessaging=true`, `sendViaSignedLink=false`)
 Colaborador → /climate-survey/[token] | /climate-survey/[orgSlug]/[shortCode] | /climate-survey/link/[linkToken]
   └─ Consent Gate (source climate_survey_form no opt-out) → formulário mobile-first
-       (1 pergunta por vez, barra de progresso, Likert 5 pontos com labels de concordância,
-        auto-salva e avança ao tocar, botão Voltar, aviso fixo de anonimato)
+       (1 pergunta por vez com o TÓPICO exibido ao respondente, barra de progresso,
+        Likert 5 pontos com labels de concordância, auto-salva e avança ao tocar,
+        botão Voltar, aviso fixo de anonimato)
+       → passo final opcional "Comentário" (textarea livre anônimo, máx. 1000 chars) → Enviar
        → tela de agradecimento (ícone, anonimato, resultados consolidados, Fechar)
+  └─ Respostas guardam comentário livre anônimo em `climate_survey_responses.open_comment`
+     (não conta para adesão/%; lido pelo Admin/RH na onda como lista sem setor/autor)
 RH → /climate-surveys/[dispatchId]
   └─ Dashboard por setor/dimensão; CTA “Criar plano de ação” (feature action_plans) vincula climateSurveyDispatchId
 ```

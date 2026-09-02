@@ -11,12 +11,14 @@ import {
   trackClimateSurveyResponseProgressAction,
 } from "@/app/(public)/climate-survey/[token]/actions"
 import { storage } from "@/libs/local-storage"
+import { CLIMATE_SURVEY_DIMENSION_LABELS, type ClimateSurveyDimension } from "@/modules/climate-surveys/climate-survey.types"
 
 interface ClimateSurveyQuestion {
   id: string
   text: string
   order: number
   scoreDirection: "higher_is_better" | "lower_is_better"
+  dimension: string
 }
 
 interface LikertOption {
@@ -27,6 +29,7 @@ interface LikertOption {
 interface ClimateSurveyFormDraft {
   scores: Record<string, number>
   currentIndex: number
+  openComment: string
 }
 
 const LIKERT_OPTIONS: LikertOption[] = [
@@ -39,6 +42,10 @@ const LIKERT_OPTIONS: LikertOption[] = [
 
 const ANONYMITY_NOTICE =
   "Suas respostas são 100% anônimas e não serão vinculadas à sua identidade."
+
+function climateSurveyTopicLabel(dimension: string): string {
+  return CLIMATE_SURVEY_DIMENSION_LABELS[dimension as ClimateSurveyDimension] ?? dimension
+}
 
 const ADVANCE_DELAY_MS = 280
 const EMPTY_DRAFT_JSON = ""
@@ -61,16 +68,17 @@ function parseClimateSurveyFormDraft(
   questionCount: number,
 ): ClimateSurveyFormDraft {
   if (raw.length === 0) {
-    return { scores: {}, currentIndex: 0 }
+    return { scores: {}, currentIndex: 0, openComment: "" }
   }
   try {
     const parsed: unknown = JSON.parse(raw)
     if (typeof parsed !== "object" || parsed === null) {
-      return { scores: {}, currentIndex: 0 }
+      return { scores: {}, currentIndex: 0, openComment: "" }
     }
     const record = parsed as Record<string, unknown>
     const scoresRaw = record["scores"]
     const indexRaw = record["currentIndex"]
+    const openCommentRaw = record["openComment"]
     const scores: Record<string, number> = {}
     if (typeof scoresRaw === "object" && scoresRaw !== null) {
       for (const [questionId, score] of Object.entries(scoresRaw)) {
@@ -79,14 +87,15 @@ function parseClimateSurveyFormDraft(
         scores[questionId] = score
       }
     }
-    const maxIndex = Math.max(questionCount - 1, 0)
+    const maxIndex = Math.max(questionCount, 0)
     const currentIndex =
       typeof indexRaw === "number" && Number.isInteger(indexRaw)
         ? Math.min(Math.max(indexRaw, 0), maxIndex)
         : 0
-    return { scores, currentIndex }
+    const openComment = typeof openCommentRaw === "string" ? openCommentRaw : ""
+    return { scores, currentIndex, openComment }
   } catch {
-    return { scores: {}, currentIndex: 0 }
+    return { scores: {}, currentIndex: 0, openComment: "" }
   }
 }
 
@@ -96,7 +105,6 @@ function persistClimateSurveyFormDraft(
 ): void {
   storage.setSession(storage.climateSurveyDraftKey(token), JSON.stringify(draft))
 }
-
 function clearClimateSurveyFormDraft(token: string): void {
   storage.removeSession(storage.climateSurveyDraftKey(token))
 }
@@ -121,6 +129,7 @@ export function ClimateSurveyForm({ token, employeeName, questions }: Props): Re
 
   const [typedScores, setTypedScores] = useState<Record<string, number> | null>(null)
   const [typedIndex, setTypedIndex] = useState<number | null>(null)
+  const [typedOpenComment, setTypedOpenComment] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState(false)
   const [optedOut, setOptedOut] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -132,12 +141,15 @@ export function ClimateSurveyForm({ token, employeeName, questions }: Props): Re
 
   const scores = typedScores ?? restoredDraft.scores
   const currentIndex = typedIndex ?? restoredDraft.currentIndex
+  const openComment = typedOpenComment ?? restoredDraft.openComment
 
   const firstName = employeeName.split(" ")[0] ?? employeeName
   const totalQuestions = sortedQuestions.length
-  const currentQuestion = sortedQuestions[currentIndex]
-  const progressPercent = totalQuestions === 0 ? 0 : ((currentIndex + 1) / totalQuestions) * 100
-  const isFirstQuestion = currentIndex === 0
+  const commentStepIndex = totalQuestions
+  const isCommentStep = currentIndex >= totalQuestions
+  const currentQuestion = !isCommentStep ? sortedQuestions[currentIndex] : undefined
+  const progressPercent = totalQuestions === 0 ? 0 : Math.min(((currentIndex + 1) / totalQuestions) * 100, 100)
+  const canGoBack = currentIndex > 0
   const interactionLocked = submitting || advancing || optedOut
 
   useEffect(() => {
@@ -154,13 +166,19 @@ export function ClimateSurveyForm({ token, employeeName, questions }: Props): Re
     }
   }, [])
 
-  function updateDraft(nextScores: Record<string, number>, nextIndex: number): void {
+  function persistDraft(nextScores: Record<string, number>, nextIndex: number, comment: string): void {
     setTypedScores(nextScores)
     setTypedIndex(nextIndex)
-    persistClimateSurveyFormDraft(token, { scores: nextScores, currentIndex: nextIndex })
+    setTypedOpenComment(comment)
+    persistClimateSurveyFormDraft(token, { scores: nextScores, currentIndex: nextIndex, openComment: comment })
   }
 
-  async function submitAllAnswers(nextScores: Record<string, number>): Promise<void> {
+  function handleOpenCommentChange(value: string): void {
+    setTypedOpenComment(value)
+    persistClimateSurveyFormDraft(token, { scores, currentIndex, openComment: value })
+  }
+
+  async function submitAllAnswers(nextScores: Record<string, number>, comment: string): Promise<void> {
     const answers: { questionId: string; score: number }[] = []
     for (const question of sortedQuestions) {
       const score = nextScores[question.id]
@@ -172,7 +190,7 @@ export function ClimateSurveyForm({ token, employeeName, questions }: Props): Re
     }
 
     setSubmitting(true)
-    const result = await submitClimateSurveyAction(token, answers)
+    const result = await submitClimateSurveyAction(token, answers, comment.trim().length > 0 ? comment.trim() : undefined)
     if (result.error) {
       toast.error(result.error)
       setSubmitting(false)
@@ -189,15 +207,10 @@ export function ClimateSurveyForm({ token, employeeName, questions }: Props): Re
     void trackClimateSurveyResponseProgressAction(token, currentQuestion.id, currentQuestion.order)
 
     const isLastQuestion = currentIndex >= totalQuestions - 1
-    if (isLastQuestion) {
-      updateDraft(nextScores, currentIndex)
-      void submitAllAnswers(nextScores)
-      return
-    }
-
-    const nextIndex = Math.min(currentIndex + 1, totalQuestions - 1)
+    const nextIndex = isLastQuestion ? commentStepIndex : Math.min(currentIndex + 1, totalQuestions - 1)
     setTypedScores(nextScores)
-    persistClimateSurveyFormDraft(token, { scores: nextScores, currentIndex: nextIndex })
+    setTypedOpenComment(openComment)
+    persistClimateSurveyFormDraft(token, { scores: nextScores, currentIndex: nextIndex, openComment })
     setAdvancing(true)
     if (advanceTimerRef.current !== null) {
       window.clearTimeout(advanceTimerRef.current)
@@ -210,14 +223,13 @@ export function ClimateSurveyForm({ token, employeeName, questions }: Props): Re
   }
 
   function handleGoBack(): void {
-    if (interactionLocked || isFirstQuestion) return
+    if (interactionLocked || !canGoBack) return
     if (advanceTimerRef.current !== null) {
       window.clearTimeout(advanceTimerRef.current)
       advanceTimerRef.current = null
       setAdvancing(false)
     }
-    const nextIndex = Math.max(currentIndex - 1, 0)
-    updateDraft(scores, nextIndex)
+    persistDraft(scores, currentIndex - 1, openComment)
   }
 
   async function handleOptOut(): Promise<void> {
@@ -279,15 +291,13 @@ export function ClimateSurveyForm({ token, employeeName, questions }: Props): Re
     )
   }
 
-  if (currentQuestion === undefined) {
+  if (totalQuestions === 0) {
     return (
       <div className="w-full max-w-md border border-border bg-card p-6 text-center" style={{ borderRadius: 0 }}>
         <p className="text-sm text-muted-foreground">Esta pesquisa não possui perguntas ativas.</p>
       </div>
     )
   }
-
-  const selectedScore = scores[currentQuestion.id]
 
   return (
     <div className="w-full max-w-md flex flex-col gap-3">
@@ -309,7 +319,7 @@ export function ClimateSurveyForm({ token, employeeName, questions }: Props): Re
         <div className="px-4 pt-4 pb-2 space-y-2">
           <div className="flex items-center justify-between gap-3">
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Pergunta {currentIndex + 1} de {totalQuestions}
+              {isCommentStep ? `Comentário final` : `Pergunta ${currentIndex + 1} de ${totalQuestions}`}
             </p>
             <p className="text-[10px] font-semibold text-muted-foreground tabular-nums">
               {Math.round(progressPercent)}%
@@ -330,44 +340,93 @@ export function ClimateSurveyForm({ token, employeeName, questions }: Props): Re
           </div>
         </div>
 
-        <div className="px-4 py-5 space-y-5">
-          <p className="text-base sm:text-lg font-semibold text-foreground leading-snug">
-            {currentQuestion.text}
-          </p>
-
-          <div className="space-y-2" role="group" aria-label="Escala de resposta">
-            {LIKERT_OPTIONS.map((option) => {
-              const isSelected = selectedScore === option.score
-              return (
-                <button
-                  key={option.score}
-                  type="button"
-                  disabled={interactionLocked}
-                  aria-pressed={isSelected}
-                  onClick={() => handleSelectScore(option.score)}
-                  className={
-                    isSelected
-                      ? "w-full min-h-12 px-4 py-3 text-left text-sm font-semibold border-2 border-primary bg-primary text-primary-foreground transition-colors disabled:opacity-60"
-                      : "w-full min-h-12 px-4 py-3 text-left text-sm font-medium border-2 border-border bg-background text-foreground hover:border-primary hover:bg-primary/5 transition-colors disabled:opacity-60"
-                  }
-                  style={{ borderRadius: 0 }}
-                >
-                  {option.label}
-                </button>
-              )
-            })}
+        {isCommentStep ? (
+          <div className="px-4 py-5 space-y-4">
+            <div>
+              <p className="text-base sm:text-lg font-semibold text-foreground leading-snug">
+                Quer acrescentar algo? (opcional)
+              </p>
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                Use este espaço para comentários, sugestões ou preocupações.
+              </p>
+            </div>
+            <textarea
+              value={openComment}
+              onChange={(e) => handleOpenCommentChange(e.target.value)}
+              disabled={interactionLocked}
+              maxLength={1000}
+              rows={5}
+              placeholder="Escreva aqui (opcional)..."
+              className="w-full bg-input border border-input-border text-foreground text-sm px-3 py-2.5 placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors resize-y"
+              style={{ borderRadius: 0 }}
+            />
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Para preservar o anonimato, evite citar nomes ou informações que possam identificá-lo.
+            </p>
+            {submitting ? (
+              <p className="text-center text-xs text-muted-foreground">Enviando respostas...</p>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  void submitAllAnswers(scores, openComment)
+                }}
+                disabled={interactionLocked}
+                className="w-full min-h-12 px-4 py-3 text-sm font-bold uppercase tracking-widest bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60 transition-colors"
+                style={{ borderRadius: 0 }}
+              >
+                Enviar pesquisa
+              </button>
+            )}
           </div>
+        ) : (
+          <div className="px-4 py-5 space-y-5">
+            <div>
+              <span
+                className="inline-block border border-border bg-muted px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
+                style={{ borderRadius: 0 }}
+              >
+                {climateSurveyTopicLabel(currentQuestion?.dimension ?? "")}
+              </span>
+            </div>
+            <p className="text-base sm:text-lg font-semibold text-foreground leading-snug">
+              {currentQuestion?.text}
+            </p>
 
-          {submitting ? (
-            <p className="text-center text-xs text-muted-foreground">Enviando respostas...</p>
-          ) : null}
-        </div>
+            <div className="space-y-2" role="group" aria-label="Escala de resposta">
+              {LIKERT_OPTIONS.map((option) => {
+                const isSelected = currentQuestion !== undefined && scores[currentQuestion.id] === option.score
+                return (
+                  <button
+                    key={option.score}
+                    type="button"
+                    disabled={interactionLocked}
+                    aria-pressed={isSelected}
+                    onClick={() => handleSelectScore(option.score)}
+                    className={
+                      isSelected
+                        ? "w-full min-h-12 px-4 py-3 text-left text-sm font-semibold border-2 border-primary bg-primary text-primary-foreground transition-colors disabled:opacity-60"
+                        : "w-full min-h-12 px-4 py-3 text-left text-sm font-medium border-2 border-border bg-background text-foreground hover:border-primary hover:bg-primary/5 transition-colors disabled:opacity-60"
+                    }
+                    style={{ borderRadius: 0 }}
+                  >
+                    {option.label}
+                  </button>
+                )
+              })}
+            </div>
+
+            {submitting ? (
+              <p className="text-center text-xs text-muted-foreground">Enviando respostas...</p>
+            ) : null}
+          </div>
+        )}
 
         <div className="border-t border-border px-4 py-3 flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={handleGoBack}
-            disabled={isFirstQuestion || interactionLocked}
+            disabled={!canGoBack || interactionLocked}
             className="min-h-11 px-2 text-sm font-semibold text-foreground disabled:text-muted-foreground disabled:opacity-40 hover:underline underline-offset-4 transition-colors"
           >
             Voltar
