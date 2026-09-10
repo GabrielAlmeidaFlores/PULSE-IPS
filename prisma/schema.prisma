@@ -107,6 +107,8 @@ model Organization {
   climateSurveyResponses      ClimateSurveyResponse[]
   climateSurveyConfigs        ClimateSurveyConfiguration[]
   climateSurveyTopics         ClimateSurveyTopic[]
+  dataImportBatches             DataImportBatch[]
+  employeeMonthly           EmployeeMonthly[]
   documents             Document[]
   actionPlans           ActionPlan[]
   actionPlanTasks       ActionPlanTask[]
@@ -145,6 +147,7 @@ model OrganizationUser {
   assignedActionPlanTasks        ActionPlanTask[]          @relation("ActionPlanTaskAssignee")
   resolvedAlerts                 Alert[]                   @relation("AlertResolver")
   auditLogs                      AuditLog[]                @relation("AuditLogActor")
+  createdDataImportBatches         DataImportBatch[]           @relation("DataImportBatchCreator")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -562,6 +565,66 @@ model ClimateSurveyTopic {
   @@unique([tenantId, key])
   @@index([tenantId])
   @@map("climate_survey_topics")
+}
+
+model DataImportBatch {
+  id               String   @id @default(uuid())
+  tenantId         String   @map("tenant_id")
+  fileName         String   @map("file_name")
+  fileUrl          String   @map("file_url") @db.VarChar(500)
+  fileType         String   @map("file_type")
+  competencia      String
+  status           String   @default("received")
+  aiProvider       String   @map("ai_provider")
+  totalRecords     Int      @default(0) @map("total_records")
+  correctedRecords Int      @default(0) @map("corrected_records")
+  errorRecords     Int      @default(0) @map("error_records")
+  errorMessage     String?  @map("error_message")
+  createdById      String?  @map("created_by_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization Organization      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy    OrganizationUser? @relation("DataImportBatchCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  rows         EmployeeMonthly[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("data_import_batches")
+}
+
+model EmployeeMonthly {
+  id                      String    @id @default(uuid())
+  tenantId                String    @map("tenant_id")
+  batchId                 String    @map("batch_id")
+  competencia             String
+  employeeName            String    @map("employee_name")
+  document                String?
+  registration            String?
+  departmentName          String?   @map("department_name")
+  roleName                String?   @map("role_name")
+  admissionDate           DateTime? @map("admission_date")
+  terminationDate         DateTime? @map("termination_date")
+  expectedHours           Float?    @map("expected_hours")
+  workedHours             Float?    @map("worked_hours")
+  justifiedAbsenceHours   Float?    @map("justified_absence_hours")
+  unjustifiedAbsenceHours Float?    @map("unjustified_absence_hours")
+  absenceRatePercent      Float?    @map("absence_rate_percent")
+  terminationType         String?   @map("termination_type")
+  qualityStatus           String    @default("pending") @map("quality_status")
+  validationNotes         String?   @map("validation_notes")
+  rowHash                 String    @map("row_hash")
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt               DateTime  @updatedAt @map("updated_at")
+
+  organization Organization  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  batch        DataImportBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, batchId, rowHash])
+  @@index([tenantId])
+  @@index([tenantId, competencia])
+  @@index([tenantId, batchId])
+  @@map("employee_monthly")
 }
 
 model ClimateSurveyDispatch {

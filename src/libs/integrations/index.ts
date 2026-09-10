@@ -7,12 +7,17 @@ import { FakeBillingAdapter } from "@/libs/integrations/billing/fake-billing.ada
 import { StripeAdapter } from "@/libs/integrations/billing/stripe.adapter"
 import { ConsoleStorageAdapter } from "@/libs/integrations/storage/console.adapter"
 import { S3Adapter } from "@/libs/integrations/storage/s3.adapter"
+import { ConsoleAIService } from "@/libs/integrations/ai/console-ai.adapter"
+import { OpenAIAdapter } from "@/libs/integrations/ai/openai.adapter"
+import { ClaudeAdapter } from "@/libs/integrations/ai/claude.adapter"
+import { GeminiAdapter } from "@/libs/integrations/ai/gemini.adapter"
 import { RedisRateLimiterAdapter } from "@/libs/integrations/rate-limiter/redis-rate-limiter.adapter"
 import { InMemoryRateLimiterAdapter } from "@/libs/integrations/rate-limiter/in-memory-rate-limiter.adapter"
 import type { IMessagingService } from "@/libs/integrations/messaging/messaging.interface"
 import type { IEmailService } from "@/libs/integrations/email/email.interface"
 import type { IBillingService } from "@/libs/integrations/billing/billing.interface"
 import type { IStorageService } from "@/libs/integrations/storage/storage.interface"
+import type { IAIService } from "@/libs/integrations/ai/ai.interface"
 import type { IRateLimiterService } from "@/libs/integrations/rate-limiter/rate-limiter.interface"
 import { env } from "@/env"
 
@@ -51,6 +56,19 @@ export function getStorageService(): IStorageService {
       return new S3Adapter()
     default:
       return new ConsoleStorageAdapter()
+  }
+}
+
+export function getAIService(): IAIService {
+  switch (env.AI_PROVIDER) {
+    case "openai":
+      return new OpenAIAdapter()
+    case "claude":
+      return new ClaudeAdapter()
+    case "gemini":
+      return new GeminiAdapter()
+    default:
+      return new ConsoleAIService()
   }
 }
 

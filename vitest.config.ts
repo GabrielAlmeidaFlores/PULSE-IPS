@@ -80,6 +80,7 @@ export default defineConfig({
         "src/modules/documents/document.service.ts",
         "src/modules/pgr/pgr.service.ts",
         "src/modules/dashboard/dashboard.service.ts",
+        "src/modules/data-ingestion/data-ingestion.service.ts",
       ],
       exclude: ["src/**/*.test.ts"],
     },

@@ -364,6 +364,7 @@ src/
 │       ├── pgr/[id]/pdf/route.ts           # GET — geração de PDF do relatório PGR
 │       ├── internal/request-log/route.ts   # POST — recebe logs de request do instrumentation.ts
 │       ├── internal/rate-limit-proxy/route.ts  # POST — endpoint de rate-limit chamado pelo proxy (2s timeout)
+│       ├── internal/data-ingestion/route.ts    # POST — aciona a ingestão de dados com IA (x-cron-secret)
 │       ├── csp-report/route.ts             # POST — recebe violações de CSP (rate-limitado 20/60s por IP)
 │       └── super-admin/export/route.ts     # GET — exportação de dados (autenticado como super_admin)
 │
@@ -451,6 +452,11 @@ src/
 │   ├── dashboard/
 │   │   ├── dashboard.repository.ts         # Métricas do painel tenant
 │   │   └── dashboard.service.ts
+│   ├── data-ingestion/
+│   │   ├── data-ingestion.repository.ts      # Lotes de importação + linhas mensais (1 colaborador × 1 competência)
+│   │   ├── data-ingestion.service.ts         # Pipeline de 2 passadas de IA (extração + validação) com tool handler
+│   │   ├── data-ingestion.schema.ts          # Zod schemas das tools e tipos inferidos
+│   │   └── data-ingestion.types.ts
 │   ├── job-logs/
 │   │   ├── job-log.repository.ts           # INSERT + listagem de logs de jobs
 │   │   ├── job-log.service.ts
@@ -510,7 +516,13 @@ src/
 │   │   │   ├── redis-rate-limiter.adapter.ts  # ✅ Produção (rate-limiter-flexible + ioredis)
 │   │   │   ├── in-memory-rate-limiter.adapter.ts  # Testes/dev sem Redis
 │   │   │   └── redis-client.ts             # getRedisClient() — factory lazy que cria o ioredis singleton apenas na primeira chamada (evita conexões prematuras na inicialização do módulo; pino logging, isTest guard, reconexão)
-│   │   └── index.ts                        # Factories: getEmailService(), getBillingService(), getRateLimiterService()…
+│   │   ├── ai/
+│   │   │   ├── ai.interface.ts             # IAIService (generate com suporte a tool-calling)
+│   │   │   ├── openai.adapter.ts           # ✅ Implementação OpenAI (fetch, sem SDK)
+│   │   │   ├── claude.adapter.ts           # ✅ Implementação Anthropic/Claude (fetch, sem SDK)
+│   │   │   ├── gemini.adapter.ts           # ✅ Implementação Google Gemini (fetch, sem SDK)
+│   │   │   └── console-ai.adapter.ts       # Desenvolvimento local (no-op)
+│   │   └── index.ts                        # Factories: getEmailService(), getBillingService(), getRateLimiterService(), getAIService()…
 │   ├── email-templates/
 │   │   ├── index.ts                        # getTemplate(name, vars) → { subject, Component }
 │   │   ├── org-invite.tsx
@@ -1530,6 +1542,54 @@ Resultado por pergunta gerado na revisão PGR. Permite análise de tendência po
 
 ---
 
+#### `data_import_batches`
+
+Lote de importação de arquivos operacionais (AFD/ponto, espelho, planilha). Cada upload cria um lote, processado pelo pipeline de IA (extração + validação).
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| tenant_id | uuid | NOT NULL, FK → organizations.id ON DELETE CASCADE |
+| file_name | varchar | NOT NULL |
+| file_url | varchar(500) | NOT NULL — URL no storage |
+| file_type | varchar | NOT NULL — `'afd'` \| `'espelho'` \| `'planilha'` \| … |
+| competencia | varchar | NOT NULL — `AAAA-MM` |
+| status | varchar(20) | `'received'` \| `'processing'` \| `'extracted'` \| `'validated'` \| `'failed'` |
+| ai_provider | varchar | NOT NULL |
+| total_records / corrected_records / error_records | integer | NOT NULL, default 0 |
+| error_message | text | |
+| created_by_id | uuid | FK → organization_users.id ON DELETE SET NULL |
+| created_at / updated_at | timestamptz | NOT NULL |
+
+**Índices:** `(tenant_id)`, `(tenant_id, status)`
+
+#### `employee_monthly`
+
+Base Master Mensal. **1 registro = 1 colaborador × 1 competência mensal.**
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| tenant_id | uuid | NOT NULL |
+| batch_id | uuid | NOT NULL, FK → data_import_batches.id ON DELETE CASCADE |
+| competencia | varchar | NOT NULL |
+| employee_name | varchar | NOT NULL |
+| document / registration | varchar | |
+| department_name / role_name | varchar | |
+| admission_date / termination_date | timestamptz | |
+| expected_hours / worked_hours | float | |
+| justified_absence_hours / unjustified_absence_hours | float | |
+| absence_rate_percent | float | |
+| termination_type | varchar | |
+| quality_status | varchar(20) | `'pending'` \| `'validated'` \| `'corrected'` \| `'error'` |
+| validation_notes | text | |
+| row_hash | varchar | NOT NULL — hash idempotente (dedup por lote) |
+| created_at / updated_at | timestamptz | NOT NULL |
+
+**Índices:** `(tenant_id)`, `(tenant_id, competencia)`, `(tenant_id, batch_id)`, UNIQUE `(tenant_id, batch_id, row_hash)`
+
+---
+
 ### Resumo: Tabelas por Grupo
 
 | Grupo | Tabelas |
@@ -1545,6 +1605,7 @@ Resultado por pergunta gerado na revisão PGR. Permite análise de tendência po
 | **Tenant — ocorrências** | `anonymous_reports`, `action_plans`, `action_tasks`, `action_plan_suggestions`, `action_plan_suggestion_tasks` |
 | **Tenant — documentos e PGR** | `documents`, `document_versions`, `pgr_reviews`, `pgr_dept_results`, `pgr_question_results` |
 | **Tenant — operacional** | `alerts`, `audit_logs` |
+| **Tenant — ingestão de dados** | `data_import_batches`, `employee_monthly` |
 | **Plataforma** | `message_logs`, `email_logs`, `job_logs`, `request_logs` |
 
 ---
@@ -2747,7 +2808,51 @@ A chave de rate limiting é o IP do cliente (extraído via `extractClientIp` de 
 
 O proxy define um `Content-Security-Policy` strict com `nonce` único por requisição. Violações de CSP são reportadas em `POST /api/csp-report`, que é rate-limitado a 20 requisições por 60 segundos por IP para evitar abuso. As violações são logadas via pino logger mas **não persistidas no banco**.
 
+### AI
 
+```typescript
+// libs/integrations/ai/ai.interface.ts
+export interface AIToolDefinition {
+  name: string
+  description: string
+  parameters: JsonValue
+}
+
+export interface AIToolCall {
+  id: string
+  name: string
+  arguments: string   // JSON bruto — o tool handler faz o parse e valida com Zod
+}
+
+export interface AIGenerateParams {
+  system: string
+  messages: AIMessage[]
+  tools?: AIToolDefinition[]
+  tier?: AIModelTier   // "high" | "medium" | "low" (default: "medium")
+  temperature?: number
+  maxTokens?: number
+}
+
+export interface AIGenerateResult {
+  text: string | null
+  toolCalls: AIToolCall[]
+  usage: { inputTokens: number; outputTokens: number }
+}
+
+export interface IAIService {
+  generate(params: AIGenerateParams): Promise<AIGenerateResult>
+}
+```
+
+**Implementação OpenAI:** `AI_PROVIDER=openai` → `OpenAIAdapter` (via `fetch`, sem SDK)  
+**Implementação Claude:** `AI_PROVIDER=claude` → `ClaudeAdapter` (via `fetch`, sem SDK)  
+**Implementação Gemini:** `AI_PROVIDER=gemini` → `GeminiAdapter` (via `fetch`, sem SDK)  
+**Desenvolvimento:** `AI_PROVIDER=console` → `ConsoleAIService` (no-op)  
+**Factory:** `getAIService()` em `src/libs/integrations/index.ts`
+
+**Tiers de modelo e fallback:** cada adapter define **3 modelos por tier** (`high`/`medium`/`low`) e tenta em ordem até um responder (`runWithAIModelFallback`). Os defaults ficam no próprio adapter; as listas podem ser sobrescritas por env (`OPENAI_MODELS_HIGH`, `ANTHROPIC_MODELS_LOW`, etc. — valores separados por vírgula). O caller escolhe o tier via `params.tier` (ex.: extração em `medium`, validação em `high`).
+
+**Regra inviolável — o modelo nunca acessa o banco nem escreve SQL.** Ele apenas retorna `toolCalls`; o código da aplicação valida os argumentos com Zod e persiste via service/repository (tool handler). Toda chamada de IA é feita via `getAIService()`, nunca instanciando o adapter direto.
 
 O PDF do relatório PGR é gerado **sob demanda** pela rota `GET /api/pgr/[id]/pdf`, sem armazenamento em disco/storage. A abordagem é domain-specific — não usa a interface genérica `IPDFService`.
 
@@ -3993,6 +4098,17 @@ Exibido no Dashboard `/climate-surveys` (bloco Funil da onda). Falhas de insert 
 
 **Jobs:** `climate-survey-dispatcher`, `climate-survey-response-reminder`, `climate-survey-response-token-cleanup`.
 
+### 20.15 Ingestão de dados com IA (Base Master Mensal)
+
+Upload unificado de arquivos operacionais (AFD/ponto, espelho, planilha) → lote (`data_import_batches`) → pipeline de **2 passadas de IA** (sem aprovação humana por enquanto):
+
+1. **Extração** (`processDataExtractionWithAI`): o conteúdo é dividido em chunks (`MAX_SOURCE_CHARS_PER_AI_CALL`) e enviado ao `getAIService()` com `tier: "medium"`. A IA chama a tool `save_employee_monthly`; o **tool handler** valida os argumentos com Zod e grava via repository em `employee_monthly` (com `row_hash` idempotente). A tool `flag_extraction_error` registra problemas. Status do lote → `extracted`.
+2. **Validação** (`validateDataExtractionWithAI`): as linhas extraídas são enviadas à IA com `tier: "high"`, que chama `apply_employee_corrections` para pequenos consertos. Correções viram `quality_status = 'corrected'`; as demais viram `validated`. Status do lote → `validated`.
+
+**Regras:** o modelo **nunca acessa o banco** — só retorna `toolCalls`; a aplicação valida com Zod e persiste (tool handler). Cada linha tem `row_hash` (dedup por lote) e `batch_id` (rastreabilidade). Sem aprovação humana nesta fase — a confiança vem das duas camadas de IA + validação Zod. Módulo: `src/modules/data-ingestion/`.
+
+**Orquestração e acionamento:** `runDataIngestionWithAI(tenantId, input)` cria o lote e executa as duas passadas. O endpoint interno `POST /api/internal/data-ingestion` (protegido por `x-cron-secret`) recebe `{ tenantId, competencia, fileName, fileType, sourceText }` e retorna `{ batch, extraction, validation, rows }` — útil para testes e operação.
+
 ---
 
 ## 21. Variáveis de Ambiente
@@ -4046,6 +4162,23 @@ REDIS_PORT=6379
 REDIS_PASSWORD=...                        # opcional — autenticação Redis em produção
 CRON_SECRET=...                           # proteção dos endpoints /api/jobs/*
 RATE_LIMITER_PROVIDER=redis               # "redis" (padrão produção) | "memory" (testes sem Redis)
+
+# IA (ingestão e análise de dados)
+AI_PROVIDER=openai                        # "openai" | "claude" | "gemini" | "console" (default: "console")
+OPENAI_API_KEY=sk-...                     # obrigatória se AI_PROVIDER=openai
+OPENAI_MODELS_HIGH=gpt-4o,gpt-4-turbo,gpt-4o-mini        # opcional — default no adapter (fallback em ordem)
+OPENAI_MODELS_MEDIUM=gpt-4o-mini,gpt-4o,gpt-3.5-turbo    # opcional
+OPENAI_MODELS_LOW=gpt-4o-mini,gpt-3.5-turbo,gpt-4o       # opcional
+ANTHROPIC_API_KEY=sk-ant-...              # obrigatória se AI_PROVIDER=claude
+ANTHROPIC_MODELS_HIGH=claude-3-5-sonnet-latest,claude-3-opus-latest,claude-3-5-haiku-latest  # opcional
+ANTHROPIC_MODELS_MEDIUM=...               # opcional
+ANTHROPIC_MODELS_LOW=...                  # opcional
+GEMINI_API_KEY=...                        # obrigatória se AI_PROVIDER=gemini
+GEMINI_MODELS_HIGH=gemini-2.5-pro,gemini-pro-latest,gemini-3.5-flash   # opcional
+GEMINI_MODELS_MEDIUM=gemini-2.5-flash,gemini-flash-latest,gemini-3.5-flash   # opcional
+GEMINI_MODELS_LOW=gemini-flash-lite-latest,gemini-3.5-flash-lite,gemini-2.5-flash   # opcional
+AI_MAX_TOKENS=4096                        # default
+AI_TEMPERATURE=0                          # default (0 = determinístico)
 
 # URL pública
 NEXT_PUBLIC_APP_URL=https://app.pulse.com
