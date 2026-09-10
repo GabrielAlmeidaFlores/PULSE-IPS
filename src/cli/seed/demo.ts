@@ -9,6 +9,7 @@ import bcrypt from "bcryptjs"
 import { PrismaClient } from "@prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { addWeeks, addDays, addHours, subMonths, setHours, setMinutes } from "date-fns"
+import { CLIMATE_SURVEY_SYSTEM_TOPICS } from "../../modules/climate-surveys/climate-survey.types"
 
 function toHealthIndex(avg: number): number {
   return Math.round(((avg - 1) / 4) * 100)
@@ -282,6 +283,7 @@ async function main(): Promise<void> {
   await prisma.climateSurveyDispatch.deleteMany({ where: { tenantId } })
   await prisma.climateSurveyQuestion.deleteMany({ where: { tenantId } })
   await prisma.climateSurveyConfiguration.deleteMany({ where: { tenantId } })
+  await prisma.climateSurveyTopic.deleteMany({ where: { tenantId } })
   await prisma.emailLog.deleteMany({ where: { tenantId } })
   await prisma.healthSurveyResponseItem.deleteMany({ where: { healthSurveyResponse: { tenantId } } })
   await prisma.healthSurveyResponse.deleteMany({ where: { tenantId } })
@@ -973,6 +975,19 @@ async function main(): Promise<void> {
 
   await prisma.climateSurveyConfigWorkDay.createMany({
     data: [1, 2, 3, 4, 5].map((dayOfWeek) => ({ configId: climateConfig.id, dayOfWeek })),
+  })
+
+  await prisma.climateSurveyTopic.createMany({
+    data: CLIMATE_SURVEY_SYSTEM_TOPICS.map((topic) => ({
+      id: randomUUID(),
+      tenantId,
+      key: topic.key,
+      label: topic.label,
+      isSystem: true,
+      isActive: true,
+      sortOrder: topic.sortOrder,
+    })),
+    skipDuplicates: true,
   })
 
   const climateQuestionIds: string[] = []

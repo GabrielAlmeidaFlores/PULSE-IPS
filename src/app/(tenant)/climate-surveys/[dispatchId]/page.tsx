@@ -37,7 +37,7 @@ import { ClimateSurveySignedLinkCopy } from "@/app/(tenant)/climate-surveys/[dis
 import { CreateClimateSurveyActionPlanButton } from "@/app/(tenant)/climate-surveys/[dispatchId]/components/create-climate-survey-action-plan-button";
 import { ChartCard } from "@/components/chart-card";
 import {
-  CLIMATE_SURVEY_DIMENSION_LABELS,
+  resolveClimateSurveyTopicLabel,
   toClimateSurveyDimension,
   type ClimateSurveyDimension,
   type ClimateSurveyDispatchDashboardStats,
@@ -219,7 +219,16 @@ function finalizeMergedQuestions(
 
 function buildMergedDimensionScores(
   questions: ClimateSurveyDispatchDashboardStats["questions"],
+  statsArray: ClimateSurveyDispatchDashboardStats[],
 ): ClimateSurveyDispatchDashboardStats["dimensionScores"] {
+  const labelByDimension = new Map<string, string>();
+  for (const stats of statsArray) {
+    for (const dimensionScore of stats.dimensionScores) {
+      if (!labelByDimension.has(dimensionScore.dimension)) {
+        labelByDimension.set(dimensionScore.dimension, dimensionScore.label);
+      }
+    }
+  }
   const byDimension = new Map<
     ClimateSurveyDimension,
     { scores: number[]; favorability: number[]; weighted: number[]; enps: number[]; questionCount: number }
@@ -241,7 +250,7 @@ function buildMergedDimensionScores(
   }
   return Array.from(byDimension.entries()).map(([dimension, data]) => ({
     dimension,
-    label: CLIMATE_SURVEY_DIMENSION_LABELS[dimension],
+    label: labelByDimension.get(dimension) ?? resolveClimateSurveyTopicLabel(dimension),
     avgScore: data.scores.length > 0 ? data.scores.reduce((a, b) => a + b, 0) / data.scores.length : null,
     favorabilityPercent:
       data.favorability.length > 0
@@ -343,7 +352,7 @@ function mergeDispatchStats(
     minRespondentsPercent: base.minRespondentsPercent,
     requiredRespondents: climateSurveyRequiredRespondents(totalRecipients, base.minRespondentsPercent),
     questions,
-    dimensionScores: buildMergedDimensionScores(questions),
+    dimensionScores: buildMergedDimensionScores(questions, statsArray),
     departmentScores: mergeDepartmentScores(statsArray),
   };
 }

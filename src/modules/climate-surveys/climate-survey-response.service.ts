@@ -18,7 +18,8 @@ import {
   getCurrentConsent,
   getActiveConsentTermVersion,
 } from "@/modules/consent/consent.repository"
-import { toClimateSurveyDimension, type SubmitClimateSurveyInput, type ClimateSurveyTokenValidation, type ScoreDirection } from "@/modules/climate-surveys/climate-survey.types"
+import { toClimateSurveyDimension, resolveClimateSurveyTopicLabel, type SubmitClimateSurveyInput, type ClimateSurveyTokenValidation, type ScoreDirection } from "@/modules/climate-surveys/climate-survey.types"
+import { getClimateSurveyTopicLabelMap } from "@/modules/climate-surveys/climate-survey-topic.service"
 import { completeClimateSurveyResponseAnalytics } from "@/modules/climate-surveys/climate-survey-analytics.service"
 
 export interface SignedLinkUnlockResult {
@@ -66,6 +67,8 @@ export async function validateClimateSurveyToken(token: string): Promise<Climate
   const questions = tokenRecord.dispatch.climateSurveyConfiguration.questions
   if (questions.length === 0) return { valid: false, error: "Esta pesquisa não possui perguntas ativas." }
 
+  const topicLabelMap = await getClimateSurveyTopicLabelMap(tokenRecord.tenantId)
+
   return {
     valid: true,
     employeeName: tokenRecord.employee.name,
@@ -79,13 +82,17 @@ export async function validateClimateSurveyToken(token: string): Promise<Climate
       workEndTime: tokenRecord.workEndTime,
       tenantId: tokenRecord.tenantId,
     },
-    questions: questions.map((q) => ({
-      id: q.id,
-      text: q.text,
-      order: q.order,
-      scoreDirection: q.scoreDirection as ScoreDirection,
-      dimension: toClimateSurveyDimension(q.dimension),
-    })),
+    questions: questions.map((q) => {
+      const dimension = toClimateSurveyDimension(q.dimension)
+      return {
+        id: q.id,
+        text: q.text,
+        order: q.order,
+        scoreDirection: q.scoreDirection as ScoreDirection,
+        dimension,
+        dimensionLabel: resolveClimateSurveyTopicLabel(dimension, topicLabelMap),
+      }
+    }),
     timezone,
   }
 }

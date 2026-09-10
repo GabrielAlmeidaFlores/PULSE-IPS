@@ -8,21 +8,13 @@ import { AppError } from "@/libs/errors/app-error"
 import type { ActionResult } from "@/libs/utils/action-result"
 import { getSession } from "@/modules/auth/session"
 import { createClimateSurveyForDepartments } from "@/modules/climate-surveys/climate-survey-config.service"
+import { CLIMATE_SURVEY_MAX_QUESTIONS } from "@/modules/climate-surveys/climate-survey.types"
 
 const questionSchema = z.object({
   text: z.string().min(1).max(500),
   order: z.number().int().min(1).max(100),
   scoreDirection: z.enum(["higher_is_better", "lower_is_better"]),
-  dimension: z.enum([
-    "job_satisfaction",
-    "internal_communication",
-    "relationships",
-    "recognition_reward",
-    "professional_development",
-    "work_life_balance",
-    "organizational_culture",
-    "leadership_trust",
-  ]),
+  dimension: z.string().trim().min(1).max(60),
 })
 
 const TIME_REGEX = /^\d{2}:\d{2}$/
@@ -39,7 +31,7 @@ const createClimateSurveyConfigSchema = z.object({
   tokenExpiryHours: z.number().int().min(1).max(1000).default(48),
   sendViaMessaging: z.boolean(),
   sendViaSignedLink: z.boolean(),
-  questions: z.array(questionSchema).min(1, "Adicione ao menos uma pergunta").max(40),
+  questions: z.array(questionSchema).min(1, "Adicione ao menos uma pergunta").max(CLIMATE_SURVEY_MAX_QUESTIONS),
 })
 
 export async function createClimateSurveyConfigAction(input: unknown): Promise<ActionResult> {

@@ -12,10 +12,10 @@ import {
   type ClimateSurveyCatalogQuestion,
 } from "@/app/(tenant)/climate-surveys/configure/climate-survey-question-catalog"
 import {
-  CLIMATE_SURVEY_DIMENSION_LABELS,
-  CLIMATE_SURVEY_DIMENSION_ORDER,
+  CLIMATE_SURVEY_MAX_QUESTIONS,
   toClimateSurveyDimension,
   type ClimateSurveyDimension,
+  type ClimateSurveyTopicOption,
   type ScoreDirection,
 } from "@/modules/climate-surveys/climate-survey.types"
 
@@ -310,8 +310,8 @@ export function validateClimateSurveyQuestionSelection(selectedQuestions: Climat
     }
   }
 
-  if (selectedQuestions.length > 40) {
-    return "Selecione no máximo 40 perguntas."
+  if (selectedQuestions.length > CLIMATE_SURVEY_MAX_QUESTIONS) {
+    return `Selecione no máximo ${String(CLIMATE_SURVEY_MAX_QUESTIONS)} perguntas.`
   }
 
   return null
@@ -319,13 +319,18 @@ export function validateClimateSurveyQuestionSelection(selectedQuestions: Climat
 
 interface CustomQuestionListProps {
   questions: ClimateSurveyCustomQuestionDraft[]
+  topics: ClimateSurveyTopicOption[]
   onChange: (next: ClimateSurveyCustomQuestionDraft[]) => void
 }
 
 const customQuestionInputCls =
   "w-full bg-input border border-input-border text-foreground text-sm px-3 py-2.5 placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
 
-export function ClimateSurveyCustomQuestionList({ questions, onChange }: CustomQuestionListProps): React.ReactElement {
+export function ClimateSurveyCustomQuestionList({ questions, topics, onChange }: CustomQuestionListProps): React.ReactElement {
+  function resolveDefaultTopicKey(): ClimateSurveyDimension {
+    return topics.find((topic) => topic.isActive)?.key ?? "organizational_culture"
+  }
+
   function addCustomQuestion(): void {
     onChange([
       ...questions,
@@ -333,7 +338,7 @@ export function ClimateSurveyCustomQuestionList({ questions, onChange }: CustomQ
         localId: crypto.randomUUID(),
         text: "",
         scoreDirection: "higher_is_better",
-        dimension: "organizational_culture",
+        dimension: resolveDefaultTopicKey(),
       },
     ])
   }
@@ -367,8 +372,10 @@ export function ClimateSurveyCustomQuestionList({ questions, onChange }: CustomQ
                 value={question.dimension}
                 onChange={(e) => updateCustomQuestion(question.localId, { dimension: toClimateSurveyDimension(e.target.value) })}
               >
-                {CLIMATE_SURVEY_DIMENSION_ORDER.map((dimension) => (
-                  <option key={dimension} value={dimension}>{CLIMATE_SURVEY_DIMENSION_LABELS[dimension]}</option>
+                {topics.map((topic) => (
+                  <option key={topic.key} value={topic.key} disabled={!topic.isActive}>
+                    {topic.isActive ? topic.label : `${topic.label} (desativado)`}
+                  </option>
                 ))}
               </NativeSelect>
               <NativeSelect

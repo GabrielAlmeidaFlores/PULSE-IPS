@@ -106,6 +106,7 @@ model Organization {
   climateSurveyQuestions      ClimateSurveyQuestion[]
   climateSurveyResponses      ClimateSurveyResponse[]
   climateSurveyConfigs        ClimateSurveyConfiguration[]
+  climateSurveyTopics         ClimateSurveyTopic[]
   documents             Document[]
   actionPlans           ActionPlan[]
   actionPlanTasks       ActionPlanTask[]
@@ -543,6 +544,24 @@ model ClimateSurveyQuestion {
   @@index([tenantId, climateSurveyConfigurationId])
   @@index([dimension])
   @@map("climate_survey_questions")
+}
+
+model ClimateSurveyTopic {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  key       String   @db.VarChar(60)
+  label     String   @db.VarChar(100)
+  isSystem  Boolean  @default(false) @map("is_system")
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, key])
+  @@index([tenantId])
+  @@map("climate_survey_topics")
 }
 
 model ClimateSurveyDispatch {

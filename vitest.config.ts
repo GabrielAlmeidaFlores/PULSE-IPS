@@ -64,6 +64,7 @@ export default defineConfig({
         "src/modules/action-plans/action-plan-suggestion.service.ts",
         "src/modules/health-surveys/health-survey-reminder.service.ts",
         "src/modules/climate-surveys/climate-survey-config.service.ts",
+        "src/modules/climate-surveys/climate-survey-topic.service.ts",
         "src/modules/climate-surveys/climate-survey-dispatch.service.ts",
         "src/modules/climate-surveys/climate-survey-response.service.ts",
         "src/modules/climate-surveys/climate-survey-dashboard.service.ts",

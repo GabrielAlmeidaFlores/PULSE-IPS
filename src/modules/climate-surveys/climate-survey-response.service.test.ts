@@ -29,6 +29,33 @@ vi.mock("@/modules/climate-surveys/climate-survey-analytics.service", () => ({
   completeClimateSurveyResponseAnalytics: vi.fn(),
 }))
 
+vi.mock("@/modules/climate-surveys/climate-survey-topic.service", async () => {
+  const { CLIMATE_SURVEY_SYSTEM_TOPICS } = await import("@/modules/climate-surveys/climate-survey.types")
+  const topics = CLIMATE_SURVEY_SYSTEM_TOPICS.map((topic) => ({
+    id: topic.key,
+    tenantId: "tenant-1",
+    key: topic.key,
+    label: topic.label,
+    isSystem: true,
+    isActive: true,
+    sortOrder: topic.sortOrder,
+  }))
+  return {
+    ensureClimateSurveySystemTopics: vi.fn().mockResolvedValue(undefined),
+    listClimateSurveyTopics: vi.fn().mockResolvedValue(topics),
+    listClimateSurveyTopicOptions: vi.fn().mockResolvedValue(
+      topics.map((topic) => ({ id: topic.id, key: topic.key, label: topic.label, isSystem: true, isActive: true })),
+    ),
+    getClimateSurveyTopicLabelMap: vi.fn().mockResolvedValue(
+      new Map(topics.map((topic) => [topic.key, topic.label])),
+    ),
+    createClimateSurveyTopic: vi.fn(),
+    renameClimateSurveyTopic: vi.fn(),
+    deactivateClimateSurveyTopic: vi.fn(),
+    assertClimateSurveyTopicKeysExist: vi.fn().mockResolvedValue(undefined),
+  }
+})
+
 const mockFormatFn = vi.hoisted(() => vi.fn(() => "12:00"))
 
 vi.mock("date-fns-tz", () => ({

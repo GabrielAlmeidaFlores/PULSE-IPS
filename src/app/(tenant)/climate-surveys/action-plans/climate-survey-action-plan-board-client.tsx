@@ -11,7 +11,7 @@ import type {
   ClimateSurveyActionPlanRow,
   ClimateSurveyBelowGoalTopic,
 } from "@/modules/climate-surveys/climate-survey-action-plan.service"
-import type { ClimateSurveyDimension } from "@/modules/climate-surveys/climate-survey.types"
+import type { ClimateSurveyDimension, ClimateSurveyTopicOption } from "@/modules/climate-surveys/climate-survey.types"
 import { BADGE_AMBER, BADGE_BASE, BADGE_DEFAULT, BADGE_RED } from "@/libs/design-system/alert-labels"
 
 const PRIORITY_STYLE: Record<string, string> = {
@@ -31,6 +31,7 @@ interface ClimateSurveyActionPlanBoardClientProps {
   belowGoalTopics: ClimateSurveyBelowGoalTopic[]
   actions: ClimateSurveyActionPlanRow[]
   assignees: ClimateSurveyActionPlanAssigneeOption[]
+  topics: ClimateSurveyTopicOption[]
   waveId: string | null
   corporateGoalPercent: number
 }
@@ -46,6 +47,7 @@ export function ClimateSurveyActionPlanBoardClient({
   belowGoalTopics,
   actions,
   assignees,
+  topics,
   waveId,
   corporateGoalPercent,
 }: ClimateSurveyActionPlanBoardClientProps): React.ReactElement {
@@ -242,6 +244,7 @@ export function ClimateSurveyActionPlanBoardClient({
         onClose={() => { setCreateOpen(false) }}
         mode="create"
         assignees={assignees}
+        topics={topics}
         waveId={waveId}
         initialDimension={createDimension}
       />
@@ -252,6 +255,7 @@ export function ClimateSurveyActionPlanBoardClient({
         onClose={() => { setEditingAction(null) }}
         mode="edit"
         assignees={assignees}
+        topics={topics}
         waveId={waveId}
         initialAction={editingAction}
       />

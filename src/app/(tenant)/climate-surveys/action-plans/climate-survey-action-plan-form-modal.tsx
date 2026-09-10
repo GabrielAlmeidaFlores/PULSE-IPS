@@ -8,10 +8,9 @@ import {
   createClimateSurveyActionPlanItemAction,
   updateClimateSurveyActionPlanItemAction,
 } from "@/app/(tenant)/climate-surveys/action-plans/actions"
-import {
-  CLIMATE_SURVEY_DIMENSION_LABELS,
-  CLIMATE_SURVEY_DIMENSION_ORDER,
-  type ClimateSurveyDimension,
+import type {
+  ClimateSurveyDimension,
+  ClimateSurveyTopicOption,
 } from "@/modules/climate-surveys/climate-survey.types"
 import type { ClimateSurveyActionPlanAssigneeOption, ClimateSurveyActionPlanRow } from "@/modules/climate-surveys/climate-survey-action-plan.service"
 
@@ -20,6 +19,7 @@ interface ClimateSurveyActionPlanFormModalProps {
   onClose: () => void
   mode: "create" | "edit"
   assignees: ClimateSurveyActionPlanAssigneeOption[]
+  topics: ClimateSurveyTopicOption[]
   waveId: string | null
   initialDimension?: ClimateSurveyDimension | null
   initialAction?: ClimateSurveyActionPlanRow | null
@@ -84,6 +84,7 @@ export function ClimateSurveyActionPlanFormModal({
   onClose,
   mode,
   assignees,
+  topics,
   waveId,
   initialDimension = null,
   initialAction = null,
@@ -107,7 +108,7 @@ export function ClimateSurveyActionPlanFormModal({
           ...(form.dueDate.length > 0 ? { dueDate: form.dueDate } : {}),
           ...(form.assigneeId.length > 0 ? { assigneeId: form.assigneeId } : {}),
           ...(form.dimension.length > 0
-            ? { dimension: form.dimension as ClimateSurveyDimension }
+            ? { dimension: form.dimension }
             : {}),
           ...(waveId !== null ? { climateSurveyDispatchId: waveId } : {}),
         })
@@ -133,7 +134,7 @@ export function ClimateSurveyActionPlanFormModal({
         status: form.status,
         dueDate: form.dueDate.length > 0 ? form.dueDate : null,
         assigneeId: form.assigneeId.length > 0 ? form.assigneeId : null,
-        dimension: form.dimension.length > 0 ? (form.dimension as ClimateSurveyDimension) : null,
+        dimension: form.dimension.length > 0 ? form.dimension : null,
       })
       if (result.error !== undefined) {
         toast.error(result.error)
@@ -196,9 +197,9 @@ export function ClimateSurveyActionPlanFormModal({
                   onChange={(event) => { setForm((prev) => ({ ...prev, dimension: event.target.value })) }}
                 >
                   <option value="">Sem tópico</option>
-                  {CLIMATE_SURVEY_DIMENSION_ORDER.map((dimension) => (
-                    <option key={dimension} value={dimension}>
-                      {CLIMATE_SURVEY_DIMENSION_LABELS[dimension]}
+                  {topics.map((topic) => (
+                    <option key={topic.key} value={topic.key} disabled={!topic.isActive}>
+                      {topic.isActive ? topic.label : `${topic.label} (desativado)`}
                     </option>
                   ))}
                 </NativeSelect>

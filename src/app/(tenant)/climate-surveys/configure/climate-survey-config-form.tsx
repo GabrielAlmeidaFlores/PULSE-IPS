@@ -10,8 +10,10 @@ import { NativeSelect } from "@/components/ui/native-select"
 import {
   toClimateSurveyDimension,
   type ClimateSurveyDimension,
+  type ClimateSurveyTopicOption,
   type ScoreDirection,
 } from "@/modules/climate-surveys/climate-survey.types"
+import { ClimateSurveyTopicManager } from "@/app/(tenant)/climate-surveys/configure/climate-survey-topic-manager"
 import type { ClimateSurveyConfigWithDetails } from "@/modules/climate-surveys/climate-survey-config.service"
 import {
   CLIMATE_SURVEY_QUESTION_CATALOG,
@@ -38,6 +40,7 @@ type FormMode = "create" | "edit"
 interface ClimateSurveyConfigFormProps {
   mode: FormMode
   departments?: DepartmentOption[]
+  topics: ClimateSurveyTopicOption[]
   initialConfig?: ClimateSurveyConfigWithDetails | null
   initialDeptIds?: string[]
   onSubmit: (data: ClimateSurveyConfigFormData) => Promise<{ error?: string } | undefined>
@@ -191,7 +194,7 @@ function CancelSurveyConfigLink({ href, hasUnsavedChanges }: CancelSurveyConfigL
   )
 }
 
-export function ClimateSurveyConfigForm({ mode, departments, initialConfig, initialDeptIds, onSubmit, cancelHref }: ClimateSurveyConfigFormProps): React.ReactElement {
+export function ClimateSurveyConfigForm({ mode, departments, topics, initialConfig, initialDeptIds, onSubmit, cancelHref }: ClimateSurveyConfigFormProps): React.ReactElement {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [previewOpen, setPreviewOpen] = useState(false)
@@ -637,6 +640,7 @@ export function ClimateSurveyConfigForm({ mode, departments, initialConfig, init
               } />
             </div>
             <span className="flex items-center gap-3 shrink-0">
+              <ClimateSurveyTopicManager topics={topics} />
               <ConfigSaveStatus justSaved={justSaved} hasUnsavedChanges={hasUnsavedChanges} />
               <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                 {previewQuestions.length} selecionada(s)
@@ -650,7 +654,7 @@ export function ClimateSurveyConfigForm({ mode, departments, initialConfig, init
             />
           </div>
           <div className="p-3 pt-0">
-            <ClimateSurveyCustomQuestionList questions={customQuestions} onChange={setCustomQuestions} />
+            <ClimateSurveyCustomQuestionList questions={customQuestions} topics={topics} onChange={setCustomQuestions} />
           </div>
         </div>
 

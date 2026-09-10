@@ -115,6 +115,7 @@ export default async function ClimateSurveyActionPlansPage({
           belowGoalTopics={board.belowGoalTopics}
           actions={board.actions}
           assignees={board.assignees}
+          topics={board.topics}
           waveId={board.wave?.id ?? null}
           corporateGoalPercent={board.corporateGoalPercent}
         />

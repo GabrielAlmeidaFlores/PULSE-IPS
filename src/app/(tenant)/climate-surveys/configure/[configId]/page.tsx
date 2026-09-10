@@ -4,6 +4,7 @@ import { getSession } from "@/modules/auth/session"
 import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
 import { getClimateSurveyConfig } from "@/modules/climate-surveys/climate-survey-config.service"
 import { getActiveDepartments } from "@/modules/departments/department.service"
+import { listClimateSurveyTopicOptions } from "@/modules/climate-surveys/climate-survey-topic.service"
 import { EditClimateSurveyConfigForm } from "@/app/(tenant)/climate-surveys/configure/[configId]/edit-climate-survey-config-form"
 
 interface Props {
@@ -16,9 +17,10 @@ export default async function EditClimateSurveyConfigPage({ params }: Props): Pr
   if (!(await hasTenantPlanFeature(session.tenantId, "climate_surveys"))) redirect("/dashboard")
 
   const { configId } = await params
-  const [config, departments] = await Promise.all([
+  const [config, departments, topics] = await Promise.all([
     getClimateSurveyConfig(session.tenantId, configId),
     getActiveDepartments(session.tenantId),
+    listClimateSurveyTopicOptions(session.tenantId),
   ])
   if (!config) notFound()
 
@@ -39,6 +41,7 @@ export default async function EditClimateSurveyConfigPage({ params }: Props): Pr
           initialConfig={config}
           initialDeptIds={initialDeptIds}
           departments={departments.map((d) => ({ id: d.id, name: d.name }))}
+          topics={topics}
         />
       </div>
     </div>

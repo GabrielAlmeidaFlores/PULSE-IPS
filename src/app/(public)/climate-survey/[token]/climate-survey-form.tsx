@@ -11,7 +11,6 @@ import {
   trackClimateSurveyResponseProgressAction,
 } from "@/app/(public)/climate-survey/[token]/actions"
 import { storage } from "@/libs/local-storage"
-import { CLIMATE_SURVEY_DIMENSION_LABELS, type ClimateSurveyDimension } from "@/modules/climate-surveys/climate-survey.types"
 
 interface ClimateSurveyQuestion {
   id: string
@@ -19,6 +18,7 @@ interface ClimateSurveyQuestion {
   order: number
   scoreDirection: "higher_is_better" | "lower_is_better"
   dimension: string
+  dimensionLabel: string
 }
 
 interface LikertOption {
@@ -42,10 +42,6 @@ const LIKERT_OPTIONS: LikertOption[] = [
 
 const ANONYMITY_NOTICE =
   "Suas respostas são 100% anônimas e não serão vinculadas à sua identidade."
-
-function climateSurveyTopicLabel(dimension: string): string {
-  return CLIMATE_SURVEY_DIMENSION_LABELS[dimension as ClimateSurveyDimension] ?? dimension
-}
 
 const ADVANCE_DELAY_MS = 280
 const EMPTY_DRAFT_JSON = ""
@@ -386,7 +382,7 @@ export function ClimateSurveyForm({ token, employeeName, questions }: Props): Re
                 className="inline-block border border-border bg-muted px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
                 style={{ borderRadius: 0 }}
               >
-                {climateSurveyTopicLabel(currentQuestion?.dimension ?? "")}
+                {currentQuestion?.dimensionLabel ?? ""}
               </span>
             </div>
             <p className="text-base sm:text-lg font-semibold text-foreground leading-snug">

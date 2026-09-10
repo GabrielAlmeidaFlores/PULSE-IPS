@@ -1,8 +1,7 @@
-import {
-  CLIMATE_SURVEY_DIMENSION_ORDER,
-  type ClimateSurveyDimension,
-  type ClimateSurveyEnpsBreakdown,
-  type ScoreDirection,
+import type {
+  ClimateSurveyDimension,
+  ClimateSurveyEnpsBreakdown,
+  ScoreDirection,
 } from "@/modules/climate-surveys/climate-survey.types"
 
 export const CLIMATE_SURVEY_LIKERT_WEIGHT_BY_SCORE: Record<1 | 2 | 3 | 4 | 5, number> = {
@@ -223,7 +222,11 @@ export function computeClimateSurveyMetricsBreakdown(
   }
 
   const byTopic = new Map<ClimateSurveyDimension, ClimateSurveyAggregatedMetrics>()
-  for (const dimension of CLIMATE_SURVEY_DIMENSION_ORDER) {
+  const topicDimensions = new Set<ClimateSurveyDimension>()
+  for (const question of questions) {
+    topicDimensions.add(question.dimension)
+  }
+  for (const dimension of topicDimensions) {
     byTopic.set(
       dimension,
       aggregateNormalizedScores(

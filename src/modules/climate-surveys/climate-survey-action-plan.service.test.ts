@@ -22,6 +22,32 @@ vi.mock("@/modules/audit/audit.repository")
 vi.mock("@/modules/auth/invite.service")
 vi.mock("@/modules/climate-surveys/climate-survey-dashboard.service")
 vi.mock("@/modules/climate-surveys/climate-survey.repository")
+vi.mock("@/modules/climate-surveys/climate-survey-topic.service", async () => {
+  const { CLIMATE_SURVEY_SYSTEM_TOPICS } = await import("@/modules/climate-surveys/climate-survey.types")
+  const topics = CLIMATE_SURVEY_SYSTEM_TOPICS.map((topic) => ({
+    id: topic.key,
+    tenantId: "tenant-1",
+    key: topic.key,
+    label: topic.label,
+    isSystem: true,
+    isActive: true,
+    sortOrder: topic.sortOrder,
+  }))
+  return {
+    ensureClimateSurveySystemTopics: vi.fn().mockResolvedValue(undefined),
+    listClimateSurveyTopics: vi.fn().mockResolvedValue(topics),
+    listClimateSurveyTopicOptions: vi.fn().mockResolvedValue(
+      topics.map((topic) => ({ id: topic.id, key: topic.key, label: topic.label, isSystem: true, isActive: true })),
+    ),
+    getClimateSurveyTopicLabelMap: vi.fn().mockResolvedValue(
+      new Map(topics.map((topic) => [topic.key, topic.label])),
+    ),
+    createClimateSurveyTopic: vi.fn(),
+    renameClimateSurveyTopic: vi.fn(),
+    deactivateClimateSurveyTopic: vi.fn(),
+    assertClimateSurveyTopicKeysExist: vi.fn().mockResolvedValue(undefined),
+  }
+})
 vi.mock("@/modules/climate-surveys/climate-survey-analytics.service", () => ({
   recordClimateSurveyActionCreated: vi.fn(),
   recordClimateSurveyActionCompleted: vi.fn(),

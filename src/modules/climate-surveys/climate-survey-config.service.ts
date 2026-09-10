@@ -15,6 +15,7 @@ import type {
   ClimateSurveyQuestionInput,
 } from "@/modules/climate-surveys/climate-survey.types"
 import { AppError } from "@/libs/errors/app-error"
+import { assertClimateSurveyTopicKeysExist } from "@/modules/climate-surveys/climate-survey-topic.service"
 import {
   recordClimateSurveyCreated,
   recordClimateSurveyQuestionsSelected,
@@ -96,6 +97,11 @@ export async function createClimateSurveyForDepartments(tenantId: string, input:
     throw new AppError("NO_CHANNELS", "Selecione ao menos um canal de envio.")
   }
 
+  await assertClimateSurveyTopicKeysExist(
+    tenantId,
+    input.questions.map((question) => question.dimension),
+  )
+
   const configInput: CreateClimateSurveyConfigInput = {
     departmentIds: targetDeptIds,
     name: input.name,
@@ -124,6 +130,10 @@ export async function updateClimateSurveyConfig(tenantId: string, configId: stri
   if (!input.sendViaMessaging && !input.sendViaSignedLink) {
     throw new AppError("NO_CHANNELS", "Selecione ao menos um canal de envio.")
   }
+  await assertClimateSurveyTopicKeysExist(
+    tenantId,
+    input.questions.map((question) => question.dimension),
+  )
   const updated = await updateExistingClimateSurveyConfigEntry(tenantId, configId, input)
   const activeQuestions = updated.questions.filter((question) => question.isActive)
   await recordClimateSurveyQuestionsSelected(

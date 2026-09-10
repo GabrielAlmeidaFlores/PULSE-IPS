@@ -402,6 +402,8 @@ src/
 │   ├── climate-surveys/
 │   │   ├── climate-survey.repository.ts
 │   │   ├── climate-survey-config.service.ts
+│   │   ├── climate-survey-topic.repository.ts
+│   │   ├── climate-survey-topic.service.ts
 │   │   ├── climate-survey-dispatch.service.ts
 │   │   ├── climate-survey-response.service.ts
 │   │   ├── climate-survey-dashboard.service.ts
@@ -1108,7 +1110,7 @@ Configuração de Pesquisa de Clima Organizacional — módulo paralelo às pesq
 
 Join tables: `climate_survey_config_departments`, `climate_survey_config_work_days` (mesmo padrão das health surveys).
 
-> **Mapeamento vs modelo conceitual `clima_*`:** não existem tabelas com nomes em português. Equivalências: `clima_surveys` → `climate_survey_configurations` (`name`, `is_active`≈status, `frequency`≈recorrência; sem `created_by` / `data_inicio` / `data_fim` dedicados — a janela da onda fica em `climate_survey_dispatches.scheduled_at` / `dispatched_at`). `clima_topics` → campo `dimension` em `climate_survey_questions` (catálogo fixo de 8 tópicos no TypeScript; sem tabela `climate_topics`). `clima_questions` + `clima_survey_questions` → `climate_survey_questions` (1:N na config, com `order`; sem join M:N reutilizável). `clima_campaigns` → `climate_survey_dispatches` (canais na **config**, não por onda). `clima_recipients` → `climate_survey_response_tokens` (`employee_id`, `token`, `used_at`; status de envio em `message_logs` / `email_logs`). `clima_answers` → `climate_survey_responses` + `climate_survey_response_items` (**sem `token` nem `employee_id` nas respostas** — anonimato). `clima_action_plans` → `action_plans` com `climate_survey_dispatch_id` (sem `topic_id` / `responsavel_id` no plano; responsável fica em `action_tasks.assignee_id`).
+> **Mapeamento vs modelo conceitual `clima_*`:** não existem tabelas com nomes em português. Equivalências: `clima_surveys` → `climate_survey_configurations` (`name`, `is_active`≈status, `frequency`≈recorrência; sem `created_by` / `data_inicio` / `data_fim` dedicados — a janela da onda fica em `climate_survey_dispatches.scheduled_at` / `dispatched_at`). `clima_topics` → tabela `climate_survey_topics` (catálogo por tenant: 8 tópicos de sistema + customizados; `climate_survey_questions.dimension` referencia `key`). `clima_questions` + `clima_survey_questions` → `climate_survey_questions` (1:N na config, com `order`; sem join M:N reutilizável). `clima_campaigns` → `climate_survey_dispatches` (canais na **config**, não por onda). `clima_recipients` → `climate_survey_response_tokens` (`employee_id`, `token`, `used_at`; status de envio em `message_logs` / `email_logs`). `clima_answers` → `climate_survey_responses` + `climate_survey_response_items` (**sem `token` nem `employee_id` nas respostas** — anonimato). `clima_action_plans` → `action_plans` com `climate_survey_dispatch_id` (sem `topic_id` / `responsavel_id` no plano; responsável fica em `action_tasks.assignee_id`).
 
 #### `climate_survey_questions`
 
@@ -1120,10 +1122,29 @@ Join tables: `climate_survey_config_departments`, `climate_survey_config_work_da
 | text | text | NOT NULL |
 | order | integer | NOT NULL |
 | score_direction | varchar(30) | `'higher_is_better'` \| `'lower_is_better'` |
-| dimension | varchar | NOT NULL, default `'organizational_culture'` — `'job_satisfaction'` \| `'internal_communication'` \| `'relationships'` \| `'recognition_reward'` \| `'professional_development'` \| `'work_life_balance'` \| `'organizational_culture'` \| `'leadership_trust'` |
+| dimension | varchar | NOT NULL, default `'organizational_culture'` — chave do tópico (`climate_survey_topics.key`); os 8 tópicos de sistema são `'job_satisfaction'` \| `'internal_communication'` \| `'relationships'` \| `'recognition_reward'` \| `'professional_development'` \| `'work_life_balance'` \| `'organizational_culture'` \| `'leadership_trust'`; tópicos customizados criados pelo RH também são válidos |
 | is_active | boolean | NOT NULL, default true |
 
 **Índices:** `(tenant_id)`, `(tenant_id, climate_survey_configuration_id)`, `(dimension)`
+
+#### `climate_survey_topics`
+
+Catálogo de tópicos (dimensões) por tenant. Os 8 tópicos de sistema (`is_system = true`) são criados de forma lazy por tenant via `ensureClimateSurveySystemTopics` — sem seed em migration. Tópicos customizados (`is_system = false`) podem ser criados/renomeados/desativados pelo RH; tópicos de sistema não podem ser editados nem excluídos. `climate_survey_questions.dimension` referencia `key`.
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| tenant_id | uuid | NOT NULL, FK → organizations.id ON DELETE CASCADE |
+| key | varchar(60) | NOT NULL — slug do tópico (ex: `'seguranca-psicologica'`) |
+| label | varchar(100) | NOT NULL — nome exibido |
+| is_system | boolean | NOT NULL, default false — tópico padrão protegido |
+| is_active | boolean | NOT NULL, default true |
+| sort_order | integer | NOT NULL, default 0 |
+| created_at / updated_at | timestamptz | NOT NULL |
+
+**Índices:** `(tenant_id)`, UNIQUE `(tenant_id, key)`
+
+> O `dimension` de perguntas, métricas, dashboards (radar/heatmap), planos de ação e formulário público resolve o label pelo catálogo do tenant (`resolveClimateSurveyTopicLabel`), com fallback para os labels de sistema. Tópicos customizados aparecem no radar e no heatmap da onda em que foram usados.
 
 #### `climate_survey_dispatches`
 
@@ -1520,7 +1541,7 @@ Resultado por pergunta gerado na revisão PGR. Permite análise de tendência po
 | **Tenant — estrutura** | `organizations`, `organization_subscriptions`, `organization_users`, `departments` |
 | **Tenant — colaboradores** | `employees`, `employee_consents` |
 | **Tenant — pesquisas** | `health_survey_configurations`, `health_survey_config_departments`, `health_survey_questions`, `health_survey_dispatches`, `health_survey_dept_dispatches`, `health_survey_response_tokens`, `health_survey_responses`, `health_survey_response_items` |
-| **Tenant — clima organizacional** | `climate_survey_configurations`, `climate_survey_config_departments`, `climate_survey_config_work_days`, `climate_survey_questions`, `climate_survey_dispatches`, `climate_survey_dept_dispatches`, `climate_survey_response_tokens`, `climate_survey_response_token_work_days`, `climate_survey_responses`, `climate_survey_response_items`, `climate_survey_analytics_events`, `climate_survey_response_sessions` |
+| **Tenant — clima organizacional** | `climate_survey_configurations`, `climate_survey_config_departments`, `climate_survey_config_work_days`, `climate_survey_questions`, `climate_survey_topics`, `climate_survey_dispatches`, `climate_survey_dept_dispatches`, `climate_survey_response_tokens`, `climate_survey_response_token_work_days`, `climate_survey_responses`, `climate_survey_response_items`, `climate_survey_analytics_events`, `climate_survey_response_sessions` |
 | **Tenant — ocorrências** | `anonymous_reports`, `action_plans`, `action_tasks`, `action_plan_suggestions`, `action_plan_suggestion_tasks` |
 | **Tenant — documentos e PGR** | `documents`, `document_versions`, `pgr_reviews`, `pgr_dept_results`, `pgr_question_results` |
 | **Tenant — operacional** | `alerts`, `audit_logs` |
@@ -3861,8 +3882,9 @@ RH (feature climate_surveys) → Sidebar “Pesquisa de Clima”
 RH → /climate-surveys/configure
   └─ Lista de pesquisas · Nova/Editar: banco de perguntas em accordion por tópico (checkbox)
      + seção "Perguntas personalizadas" (texto, tópico e direção do score, add/remover inline),
+     botão "Gerenciar tópicos" (criar/renomear/desativar tópicos customizados; tópicos de sistema são protegidos),
      painel lateral com contadores em tempo real (perguntas, tópicos, tempo estimado ≈20s/pergunta),
-     ações Salvar / Pré-visualizar; mín. 1 pergunta (catálogo + personalizadas), máx. 40; recomendado 3–5 por tópico
+     ações Salvar / Pré-visualizar; mín. 1 pergunta (catálogo + personalizadas), máx. 60 (`CLIMATE_SURVEY_MAX_QUESTIONS`); recomendado 3–5 por tópico
   └─ Agenda onda (manual) ou auto-scheduler (job climate-survey-dispatcher)
        ├─ Tokens + short_code; envio por mensagem (sendViaMessaging=true) quando feature messaging ativa
        └─ Sem e-mail/link assinado em campanhas novas: a UI de clima não expõe seleção de canal
@@ -3885,7 +3907,7 @@ RH → /climate-surveys/[dispatchId]
 | Bloco | Conteúdo |
 |---|---|
 | KPIs | Adesão %, total de respostas, favorabilidade % (scores 4–5), eNPS |
-| Radar | 8 tópicos vs meta corporativa (`CLIMATE_SURVEY_CORPORATE_GOAL_PERCENT` = 70) — score = média dos pesos Likert × 100 |
+| Radar | Tópicos usados na onda (sistema + customizados) vs meta corporativa (`CLIMATE_SURVEY_CORPORATE_GOAL_PERCENT` = 70) — score = média dos pesos Likert × 100 |
 | Linha | Evolução entre ondas (clima ponderado, favorabilidade, adesão, eNPS) |
 | Rosca eNPS | Promotores / Neutros / Detratores |
 | Heatmap | Tópicos × departamentos (verde ≥ meta, amarelo ≥ meta−20, vermelho crítico) |
@@ -3902,7 +3924,7 @@ RH → /climate-surveys/[dispatchId]
 
 Agregações disponíveis: **por pergunta**, **por tópico (`dimension`)**, **por departamento** e **geral da empresa/onda**. O eNPS agregado classifica a média das notas do respondente no escopo (não a resposta isolada), exceto quando o escopo já é uma única pergunta.
 
-**Tópicos (`ClimateSurveyDimension`):** `job_satisfaction`, `internal_communication`, `relationships`, `recognition_reward`, `professional_development`, `work_life_balance`, `organizational_culture`, `leadership_trust`.
+**Tópicos:** catálogo por tenant em `climate_survey_topics` (`key` + `label`). Os 8 tópicos de sistema (criados de forma lazy via `ensureClimateSurveySystemTopics`) são `job_satisfaction`, `internal_communication`, `relationships`, `recognition_reward`, `professional_development`, `work_life_balance`, `organizational_culture`, `leadership_trust`; o RH pode criar tópicos customizados pelo gerenciador em `/climate-surveys/configure` (tópicos de sistema não podem ser editados nem excluídos). O `dimension` das perguntas guarda o `key` do tópico e o label é resolvido via `resolveClimateSurveyTopicLabel`; `ClimateSurveyDimension` é `string` (não mais um union fixo).
 
 **Adesão (`getClimateSurveyAdherenceOverview` / `/climate-surveys/adherence`):**
 
