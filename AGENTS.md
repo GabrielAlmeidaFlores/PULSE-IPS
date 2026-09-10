@@ -3063,6 +3063,10 @@ O `DialogContent` (`src/components/ui/dialog.tsx`) usa `grid grid-cols-1` (`grid
 
 O `Header` (`src/libs/design-system/components/layout/Header.tsx`) recebe do `(tenant)/layout.tsx`: `email`, `orgName`, `orgCnpj`, `planName` e `upgradeAvailable`. Mostra o nome da empresa + CNPJ (oculto em telas < 768px) à esquerda e o pill do plano à direita (âmbar com "· Upgrade disponível" quando `upgradeAvailable`, neutro caso contrário). O CNPJ vem de `organizations.cnpj` (cadastro). O plano/elegibilidade vêm de `getTenantPlanSummary(tenantId)` (`billing.service.ts`): `upgradeAvailable` é `true` quando existe plano ativo com preço maior que o `snapshot_price_in_cents` da assinatura atual.
 
+### Sidebar — seletor de módulos
+
+A `Sidebar` (`src/libs/design-system/components/layout/Sidebar.tsx`) tem um **seletor de módulos** no topo (`Clima` · `People Analytics` · `PGR`, cada um um `Link` para a tela padrão do módulo). O módulo ativo é resolvido pelo `pathname` (`resolveModule`). Abaixo, os itens do módulo agrupados por rótulo, seguidos de um grupo **Geral** (Dashboard, Governança, Funcionários, Departamentos, Alertas, Documentos, Relatos, + Assinatura/Configurações para `admin`). Em `People Analytics`, o item **Departamentos** abre um submenu com as áreas ativas do tenant — recebidas via prop `departments` do `(tenant)/layout.tsx` (`getActiveDepartments`), nunca lista fixa. Vira menu hambúrguer em telas < `lg` (1024px).
+
 ### Layout padrão de páginas
 
 Páginas do painel (`(tenant)` e `(super-admin)`) seguem o padrão:
