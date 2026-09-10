@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -15,7 +14,6 @@ import {
   CreditCard,
   Settings,
   MessageSquare,
-  ChevronDown,
   BookOpen,
   Send,
   ListChecks,
@@ -188,16 +186,12 @@ function ModuleNavItem({
 function ModuleNav({
   module,
   features,
-  departments,
   onNavigate,
 }: {
   module: ModuleKey
   features: PlanFeature[]
-  departments: { id: string; name: string }[]
   onNavigate?: (() => void) | undefined
 }): React.ReactElement {
-  const pathname = usePathname()
-  const [departmentsOpen, setDepartmentsOpen] = useState(pathname.startsWith("/departments"))
   const groups = getModuleNav(module, features)
 
   return (
@@ -210,33 +204,6 @@ function ModuleNav({
           ))}
         </div>
       ))}
-      {module === "people" && departments.length > 0 && (
-        <div>
-          <p className={groupLabelClassName()}>Áreas</p>
-          <button
-            type="button"
-            onClick={() => { setDepartmentsOpen((prev) => !prev) }}
-            className={`w-full ${subLinkClassName(pathname.startsWith("/departments"))}`}
-            aria-expanded={departmentsOpen}
-          >
-            <Building2 className="h-3.5 w-3.5" />
-            <span className="flex-1 text-left">Departamentos</span>
-            <ChevronDown className={`h-3 w-3 transition-transform ${departmentsOpen ? "rotate-180" : ""}`} />
-          </button>
-          {departmentsOpen &&
-            departments.map((department) => (
-              <Link
-                key={department.id}
-                href="/departments"
-                onClick={() => { onNavigate?.() }}
-                className={subLinkClassName(false)}
-              >
-                <span className="h-1 w-1 bg-muted-foreground/50 shrink-0" />
-                {department.name}
-              </Link>
-            ))}
-        </div>
-      )}
     </div>
   )
 }
@@ -244,12 +211,10 @@ function ModuleNav({
 function SidebarContent({
   role,
   features,
-  departments,
   onNavigate,
 }: {
   role: "admin" | "rh"
   features: PlanFeature[]
-  departments: { id: string; name: string }[]
   onNavigate?: (() => void) | undefined
 }): React.ReactElement {
   const pathname = usePathname()
@@ -279,7 +244,7 @@ function SidebarContent({
         </div>
       </div>
 
-      <ModuleNav module={activeModule} features={features} departments={departments} onNavigate={onNavigate} />
+      <ModuleNav module={activeModule} features={features} onNavigate={onNavigate} />
 
       <div className="mt-2 border-t border-sidebar-border pt-1">
         <p className={groupLabelClassName()}>Geral</p>
@@ -301,10 +266,9 @@ interface SidebarProps {
   tenantId: string
   role: "admin" | "rh"
   features: PlanFeature[]
-  departments: { id: string; name: string }[]
 }
 
-export function Sidebar({ role, features, departments }: SidebarProps): React.ReactElement {
+export function Sidebar({ role, features }: SidebarProps): React.ReactElement {
   const { open, setOpen } = useSidebar()
 
   return (
@@ -321,7 +285,6 @@ export function Sidebar({ role, features, departments }: SidebarProps): React.Re
           <SidebarContent
             role={role}
             features={features}
-            departments={departments}
             onNavigate={() => setOpen(false)}
           />
         </SheetContent>
@@ -331,7 +294,7 @@ export function Sidebar({ role, features, departments }: SidebarProps): React.Re
         <div className="h-14 flex items-center px-4 border-b border-sidebar-border">
           <Logo size="xs" />
         </div>
-        <SidebarContent role={role} features={features} departments={departments} />
+        <SidebarContent role={role} features={features} />
         <div className="px-4 py-3 border-t border-sidebar-border flex items-center justify-between">
           <p className="text-[10px] text-muted-foreground/50 font-bold tracking-widest uppercase">v{env.NEXT_PUBLIC_APP_VERSION}</p>
           <ThemeToggle variant="icon" />

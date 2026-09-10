@@ -37,6 +37,33 @@ function formatKpi(value: number | null, suffix = ""): string {
   return `${value}${suffix}`
 }
 
+function roundOneDecimal(value: number): number {
+  return Math.round(value * 10) / 10
+}
+
+function computeDelta(current: number | null | undefined, previous: number | null | undefined): number | null {
+  if (current === null || current === undefined || previous === null || previous === undefined) return null
+  return roundOneDecimal(current - previous)
+}
+
+function deltaLabel(delta: number | null): string {
+  if (delta === null) return "sem onda anterior"
+  if (delta === 0) return "→ 0.0 pp vs. onda anterior"
+  const sign = delta > 0 ? "+" : ""
+  return `${delta > 0 ? "▲" : "▼"} ${sign}${delta.toFixed(1)} pp vs. onda anterior`
+}
+
+function deltaClass(delta: number | null): string {
+  if (delta === null || delta === 0) return "text-muted-foreground"
+  return delta > 0 ? "text-status-success" : "text-status-danger"
+}
+
+function topicsBelowGoalClass(below: number, total: number): string {
+  if (below === 0) return "text-status-success"
+  if (total > 0 && below / total > 0.5) return "text-status-danger"
+  return "text-status-warning"
+}
+
 interface Props {
   searchParams: Promise<Record<string, string | undefined>>
 }
@@ -59,6 +86,17 @@ export default async function ClimateSurveyDashboardPage({ searchParams }: Props
   const timezone = org?.timezone ?? "America/Sao_Paulo"
   const wave = dashboard.wave
   const selectedDepartment = departmentId !== undefined ? departments.find((department) => department.id === departmentId) : undefined
+
+  const evolution = dashboard.evolution
+  const currentEvolution = evolution[evolution.length - 1]
+  const previousEvolution = evolution.length > 1 ? evolution[evolution.length - 2] : undefined
+  const favorabilityDelta = computeDelta(currentEvolution?.favorabilityPercent, previousEvolution?.favorabilityPercent)
+  const enpsDelta = computeDelta(currentEvolution?.enps, previousEvolution?.enps)
+  const adherenceDelta = computeDelta(currentEvolution?.adherencePercent, previousEvolution?.adherencePercent)
+  const topicsTotal = dashboard.radar.length
+  const topicsBelowGoal = dashboard.radar.filter(
+    (topic) => topic.scorePercent !== null && topic.scorePercent < dashboard.corporateGoalPercent,
+  ).length
 
   return (
     <div className="flex flex-col h-full">
@@ -181,35 +219,39 @@ export default async function ClimateSurveyDashboardPage({ searchParams }: Props
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-              <div className={`border px-4 py-4 ${kpiToneClass(dashboard.kpis.adherenceStatus)}`}>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Adesão</p>
-                <p className={`text-3xl font-bold tabular-nums mt-2 ${kpiValueClass(dashboard.kpis.adherenceStatus)}`}>
-                  {formatKpi(dashboard.kpis.adherencePercent, "%")}
-                </p>
-                <p className="text-[11px] text-muted-foreground mt-1">% de respondentes</p>
-              </div>
-              <div className="border border-border bg-card px-4 py-4">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Total de respostas</p>
-                <p className="text-3xl font-bold tabular-nums mt-2 text-foreground">{dashboard.kpis.totalResponses}</p>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  de {dashboard.kpis.totalRecipients} destinatários
-                </p>
-              </div>
               <div className={`border px-4 py-4 ${kpiToneClass(dashboard.kpis.favorabilityStatus)}`}>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Favorabilidade</p>
                 <p className={`text-3xl font-bold tabular-nums mt-2 ${kpiValueClass(dashboard.kpis.favorabilityStatus)}`}>
                   {formatKpi(dashboard.kpis.favorabilityPercent, "%")}
                 </p>
-                <p className="text-[11px] text-muted-foreground mt-1">% de respostas positivas (4–5)</p>
+                <p className={`text-[11px] mt-1 ${deltaClass(favorabilityDelta)}`}>{deltaLabel(favorabilityDelta)}</p>
               </div>
               <div className={`border px-4 py-4 ${kpiToneClass(dashboard.kpis.enpsStatus)}`}>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">eNPS</p>
                 <p className={`text-3xl font-bold tabular-nums mt-2 ${kpiValueClass(dashboard.kpis.enpsStatus)}`}>
                   {formatKpi(dashboard.kpis.enps)}
                 </p>
-                <p className="text-[11px] text-muted-foreground mt-1">promotores − detratores</p>
+                <p className={`text-[11px] mt-1 ${deltaClass(enpsDelta)}`}>{deltaLabel(enpsDelta)}</p>
+              </div>
+              <div className={`border px-4 py-4 ${kpiToneClass(dashboard.kpis.adherenceStatus)}`}>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Adesão</p>
+                <p className={`text-3xl font-bold tabular-nums mt-2 ${kpiValueClass(dashboard.kpis.adherenceStatus)}`}>
+                  {formatKpi(dashboard.kpis.adherencePercent, "%")}
+                </p>
+                <p className={`text-[11px] mt-1 ${deltaClass(adherenceDelta)}`}>{deltaLabel(adherenceDelta)}</p>
+              </div>
+              <div className={`border px-4 py-4 ${topicsBelowGoal === 0 ? "border-status-success-border bg-status-success-subtle" : "border-border bg-card"}`}>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Tópicos abaixo da meta</p>
+                <p className={`text-3xl font-bold tabular-nums mt-2 ${topicsBelowGoalClass(topicsBelowGoal, topicsTotal)}`}>
+                  {topicsBelowGoal} de {topicsTotal}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-1">meta de {dashboard.corporateGoalPercent}%</p>
               </div>
             </div>
+
+            <p className="text-[11px] text-muted-foreground">
+              {dashboard.kpis.totalResponses} respostas de {dashboard.kpis.totalRecipients} convidados nesta onda
+            </p>
 
             <div className="border border-border bg-card px-4 py-4 space-y-3">
               <div>

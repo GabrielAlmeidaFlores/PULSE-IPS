@@ -3,7 +3,6 @@ import { getSession } from "@/modules/auth/session"
 import { getPendingTermsForUser } from "@/modules/terms/terms.service"
 import { getTenantPlanFeatures, getTenantPlanSummary } from "@/modules/billing/billing.service"
 import { getOrganization } from "@/modules/organizations/organization.service"
-import { getActiveDepartments } from "@/modules/departments/department.service"
 import { Sidebar } from "@/libs/design-system/components/layout/Sidebar"
 import { Header } from "@/libs/design-system/components/layout/Header"
 import { SidebarProvider } from "@/libs/design-system/components/layout/sidebar-context"
@@ -20,12 +19,11 @@ export default async function TenantLayout({
   const session = await getSession()
   if (!session) redirect("/login")
 
-  const [pendingTerms, features, org, planSummary, departments] = await Promise.all([
+  const [pendingTerms, features, org, planSummary] = await Promise.all([
     getPendingTermsForUser(session.userId),
     getTenantPlanFeatures(session.tenantId),
     getOrganization(session.tenantId),
     getTenantPlanSummary(session.tenantId),
-    getActiveDepartments(session.tenantId),
   ])
   if (pendingTerms) redirect("/accept-terms")
 
@@ -37,12 +35,7 @@ export default async function TenantLayout({
   return (
     <SidebarProvider>
       <div className="flex h-screen bg-background">
-        <Sidebar
-          tenantId={session.tenantId}
-          role={session.role}
-          features={features}
-          departments={departments.map((department) => ({ id: department.id, name: department.name }))}
-        />
+        <Sidebar tenantId={session.tenantId} role={session.role} features={features} />
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header
             email={session.email}
