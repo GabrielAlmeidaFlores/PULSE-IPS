@@ -23,6 +23,7 @@ import {
   ListChecks,
   Percent,
   TrendingUp,
+  Gauge,
 } from "lucide-react"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { Logo } from "@/libs/design-system/components/logo"
@@ -66,6 +67,7 @@ function getNavEntries(role: "admin" | "rh", features: PlanFeature[]): NavEntry[
 
   const allEntries: NavEntry[] = [
     { kind: "link", href: "/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
+    { kind: "link", href: "/governance", label: "Governança", icon: <Gauge className="h-4 w-4" /> },
     { kind: "link", href: "/employees", label: "Funcionários", icon: <Users className="h-4 w-4" /> },
     { kind: "link", href: "/departments", label: "Departamentos", icon: <Building2 className="h-4 w-4" /> },
     { kind: "link", href: "/health-surveys", label: "Pesquisas", icon: <ClipboardList className="h-4 w-4" /> },
@@ -111,7 +113,7 @@ function isNavLinkActive(pathname: string, item: NavLinkItem): boolean {
 
 function isClimateDispatchDetail(pathname: string): boolean {
   if (!pathname.startsWith("/climate-surveys/")) return false
-  const reserved = ["configure", "dispatches", "action-plans", "adherence"]
+  const reserved = ["configure", "dispatches", "action-plans", "adherence", "compare"]
   const segment = pathname.split("/")[2]
   return segment !== undefined && !reserved.includes(segment)
 }

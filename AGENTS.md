@@ -244,7 +244,8 @@ Todo o projeto usa `"strict": true` mais flags adicionais (ver seção 9). `any`
 | `recharts` | Gráficos e visualização de dados (usado no dashboard) |
 | `sanitize-html` | Sanitização HTML segura (complementa `src/libs/utils/sanitize.ts`) |
 | `imask` + `react-imask` | Máscaras de input (telefone, CNPJ, etc.) |
-| `exceljs` | Geração de arquivos Excel (exportação de dados) |
+| `exceljs` | Geração de arquivos Excel (exportação de dados) e leitura de planilhas na importação |
+| `unpdf` | Extração de texto de PDFs (puro JS, baseada em pdf.js) — importação de pesquisas existentes |
 | `cmdk` | Componente de command menu (palette de comandos) |
 | `rate-limiter-flexible` | Rate limiting granular por chave/janela com suporte a Redis |
 
@@ -337,6 +338,7 @@ src/
 │   ├── (tenant)/                           # Painel da empresa (Admin + RH)
 │   │   ├── layout.tsx                      # Guard: verifica termos pendentes → /accept-terms
 │   │   ├── dashboard/page.tsx
+│   │   ├── governance/page.tsx             # Dashboard de governança (macro + roadmap de ondas)
 │   │   ├── employees/
 │   │   │   ├── page.tsx
 │   │   │   ├── new/page.tsx
@@ -346,6 +348,8 @@ src/
 │   │   ├── departments/
 │   │   ├── health-surveys/
 │   │   ├── climate-surveys/                # Feature gate: climate_surveys — Sidebar: Pesquisa de Clima (Board, Adesão, Banco de Perguntas, Disparo & Canais, Plano de Ação)
+│   │   │   ├── compare/page.tsx            # Comparativo entre ondas (Onda 1 × Onda 2 / ROI)
+│   │   │   └── configure/                  # Banco de Perguntas (importa perguntas de arquivo via IA)
 │   │   ├── reports/
 │   │   ├── action-plans/
 │   │   ├── documents/
@@ -411,6 +415,9 @@ src/
 │   │   ├── climate-survey-dispatch.service.ts
 │   │   ├── climate-survey-response.service.ts
 │   │   ├── climate-survey-dashboard.service.ts
+│   │   ├── climate-survey-comparison.service.ts   # Comparativo entre ondas (Onda 1 × Onda 2 / ROI)
+│   │   ├── climate-survey-import.service.ts       # Extração de perguntas de arquivo existente com IA
+│   │   ├── climate-survey-import.schema.ts        # Zod schema da tool save_climate_survey_question
 │   │   ├── climate-survey-action-plan.service.ts
 │   │   ├── climate-survey-metrics.ts
 │   │   ├── climate-survey-adherence.service.ts
@@ -467,6 +474,9 @@ src/
 │   │   ├── workforce-insight.repository.ts   # Persistência (replace atômico) dos insights por competência
 │   │   ├── workforce-insights.schema.ts      # Zod schema da tool save_workforce_insight
 │   │   └── workforce.types.ts
+│   ├── governance/
+│   │   ├── governance.service.ts            # Dashboard de governança (macro: clima, pessoas, alertas, planos, roadmap)
+│   │   └── governance.types.ts
 │   ├── job-logs/
 │   │   ├── job-log.repository.ts           # INSERT + listagem de logs de jobs
 │   │   ├── job-log.service.ts
@@ -4128,6 +4138,10 @@ Exibido no Dashboard `/climate-surveys` (bloco Funil da onda). Falhas de insert 
 
 **Jobs:** `climate-survey-dispatcher`, `climate-survey-response-reminder`, `climate-survey-response-token-cleanup`.
 
+**Importação de perguntas de arquivo existente (IA):** em `/climate-surveys/configure`, o botão "Importar de arquivo (.xlsx/.csv)" no bloco de perguntas personalizadas chama `extractClimateSurveyQuestionsAction` (Server Action), que exige a feature `climate_surveys`, aplica rate limit por tenant (10/5min) e converte a planilha/texto em texto antes de chamar `extractClimateSurveyQuestionsFromFile(tenantId, sourceText)`. O serviço usa `getAIService()` com `tier: "medium"` e a tool `save_climate_survey_question`; cada argumento é validado com `climateSurveyQuestionImportToolSchema` (Zod). A dimensão é mapeada para um tópico ativo do tenant (fallback `organizational_culture`). As perguntas retornadas são adicionadas como rascunhos de perguntas personalizadas no formulário (o RH revisa e salva). Formatos aceitos: `.xlsx`, `.csv`, `.txt` e `.pdf` (máx. 10 MB). PDF é convertido em texto com `unpdf` (puro JS, sem dependência nativa); PDFs escaneados (imagem) não têm camada de texto e exigiriam OCR. O modelo **nunca acessa o banco** — só retorna tool calls.
+
+**Comparativo entre ondas (ROI):** página `/climate-surveys/compare` (`getClimateSurveyWaveComparison`). Seleciona duas ondas (padrão: as duas mais recentes) e compara, via `getClimateSurveyMultipleDispatchDashboards`, adesão, favorabilidade, score de clima e eNPS (com variação em p.p./pts) e os tópicos por dimensão. Exibe ainda os planos de ação criados a partir da onda base (`countClimateSurveyActionPlansByDispatch`). Respeita o limiar de anonimato (scores ocultos quando abaixo do mínimo). Opções via `findClimateSurveyWaveOptions`.
+
 ### 20.15 Ingestão de dados com IA (Base Master Mensal)
 
 Upload unificado de arquivos operacionais (AFD/ponto, espelho, planilha) → lote (`data_import_batches`) → pipeline de **2 passadas de IA** (sem aprovação humana por enquanto):
@@ -4191,6 +4205,20 @@ Página `/workforce/insights` (`getWorkforceInsights` / `generateWorkforceInsigh
 - Tool calls inválidas ou de nome desconhecido são ignoradas (log `warn`), sem quebrar o fluxo.
 
 **UI:** link "Análise com IA" no header de `/workforce`; back link "← Indicadores de Pessoas"; seletor de competência; matriz de risco por setor (badge de risco) e insights agrupados por tipo (badge de severidade). Botão "Gerar análise com IA" disponível para `admin` e `rh`.
+
+### 20.18 Dashboard de Governança
+
+Página `/governance` (`getGovernanceDashboard`) — visão macro para acompanhar clima, pessoas, alertas, planos de ação e o roadmap de ondas. Agrega serviços existentes (sem tabela própria):
+
+| Bloco | Fonte |
+|---|---|
+| Clima (última onda) | `getClimateSurveyModuleDashboard` → adesão, favorabilidade, eNPS |
+| Alertas | `getAlertStats` → abertos e críticos |
+| Planos de ação | `countClimateSurveyActionPlanIndicators` → em andamento, concluídos, atrasados |
+| Pessoas | `getWorkforceDashboard` → headcount, turnover, absenteísmo (competência mais recente) |
+| Roadmap de ondas | `findClimateSurveyDispatchTimeline(tenantId, 24)` |
+
+**Status de cada onda (`resolveGovernanceWaveStatus`):** `available` ou com `dispatchedAt` → `completed` (Concluída); `scheduled` com `scheduledAt` no passado → `late` (Atrasada); `scheduled` no futuro → `scheduled` (Agendada); `failed`/`cancelled` mapeados diretamente. O roadmap anual é representado pelas ondas agendadas/disponíveis com o respectivo status. Entrada "Governança" na Sidebar (ícone `Gauge`), disponível a todos os tenants.
 
 ---
 

@@ -96,6 +96,13 @@ export default async function ClimateSurveyDashboardPage(): Promise<React.ReactE
             {session.role === "admin" && (
               <ClimateSurveyDisplaySettingsButton minRespondentsPercent={dashboard.minRespondentsPercent} />
             )}
+            <Link
+              href="/climate-surveys/compare"
+              className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-center"
+              style={{ borderRadius: 0 }}
+            >
+              Comparar ondas
+            </Link>
             {wave !== null && (
               <Link
                 href={`/climate-surveys/${wave.id}`}

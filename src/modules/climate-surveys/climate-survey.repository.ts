@@ -257,6 +257,65 @@ export async function findLatestAvailableClimateSurveyDispatchId(tenantId: strin
   return dispatch?.id ?? null
 }
 
+export interface ClimateSurveyWaveOptionRow {
+  id: string
+  configName: string
+  scheduledAt: Date
+  dispatchedAt: Date | null
+}
+
+export interface ClimateSurveyDispatchTimelineRow {
+  id: string
+  configName: string
+  scheduledAt: Date
+  dispatchedAt: Date | null
+  status: string
+}
+
+export async function findClimateSurveyDispatchTimeline(
+  tenantId: string,
+  take: number,
+): Promise<ClimateSurveyDispatchTimelineRow[]> {
+  const dispatches = await prisma.climateSurveyDispatch.findMany({
+    where: { tenantId },
+    orderBy: { scheduledAt: "desc" },
+    take,
+    select: {
+      id: true,
+      scheduledAt: true,
+      dispatchedAt: true,
+      status: true,
+      climateSurveyConfiguration: { select: { name: true } },
+    },
+  })
+  return dispatches.map((dispatch) => ({
+    id: dispatch.id,
+    configName: dispatch.climateSurveyConfiguration.name,
+    scheduledAt: dispatch.scheduledAt,
+    dispatchedAt: dispatch.dispatchedAt,
+    status: dispatch.status,
+  }))
+}
+
+export async function findClimateSurveyWaveOptions(tenantId: string): Promise<ClimateSurveyWaveOptionRow[]> {
+  const dispatches = await prisma.climateSurveyDispatch.findMany({
+    where: { tenantId, status: "available" },
+    orderBy: { scheduledAt: "desc" },
+    select: {
+      id: true,
+      scheduledAt: true,
+      dispatchedAt: true,
+      climateSurveyConfiguration: { select: { name: true } },
+    },
+  })
+  return dispatches.map((dispatch) => ({
+    id: dispatch.id,
+    configName: dispatch.climateSurveyConfiguration.name,
+    scheduledAt: dispatch.scheduledAt,
+    dispatchedAt: dispatch.dispatchedAt,
+  }))
+}
+
 export interface ClimateSurveyDispatchListingFilters {
   status?: string
   dateFrom?: Date
