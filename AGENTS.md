@@ -350,6 +350,9 @@ src/
 │   │   ├── action-plans/
 │   │   ├── documents/
 │   │   ├── alerts/
+│   │   ├── workforce/                      # Indicadores de Pessoas — Headcount, Turnover e Absenteísmo
+│   │   │   ├── import/                     # Upload de arquivos + status das importações
+│   │   │   └── insights/                   # Cruzamento Workforce × Clima + análise com IA
 │   │   ├── pgr/
 │   │   ├── settings/
 │   │   └── billing/page.tsx               # Admin acessa Stripe Billing Portal
@@ -457,6 +460,13 @@ src/
 │   │   ├── data-ingestion.service.ts         # Pipeline de 2 passadas de IA (extração + validação) com tool handler
 │   │   ├── data-ingestion.schema.ts          # Zod schemas das tools e tipos inferidos
 │   │   └── data-ingestion.types.ts
+│   ├── workforce/
+│   │   ├── workforce.repository.ts           # Leitura dos registros mensais para os indicadores
+│   │   ├── workforce.service.ts              # Métricas de Headcount, Turnover e Absenteísmo (por competência/setor)
+│   │   ├── workforce-insights.service.ts     # Cruzamento Workforce × Clima + geração de insights com IA
+│   │   ├── workforce-insight.repository.ts   # Persistência (replace atômico) dos insights por competência
+│   │   ├── workforce-insights.schema.ts      # Zod schema da tool save_workforce_insight
+│   │   └── workforce.types.ts
 │   ├── job-logs/
 │   │   ├── job-log.repository.ts           # INSERT + listagem de logs de jobs
 │   │   ├── job-log.service.ts
@@ -503,7 +513,7 @@ src/
 │   │   ├── storage/
 │   │   │   ├── storage.interface.ts        # IStorageService
 │   │   │   ├── s3.adapter.ts               # ✅ Implementação S3 (AWS)
-│   │   │   └── console-storage.adapter.ts  # Desenvolvimento local
+│   │   │   └── console-storage.adapter.ts  # Desenvolvimento local (persiste em tmpdir, legível entre processos)
 │   │   ├── pdf/
 │   │   │   ├── pdf.interface.ts            # IPDFService — interface genérica (não usada pelo PGR)
 │   │   │   ├── pgr-pdf.adapter.tsx         # ✅ Implementação @react-pdf/renderer — gera PDF PGR
@@ -788,7 +798,7 @@ O tenant. `id` é o `tenant_id` de todas as demais tabelas.
 | external_customer_id | varchar(255) | UNIQUE — ID do customer no provedor de billing |
 | billing_status | varchar(20) | `'pending'` \| `'active'` \| `'past_due'` \| `'suspended'` \| `'cancelled'` |
 | max_employees_override | integer | NULL = usa limite do plano |
-| climate_survey_min_respondents_percent | integer | NOT NULL, default 40 — percentual mínimo de participação (sobre destinatários) para exibir resultados de Pesquisa de Clima; piso absoluto de 3 respondentes; configurável pelo admin em `/settings` |
+| climate_survey_min_respondents_percent | integer | NOT NULL, default 40 — percentual mínimo de participação (sobre destinatários) para exibir resultados de Pesquisa de Clima; piso absoluto de 3 respondentes; configurável pelo admin no Dashboard de Pesquisa de Clima (`/climate-surveys`, botão "Configurações") |
 | trial_expires_at | timestamptz | NULL = sem trial ativo; NOT NULL = trial ativo até essa data (bypass do billing wall) |
 | deletion_scheduled_at | timestamptz | NULL = sem exclusão agendada; NOT NULL = exclusão permanente pendente |
 | is_active | boolean | NOT NULL, default true |
@@ -1551,7 +1561,7 @@ Lote de importação de arquivos operacionais (AFD/ponto, espelho, planilha). Ca
 | id | uuid | PK |
 | tenant_id | uuid | NOT NULL, FK → organizations.id ON DELETE CASCADE |
 | file_name | varchar | NOT NULL |
-| file_url | varchar(500) | NOT NULL — URL no storage |
+| file_url | varchar(500) | NULL — URL/chave no storage. Nulo quando o lote foi criado a partir de texto inline (endpoint interno), sem arquivo persistido |
 | file_type | varchar | NOT NULL — `'afd'` \| `'espelho'` \| `'planilha'` \| … |
 | competencia | varchar | NOT NULL — `AAAA-MM` |
 | status | varchar(20) | `'received'` \| `'processing'` \| `'extracted'` \| `'validated'` \| `'failed'` |
@@ -1588,6 +1598,24 @@ Base Master Mensal. **1 registro = 1 colaborador × 1 competência mensal.**
 
 **Índices:** `(tenant_id)`, `(tenant_id, competencia)`, `(tenant_id, batch_id)`, UNIQUE `(tenant_id, batch_id, row_hash)`
 
+#### `workforce_insights`
+
+Insights gerados por IA a partir do cruzamento de indicadores de pessoas (Headcount/Turnover/Absenteísmo) com o clima organizacional. Persistidos por competência — a geração substitui atomicamente o conjunto anterior da competência (`deleteMany` + `createMany` em transação).
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| tenant_id | uuid | NOT NULL, FK → organizations.id ON DELETE CASCADE |
+| competencia | varchar | NOT NULL — `AAAA-MM` |
+| kind | varchar(30) | `'root_cause'` \| `'burnout_risk'` \| `'action_suggestion'` |
+| severity | varchar(10) | `'high'` \| `'medium'` \| `'low'` |
+| department_name | varchar | NULL — setor relacionado (nulo = insight geral) |
+| title | varchar | NOT NULL |
+| description | text | NOT NULL |
+| created_at | timestamptz | NOT NULL |
+
+**Índices:** `(tenant_id, competencia)`
+
 ---
 
 ### Resumo: Tabelas por Grupo
@@ -1605,7 +1633,7 @@ Base Master Mensal. **1 registro = 1 colaborador × 1 competência mensal.**
 | **Tenant — ocorrências** | `anonymous_reports`, `action_plans`, `action_tasks`, `action_plan_suggestions`, `action_plan_suggestion_tasks` |
 | **Tenant — documentos e PGR** | `documents`, `document_versions`, `pgr_reviews`, `pgr_dept_results`, `pgr_question_results` |
 | **Tenant — operacional** | `alerts`, `audit_logs` |
-| **Tenant — ingestão de dados** | `data_import_batches`, `employee_monthly` |
+| **Tenant — ingestão de dados** | `data_import_batches`, `employee_monthly`, `workforce_insights` |
 | **Plataforma** | `message_logs`, `email_logs`, `job_logs`, `request_logs` |
 
 ---
@@ -2735,8 +2763,9 @@ export interface IBillingService {
 ```typescript
 export interface IStorageService {
   upload(params: UploadFileParams): Promise<UploadFileResult>
-  getSignedUrl(params: GetSignedUrlParams): Promise<string>
+  download(key: string): Promise<Buffer>
   delete(key: string): Promise<void>
+  getUrl(key: string): Promise<string>
 }
 ```
 
@@ -2850,7 +2879,7 @@ export interface IAIService {
 **Desenvolvimento:** `AI_PROVIDER=console` → `ConsoleAIService` (no-op)  
 **Factory:** `getAIService()` em `src/libs/integrations/index.ts`
 
-**Tiers de modelo e fallback:** cada adapter define **3 modelos por tier** (`high`/`medium`/`low`) e tenta em ordem até um responder (`runWithAIModelFallback`). Os defaults ficam no próprio adapter; as listas podem ser sobrescritas por env (`OPENAI_MODELS_HIGH`, `ANTHROPIC_MODELS_LOW`, etc. — valores separados por vírgula). O caller escolhe o tier via `params.tier` (ex.: extração em `medium`, validação em `high`).
+**Tiers de modelo e fallback:** cada adapter define **3 modelos por tier** (`high`/`medium`/`low`) e tenta em ordem até um responder (`runWithAIModelFallback`); cada falha intermediária é registrada via logger (`warn`) antes de tentar o próximo modelo. Os defaults ficam no próprio adapter; as listas podem ser sobrescritas por env (`OPENAI_MODELS_HIGH`, `ANTHROPIC_MODELS_LOW`, etc. — valores separados por vírgula). O caller escolhe o tier via `params.tier` (ex.: extração em `medium`, validação em `high`).
 
 **Regra inviolável — o modelo nunca acessa o banco nem escreve SQL.** Ele apenas retorna `toolCalls`; o código da aplicação valida os argumentos com Zod e persiste via service/repository (tool handler). Toda chamada de IA é feita via `getAIService()`, nunca instanciando o adapter direto.
 
@@ -3430,6 +3459,7 @@ Processos recorrentes gerenciados pelo **BullMQ** com Redis como broker.
 | `climate-survey-dispatcher` | A cada 5min | Auto-scheduler + processamento de ondas manuais de clima (respeita canais e feature `climate_surveys`/`messaging`) |
 | `climate-survey-response-reminder` | A cada hora | Lembrete halfway para tokens de clima não respondidos |
 | `climate-survey-response-token-cleanup` | Diário (02:00) | Remove tokens de clima expirados e não utilizados |
+| `data-ingestion-processor` | A cada 2min + on-demand | Processa lotes de importação com status `received`: baixa o arquivo do storage e roda extração + validação com IA |
 
 ### Nomenclatura de Jobs — regra obrigatória
 
@@ -3976,7 +4006,7 @@ Módulo paralelo às pesquisas de saúde (`src/modules/climate-surveys/`), gatea
 
 ```
 RH (feature climate_surveys) → Sidebar “Pesquisa de Clima”
- ├─ Dashboard `/climate-surveys` — KPIs + radar + evolução + eNPS + heatmap
+ ├─ Dashboard `/climate-surveys` — KPIs + radar + evolução + eNPS + heatmap; botão "Configurações" (admin) ajusta o percentual mínimo de participação para exibir resultados
  ├─ Adesão `/climate-surveys/adherence` — tabela por área, canais, lembrete manual
  ├─ Banco de Perguntas `/climate-surveys/configure`
  ├─ Disparo & Canais `/climate-surveys/dispatches` — compositor de campanha + histórico
@@ -4108,6 +4138,59 @@ Upload unificado de arquivos operacionais (AFD/ponto, espelho, planilha) → lot
 **Regras:** o modelo **nunca acessa o banco** — só retorna `toolCalls`; a aplicação valida com Zod e persiste (tool handler). Cada linha tem `row_hash` (dedup por lote) e `batch_id` (rastreabilidade). Sem aprovação humana nesta fase — a confiança vem das duas camadas de IA + validação Zod. Módulo: `src/modules/data-ingestion/`.
 
 **Orquestração e acionamento:** `runDataIngestionWithAI(tenantId, input)` cria o lote e executa as duas passadas. O endpoint interno `POST /api/internal/data-ingestion` (protegido por `x-cron-secret`) recebe `{ tenantId, competencia, fileName, fileType, sourceText }` e retorna `{ batch, extraction, validation, rows }` — útil para testes e operação.
+
+**Upload e job assíncrono:** a UI em `/workforce/import` envia o arquivo (`.txt`/`.csv`, máx. 20 MB) via Server Action, que faz upload no storage (`IStorageService.upload`) e chama `enqueueDataIngestionBatch` (cria o lote com status `received` e enfileira o job `data-ingestion-processor`). O worker baixa o arquivo (`IStorageService.download`) e roda extração + validação. O job também roda a cada 2 min como rede de segurança para lotes pendentes.
+
+**Privacidade e LGPD (regra obrigatória):**
+
+| Regra | Detalhe |
+|---|---|
+| CPF fora da validação | O documento (CPF) **não** é enviado à IA na passada de validação — o payload omite `document` e a tool `apply_employee_corrections` não aceita correção do campo `document`. O CPF ainda é processado na extração (a IA lê o arquivo bruto), o que exige contrato/DPA com o provedor de IA. |
+| CPF em repouso | `employee_monthly.document` é armazenado como texto (usado para deduplicar colaboradores). Tratar com o mesmo cuidado de dado pessoal; hashing em repouso é uma decisão de produto pendente. |
+| Erros ao usuário | `errorMessage` do lote é sempre uma mensagem genérica em pt-BR (`resolveDataIngestionErrorMessage`); o detalhe técnico (ex.: erro do provedor em inglês) vai apenas para o log. |
+| Cruzamento agregado | Os insights de Workforce × Clima enviam à IA apenas dados agregados por setor (sem nome nem documento de colaborador). |
+
+### 20.16 Indicadores de Pessoas (Headcount, Turnover e Absenteísmo)
+
+Dashboard em `/workforce` (`getWorkforceDashboard`) que lê a Base Master Mensal (`employee_monthly`) e exibe indicadores por competência e setor.
+
+**Métricas (`workforce.service.ts`):**
+
+| Indicador | Fórmula |
+|---|---|
+| Headcount | registros ativos na competência (`terminationDate` nulo ou ≥ 1º dia da competência) |
+| Admissões | registros com `admissionDate` dentro da competência |
+| Desligamentos | registros com `terminationDate` dentro da competência |
+| Turnover % | desligamentos / headcount × 100 |
+| Absenteísmo % | (horas justificadas + injustificadas) / horas previstas × 100 |
+
+**Deduplicação:** como o mesmo colaborador pode aparecer em lotes diferentes da mesma competência, a leitura deduplica por colaborador (chave `document` → `registration` → `employeeName`) mantendo o registro mais recente (`createdAt`). Sem isso o headcount seria contado em duplicidade.
+
+**UI:** seletor de competência (`?competencia=AAAA-MM`), 5 KPIs, gráfico de evolução (headcount + turnover + absenteísmo) e tabela por setor. Setores sem headcount/admissões/desligamentos na competência são omitidos.
+
+### 20.17 Cruzamento Workforce × Clima com IA
+
+Página `/workforce/insights` (`getWorkforceInsights` / `generateWorkforceInsightsWithAI`) que cruza os indicadores de pessoas da competência selecionada com o clima da última onda e gera insights acionáveis com IA.
+
+**Cruzamento determinístico (`getWorkforceCrossAnalysis`):**
+
+| Etapa | Detalhe |
+|---|---|
+| Fontes | `getWorkforceDashboard(tenantId, competencia)` + `getLatestClimateSurveyDepartmentScores(tenantId)` (onda mais recente + scores por setor, sem recomputar radar/heatmap/evolução) |
+| Junção | setores pareados por nome normalizado (`trim().toLowerCase()`) entre workforce e `departmentScores` do clima |
+| Colunas | setor, headcount, absenteísmo %, turnover %, score de clima %, favorabilidade % e eNPS (nulos quando o clima está abaixo do limiar de anonimato) |
+| Risco | `high` = absenteísmo ≥ 8% **e** clima < meta corporativa (`CLIMATE_SURVEY_CORPORATE_GOAL_PERCENT` = 70); `medium` = apenas uma das condições; `low` = nenhuma |
+| Sem onda de clima | `climateWaveId = null`; risco calculado apenas pelo absenteísmo |
+
+**Geração com IA (`generateWorkforceInsightsWithAI`):**
+
+- Envia o cruzamento (competência + setores) para `getAIService()` com `tier: "high"` e a tool `save_workforce_insight`.
+- O modelo **nunca acessa o banco** — retorna `toolCalls`; cada argumento é validado com `workforceInsightToolSchema` (Zod) e persistido via `replaceWorkforceInsights` (delete + createMany atômico por competência).
+- `kind`: `root_cause` (causa raiz), `burnout_risk` (risco de burnout), `action_suggestion` (sugestão de ação). `severity`: `high`/`medium`/`low`. `departmentName` é opcional (nulo = insight geral).
+- Sem competência selecionada ou sem setores → `AppError("WORKFORCE_NO_DATA")`.
+- Tool calls inválidas ou de nome desconhecido são ignoradas (log `warn`), sem quebrar o fluxo.
+
+**UI:** link "Análise com IA" no header de `/workforce`; back link "← Indicadores de Pessoas"; seletor de competência; matriz de risco por setor (badge de risco) e insights agrupados por tipo (badge de severidade). Botão "Gerar análise com IA" disponível para `admin` e `rh`.
 
 ---
 

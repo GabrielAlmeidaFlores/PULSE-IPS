@@ -51,12 +51,24 @@ function resolveGeminiModels(tier: AIModelTier): string[] {
   return parseAIModelList(overrides[tier]) ?? DEFAULT_GEMINI_MODELS[tier]
 }
 
+const GEMINI_SCHEMA_TYPE_KEYWORDS = new Set([
+  "string",
+  "number",
+  "integer",
+  "boolean",
+  "object",
+  "array",
+  "null",
+])
+
 function toGeminiSchema(value: JsonValue): JsonValue {
   if (Array.isArray(value)) return value.map(toGeminiSchema)
   if (value !== null && typeof value === "object") {
     const result: Record<string, JsonValue> = {}
     for (const [key, entry] of Object.entries(value)) {
-      result[key] = key === "type" && typeof entry === "string" ? entry.toUpperCase() : toGeminiSchema(entry)
+      const isSchemaTypeKeyword =
+        key === "type" && typeof entry === "string" && GEMINI_SCHEMA_TYPE_KEYWORDS.has(entry)
+      result[key] = isSchemaTypeKeyword && typeof entry === "string" ? entry.toUpperCase() : toGeminiSchema(entry)
     }
     return result
   }

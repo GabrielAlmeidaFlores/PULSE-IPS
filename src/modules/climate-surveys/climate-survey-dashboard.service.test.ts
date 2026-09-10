@@ -9,6 +9,7 @@ import {
   getClimateSurveyDispatchesPaginated,
   getLatestActiveClimateSurveyWave,
   getClimateSurveyModuleDashboard,
+  getLatestClimateSurveyDepartmentScores,
 } from "@/modules/climate-surveys/climate-survey-dashboard.service"
 import {
   findClimateSurveyDispatchesByTenant,
@@ -21,6 +22,7 @@ import {
   findClimateSurveyDispatchesPaginated,
   findClimateSurveyConfigById,
   findLatestActiveClimateSurveyDispatch,
+  findLatestAvailableClimateSurveyDispatchId,
   findRecentAvailableClimateSurveyDispatchesForOverview,
 } from "@/modules/climate-surveys/climate-survey.repository"
 import { findOrganizationById } from "@/modules/organizations/organization.repository"
@@ -98,6 +100,7 @@ const mockFindOrganizationById = vi.mocked(findOrganizationById)
 const mockFindDispatchesPaginated = vi.mocked(findClimateSurveyDispatchesPaginated)
 const mockFindConfigById = vi.mocked(findClimateSurveyConfigById)
 const mockFindLatestActiveDispatch = vi.mocked(findLatestActiveClimateSurveyDispatch)
+const mockFindLatestAvailableDispatchId = vi.mocked(findLatestAvailableClimateSurveyDispatchId)
 const mockFindRecentAvailableForOverview = vi.mocked(findRecentAvailableClimateSurveyDispatchesForOverview)
 
 const TENANT_ID = "tenant-1"
@@ -278,6 +281,28 @@ describe("getClimateSurveyMultipleDispatchDashboards", () => {
     expect(result).toHaveLength(2)
     expect(result[0]?.id).toBe("d-1")
     expect(result[1]?.id).toBe("d-2")
+  })
+})
+
+describe("getLatestClimateSurveyDepartmentScores", () => {
+  it("retorna onda nula e setores vazios quando não há onda disponível", async () => {
+    mockFindLatestAvailableDispatchId.mockResolvedValue(null)
+
+    const result = await getLatestClimateSurveyDepartmentScores(TENANT_ID)
+
+    expect(result).toEqual({ waveId: null, departments: [] })
+    expect(mockFindDispatchWithDashboard).not.toHaveBeenCalled()
+  })
+
+  it("retorna a onda mais recente e os scores por setor", async () => {
+    mockFindLatestAvailableDispatchId.mockResolvedValue("d-1")
+    mockFindDispatchWithDashboard.mockResolvedValue(DISPATCH_DATA)
+
+    const result = await getLatestClimateSurveyDepartmentScores(TENANT_ID)
+
+    expect(result.waveId).toBe("d-1")
+    expect(result.departments).toHaveLength(1)
+    expect(result.departments[0]?.departmentName).toBe("Vendas")
   })
 })
 

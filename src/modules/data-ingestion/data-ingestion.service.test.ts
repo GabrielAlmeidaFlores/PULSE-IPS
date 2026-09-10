@@ -1,12 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import {
+  enqueueDataIngestionBatch,
+  listDataIngestionBatchesPaginated,
   processDataExtractionWithAI,
+  processPendingDataIngestionBatches,
   runDataIngestionWithAI,
   validateDataExtractionWithAI,
 } from "@/modules/data-ingestion/data-ingestion.service"
 import {
   createDataImportBatch,
   createEmployeeMonthlyRows,
+  findAllTenantsReceivedDataImportBatches,
+  findDataImportBatchesByTenantPaginated,
   findEmployeeMonthlyRowByHash,
   findEmployeeMonthlyRowsByBatch,
   findDataImportBatchById,
@@ -15,6 +20,7 @@ import {
   updateDataImportBatch,
 } from "@/modules/data-ingestion/data-ingestion.repository"
 import type { IAIService } from "@/libs/integrations/ai/ai.interface"
+import type { IStorageService } from "@/libs/integrations/storage/storage.interface"
 
 vi.mock("@/modules/data-ingestion/data-ingestion.repository")
 vi.mock("@/libs/utils/logger", () => ({
@@ -30,13 +36,29 @@ vi.mock("@/libs/utils/logger", () => ({
 const mockGenerate = vi.fn()
 const MOCK_AI_SERVICE = { generate: mockGenerate } as IAIService
 
+const mockDownload = vi.fn()
+const MOCK_STORAGE_SERVICE = {
+  upload: vi.fn(),
+  download: mockDownload,
+  delete: vi.fn(),
+  getUrl: vi.fn(),
+} as IStorageService
+
 vi.mock("@/libs/integrations", () => ({
   getAIService: () => MOCK_AI_SERVICE,
+  getStorageService: () => MOCK_STORAGE_SERVICE,
+}))
+
+const mockJobAdd = vi.fn()
+vi.mock("@/libs/queue", () => ({
+  getJobQueue: () => ({ add: mockJobAdd }),
 }))
 
 const TENANT_ID = "tenant-1"
 const BATCH_ID = "batch-1"
 const COMPETENCIA = "2026-08"
+const GENERIC_ERROR_MESSAGE =
+  "Não foi possível processar o arquivo com IA. Verifique o formato e tente novamente."
 
 const BATCH = {
   id: BATCH_ID,
@@ -89,6 +111,8 @@ const mockFindRows = vi.mocked(findEmployeeMonthlyRowsByBatch)
 const mockFindRowByHash = vi.mocked(findEmployeeMonthlyRowByHash)
 const mockUpdateRow = vi.mocked(updateEmployeeMonthlyRowById)
 const mockMarkValidated = vi.mocked(markEmployeeMonthlyRowsValidated)
+const mockFindReceivedBatches = vi.mocked(findAllTenantsReceivedDataImportBatches)
+const mockFindBatchesByTenantPaginated = vi.mocked(findDataImportBatchesByTenantPaginated)
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -100,6 +124,10 @@ beforeEach(() => {
   mockFindRowByHash.mockResolvedValue(STAGED_ROW as Awaited<ReturnType<typeof findEmployeeMonthlyRowByHash>>)
   mockUpdateRow.mockResolvedValue(undefined)
   mockMarkValidated.mockResolvedValue(1)
+  mockFindReceivedBatches.mockResolvedValue([])
+  mockFindBatchesByTenantPaginated.mockResolvedValue({ items: [BATCH], total: 1 } as Awaited<ReturnType<typeof findDataImportBatchesByTenantPaginated>>)
+  mockDownload.mockResolvedValue(Buffer.from("conteudo"))
+  mockJobAdd.mockResolvedValue(undefined)
   mockGenerate.mockResolvedValue({ text: null, toolCalls: [], usage: { inputTokens: 0, outputTokens: 0 } })
 })
 
@@ -138,7 +166,10 @@ describe("processDataExtractionWithAI", () => {
     mockGenerate.mockRejectedValue(new Error("AI down"))
 
     await expect(processDataExtractionWithAI(TENANT_ID, BATCH_ID, "conteúdo")).rejects.toThrow("AI down")
-    expect(mockUpdateBatch).toHaveBeenCalledWith(TENANT_ID, BATCH_ID, { status: "failed", errorMessage: "AI down" })
+    expect(mockUpdateBatch).toHaveBeenCalledWith(TENANT_ID, BATCH_ID, {
+      status: "failed",
+      errorMessage: GENERIC_ERROR_MESSAGE,
+    })
   })
 })
 
@@ -270,7 +301,6 @@ describe("validateDataExtractionWithAI — correções", () => {
           arguments: JSON.stringify({
             corrections: [
               { rowKey: "hash-1", field: "employeeName", value: "Ana Souza" },
-              { rowKey: "hash-1", field: "document", value: "123" },
               { rowKey: "hash-1", field: "registration", value: "R1" },
               { rowKey: "hash-1", field: "departmentName", value: "TI" },
               { rowKey: "hash-1", field: "roleName", value: "Dev" },
@@ -290,7 +320,7 @@ describe("validateDataExtractionWithAI — correções", () => {
 
     const summary = await validateDataExtractionWithAI(TENANT_ID, BATCH_ID)
 
-    expect(mockUpdateRow).toHaveBeenCalledTimes(12)
+    expect(mockUpdateRow).toHaveBeenCalledTimes(11)
     expect(mockUpdateRow).toHaveBeenCalledWith(
       TENANT_ID,
       "row-1",
@@ -301,7 +331,7 @@ describe("validateDataExtractionWithAI — correções", () => {
       "row-1",
       expect.objectContaining({ terminationDate: null }),
     )
-    expect(summary.correctedRecords).toBe(12)
+    expect(summary.correctedRecords).toBe(11)
   })
 
   it("ignora correção de linha inexistente", async () => {
@@ -387,5 +417,73 @@ describe("runDataIngestionWithAI", () => {
     expect(result.extraction.status).toBe("extracted")
     expect(result.validation.status).toBe("validated")
     expect(result.rows).toHaveLength(1)
+  })
+})
+
+describe("enqueueDataIngestionBatch", () => {
+  it("cria o lote e enfileira o job de processamento", async () => {
+    const batch = await enqueueDataIngestionBatch(TENANT_ID, {
+      fileName: "afd.txt",
+      fileUrl: "data-ingestion/tenant-1/afd.txt",
+      fileType: "txt",
+      competencia: COMPETENCIA,
+    })
+
+    expect(mockCreateBatch).toHaveBeenCalledWith(
+      TENANT_ID,
+      expect.objectContaining({ fileName: "afd.txt", fileUrl: "data-ingestion/tenant-1/afd.txt" }),
+    )
+    expect(mockJobAdd).toHaveBeenCalledWith("data-ingestion-processor", {})
+    expect(batch.id).toBe(BATCH_ID)
+  })
+})
+
+describe("processPendingDataIngestionBatches", () => {
+  it("baixa o arquivo e processa os lotes recebidos", async () => {
+    mockFindReceivedBatches.mockResolvedValue([BATCH] as Awaited<ReturnType<typeof findAllTenantsReceivedDataImportBatches>>)
+
+    const result = await processPendingDataIngestionBatches()
+
+    expect(mockDownload).toHaveBeenCalledWith(BATCH.fileUrl)
+    expect(result).toEqual({ processed: 1, failed: 0 })
+  })
+
+  it("marca o lote como failed quando o download falha", async () => {
+    mockFindReceivedBatches.mockResolvedValue([BATCH] as Awaited<ReturnType<typeof findAllTenantsReceivedDataImportBatches>>)
+    mockDownload.mockRejectedValue(new Error("arquivo ausente"))
+
+    const result = await processPendingDataIngestionBatches()
+
+    expect(result).toEqual({ processed: 0, failed: 1 })
+    expect(mockUpdateBatch).toHaveBeenCalledWith(
+      TENANT_ID,
+      BATCH_ID,
+      expect.objectContaining({ status: "failed", errorMessage: GENERIC_ERROR_MESSAGE }),
+    )
+  })
+
+  it("marca o lote como failed quando não há arquivo persistido", async () => {
+    mockFindReceivedBatches.mockResolvedValue([
+      { ...BATCH, fileUrl: null },
+    ] as Awaited<ReturnType<typeof findAllTenantsReceivedDataImportBatches>>)
+
+    const result = await processPendingDataIngestionBatches()
+
+    expect(result).toEqual({ processed: 0, failed: 1 })
+    expect(mockDownload).not.toHaveBeenCalled()
+    expect(mockUpdateBatch).toHaveBeenCalledWith(
+      TENANT_ID,
+      BATCH_ID,
+      expect.objectContaining({ status: "failed", errorMessage: GENERIC_ERROR_MESSAGE }),
+    )
+  })
+})
+
+describe("listDataIngestionBatchesPaginated", () => {
+  it("lista os lotes do tenant com paginação", async () => {
+    const result = await listDataIngestionBatchesPaginated(TENANT_ID, { page: 1, pageSize: 10 })
+
+    expect(mockFindBatchesByTenantPaginated).toHaveBeenCalledWith(TENANT_ID, 0, 10)
+    expect(result.total).toBe(1)
   })
 })

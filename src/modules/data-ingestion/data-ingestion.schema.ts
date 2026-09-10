@@ -18,7 +18,6 @@ export const dataExtractionRowSchema = z.object({
 
 export const dataCorrectionFieldSchema = z.enum([
   "employeeName",
-  "document",
   "registration",
   "departmentName",
   "roleName",

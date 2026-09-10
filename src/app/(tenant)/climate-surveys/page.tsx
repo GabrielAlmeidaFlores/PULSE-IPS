@@ -12,6 +12,7 @@ import { ClimateSurveyTopicRadarChart } from "@/app/(tenant)/climate-surveys/com
 import { ClimateSurveyWaveEvolutionChart } from "@/app/(tenant)/climate-surveys/components/climate-survey-wave-evolution-chart"
 import { ClimateSurveyEnpsDonutChart } from "@/app/(tenant)/climate-surveys/components/climate-survey-enps-donut-chart"
 import { ClimateSurveyTopicDepartmentHeatmap } from "@/app/(tenant)/climate-surveys/components/climate-survey-topic-department-heatmap"
+import { ClimateSurveyDisplaySettingsButton } from "@/app/(tenant)/climate-surveys/climate-survey-display-settings-button"
 import type { ClimateSurveyMetricStatus } from "@/modules/climate-surveys/climate-survey.types"
 import { CLIMATE_SURVEY_MIN_RESPONDENTS_FLOOR } from "@/libs/utils/anonymity"
 
@@ -91,15 +92,20 @@ export default async function ClimateSurveyDashboardPage(): Promise<React.ReactE
               <p className="text-xs text-muted-foreground mt-0.5">Nenhuma onda ativa no momento</p>
             )}
           </div>
-          {wave !== null && (
-            <Link
-              href={`/climate-surveys/${wave.id}`}
-              className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-center"
-              style={{ borderRadius: 0 }}
-            >
-              Ver onda
-            </Link>
-          )}
+          <div className="flex items-center gap-2 shrink-0">
+            {session.role === "admin" && (
+              <ClimateSurveyDisplaySettingsButton minRespondentsPercent={dashboard.minRespondentsPercent} />
+            )}
+            {wave !== null && (
+              <Link
+                href={`/climate-surveys/${wave.id}`}
+                className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-center"
+                style={{ borderRadius: 0 }}
+              >
+                Ver onda
+              </Link>
+            )}
+          </div>
         </div>
       </div>
 

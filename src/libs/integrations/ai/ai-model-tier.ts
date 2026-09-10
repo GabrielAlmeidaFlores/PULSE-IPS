@@ -1,4 +1,5 @@
 import type { AIModelTier } from "@/libs/integrations/ai/ai.interface"
+import { logger } from "@/libs/logger"
 
 export function resolveAIModelTier(tier: AIModelTier | undefined): AIModelTier {
   return tier ?? "medium"
@@ -27,6 +28,10 @@ export async function runWithAIModelFallback<T>(
       return await attempt(model)
     } catch (error) {
       lastError = error
+      logger.warn(
+        { model, err: error instanceof Error ? error.message : String(error) },
+        "modelo de IA falhou; tentando o próximo do tier",
+      )
     }
   }
 

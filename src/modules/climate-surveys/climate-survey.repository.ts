@@ -248,6 +248,15 @@ export function findLatestActiveClimateSurveyDispatch(tenantId: string): Promise
   })
 }
 
+export async function findLatestAvailableClimateSurveyDispatchId(tenantId: string): Promise<string | null> {
+  const dispatch = await prisma.climateSurveyDispatch.findFirst({
+    where: { tenantId, status: "available" },
+    orderBy: [{ dispatchedAt: "desc" }, { scheduledAt: "desc" }],
+    select: { id: true },
+  })
+  return dispatch?.id ?? null
+}
+
 export interface ClimateSurveyDispatchListingFilters {
   status?: string
   dateFrom?: Date

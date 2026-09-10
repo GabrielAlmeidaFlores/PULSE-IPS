@@ -12,6 +12,10 @@ vi.mock("@/env", () => ({
   },
 }))
 
+vi.mock("@/libs/logger", () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+}))
+
 const fetchMock = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>()
 
 beforeEach(() => {
@@ -93,6 +97,32 @@ describe("GeminiAdapter", () => {
     }
     expect(body.tools[0]?.function_declarations[0]?.parameters.type).toBe("OBJECT")
     expect(body.tools[0]?.function_declarations[0]?.parameters.properties.hours.type).toBe("NUMBER")
+  })
+
+  it("não converte um campo type cujo valor não é palavra-chave de schema", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ candidates: [] }))
+
+    await new GeminiAdapter().generate({
+      system: "sistema",
+      messages: [{ role: "user", content: "arquivo" }],
+      tools: [
+        {
+          name: "t",
+          description: "d",
+          parameters: { type: "object", properties: { x: { type: "custom-format" } } },
+        },
+      ],
+    })
+
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as {
+      tools: {
+        function_declarations: {
+          parameters: { type: string; properties: { x: { type: string } } }
+        }[]
+      }[]
+    }
+    expect(body.tools[0]?.function_declarations[0]?.parameters.type).toBe("OBJECT")
+    expect(body.tools[0]?.function_declarations[0]?.parameters.properties.x.type).toBe("custom-format")
   })
 
   it("lança erro quando a requisição falha", async () => {

@@ -130,7 +130,7 @@ export async function createDataImportBatch(
     data: {
       tenantId,
       fileName: input.fileName,
-      fileUrl: input.fileUrl,
+      fileUrl: input.fileUrl ?? null,
       fileType: input.fileType,
       competencia: input.competencia,
       aiProvider: input.aiProvider,
@@ -201,4 +201,29 @@ export async function markEmployeeMonthlyRowsValidated(
     data: { qualityStatus: "validated" },
   })
   return result.count
+}
+
+export async function findAllTenantsReceivedDataImportBatches(): Promise<DataImportBatch[]> {
+  const batches = await prisma.dataImportBatch.findMany({
+    where: { status: "received" },
+    orderBy: { createdAt: "asc" },
+  })
+  return batches.map(mapDataImportBatch)
+}
+
+export async function findDataImportBatchesByTenantPaginated(
+  tenantId: string,
+  skip: number,
+  take: number,
+): Promise<{ items: DataImportBatch[]; total: number }> {
+  const [batches, total] = await prisma.$transaction([
+    prisma.dataImportBatch.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take,
+    }),
+    prisma.dataImportBatch.count({ where: { tenantId } }),
+  ])
+  return { items: batches.map(mapDataImportBatch), total }
 }

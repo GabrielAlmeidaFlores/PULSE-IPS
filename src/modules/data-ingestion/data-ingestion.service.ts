@@ -1,12 +1,15 @@
 import { createHash } from "crypto"
 import { env } from "@/env"
 import { AppError } from "@/libs/errors/app-error"
-import { getAIService } from "@/libs/integrations"
+import { getAIService, getStorageService } from "@/libs/integrations"
 import type { AIToolDefinition } from "@/libs/integrations/ai/ai.interface"
+import { getJobQueue } from "@/libs/queue"
 import { createLogger } from "@/libs/utils/logger"
 import {
   createDataImportBatch,
   createEmployeeMonthlyRows,
+  findAllTenantsReceivedDataImportBatches,
+  findDataImportBatchesByTenantPaginated,
   findEmployeeMonthlyRowByHash,
   findEmployeeMonthlyRowsByBatch,
   findDataImportBatchById,
@@ -33,6 +36,14 @@ import type {
 const logger = createLogger("data-ingestion")
 
 const MAX_SOURCE_CHARS_PER_AI_CALL = 12000
+
+const DATA_INGESTION_GENERIC_ERROR =
+  "Não foi possível processar o arquivo com IA. Verifique o formato e tente novamente."
+
+function resolveDataIngestionErrorMessage(error: unknown): string {
+  if (error instanceof AppError) return error.message
+  return DATA_INGESTION_GENERIC_ERROR
+}
 
 const EXTRACTION_SYSTEM_PROMPT = [
   "Você é um extrator de dados operacionais da plataforma Pulse.",
@@ -155,7 +166,6 @@ const APPLY_EMPLOYEE_CORRECTIONS_TOOL: AIToolDefinition = {
               type: "string",
               enum: [
                 "employeeName",
-                "document",
                 "registration",
                 "departmentName",
                 "roleName",
@@ -203,7 +213,7 @@ function parseDateOrNull(value: string | undefined): Date | null {
 }
 
 function computeRowHash(competencia: string, row: DataExtractionRowArgs): string {
-  const basis = [competencia, row.document ?? "", row.registration ?? "", row.employeeName].join("|")
+  const basis = [competencia, row.document, row.registration, row.employeeName].join("|")
   return createHash("sha256").update(basis).digest("hex")
 }
 
@@ -238,8 +248,6 @@ function buildCorrectionPatch(correction: DataCorrectionArgs): UpdateEmployeeMon
   switch (correction.field) {
     case "employeeName":
       return { employeeName: correction.value }
-    case "document":
-      return { document: correction.value }
     case "registration":
       return { registration: correction.value }
     case "departmentName":
@@ -366,8 +374,12 @@ export async function processDataExtractionWithAI(
       }
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Falha na extração com IA."
-    await updateDataImportBatch(tenantId, batchId, { status: "failed", errorMessage: message })
+    const rawMessage = error instanceof Error ? error.message : "erro desconhecido"
+    logger.error(`falha na extração com IA do lote ${batchId}: ${rawMessage}`)
+    await updateDataImportBatch(tenantId, batchId, {
+      status: "failed",
+      errorMessage: resolveDataIngestionErrorMessage(error),
+    })
     throw error
   }
 
@@ -405,7 +417,6 @@ export async function validateDataExtractionWithAI(
     const payload = rows.map((row) => ({
       rowKey: row.rowHash,
       employeeName: row.employeeName,
-      document: row.document,
       registration: row.registration,
       departmentName: row.departmentName,
       roleName: row.roleName,
@@ -466,7 +477,6 @@ export async function runDataIngestionWithAI(
 ): Promise<RunDataIngestionResult> {
   const batch = await createDataImportBatch(tenantId, {
     fileName: input.fileName,
-    fileUrl: `inline://${input.fileName}`,
     fileType: input.fileType,
     competencia: input.competencia,
     aiProvider: env.AI_PROVIDER,
@@ -477,4 +487,80 @@ export async function runDataIngestionWithAI(
   const rows = await findEmployeeMonthlyRowsByBatch(tenantId, batch.id)
 
   return { batch, extraction, validation, rows }
+}
+
+export interface EnqueueDataIngestionBatchInput {
+  fileName: string
+  fileUrl: string
+  fileType: string
+  competencia: string
+  createdById?: string
+}
+
+export async function enqueueDataIngestionBatch(
+  tenantId: string,
+  input: EnqueueDataIngestionBatchInput,
+): Promise<DataImportBatch> {
+  const batch = await createDataImportBatch(tenantId, {
+    fileName: input.fileName,
+    fileUrl: input.fileUrl,
+    fileType: input.fileType,
+    competencia: input.competencia,
+    aiProvider: env.AI_PROVIDER,
+    ...(input.createdById !== undefined ? { createdById: input.createdById } : {}),
+  })
+  await getJobQueue().add("data-ingestion-processor", {})
+  return batch
+}
+
+export interface DataIngestionBatchListingQuery {
+  page: number
+  pageSize: number
+}
+
+export function listDataIngestionBatchesPaginated(
+  tenantId: string,
+  query: DataIngestionBatchListingQuery,
+): Promise<{ items: DataImportBatch[]; total: number }> {
+  const skip = (query.page - 1) * query.pageSize
+  return findDataImportBatchesByTenantPaginated(tenantId, skip, query.pageSize)
+}
+
+export interface ProcessPendingDataIngestionResult {
+  processed: number
+  failed: number
+}
+
+export async function processPendingDataIngestionBatches(): Promise<ProcessPendingDataIngestionResult> {
+  const batches = await findAllTenantsReceivedDataImportBatches()
+  let processed = 0
+  let failed = 0
+
+  for (const batch of batches) {
+    try {
+      if (batch.fileUrl === null) {
+        await updateDataImportBatch(batch.tenantId, batch.id, {
+          status: "failed",
+          errorMessage: DATA_INGESTION_GENERIC_ERROR,
+        })
+        failed += 1
+        continue
+      }
+      const buffer = await getStorageService().download(batch.fileUrl)
+      const sourceText = buffer.toString("utf-8")
+      await processDataExtractionWithAI(batch.tenantId, batch.id, sourceText)
+      await validateDataExtractionWithAI(batch.tenantId, batch.id)
+      processed += 1
+    } catch (error) {
+      failed += 1
+      const rawMessage = error instanceof Error ? error.message : "erro desconhecido"
+      await updateDataImportBatch(batch.tenantId, batch.id, {
+        status: "failed",
+        errorMessage: resolveDataIngestionErrorMessage(error),
+      })
+      logger.error(`falha ao processar lote ${batch.id}: ${rawMessage}`)
+    }
+  }
+
+  return { processed, failed }
 }

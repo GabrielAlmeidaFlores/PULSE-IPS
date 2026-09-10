@@ -81,6 +81,8 @@ export default defineConfig({
         "src/modules/pgr/pgr.service.ts",
         "src/modules/dashboard/dashboard.service.ts",
         "src/modules/data-ingestion/data-ingestion.service.ts",
+        "src/modules/workforce/workforce.service.ts",
+        "src/modules/workforce/workforce-insights.service.ts",
       ],
       exclude: ["src/**/*.test.ts"],
     },

@@ -109,6 +109,7 @@ model Organization {
   climateSurveyTopics         ClimateSurveyTopic[]
   dataImportBatches             DataImportBatch[]
   employeeMonthly           EmployeeMonthly[]
+  workforceInsights         WorkforceInsight[]
   documents             Document[]
   actionPlans           ActionPlan[]
   actionPlanTasks       ActionPlanTask[]
@@ -571,7 +572,7 @@ model DataImportBatch {
   id               String   @id @default(uuid())
   tenantId         String   @map("tenant_id")
   fileName         String   @map("file_name")
-  fileUrl          String   @map("file_url") @db.VarChar(500)
+  fileUrl          String?  @map("file_url") @db.VarChar(500)
   fileType         String   @map("file_type")
   competencia      String
   status           String   @default("received")
@@ -625,6 +626,23 @@ model EmployeeMonthly {
   @@index([tenantId, competencia])
   @@index([tenantId, batchId])
   @@map("employee_monthly")
+}
+
+model WorkforceInsight {
+  id             String   @id @default(uuid())
+  tenantId       String   @map("tenant_id")
+  competencia    String
+  kind           String
+  severity       String
+  departmentName String?  @map("department_name")
+  title          String
+  description    String
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, competencia])
+  @@map("workforce_insights")
 }
 
 model ClimateSurveyDispatch {

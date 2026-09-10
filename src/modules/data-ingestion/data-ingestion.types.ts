@@ -6,7 +6,7 @@ export interface DataImportBatch {
   id: string
   tenantId: string
   fileName: string
-  fileUrl: string
+  fileUrl: string | null
   fileType: string
   competencia: string
   status: DataImportBatchStatus
@@ -47,7 +47,7 @@ export interface EmployeeMonthlyRow {
 
 export interface CreateDataImportBatchInput {
   fileName: string
-  fileUrl: string
+  fileUrl?: string
   fileType: string
   competencia: string
   aiProvider: string

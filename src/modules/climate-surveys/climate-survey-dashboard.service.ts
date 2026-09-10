@@ -11,6 +11,7 @@ import {
   findClimateSurveyConfigById,
   findClimateSurveyOpenCommentsByDispatchIds,
   findLatestActiveClimateSurveyDispatch,
+  findLatestAvailableClimateSurveyDispatchId,
   findRecentAvailableClimateSurveyDispatchesForOverview,
   type ClimateSurveyDispatchListingFilters,
   type ClimateSurveyDispatchDashboardData,
@@ -383,6 +384,20 @@ export async function getClimateSurveyMultipleDispatchDashboards(
   ])
   const minRespondentsPercent = org?.climateSurveyMinRespondentsPercent ?? 40
   return dataList.map((data) => buildDispatchStats(data, minRespondentsPercent, topicLabelMap, filterDeptIds))
+}
+
+export interface LatestClimateSurveyDepartmentScores {
+  waveId: string | null
+  departments: ClimateSurveyDispatchDashboardStats["departmentScores"]
+}
+
+export async function getLatestClimateSurveyDepartmentScores(
+  tenantId: string,
+): Promise<LatestClimateSurveyDepartmentScores> {
+  const waveId = await findLatestAvailableClimateSurveyDispatchId(tenantId)
+  if (waveId === null) return { waveId: null, departments: [] }
+  const dashboard = await getClimateSurveyDispatchDashboard(tenantId, waveId)
+  return { waveId, departments: dashboard?.departmentScores ?? [] }
 }
 
 function resolveWaveTopicKeys(
