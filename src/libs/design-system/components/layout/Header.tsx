@@ -55,7 +55,7 @@ export function Header({ email, orgName, orgCnpj, planName, upgradeAvailable }: 
         {planName !== null && (
           <span className={`${BADGE_BASE} ${upgradeAvailable ? BADGE_AMBER : BADGE_DEFAULT}`}>
             {planName}
-            {upgradeAvailable ? " · Upgrade disponível" : ""}
+            {upgradeAvailable ? " · Plano superior disponível" : ""}
           </span>
         )}
         <span className="text-xs text-muted-foreground truncate hidden sm:block max-w-[140px] md:max-w-[200px]">{email}</span>

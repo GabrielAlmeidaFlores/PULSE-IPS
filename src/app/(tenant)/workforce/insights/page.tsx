@@ -27,7 +27,7 @@ const RISK_STYLES: Record<WorkforceRiskLevel, string> = {
 const INSIGHT_KIND_ORDER: WorkforceInsightKind[] = ["burnout_risk", "root_cause", "action_suggestion"]
 
 const INSIGHT_KIND_LABELS: Record<WorkforceInsightKind, string> = {
-  burnout_risk: "Risco de burnout",
+  burnout_risk: "Risco de esgotamento",
   root_cause: "Causa raiz",
   action_suggestion: "Sugestões de ação",
 }
@@ -86,7 +86,7 @@ export default async function WorkforceInsightsPage({ searchParams }: Props): Pr
           <div>
             <h1 className="text-sm font-bold uppercase tracking-widest">Análise de Equipe com IA</h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Cruzamento de absenteísmo e turnover com o clima organizacional
+              Cruzamento de absenteísmo e rotatividade com o clima organizacional
             </p>
           </div>
           {analysis.competencia !== null && analysis.rows.length > 0 ? (
@@ -146,9 +146,9 @@ export default async function WorkforceInsightsPage({ searchParams }: Props): Pr
                     <thead>
                       <tr className="border-b border-border bg-muted/30">
                         <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Setor</th>
-                        <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-24">Headcount</th>
+                        <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-24">Colaboradores</th>
                         <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-28">Absenteísmo</th>
-                        <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-24">Turnover</th>
+                        <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-24">Rotatividade</th>
                         <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-24">Clima</th>
                         <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-24">eNPS</th>
                         <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-24">Risco</th>

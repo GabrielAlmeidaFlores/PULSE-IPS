@@ -38,12 +38,12 @@ export function WorkforceEvolutionChart({ points }: WorkforceEvolutionChartProps
         <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} allowDecimals={false} />
         <Tooltip />
         <Legend wrapperStyle={{ fontSize: 11 }} />
-        <Bar yAxisId="right" dataKey="headcount" name="Headcount" fill="var(--primary)" />
+        <Bar yAxisId="right" dataKey="headcount" name="Colaboradores" fill="var(--primary)" />
         <Line
           yAxisId="left"
           type="monotone"
           dataKey="turnover"
-          name="Turnover %"
+          name="Rotatividade %"
           stroke="var(--status-warning)"
           strokeWidth={2}
           dot={{ r: 3 }}

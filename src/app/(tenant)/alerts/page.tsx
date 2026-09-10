@@ -72,7 +72,7 @@ export default async function AlertsPage({ searchParams }: Props): Promise<React
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Tipos de alerta</p>
                   <ul className="text-[12px] text-foreground leading-relaxed space-y-1 list-none">
-                    <li>📉 <strong>Queda de score</strong> — índice caiu mais de 1 ponto em relação ao período anterior</li>
+                    <li>📉 <strong>Queda de índice</strong> — índice caiu mais de 1 ponto em relação ao período anterior</li>
                     <li>📊 <strong>Tendência negativa</strong> — 3 períodos consecutivos abaixo da média histórica</li>
                     <li>👻 <strong>Baixa adesão</strong> — menos de 80% de respostas após 48h do disparo</li>
                     <li>🚨 <strong>Relato de crise</strong> — relato anônimo com palavras-chave de saúde mental grave</li>

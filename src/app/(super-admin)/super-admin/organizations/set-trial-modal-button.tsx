@@ -43,7 +43,7 @@ export function SetTrialModalButton({
         toast.error(result.error)
         return
       }
-      toast.success(date.length > 0 ? "Período de trial definido." : "Trial removido.")
+      toast.success(date.length > 0 ? "Período de teste definido." : "Período de teste removido.")
       setOpen(false)
       router.refresh()
     })
@@ -65,14 +65,14 @@ export function SetTrialModalButton({
         }`}
       >
         <CalendarClock size={11} />
-        {isTrialActive ? "Trial" : "Trial"}
+        {isTrialActive ? "Teste ativo" : "Definir teste"}
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent style={{ borderRadius: 0 }} className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-[13px] font-black tracking-[0.15em] uppercase">
-              Período de Trial
+              Período de teste
             </DialogTitle>
           </DialogHeader>
 

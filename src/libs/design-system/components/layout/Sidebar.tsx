@@ -57,7 +57,7 @@ interface ModuleDefinition {
 
 const MODULES: ModuleDefinition[] = [
   { key: "clima", label: "Clima", href: "/climate-surveys", feature: "climate_surveys" },
-  { key: "people", label: "People Analytics", href: "/workforce" },
+  { key: "people", label: "Métricas de Equipe", href: "/workforce" },
   { key: "pgr", label: "PGR", href: "/pgr", feature: "pgr" },
 ]
 
@@ -68,7 +68,7 @@ function getModuleNav(module: ModuleKey, features: PlanFeature[]): NavGroup[] {
     groups.push({
       label: "RH / Gestor",
       items: [
-        { href: "/climate-surveys", label: "Dashboard de clima", icon: <BarChart2 className="h-3.5 w-3.5" />, matchExact: true },
+        { href: "/climate-surveys", label: "Painel de clima", icon: <BarChart2 className="h-3.5 w-3.5" />, matchExact: true },
         { href: "/climate-surveys/adherence", label: "Adesão", icon: <Percent className="h-3.5 w-3.5" /> },
         { href: "/climate-surveys/configure", label: "Banco de perguntas", icon: <BookOpen className="h-3.5 w-3.5" /> },
         { href: "/climate-surveys/dispatches", label: "Disparo & canais", icon: <Send className="h-3.5 w-3.5" /> },
@@ -78,7 +78,7 @@ function getModuleNav(module: ModuleKey, features: PlanFeature[]): NavGroup[] {
     })
   } else if (module === "people") {
     groups.push({
-      label: "People Analytics",
+      label: "Métricas de Equipe",
       items: [
         { href: "/workforce", label: "Visão da empresa", icon: <TrendingUp className="h-3.5 w-3.5" />, matchExact: true },
         { href: "/workforce/import", label: "Importar dados", icon: <Upload className="h-3.5 w-3.5" /> },
@@ -108,7 +108,7 @@ function getModuleNav(module: ModuleKey, features: PlanFeature[]): NavGroup[] {
 
 function getGeneralNav(features: PlanFeature[], role: "admin" | "rh"): NavLinkItem[] {
   const items: NavLinkItem[] = [
-    { href: "/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" />, matchExact: true },
+    { href: "/dashboard", label: "Painel", icon: <LayoutDashboard className="h-4 w-4" />, matchExact: true },
     { href: "/governance", label: "Governança", icon: <Gauge className="h-4 w-4" /> },
     { href: "/employees", label: "Funcionários", icon: <Users className="h-4 w-4" /> },
     { href: "/departments", label: "Departamentos", icon: <Building2 className="h-4 w-4" /> },
@@ -268,7 +268,7 @@ function SidebarContent({
                 key={module.key}
                 href={module.href}
                 onClick={() => { onNavigate?.() }}
-                className={`px-1 py-1.5 text-[9px] font-bold uppercase tracking-wider text-center transition-colors ${
+                className={`flex items-center justify-center px-1 py-1.5 text-[9px] font-bold uppercase tracking-wider text-center leading-tight transition-colors ${
                   isActive ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >

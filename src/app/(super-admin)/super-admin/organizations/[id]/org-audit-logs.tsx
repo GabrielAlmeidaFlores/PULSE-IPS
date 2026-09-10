@@ -6,7 +6,7 @@ import type { OrgAuditEntry } from "@/modules/organizations/organization.types"
 import { TablePagination } from "@/libs/design-system/components/data-display/TablePagination"
 
 const AUDIT_ACTION_LABELS: Record<string, string> = {
-  "user.login": "Login de usuário",
+  "user.login": "Acesso de usuário",
   "user.logout": "Logout de usuário",
   "user.invited": "Usuário convidado",
   "user.invite_resent": "Convite reenviado",
@@ -39,7 +39,7 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
   "action_plan.created": "Plano de ação criado",
   "action_plan.updated": "Plano de ação atualizado",
   "anonymous_report.status_updated": "Status do relato atualizado",
-  "billing.checkout_started": "Checkout iniciado",
+  "billing.checkout_started": "Pagamento iniciado",
   "billing.subscription_updated": "Assinatura atualizada",
 }
 

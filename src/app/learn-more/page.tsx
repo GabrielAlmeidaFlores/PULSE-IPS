@@ -213,7 +213,7 @@ export default function LearnMorePage(): React.ReactElement {
                   label: "Problema invisível",
                   labelColor: "text-status-warning",
                   title: "Crise silenciosa",
-                  desc: "turnover alto, afastamentos e queda de produtividade sem sinal de alerta",
+                  desc: "rotatividade alto, afastamentos e queda de produtividade sem sinal de alerta",
                 },
                 {
                   border: "border-primary/20",
@@ -521,7 +521,7 @@ export default function LearnMorePage(): React.ReactElement {
                   {[
                     "Colaboradores seguros respondem com mais honestidade",
                     "Dados mais honestos = decisões melhores para a empresa",
-                    "Ambiente de confiança reduz turnover e melhora o engajamento",
+                    "Ambiente de confiança reduz rotatividade e melhora o engajamento",
                     "Histórico documentado protege a empresa em eventuais disputas",
                   ].map((item) => (
                     <div key={item} className="flex items-start gap-2 text-sm text-foreground">

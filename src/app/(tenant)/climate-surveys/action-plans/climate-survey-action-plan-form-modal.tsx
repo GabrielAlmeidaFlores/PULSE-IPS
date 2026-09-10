@@ -161,7 +161,7 @@ export function ClimateSurveyActionPlanFormModal({
                 style={{ borderRadius: 0 }}
                 value={form.title}
                 onChange={(event) => { setForm((prev) => ({ ...prev, title: event.target.value })) }}
-                placeholder="Ex.: Melhorar feedback da liderança"
+                placeholder="Ex.: Melhorar a devolutiva da liderança"
               />
             </div>
             <div className="space-y-1.5">

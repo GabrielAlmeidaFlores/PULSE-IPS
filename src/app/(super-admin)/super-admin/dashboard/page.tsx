@@ -76,7 +76,7 @@ export default async function SuperAdminDashboardPage(): Promise<React.ReactElem
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 md:px-6 py-3 border-b border-border bg-card shrink-0">
         <div>
           <h1 className="text-[13px] font-black tracking-[0.2em] uppercase text-foreground">
-            Platform Dashboard
+            Painel da Plataforma
           </h1>
           <p className="text-[11px] text-muted-foreground tracking-wide">
             Visão operacional em tempo real
@@ -271,7 +271,7 @@ export default async function SuperAdminDashboardPage(): Promise<React.ReactElem
             </div>
 
             <div>
-              <SectionLabel>Distribuição de Billing</SectionLabel>
+              <SectionLabel>Distribuição de Cobrança</SectionLabel>
               <div className="border border-border bg-card p-4 space-y-3">
                 <BillingBar
                   label="Ativas"

@@ -136,14 +136,14 @@ export default async function GovernancePage(): Promise<React.ReactElement> {
               description="Percentual de respostas positivas (notas 4 e 5) na última onda."
             />
             <MetricCard
-              title="Score de clima"
+              title="Índice de clima"
               value={formatPercent(climate.scorePercent)}
               description="Índice geral ponderado de clima da última onda (0 a 100%)."
             />
             <MetricCard
               title="eNPS"
               value={formatNumber(climate.enps)}
-              description="Employee Net Promoter Score: % de promotores menos % de detratores (−100 a +100)."
+              description="Índice de recomendação dos colaboradores: % de promotores menos % de detratores (−100 a +100)."
               tone={climate.enps !== null && climate.enps < 0 ? "danger" : "success"}
             />
             <MetricCard
@@ -165,7 +165,7 @@ export default async function GovernancePage(): Promise<React.ReactElement> {
           {climate.evolution.length > 0 ? (
             <ChartCard
               title="Evolução do clima entre ondas"
-              subtitle="Adesão, favorabilidade, score de clima e eNPS por onda"
+              subtitle="Adesão, favorabilidade, índice de clima e eNPS por onda"
             >
               <ClimateSurveyWaveEvolutionChart points={climate.evolution} corporateGoalPercent={climate.corporateGoalPercent} />
             </ChartCard>
@@ -180,7 +180,7 @@ export default async function GovernancePage(): Promise<React.ReactElement> {
         <section className="space-y-3">
           <SectionHeader
             title="Riscos e alertas"
-            description="Alertas automáticos gerados a partir das respostas das pesquisas (score baixo, quedas, tendência negativa, adesão baixa e relatos de crise)."
+            description="Alertas automáticos gerados a partir das respostas das pesquisas (índice baixo, quedas, tendência negativa, adesão baixa e relatos de crise)."
           />
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <MetricCard
@@ -257,13 +257,13 @@ export default async function GovernancePage(): Promise<React.ReactElement> {
             title="Métricas de equipe"
             description={
               dashboard.workforce.competencia !== null
-                ? `Indicadores de headcount, movimentação e absenteísmo da competência ${dashboard.workforce.competencia}.`
-                : "Indicadores de headcount, movimentação e absenteísmo. Importe a base mensal para visualizar."
+                ? `Indicadores de colaboradores, movimentação e absenteísmo da competência ${dashboard.workforce.competencia}.`
+                : "Indicadores de colaboradores, movimentação e absenteísmo. Importe a base mensal para visualizar."
             }
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
             <MetricCard
-              title="Headcount"
+              title="Colaboradores"
               value={String(dashboard.workforce.headcount)}
               description="Colaboradores ativos na competência."
             />
@@ -280,9 +280,9 @@ export default async function GovernancePage(): Promise<React.ReactElement> {
               tone="warning"
             />
             <MetricCard
-              title="Turnover"
+              title="Rotatividade"
               value={formatPercent(dashboard.workforce.turnoverPercent)}
-              description="Desligamentos divididos pelo headcount no período."
+              description="Desligamentos divididos pelo total de colaboradores no período."
               tone={dashboard.workforce.turnoverPercent !== null && dashboard.workforce.turnoverPercent >= 10 ? "danger" : "default"}
             />
             <MetricCard
@@ -295,7 +295,7 @@ export default async function GovernancePage(): Promise<React.ReactElement> {
           {dashboard.workforce.evolution.length > 0 ? (
             <ChartCard
               title="Evolução das métricas de equipe"
-              subtitle="Headcount, turnover e absenteísmo por competência"
+              subtitle="Colaboradores, rotatividade e absenteísmo por competência"
             >
               <WorkforceEvolutionChart points={dashboard.workforce.evolution} />
             </ChartCard>

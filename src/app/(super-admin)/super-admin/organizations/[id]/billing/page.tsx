@@ -40,7 +40,7 @@ export default async function OrgBillingPage({ params }: Props): Promise<React.R
         </Link>
         <div className="h-4 w-px bg-border" />
         <div>
-          <h1 className="text-[13px] font-black tracking-[0.2em] uppercase text-foreground">Billing</h1>
+          <h1 className="text-[13px] font-black tracking-[0.2em] uppercase text-foreground">Cobrança</h1>
           <p className="text-[11px] text-muted-foreground">Assinatura e planos disponíveis</p>
         </div>
       </div>

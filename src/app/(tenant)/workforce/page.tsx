@@ -38,7 +38,7 @@ export default async function WorkforcePage({ searchParams }: Props): Promise<Re
           <div>
             <h1 className="text-sm font-bold uppercase tracking-widest">Métricas de Equipe</h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Headcount, turnover e absenteísmo por competência e setor
+              Colaboradores, rotatividade e absenteísmo por competência e setor
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -65,7 +65,7 @@ export default async function WorkforcePage({ searchParams }: Props): Promise<Re
           <div className="border border-dashed border-border bg-card px-5 py-10 text-center">
             <p className="text-sm font-bold text-muted-foreground">Nenhum dado importado ainda</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Importe um arquivo de ponto/planilha para visualizar headcount, turnover e absenteísmo.
+              Importe um arquivo de ponto/planilha para visualizar colaboradores, rotatividade e absenteísmo.
             </p>
           </div>
         ) : (
@@ -90,9 +90,9 @@ export default async function WorkforcePage({ searchParams }: Props): Promise<Re
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
               <div className="border border-border bg-card px-4 py-4">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Headcount</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Colaboradores</p>
                 <p className="text-3xl font-bold tabular-nums mt-2 text-foreground">{dashboard.kpis.headcount}</p>
-                <p className="text-[11px] text-muted-foreground mt-1">colaboradores ativos</p>
+                <p className="text-[11px] text-muted-foreground mt-1">ativos no mês</p>
               </div>
               <div className="border border-border bg-card px-4 py-4">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Admissões</p>
@@ -105,11 +105,11 @@ export default async function WorkforcePage({ searchParams }: Props): Promise<Re
                 <p className="text-[11px] text-muted-foreground mt-1">no mês</p>
               </div>
               <div className="border border-border bg-card px-4 py-4">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Turnover</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Rotatividade</p>
                 <p className="text-3xl font-bold tabular-nums mt-2 text-foreground">
                   {formatPercent(dashboard.kpis.turnoverPercent)}
                 </p>
-                <p className="text-[11px] text-muted-foreground mt-1">desligamentos / headcount</p>
+                <p className="text-[11px] text-muted-foreground mt-1">desligamentos / colaboradores</p>
               </div>
               <div className="border border-border bg-card px-4 py-4">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Absenteísmo</p>
@@ -122,7 +122,7 @@ export default async function WorkforcePage({ searchParams }: Props): Promise<Re
               </div>
             </div>
 
-            <ChartCard title="Evolução entre competências" subtitle="Headcount, turnover e absenteísmo">
+            <ChartCard title="Evolução entre competências" subtitle="Colaboradores, rotatividade e absenteísmo">
               <WorkforceEvolutionChart points={dashboard.evolution} />
             </ChartCard>
 
@@ -142,10 +142,10 @@ export default async function WorkforcePage({ searchParams }: Props): Promise<Re
                     <thead>
                       <tr className="border-b border-border bg-muted/30">
                         <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Setor</th>
-                        <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-28">Headcount</th>
+                        <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-28">Colaboradores</th>
                         <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-28">Admissões</th>
                         <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-32">Desligamentos</th>
-                        <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-28">Turnover</th>
+                        <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-28">Rotatividade</th>
                         <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-32">Absenteísmo</th>
                       </tr>
                     </thead>

@@ -3065,7 +3065,7 @@ O `Header` (`src/libs/design-system/components/layout/Header.tsx`) recebe do `(t
 
 ### Sidebar — seletor de módulos
 
-A `Sidebar` (`src/libs/design-system/components/layout/Sidebar.tsx`) tem um **seletor de módulos** no topo (`Clima` · `People Analytics` · `PGR`, cada um um `Link` para a tela padrão do módulo). O módulo ativo é resolvido pelo `pathname` (`resolveModule`). Abaixo, os itens do módulo agrupados por rótulo, seguidos de um grupo **Geral** (Dashboard, Governança, Funcionários, Departamentos, Alertas, Documentos, Relatos, + Assinatura/Configurações para `admin`). Em `People Analytics`, o item **Departamentos** abre um submenu com as áreas ativas do tenant — recebidas via prop `departments` do `(tenant)/layout.tsx` (`getActiveDepartments`), nunca lista fixa. Vira menu hambúrguer em telas < `lg` (1024px).
+A `Sidebar` (`src/libs/design-system/components/layout/Sidebar.tsx`) tem um **seletor de módulos** no topo (`Clima` · `Métricas de Equipe` · `PGR`, cada um um `Link` para a tela padrão do módulo). O módulo ativo é resolvido pelo `pathname` (`resolveModule`). Abaixo, os itens do módulo agrupados por rótulo, seguidos de um grupo **Geral** (Painel, Governança, Funcionários, Departamentos, Alertas, Documentos, Relatos, + Assinatura/Configurações para `admin`). Em `Métricas de Equipe`, o item **Departamentos** abre um submenu com as áreas ativas do tenant — recebidas via prop `departments` do `(tenant)/layout.tsx` (`getActiveDepartments`), nunca lista fixa. Vira menu hambúrguer em telas < `lg` (1024px). **Rótulos da UI em português** — sem termos em inglês (ex.: "Colaboradores" em vez de "Headcount", "Rotatividade" em vez de "Turnover").
 
 ### Layout padrão de páginas
 

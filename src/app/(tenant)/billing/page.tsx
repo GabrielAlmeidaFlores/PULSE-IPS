@@ -66,7 +66,7 @@ export default async function BillingPage(): Promise<React.ReactElement> {
                   <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">O que você pode fazer</p>
                   <ul className="text-[12px] text-foreground leading-relaxed space-y-1 list-none">
                     <li>📋 <strong>Ver plano atual</strong> — limite de colaboradores, validade, valor</li>
-                    <li>⬆️ <strong>Upgrade/downgrade</strong> — mudar para outro plano</li>
+                    <li>⬆️ <strong>Melhorar/mudar de plano</strong> — mudar para outro plano</li>
                     <li>💳 <strong>Atualizar cartão</strong> — trocar o método de pagamento</li>
                     <li>🧾 <strong>Baixar faturas</strong> — exportar notas para o financeiro</li>
                     <li>❌ <strong>Cancelar</strong> — encerrar a assinatura (acesso mantido até o fim do período pago)</li>

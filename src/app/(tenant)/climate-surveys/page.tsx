@@ -66,14 +66,14 @@ export default async function ClimateSurveyDashboardPage({ searchParams }: Props
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">
-              <h1 className="text-sm font-bold uppercase tracking-widest">Dashboard — Pesquisa de Clima</h1>
+              <h1 className="text-sm font-bold uppercase tracking-widest">Painel — Pesquisa de Clima</h1>
               <PageHelp
                 content={
                   <div className="space-y-3">
                     <div>
                       <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">KPIs</p>
                       <p className="text-[12px] text-foreground leading-relaxed">
-                        Adesão = respondentes / destinatários. Favorabilidade = (Concordo + Concordo Totalmente) / total × 100. Score de clima = média dos pesos Likert (1.0 / 0.8 / 0.6 / 0.4 / 0.2) × 100. eNPS = % promotores − % detratores (nota 0–10: 9–10 / 7–8 / 0–6).
+                        Adesão = respondentes / destinatários. Favorabilidade = (Concordo + Concordo Totalmente) / total × 100. Índice de clima = média dos pesos Likert (1.0 / 0.8 / 0.6 / 0.4 / 0.2) × 100. eNPS = % promotores − % detratores (nota 0–10: 9–10 / 7–8 / 0–6).
                       </p>
                     </div>
                     <div>
@@ -175,7 +175,7 @@ export default async function ClimateSurveyDashboardPage({ searchParams }: Props
               <div className="border border-status-warning-border bg-status-warning-subtle px-4 py-3">
                 <p className="text-[11px] font-bold uppercase tracking-widest text-status-warning">Respondentes insuficientes</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Favorabilidade, eNPS, radar e heatmap ficam ocultos até haver pelo menos {dashboard.requiredRespondents} respostas na onda (mínimo de {dashboard.minRespondentsPercent}% de participação).
+                  Favorabilidade, eNPS, radar e mapa de calor ficam ocultos até haver pelo menos {dashboard.requiredRespondents} respostas na onda (mínimo de {dashboard.minRespondentsPercent}% de participação).
                 </p>
               </div>
             )}
@@ -302,7 +302,7 @@ export default async function ClimateSurveyDashboardPage({ searchParams }: Props
             </ChartCard>
 
             <ChartCard
-              title="Heatmap tópicos × departamentos"
+              title="Mapa de calor tópicos × departamentos"
               subtitle="Verde: acima da meta · Amarelo: atenção · Vermelho: crítico"
             >
               <ClimateSurveyTopicDepartmentHeatmap heatmap={dashboard.heatmap} />
