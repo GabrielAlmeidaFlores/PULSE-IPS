@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 import Link from "next/link"
+import { Download } from "lucide-react"
 import { getSession } from "@/modules/auth/session"
 import { listDataIngestionBatchesPaginated } from "@/modules/data-ingestion/data-ingestion.service"
 import { DataIngestionUploadForm } from "@/app/(tenant)/workforce/import/data-ingestion-upload-form"
@@ -43,7 +44,7 @@ export default async function DataIngestionImportPage({ searchParams }: Props): 
     <div className="flex flex-col h-full">
       <div className="border-b border-border bg-card px-6 py-4 shrink-0">
         <Link href="/workforce" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-          ← Indicadores de Pessoas
+          ← Métricas de Equipe
         </Link>
         <div className="mt-2">
           <h1 className="text-sm font-bold uppercase tracking-widest">Importar dados</h1>
@@ -83,7 +84,19 @@ export default async function DataIngestionImportPage({ searchParams }: Props): 
                   {batches.map((batch) => (
                     <tr key={batch.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
                       <td className="px-4 py-3 text-xs font-medium text-foreground">
-                        {batch.fileName}
+                        <div className="flex items-center gap-1.5">
+                          <span>{batch.fileName}</span>
+                          {batch.fileUrl !== null && (
+                            <a
+                              href={`/api/data-ingestion/batches/${batch.id}/download`}
+                              className="shrink-0 p-1 text-muted-foreground hover:text-foreground transition-colors"
+                              style={{ borderRadius: 0 }}
+                              title="Baixar arquivo enviado"
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                            </a>
+                          )}
+                        </div>
                         {batch.errorMessage !== null && (
                           <span className="block text-[11px] text-status-danger mt-0.5">{batch.errorMessage}</span>
                         )}

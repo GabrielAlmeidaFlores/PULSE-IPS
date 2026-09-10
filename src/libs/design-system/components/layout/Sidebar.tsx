@@ -71,7 +71,7 @@ function getNavEntries(role: "admin" | "rh", features: PlanFeature[]): NavEntry[
     { kind: "link", href: "/employees", label: "Funcionários", icon: <Users className="h-4 w-4" /> },
     { kind: "link", href: "/departments", label: "Departamentos", icon: <Building2 className="h-4 w-4" /> },
     { kind: "link", href: "/health-surveys", label: "Pesquisas", icon: <ClipboardList className="h-4 w-4" /> },
-    { kind: "link", href: "/workforce", label: "Indicadores de Pessoas", icon: <TrendingUp className="h-4 w-4" /> },
+    { kind: "link", href: "/workforce", label: "Métricas de Equipe", icon: <TrendingUp className="h-4 w-4" /> },
     {
       kind: "section",
       id: "climate-surveys",

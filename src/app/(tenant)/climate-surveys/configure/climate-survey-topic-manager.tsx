@@ -18,7 +18,7 @@ interface ClimateSurveyTopicManagerProps {
 }
 
 const INPUT_CLASS =
-  "w-full bg-input border border-input-border text-foreground text-sm px-3 py-2.5 placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+  "flex-1 min-w-0 bg-input border border-input-border text-foreground text-sm px-3 py-2.5 placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
 
 export function ClimateSurveyTopicManager({ topics }: ClimateSurveyTopicManagerProps): React.ReactElement {
   const router = useRouter()
@@ -99,7 +99,7 @@ export function ClimateSurveyTopicManager({ topics }: ClimateSurveyTopicManagerP
               Crie tópicos próprios para agrupar as perguntas. Tópicos padrão não podem ser excluídos.
             </p>
 
-            <div className="flex items-start gap-2">
+            <div className="flex items-start gap-2 min-w-0">
               <input
                 value={newLabel}
                 onChange={(event) => { setNewLabel(event.target.value) }}
@@ -124,7 +124,7 @@ export function ClimateSurveyTopicManager({ topics }: ClimateSurveyTopicManagerP
               {topics.filter((topic) => topic.isActive).map((topic) => {
                 const isEditing = editingTopicId === topic.key
                 return (
-                  <div key={topic.key} className="flex items-center gap-2 px-3 py-2.5">
+                  <div key={topic.key} className="flex items-center gap-2 px-3 py-2.5 min-w-0">
                     {isEditing ? (
                       <>
                         <input

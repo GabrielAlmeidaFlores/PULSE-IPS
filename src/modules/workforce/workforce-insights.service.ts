@@ -2,15 +2,22 @@ import { AppError } from "@/libs/errors/app-error"
 import { getAIService } from "@/libs/integrations"
 import type { AIToolDefinition } from "@/libs/integrations/ai/ai.interface"
 import { createLogger } from "@/libs/utils/logger"
+import { createPlanWithTasks } from "@/modules/action-plans/action-plan.service"
+import type { ActionPlan } from "@/modules/action-plans/action-plan.types"
 import { CLIMATE_SURVEY_CORPORATE_GOAL_PERCENT } from "@/modules/climate-surveys/climate-survey.types"
 import {
   getLatestClimateSurveyDepartmentScores,
 } from "@/modules/climate-surveys/climate-survey-dashboard.service"
 import {
+  findWorkforceInsightById,
   findWorkforceInsights,
+  linkWorkforceInsightToActionPlan,
   replaceWorkforceInsights,
 } from "@/modules/workforce/workforce-insight.repository"
-import { workforceInsightToolSchema } from "@/modules/workforce/workforce-insights.schema"
+import {
+  workforceActionPlanToolSchema,
+  workforceInsightToolSchema,
+} from "@/modules/workforce/workforce-insights.schema"
 import { getWorkforceDashboard } from "@/modules/workforce/workforce.service"
 import type {
   CreateWorkforceInsightInput,
@@ -65,6 +72,44 @@ const SAVE_WORKFORCE_INSIGHT_TOOL: AIToolDefinition = {
       },
     },
     required: ["kind", "severity", "title", "description"],
+  },
+}
+
+const WORKFORCE_ACTION_PLAN_SYSTEM_PROMPT = [
+  "Você é um especialista em RH da plataforma Pulse.",
+  "Receberá um insight de equipe (cruzamento de absenteísmo/turnover com clima) e os indicadores dos setores relacionados.",
+  "Gere UM plano de ação acionável chamando a ferramenta save_workforce_action_plan.",
+  "Regras:",
+  "- O plano deve responder diretamente ao insight e ter resultado mensurável.",
+  "- A descrição deve trazer contexto, objetivo e resultado esperado.",
+  "- Gere de 3 a 6 tarefas concretas e atribuíveis.",
+  "- A prioridade deve ser coerente com a severidade do insight.",
+  "- Não invente dados; baseie-se apenas no insight e nos indicadores fornecidos.",
+].join("\n")
+
+const SAVE_WORKFORCE_ACTION_PLAN_TOOL: AIToolDefinition = {
+  name: "save_workforce_action_plan",
+  description: "Cria um plano de ação de RH a partir de um insight de equipe.",
+  parameters: {
+    type: "object",
+    properties: {
+      title: { type: "string", description: "Título curto e objetivo do plano. Ex.: 'Reduzir absenteísmo em Operações'." },
+      description: {
+        type: "string",
+        description: "Descrição com contexto, objetivo e resultado esperado. Ex.: 'Absenteísmo de 12% e clima de 55%; investigar carga de trabalho e liderança e reduzir em 3 p.p. em 90 dias.'",
+      },
+      priority: { type: "string", enum: ["low", "medium", "high"], description: "Prioridade do plano." },
+      tasks: {
+        type: "array",
+        description: "Tarefas concretas do plano (1 a 10).",
+        items: {
+          type: "object",
+          properties: { title: { type: "string", description: "Título da tarefa. Ex.: 'Entrevistar liderança de Operações'." } },
+          required: ["title"],
+        },
+      },
+    },
+    required: ["title", "description", "priority", "tasks"],
   },
 }
 
@@ -189,4 +234,68 @@ export async function generateWorkforceInsightsWithAI(
   await replaceWorkforceInsights(tenantId, analysis.competencia, insights)
 
   return { analysis, insights: await findWorkforceInsights(tenantId, analysis.competencia) }
+}
+
+export async function generateActionPlanFromWorkforceInsight(
+  tenantId: string,
+  insightId: string,
+  actorId?: string,
+): Promise<ActionPlan> {
+  const insight = await findWorkforceInsightById(tenantId, insightId)
+  if (insight === null) {
+    throw new AppError("WORKFORCE_INSIGHT_NOT_FOUND", "Insight não encontrado.")
+  }
+
+  const analysis = await getWorkforceCrossAnalysis(tenantId, insight.competencia)
+  const relatedDepartments =
+    insight.departmentName !== null
+      ? analysis.rows.filter((row) => row.departmentName === insight.departmentName)
+      : analysis.rows
+
+  const ai = getAIService()
+  const result = await ai.generate({
+    system: WORKFORCE_ACTION_PLAN_SYSTEM_PROMPT,
+    messages: [
+      {
+        role: "user",
+        content: JSON.stringify({
+          competencia: analysis.competencia,
+          insight: {
+            kind: insight.kind,
+            severity: insight.severity,
+            departmentName: insight.departmentName,
+            title: insight.title,
+            description: insight.description,
+          },
+          departments: relatedDepartments,
+        }),
+      },
+    ],
+    tools: [SAVE_WORKFORCE_ACTION_PLAN_TOOL],
+    tier: "high",
+  })
+
+  const toolCall = result.toolCalls.find((call) => call.name === SAVE_WORKFORCE_ACTION_PLAN_TOOL.name)
+  if (toolCall === undefined) {
+    throw new AppError("WORKFORCE_ACTION_PLAN_GENERATION_FAILED", "Não foi possível gerar o plano de ação. Tente novamente.")
+  }
+
+  const parsed = workforceActionPlanToolSchema.safeParse(parseJsonArguments(toolCall.arguments))
+  if (!parsed.success) {
+    logger.warn("plano de ação inválido gerado pela IA")
+    throw new AppError("WORKFORCE_ACTION_PLAN_GENERATION_FAILED", "Não foi possível gerar o plano de ação. Tente novamente.")
+  }
+
+  const plan = await createPlanWithTasks(
+    tenantId,
+    {
+      title: parsed.data.title,
+      description: parsed.data.description,
+      priority: parsed.data.priority,
+    },
+    parsed.data.tasks.map((task) => task.title),
+    actorId,
+  )
+  await linkWorkforceInsightToActionPlan(tenantId, insightId, plan.id)
+  return plan
 }

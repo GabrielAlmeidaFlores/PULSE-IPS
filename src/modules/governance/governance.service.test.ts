@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { getGovernanceDashboard } from "@/modules/governance/governance.service"
 import { getAlertStats } from "@/modules/alerts/alert.service"
-import { countClimateSurveyActionPlanIndicators } from "@/modules/action-plans/action-plan.repository"
+import { countActionPlanOverview } from "@/modules/action-plans/action-plan.repository"
 import { getClimateSurveyModuleDashboard } from "@/modules/climate-surveys/climate-survey-dashboard.service"
 import { findClimateSurveyDispatchTimeline } from "@/modules/climate-surveys/climate-survey.repository"
 import { getWorkforceDashboard } from "@/modules/workforce/workforce.service"
@@ -42,7 +42,17 @@ const CLIMATE_MODULE: ClimateSurveyModuleDashboard = {
   minRespondentsPercent: 40,
   requiredRespondents: 20,
   radar: [],
-  evolution: [],
+  evolution: [
+    {
+      dispatchId: "wave-1",
+      label: "Onda 1",
+      scheduledAt: PAST_DATE,
+      adherencePercent: 80,
+      favorabilityPercent: 65,
+      enps: 20,
+      overallScorePercent: 72,
+    },
+  ],
   enpsBreakdown: { promoters: 10, neutrals: 20, detractors: 10, total: 40, score: 20 },
   heatmap: { topics: [], departments: [], cells: [] },
   hasEnoughRespondents: true,
@@ -76,7 +86,7 @@ const WORKFORCE_DASHBOARD: WorkforceDashboard = {
     absentHours: 100,
   },
   departments: [],
-  evolution: [],
+  evolution: [{ competencia: "2026-08", headcount: 10, turnoverPercent: 10, absenteeismPercent: 6 }],
 }
 
 const TIMELINE_ROWS = [
@@ -89,7 +99,7 @@ const TIMELINE_ROWS = [
 
 const mockGetClimateModule = vi.mocked(getClimateSurveyModuleDashboard)
 const mockGetAlertStats = vi.mocked(getAlertStats)
-const mockCountActionPlans = vi.mocked(countClimateSurveyActionPlanIndicators)
+const mockCountActionPlans = vi.mocked(countActionPlanOverview)
 const mockGetWorkforce = vi.mocked(getWorkforceDashboard)
 const mockFindTimeline = vi.mocked(findClimateSurveyDispatchTimeline)
 
@@ -97,7 +107,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockGetClimateModule.mockResolvedValue(CLIMATE_MODULE)
   mockGetAlertStats.mockResolvedValue({ total: 5, unresolved: 3, criticalUnresolved: 1, resolved: 2 })
-  mockCountActionPlans.mockResolvedValue({ completed: 4, inProgress: 2, overdue: 1 })
+  mockCountActionPlans.mockResolvedValue({ total: 7, open: 1, inProgress: 2, completed: 4, overdue: 1 })
   mockGetWorkforce.mockResolvedValue(WORKFORCE_DASHBOARD)
   mockFindTimeline.mockResolvedValue(TIMELINE_ROWS)
 })
@@ -110,16 +120,30 @@ describe("getGovernanceDashboard", () => {
       waveConfigName: "Pesquisa de Clima",
       adherencePercent: 80,
       favorabilityPercent: 65,
+      scorePercent: 72,
       enps: 20,
+      totalResponses: 40,
+      totalRecipients: 50,
     })
-    expect(result.alerts).toEqual({ unresolved: 3, criticalUnresolved: 1 })
-    expect(result.actionPlans).toEqual({ completed: 4, inProgress: 2, overdue: 1 })
-    expect(result.workforce).toEqual({
+    expect(result.alerts).toEqual({ total: 5, unresolved: 3, criticalUnresolved: 1, resolved: 2 })
+    expect(result.actionPlans).toEqual({
+      total: 7,
+      open: 1,
+      inProgress: 2,
+      completed: 4,
+      overdue: 1,
+      completionRatePercent: 57.1,
+    })
+    expect(result.workforce).toMatchObject({
       competencia: "2026-08",
       headcount: 10,
+      admissions: 1,
+      terminations: 1,
       turnoverPercent: 10,
       absenteeismPercent: 6,
     })
+    expect(result.climate.evolution).toHaveLength(1)
+    expect(result.workforce.evolution).toHaveLength(1)
   })
 
   it("resolve o status de cada onda do roadmap", async () => {

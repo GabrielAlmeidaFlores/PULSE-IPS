@@ -637,9 +637,11 @@ model WorkforceInsight {
   departmentName String?  @map("department_name")
   title          String
   description    String
+  actionPlanId   String?  @map("action_plan_id")
   createdAt      DateTime @default(now()) @map("created_at")
 
   organization Organization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actionPlan   ActionPlan?  @relation("WorkforceInsightActionPlan", fields: [actionPlanId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, competencia])
   @@map("workforce_insights")
@@ -860,6 +862,7 @@ model ActionPlan {
   assignee              OrganizationUser?      @relation("ActionPlanAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   tasks                 ActionPlanTask[]
   suggestion            ActionPlanSuggestion?  @relation("ActionPlanSuggestionConvertedPlan")
+  workforceInsights     WorkforceInsight[]     @relation("WorkforceInsightActionPlan")
 
   @@index([tenantId])
   @@index([climateSurveyDispatchId])

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import {
   enqueueDataIngestionBatch,
+  getDataIngestionBatchFile,
   listDataIngestionBatchesPaginated,
   processDataExtractionWithAI,
   processPendingDataIngestionBatches,
@@ -485,5 +486,35 @@ describe("listDataIngestionBatchesPaginated", () => {
 
     expect(mockFindBatchesByTenantPaginated).toHaveBeenCalledWith(TENANT_ID, 0, 10)
     expect(result.total).toBe(1)
+  })
+})
+
+describe("getDataIngestionBatchFile", () => {
+  it("retorna o arquivo quando o lote tem arquivo persistido", async () => {
+    mockFindBatch.mockResolvedValue(BATCH as Awaited<ReturnType<typeof findDataImportBatchById>>)
+    mockDownload.mockResolvedValue(Buffer.from("conteudo"))
+
+    const file = await getDataIngestionBatchFile(TENANT_ID, BATCH_ID)
+
+    expect(file).toEqual({ fileName: BATCH.fileName, buffer: Buffer.from("conteudo") })
+    expect(mockDownload).toHaveBeenCalledWith(BATCH.fileUrl)
+  })
+
+  it("retorna null quando o lote não existe", async () => {
+    mockFindBatch.mockResolvedValue(null)
+
+    const file = await getDataIngestionBatchFile(TENANT_ID, BATCH_ID)
+
+    expect(file).toBeNull()
+    expect(mockDownload).not.toHaveBeenCalled()
+  })
+
+  it("retorna null quando o lote não tem arquivo persistido", async () => {
+    mockFindBatch.mockResolvedValue({ ...BATCH, fileUrl: null } as Awaited<ReturnType<typeof findDataImportBatchById>>)
+
+    const file = await getDataIngestionBatchFile(TENANT_ID, BATCH_ID)
+
+    expect(file).toBeNull()
+    expect(mockDownload).not.toHaveBeenCalled()
   })
 })

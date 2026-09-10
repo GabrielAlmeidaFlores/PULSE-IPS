@@ -354,7 +354,7 @@ src/
 │   │   ├── action-plans/
 │   │   ├── documents/
 │   │   ├── alerts/
-│   │   ├── workforce/                      # Indicadores de Pessoas — Headcount, Turnover e Absenteísmo
+│   │   ├── workforce/                      # Métricas de Equipe — Headcount, Turnover e Absenteísmo
 │   │   │   ├── import/                     # Upload de arquivos + status das importações
 │   │   │   └── insights/                   # Cruzamento Workforce × Clima + análise com IA
 │   │   ├── pgr/
@@ -372,6 +372,7 @@ src/
 │       ├── internal/request-log/route.ts   # POST — recebe logs de request do instrumentation.ts
 │       ├── internal/rate-limit-proxy/route.ts  # POST — endpoint de rate-limit chamado pelo proxy (2s timeout)
 │       ├── internal/data-ingestion/route.ts    # POST — aciona a ingestão de dados com IA (x-cron-secret)
+│       ├── data-ingestion/batches/[id]/download/route.ts  # GET — download do arquivo enviado no lote (autenticado, tenant-guarded)
 │       ├── csp-report/route.ts             # POST — recebe violações de CSP (rate-limitado 20/60s por IP)
 │       └── super-admin/export/route.ts     # GET — exportação de dados (autenticado como super_admin)
 │
@@ -3054,6 +3055,10 @@ libs/design-system/components/
 └── data-display/   # StatCard, DataTable, StatusBadge, SectorHealthBar
 ```
 
+### Dialog — largura e overflow horizontal
+
+O `DialogContent` (`src/components/ui/dialog.tsx`) usa `grid grid-cols-1` (`grid-template-columns: repeat(1, minmax(0, 1fr))`). **Não remova o `grid-cols-1`**: sem ele a coluna implícita é `auto` e não encolhe abaixo do min-content dos filhos, o que gera **scroll horizontal** em modais com inputs/botões em linha (ex.: "Gerenciar tópicos"). Para conteúdo que estoura, use `min-w-0`/`truncate`/`flex-1` nos filhos, não `w-full` em inputs dentro de `flex`.
+
 ### Layout padrão de páginas
 
 Páginas do painel (`(tenant)` e `(super-admin)`) seguem o padrão:
@@ -4155,6 +4160,8 @@ Upload unificado de arquivos operacionais (AFD/ponto, espelho, planilha) → lot
 
 **Upload e job assíncrono:** a UI em `/workforce/import` envia o arquivo (`.txt`/`.csv`, máx. 20 MB) via Server Action, que faz upload no storage (`IStorageService.upload`) e chama `enqueueDataIngestionBatch` (cria o lote com status `received` e enfileira o job `data-ingestion-processor`). O worker baixa o arquivo (`IStorageService.download`) e roda extração + validação. O job também roda a cada 2 min como rede de segurança para lotes pendentes.
 
+**Download do arquivo enviado:** a listagem `/workforce/import` exibe um ícone de download por lote (quando `file_url` não é nulo) que aponta para `GET /api/data-ingestion/batches/[id]/download` — rota autenticada e tenant-guarded que baixa o arquivo original via `getDataIngestionBatchFile` (`IStorageService.download`). Lotes criados a partir de texto inline (sem arquivo) não têm download.
+
 **Privacidade e LGPD (regra obrigatória):**
 
 | Regra | Detalhe |
@@ -4164,7 +4171,7 @@ Upload unificado de arquivos operacionais (AFD/ponto, espelho, planilha) → lot
 | Erros ao usuário | `errorMessage` do lote é sempre uma mensagem genérica em pt-BR (`resolveDataIngestionErrorMessage`); o detalhe técnico (ex.: erro do provedor em inglês) vai apenas para o log. |
 | Cruzamento agregado | Os insights de Workforce × Clima enviam à IA apenas dados agregados por setor (sem nome nem documento de colaborador). |
 
-### 20.16 Indicadores de Pessoas (Headcount, Turnover e Absenteísmo)
+### 20.16 Métricas de Equipe (Headcount, Turnover e Absenteísmo)
 
 Dashboard em `/workforce` (`getWorkforceDashboard`) que lê a Base Master Mensal (`employee_monthly`) e exibe indicadores por competência e setor.
 
@@ -4204,19 +4211,23 @@ Página `/workforce/insights` (`getWorkforceInsights` / `generateWorkforceInsigh
 - Sem competência selecionada ou sem setores → `AppError("WORKFORCE_NO_DATA")`.
 - Tool calls inválidas ou de nome desconhecido são ignoradas (log `warn`), sem quebrar o fluxo.
 
-**UI:** link "Análise com IA" no header de `/workforce`; back link "← Indicadores de Pessoas"; seletor de competência; matriz de risco por setor (badge de risco) e insights agrupados por tipo (badge de severidade). Botão "Gerar análise com IA" disponível para `admin` e `rh`.
+**UI:** link "Análise com IA" no header de `/workforce`; back link "← Métricas de Equipe"; seletor de competência; matriz de risco por setor (badge de risco) e insights agrupados por tipo (badge de severidade). Botão "Gerar análise com IA" disponível para `admin` e `rh`.
+
+**Criar plano de ação a partir de um insight:** cada insight do tipo `action_suggestion` exibe o botão "Criar plano de ação" (`createActionPlanFromInsightAction`). A ação chama `generateActionPlanFromWorkforceInsight(tenantId, insightId, actorId)`, que envia o insight + indicadores dos setores relacionados ao `getAIService()` (`tier: "high"`, tool `save_workforce_action_plan`) e cria o plano com tarefas via `createPlanWithTasks` (audit log incluído). O plano aparece em `/action-plans` e o usuário é redirecionado para lá. O modelo **nunca acessa o banco** — só retorna tool call.
 
 ### 20.18 Dashboard de Governança
 
-Página `/governance` (`getGovernanceDashboard`) — visão macro para acompanhar clima, pessoas, alertas, planos de ação e o roadmap de ondas. Agrega serviços existentes (sem tabela própria):
+Página `/governance` (`getGovernanceDashboard`) — painel macro para gestores, com título e descrição explicando cada métrica. Agrega serviços existentes (sem tabela própria):
 
 | Bloco | Fonte |
 |---|---|
-| Clima (última onda) | `getClimateSurveyModuleDashboard` → adesão, favorabilidade, eNPS |
-| Alertas | `getAlertStats` → abertos e críticos |
-| Planos de ação | `countClimateSurveyActionPlanIndicators` → em andamento, concluídos, atrasados |
-| Pessoas | `getWorkforceDashboard` → headcount, turnover, absenteísmo (competência mais recente) |
+| Clima organizacional | `getClimateSurveyModuleDashboard` → adesão, favorabilidade, score de clima, eNPS, respostas, convidados + evolução entre ondas (gráfico) |
+| Riscos e alertas | `getAlertStats` → total, abertos, críticos, resolvidos |
+| Planos de ação | `countActionPlanOverview` → total, abertos, em andamento, concluídos, atrasados, taxa de conclusão |
+| Métricas de equipe | `getWorkforceDashboard` → headcount, admissões, desligamentos, turnover, absenteísmo + evolução por competência (gráfico) |
 | Roadmap de ondas | `findClimateSurveyDispatchTimeline(tenantId, 24)` |
+
+**Gráficos:** reutiliza `ClimateSurveyWaveEvolutionChart` (evolução do clima) e `WorkforceEvolutionChart` (evolução das métricas de equipe) dentro de `ChartCard` com título/subtítulo.
 
 **Status de cada onda (`resolveGovernanceWaveStatus`):** `available` ou com `dispatchedAt` → `completed` (Concluída); `scheduled` com `scheduledAt` no passado → `late` (Atrasada); `scheduled` no futuro → `scheduled` (Agendada); `failed`/`cancelled` mapeados diretamente. O roadmap anual é representado pelas ondas agendadas/disponíveis com o respectivo status. Entrada "Governança" na Sidebar (ícone `Gauge`), disponível a todos os tenants.
 

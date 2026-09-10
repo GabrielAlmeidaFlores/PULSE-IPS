@@ -526,6 +526,22 @@ export function listDataIngestionBatchesPaginated(
   return findDataImportBatchesByTenantPaginated(tenantId, skip, query.pageSize)
 }
 
+export interface DataIngestionBatchFile {
+  fileName: string
+  buffer: Buffer
+}
+
+export async function getDataIngestionBatchFile(
+  tenantId: string,
+  batchId: string,
+): Promise<DataIngestionBatchFile | null> {
+  const batch = await findDataImportBatchById(tenantId, batchId)
+  if (batch === null) return null
+  if (batch.fileUrl === null) return null
+  const buffer = await getStorageService().download(batch.fileUrl)
+  return { fileName: batch.fileName, buffer }
+}
+
 export interface ProcessPendingDataIngestionResult {
   processed: number
   failed: number

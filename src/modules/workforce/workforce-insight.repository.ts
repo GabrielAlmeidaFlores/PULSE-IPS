@@ -29,6 +29,7 @@ function mapWorkforceInsight(insight: PrismaWorkforceInsight): WorkforceInsight 
     departmentName: insight.departmentName,
     title: insight.title,
     description: insight.description,
+    actionPlanId: insight.actionPlanId,
     createdAt: insight.createdAt,
   }
 }
@@ -38,10 +39,26 @@ export async function findWorkforceInsights(
   competencia: string,
 ): Promise<WorkforceInsight[]> {
   const insights = await prisma.workforceInsight.findMany({
-    where: { tenantId, competencia },
+    where: { tenantId, competencia, actionPlanId: null },
     orderBy: { createdAt: "asc" },
   })
   return insights.map(mapWorkforceInsight)
+}
+
+export async function findWorkforceInsightById(
+  tenantId: string,
+  id: string,
+): Promise<WorkforceInsight | null> {
+  const insight = await prisma.workforceInsight.findFirst({ where: { id, tenantId } })
+  return insight !== null ? mapWorkforceInsight(insight) : null
+}
+
+export async function linkWorkforceInsightToActionPlan(
+  tenantId: string,
+  id: string,
+  actionPlanId: string,
+): Promise<void> {
+  await prisma.workforceInsight.updateMany({ where: { id, tenantId }, data: { actionPlanId } })
 }
 
 export async function replaceWorkforceInsights(

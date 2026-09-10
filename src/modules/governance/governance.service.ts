@@ -1,5 +1,5 @@
 import { getAlertStats } from "@/modules/alerts/alert.service"
-import { countClimateSurveyActionPlanIndicators } from "@/modules/action-plans/action-plan.repository"
+import { countActionPlanOverview } from "@/modules/action-plans/action-plan.repository"
 import { getClimateSurveyModuleDashboard } from "@/modules/climate-surveys/climate-survey-dashboard.service"
 import { findClimateSurveyDispatchTimeline } from "@/modules/climate-surveys/climate-survey.repository"
 import { getWorkforceDashboard } from "@/modules/workforce/workforce.service"
@@ -10,6 +10,10 @@ import type {
 } from "@/modules/governance/governance.types"
 
 const TIMELINE_SIZE = 24
+
+function roundOneDecimal(value: number): number {
+  return Math.round(value * 10) / 10
+}
 
 function resolveGovernanceWaveStatus(
   status: string,
@@ -27,7 +31,7 @@ export async function getGovernanceDashboard(tenantId: string): Promise<Governan
   const [climate, alerts, actionPlans, workforce, timelineRows] = await Promise.all([
     getClimateSurveyModuleDashboard(tenantId),
     getAlertStats(tenantId),
-    countClimateSurveyActionPlanIndicators(tenantId),
+    countActionPlanOverview(tenantId),
     getWorkforceDashboard(tenantId),
     findClimateSurveyDispatchTimeline(tenantId, TIMELINE_SIZE),
   ])
@@ -41,28 +45,57 @@ export async function getGovernanceDashboard(tenantId: string): Promise<Governan
     status: resolveGovernanceWaveStatus(row.status, row.scheduledAt, row.dispatchedAt, now),
   }))
 
+  const latestEvolutionPoint = climate.evolution[climate.evolution.length - 1]
+
   return {
     climate: {
       waveConfigName: climate.wave?.configName ?? null,
       waveScheduledAt: climate.wave?.scheduledAt ?? null,
       adherencePercent: climate.kpis.adherencePercent,
       favorabilityPercent: climate.kpis.favorabilityPercent,
+      scorePercent: latestEvolutionPoint?.overallScorePercent ?? null,
       enps: climate.kpis.enps,
+      totalResponses: climate.kpis.totalResponses,
+      totalRecipients: climate.kpis.totalRecipients,
+      corporateGoalPercent: climate.corporateGoalPercent,
+      evolution: climate.evolution.map((point) => ({
+        dispatchId: point.dispatchId,
+        label: point.label,
+        scheduledAt: point.scheduledAt,
+        adherencePercent: point.adherencePercent,
+        favorabilityPercent: point.favorabilityPercent,
+        enps: point.enps,
+        overallScorePercent: point.overallScorePercent,
+      })),
     },
     alerts: {
+      total: alerts.total,
       unresolved: alerts.unresolved,
       criticalUnresolved: alerts.criticalUnresolved,
+      resolved: alerts.resolved,
     },
     actionPlans: {
-      completed: actionPlans.completed,
+      total: actionPlans.total,
+      open: actionPlans.open,
       inProgress: actionPlans.inProgress,
+      completed: actionPlans.completed,
       overdue: actionPlans.overdue,
+      completionRatePercent:
+        actionPlans.total > 0 ? roundOneDecimal((actionPlans.completed / actionPlans.total) * 100) : null,
     },
     workforce: {
       competencia: workforce.selectedCompetencia,
       headcount: workforce.kpis.headcount,
+      admissions: workforce.kpis.admissions,
+      terminations: workforce.kpis.terminations,
       turnoverPercent: workforce.kpis.turnoverPercent,
       absenteeismPercent: workforce.kpis.absenteeismPercent,
+      evolution: workforce.evolution.map((point) => ({
+        competencia: point.competencia,
+        headcount: point.headcount,
+        turnoverPercent: point.turnoverPercent,
+        absenteeismPercent: point.absenteeismPercent,
+      })),
     },
     timeline,
   }

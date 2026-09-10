@@ -36,7 +36,7 @@ export default async function WorkforcePage({ searchParams }: Props): Promise<Re
       <div className="border-b border-border bg-card px-6 py-4 shrink-0">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-sm font-bold uppercase tracking-widest">Indicadores de Pessoas</h1>
+            <h1 className="text-sm font-bold uppercase tracking-widest">Métricas de Equipe</h1>
             <p className="text-xs text-muted-foreground mt-0.5">
               Headcount, turnover e absenteísmo por competência e setor
             </p>

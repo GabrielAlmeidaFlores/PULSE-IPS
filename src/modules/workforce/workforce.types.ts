@@ -79,6 +79,7 @@ export interface WorkforceInsight {
   departmentName: string | null
   title: string
   description: string
+  actionPlanId: string | null
   createdAt: Date
 }
 

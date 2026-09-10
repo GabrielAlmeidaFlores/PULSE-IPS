@@ -1,24 +1,30 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import {
+  generateActionPlanFromWorkforceInsight,
   generateWorkforceInsightsWithAI,
   getWorkforceCrossAnalysis,
   getWorkforceInsights,
 } from "@/modules/workforce/workforce-insights.service"
 import {
+  findWorkforceInsightById,
   findWorkforceInsights,
+  linkWorkforceInsightToActionPlan,
   replaceWorkforceInsights,
 } from "@/modules/workforce/workforce-insight.repository"
+import { createPlanWithTasks } from "@/modules/action-plans/action-plan.service"
 import { getWorkforceDashboard } from "@/modules/workforce/workforce.service"
 import {
   getLatestClimateSurveyDepartmentScores,
   type LatestClimateSurveyDepartmentScores,
 } from "@/modules/climate-surveys/climate-survey-dashboard.service"
 import type { IAIService } from "@/libs/integrations/ai/ai.interface"
+import type { ActionPlan } from "@/modules/action-plans/action-plan.types"
 import type { WorkforceDashboard, WorkforceInsight } from "@/modules/workforce/workforce.types"
 
 vi.mock("@/modules/workforce/workforce-insight.repository")
 vi.mock("@/modules/workforce/workforce.service")
 vi.mock("@/modules/climate-surveys/climate-survey-dashboard.service")
+vi.mock("@/modules/action-plans/action-plan.service")
 vi.mock("@/libs/utils/logger", () => ({
   createLogger: () => ({
     info: vi.fn(),
@@ -38,6 +44,7 @@ vi.mock("@/libs/integrations", () => ({
 
 const TENANT_ID = "tenant-1"
 const COMPETENCIA = "2026-08"
+const INSIGHT_ID = "insight-1"
 const OPERACOES = "Operações"
 const COMERCIAL = "Comercial"
 
@@ -91,7 +98,7 @@ const LATEST_CLIMATE_SCORES: LatestClimateSurveyDepartmentScores = {
 }
 
 const SAVED_INSIGHT: WorkforceInsight = {
-  id: "insight-1",
+  id: INSIGHT_ID,
   tenantId: TENANT_ID,
   competencia: COMPETENCIA,
   kind: "burnout_risk",
@@ -99,6 +106,7 @@ const SAVED_INSIGHT: WorkforceInsight = {
   departmentName: OPERACOES,
   title: "Risco de burnout em Operações",
   description: "Absenteísmo alto combinado a clima baixo.",
+  actionPlanId: null,
   createdAt: new Date("2026-09-10T00:00:00Z"),
 }
 
@@ -106,6 +114,25 @@ const mockGetWorkforceDashboard = vi.mocked(getWorkforceDashboard)
 const mockGetLatestClimateSurveyDepartmentScores = vi.mocked(getLatestClimateSurveyDepartmentScores)
 const mockFindWorkforceInsights = vi.mocked(findWorkforceInsights)
 const mockReplaceWorkforceInsights = vi.mocked(replaceWorkforceInsights)
+const mockFindWorkforceInsightById = vi.mocked(findWorkforceInsightById)
+const mockCreatePlanWithTasks = vi.mocked(createPlanWithTasks)
+const mockLinkWorkforceInsightToActionPlan = vi.mocked(linkWorkforceInsightToActionPlan)
+
+const CREATED_ACTION_PLAN: ActionPlan = {
+  id: "plan-1",
+  tenantId: TENANT_ID,
+  title: "Reduzir absenteísmo em Operações",
+  description: "Contexto e objetivo.",
+  status: "open",
+  priority: "high",
+  dueDate: null,
+  completedAt: null,
+  assigneeId: null,
+  climateSurveyDispatchId: null,
+  climateSurveyDimension: null,
+  createdAt: new Date("2026-09-10T00:00:00Z"),
+  updatedAt: new Date("2026-09-10T00:00:00Z"),
+}
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -113,6 +140,9 @@ beforeEach(() => {
   mockGetLatestClimateSurveyDepartmentScores.mockResolvedValue(LATEST_CLIMATE_SCORES)
   mockFindWorkforceInsights.mockResolvedValue([SAVED_INSIGHT])
   mockReplaceWorkforceInsights.mockResolvedValue(undefined)
+  mockFindWorkforceInsightById.mockResolvedValue(SAVED_INSIGHT)
+  mockCreatePlanWithTasks.mockResolvedValue(CREATED_ACTION_PLAN)
+  mockLinkWorkforceInsightToActionPlan.mockResolvedValue(undefined)
   mockGenerate.mockResolvedValue({ text: null, toolCalls: [], usage: { inputTokens: 0, outputTokens: 0 } })
 })
 
@@ -255,7 +285,7 @@ describe("generateWorkforceInsightsWithAI", () => {
           arguments: JSON.stringify({
             kind: "action_suggestion",
             severity: "medium",
-            title: "Revisar carga de trabalho",
+            title: "Mapear causas do absenteísmo",
             description: "Priorizar setores com absenteísmo alto.",
           }),
         },
@@ -269,9 +299,73 @@ describe("generateWorkforceInsightsWithAI", () => {
       {
         kind: "action_suggestion",
         severity: "medium",
-        title: "Revisar carga de trabalho",
+        title: "Mapear causas do absenteísmo",
         description: "Priorizar setores com absenteísmo alto.",
       },
     ])
+  })
+})
+
+describe("generateActionPlanFromWorkforceInsight", () => {
+  it("gera o plano com IA e cria via createPlanWithTasks", async () => {
+    mockGenerate.mockResolvedValue({
+      text: null,
+      toolCalls: [
+        {
+          id: "call-1",
+          name: "save_workforce_action_plan",
+          arguments: JSON.stringify({
+            title: "Reduzir absenteísmo em Operações",
+            description: "Contexto e objetivo.",
+            priority: "high",
+            tasks: [{ title: "Entrevistar liderança" }, { title: "Definir plano de comunicação" }],
+          }),
+        },
+      ],
+      usage: { inputTokens: 1, outputTokens: 1 },
+    })
+
+    const plan = await generateActionPlanFromWorkforceInsight(TENANT_ID, INSIGHT_ID, "user-1")
+
+    expect(mockGenerate).toHaveBeenCalledWith(expect.objectContaining({ tier: "high" }))
+    expect(mockCreatePlanWithTasks).toHaveBeenCalledWith(
+      TENANT_ID,
+      { title: "Reduzir absenteísmo em Operações", description: "Contexto e objetivo.", priority: "high" },
+      ["Entrevistar liderança", "Definir plano de comunicação"],
+      "user-1",
+    )
+    expect(mockLinkWorkforceInsightToActionPlan).toHaveBeenCalledWith(TENANT_ID, INSIGHT_ID, CREATED_ACTION_PLAN.id)
+    expect(plan).toEqual(CREATED_ACTION_PLAN)
+  })
+
+  it("lança AppError quando o insight não existe", async () => {
+    mockFindWorkforceInsightById.mockResolvedValue(null)
+
+    await expect(generateActionPlanFromWorkforceInsight(TENANT_ID, "insight-x")).rejects.toMatchObject({
+      code: "WORKFORCE_INSIGHT_NOT_FOUND",
+    })
+    expect(mockGenerate).not.toHaveBeenCalled()
+  })
+
+  it("lança AppError quando a IA não retorna a tool", async () => {
+    mockGenerate.mockResolvedValue({ text: null, toolCalls: [], usage: { inputTokens: 1, outputTokens: 1 } })
+
+    await expect(generateActionPlanFromWorkforceInsight(TENANT_ID, INSIGHT_ID)).rejects.toMatchObject({
+      code: "WORKFORCE_ACTION_PLAN_GENERATION_FAILED",
+    })
+    expect(mockCreatePlanWithTasks).not.toHaveBeenCalled()
+  })
+
+  it("lança AppError quando a tool retorna argumentos inválidos", async () => {
+    mockGenerate.mockResolvedValue({
+      text: null,
+      toolCalls: [{ id: "call-1", name: "save_workforce_action_plan", arguments: JSON.stringify({ title: "x" }) }],
+      usage: { inputTokens: 1, outputTokens: 1 },
+    })
+
+    await expect(generateActionPlanFromWorkforceInsight(TENANT_ID, INSIGHT_ID)).rejects.toMatchObject({
+      code: "WORKFORCE_ACTION_PLAN_GENERATION_FAILED",
+    })
+    expect(mockCreatePlanWithTasks).not.toHaveBeenCalled()
   })
 })

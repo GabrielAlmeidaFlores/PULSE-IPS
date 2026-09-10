@@ -6,6 +6,7 @@ import { FilterBar } from "@/libs/design-system"
 import { BADGE_AMBER, BADGE_BASE, BADGE_BLUE, BADGE_GREEN, BADGE_RED } from "@/libs/design-system/alert-labels"
 import type { WorkforceInsight, WorkforceInsightKind, WorkforceRiskLevel } from "@/modules/workforce/workforce.types"
 import { GenerateWorkforceInsightsButton } from "@/app/(tenant)/workforce/insights/generate-workforce-insights-button"
+import { CreateActionPlanFromInsightButton } from "@/app/(tenant)/workforce/insights/create-action-plan-from-insight-button"
 
 interface Props {
   searchParams: Promise<Record<string, string | undefined>>
@@ -79,11 +80,11 @@ export default async function WorkforceInsightsPage({ searchParams }: Props): Pr
     <div className="flex flex-col h-full">
       <div className="border-b border-border bg-card px-6 py-4 shrink-0">
         <Link href="/workforce" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-          ← Indicadores de Pessoas
+          ← Métricas de Equipe
         </Link>
         <div className="flex items-start justify-between gap-4 mt-2">
           <div>
-            <h1 className="text-sm font-bold uppercase tracking-widest">Análise de Pessoas com IA</h1>
+            <h1 className="text-sm font-bold uppercase tracking-widest">Análise de Equipe com IA</h1>
             <p className="text-xs text-muted-foreground mt-0.5">
               Cruzamento de absenteísmo e turnover com o clima organizacional
             </p>
@@ -208,6 +209,9 @@ export default async function WorkforceInsightsPage({ searchParams }: Props): Pr
                               <p className="text-[11px] text-muted-foreground mt-0.5">{insight.departmentName}</p>
                             ) : null}
                             <p className="text-xs text-muted-foreground mt-1 whitespace-pre-line">{insight.description}</p>
+                            {kind === "action_suggestion" && (
+                              <CreateActionPlanFromInsightButton insightId={insight.id} />
+                            )}
                           </div>
                         ))}
                       </div>
