@@ -520,7 +520,10 @@ function resolveEnpsStatus(score: number | null): ClimateSurveyModuleDashboard["
   return "critical"
 }
 
-export async function getClimateSurveyModuleDashboard(tenantId: string): Promise<ClimateSurveyModuleDashboard> {
+export async function getClimateSurveyModuleDashboard(
+  tenantId: string,
+  departmentId?: string,
+): Promise<ClimateSurveyModuleDashboard> {
   const [org, waves, topics] = await Promise.all([
     findOrganizationById(tenantId),
     findRecentAvailableClimateSurveyDispatchesForOverview(tenantId, 8),
@@ -564,18 +567,30 @@ export async function getClimateSurveyModuleDashboard(tenantId: string): Promise
     }
   }
 
-  const hasEnoughRespondents = canRevealClimateSurveyGroupResults(
-    latest.totalResponses,
-    latest.totalRecipients,
-    minRespondentsPercent,
-  )
-  const requiredRespondents = latest.totalRecipients > 0
-    ? climateSurveyRequiredRespondents(latest.totalRecipients, minRespondentsPercent)
+  const filterDeptIds = departmentId !== undefined ? [departmentId] : undefined
+  const scopedItems =
+    filterDeptIds !== undefined
+      ? latest.responseItems.filter((item) => item.departmentId !== null && filterDeptIds.includes(item.departmentId))
+      : latest.responseItems
+  const scopeRecipients =
+    filterDeptIds !== undefined
+      ? latest.deptRecipients
+          .filter((recipient) => filterDeptIds.includes(recipient.departmentId))
+          .reduce((sum, recipient) => sum + recipient.totalRecipients, 0)
+      : latest.totalRecipients
+  const scopeResponses =
+    filterDeptIds !== undefined
+      ? Math.round(scopedItems.length / Math.max(latest.questions.length, 1))
+      : latest.totalResponses
+
+  const hasEnoughRespondents = canRevealClimateSurveyGroupResults(scopeResponses, scopeRecipients, minRespondentsPercent)
+  const requiredRespondents = scopeRecipients > 0
+    ? climateSurveyRequiredRespondents(scopeRecipients, minRespondentsPercent)
     : 0
   const adherencePercent =
-    latest.totalRecipients > 0 ? Math.round((latest.totalResponses / latest.totalRecipients) * 100) : 0
+    scopeRecipients > 0 ? Math.round((scopeResponses / scopeRecipients) * 100) : 0
   const metrics = hasEnoughRespondents
-    ? computeClimateSurveyMetricsBreakdown(latest.responseItems, buildMetricQuestionInputs(latest.questions))
+    ? computeClimateSurveyMetricsBreakdown(scopedItems, buildMetricQuestionInputs(latest.questions))
     : {
         overall: emptyAggregatedMetrics(),
         byQuestion: new Map<string, ClimateSurveyAggregatedMetrics>(),
@@ -597,8 +612,8 @@ export async function getClimateSurveyModuleDashboard(tenantId: string): Promise
     },
     kpis: {
       adherencePercent,
-      totalResponses: latest.totalResponses,
-      totalRecipients: latest.totalRecipients,
+      totalResponses: scopeResponses,
+      totalRecipients: scopeRecipients,
       favorabilityPercent: metrics.overall.favorabilityPercent,
       enps: metrics.overall.enps.score,
       adherenceStatus: climateSurveyMetricStatus(adherencePercent, 80),

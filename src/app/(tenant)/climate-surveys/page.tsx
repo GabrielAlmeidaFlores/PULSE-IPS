@@ -5,9 +5,11 @@ import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
 import { getClimateSurveyModuleDashboard } from "@/modules/climate-surveys/climate-survey-dashboard.service"
 import { getClimateSurveyConfigs } from "@/modules/climate-surveys/climate-survey-config.service"
 import { getOrganization } from "@/modules/organizations/organization.service"
+import { getActiveDepartments } from "@/modules/departments/department.service"
 import { formatInTimeZone } from "date-fns-tz"
 import { ChartCard } from "@/components/chart-card"
 import { PageHelp } from "@/components/page-help"
+import { FilterBar } from "@/libs/design-system"
 import { ClimateSurveyTopicRadarChart } from "@/app/(tenant)/climate-surveys/components/climate-survey-topic-radar-chart"
 import { ClimateSurveyWaveEvolutionChart } from "@/app/(tenant)/climate-surveys/components/climate-survey-wave-evolution-chart"
 import { ClimateSurveyEnpsDonutChart } from "@/app/(tenant)/climate-surveys/components/climate-survey-enps-donut-chart"
@@ -35,26 +37,35 @@ function formatKpi(value: number | null, suffix = ""): string {
   return `${value}${suffix}`
 }
 
-export default async function ClimateSurveyDashboardPage(): Promise<React.ReactElement> {
+interface Props {
+  searchParams: Promise<Record<string, string | undefined>>
+}
+
+export default async function ClimateSurveyDashboardPage({ searchParams }: Props): Promise<React.ReactElement> {
   const session = await getSession()
   if (!session) redirect("/login")
   if (!(await hasTenantPlanFeature(session.tenantId, "climate_surveys"))) redirect("/dashboard")
 
-  const [dashboard, configs, org] = await Promise.all([
-    getClimateSurveyModuleDashboard(session.tenantId),
+  const params = await searchParams
+  const departmentId = params["department"]
+
+  const [dashboard, configs, org, departments] = await Promise.all([
+    getClimateSurveyModuleDashboard(session.tenantId, departmentId),
     getClimateSurveyConfigs(session.tenantId),
     getOrganization(session.tenantId),
+    getActiveDepartments(session.tenantId),
   ])
 
   const timezone = org?.timezone ?? "America/Sao_Paulo"
   const wave = dashboard.wave
+  const selectedDepartment = departmentId !== undefined ? departments.find((department) => department.id === departmentId) : undefined
 
   return (
     <div className="flex flex-col h-full">
       <div className="border-b border-border bg-card px-6 py-4 shrink-0">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <h1 className="text-sm font-bold uppercase tracking-widest">Dashboard — Pesquisa de Clima</h1>
               <PageHelp
                 content={
@@ -117,6 +128,31 @@ export default async function ClimateSurveyDashboardPage(): Promise<React.ReactE
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
+        {departments.length > 0 && (
+          <div className="space-y-2">
+            <FilterBar
+              fields={[
+                {
+                  type: "select",
+                  key: "department",
+                  label: "Visão",
+                  width: "w-[240px]",
+                  options: departments.map((department) => ({ value: department.id, label: department.name })),
+                  allLabel: "Empresa toda",
+                },
+              ]}
+              values={{ ...(departmentId !== undefined ? { department: departmentId } : {}) }}
+            />
+            {selectedDepartment !== undefined && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border border-primary/30 bg-primary/10 text-primary">
+                Área: {selectedDepartment.name}
+                <Link href="/climate-surveys" aria-label="Remover filtro de área" className="hover:text-foreground">
+                  ×
+                </Link>
+              </span>
+            )}
+          </div>
+        )}
         {wave === null ? (
           <div className="border border-dashed border-border bg-card px-5 py-10 text-center">
             <p className="text-sm font-bold text-muted-foreground">Sem dados de clima para exibir</p>
