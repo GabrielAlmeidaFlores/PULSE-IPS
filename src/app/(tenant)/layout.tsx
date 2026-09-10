@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import { getSession } from "@/modules/auth/session"
 import { getPendingTermsForUser } from "@/modules/terms/terms.service"
-import { getTenantPlanFeatures } from "@/modules/billing/billing.service"
+import { getTenantPlanFeatures, getTenantPlanSummary } from "@/modules/billing/billing.service"
 import { getOrganization } from "@/modules/organizations/organization.service"
 import { Sidebar } from "@/libs/design-system/components/layout/Sidebar"
 import { Header } from "@/libs/design-system/components/layout/Header"
@@ -19,10 +19,11 @@ export default async function TenantLayout({
   const session = await getSession()
   if (!session) redirect("/login")
 
-  const [pendingTerms, features, org] = await Promise.all([
+  const [pendingTerms, features, org, planSummary] = await Promise.all([
     getPendingTermsForUser(session.userId),
     getTenantPlanFeatures(session.tenantId),
     getOrganization(session.tenantId),
+    getTenantPlanSummary(session.tenantId),
   ])
   if (pendingTerms) redirect("/accept-terms")
 
@@ -36,7 +37,13 @@ export default async function TenantLayout({
       <div className="flex h-screen bg-background">
         <Sidebar tenantId={session.tenantId} role={session.role} features={features} />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <Header email={session.email} />
+          <Header
+            email={session.email}
+            orgName={org?.name ?? ""}
+            orgCnpj={org?.cnpj ?? null}
+            planName={planSummary.planName}
+            upgradeAvailable={planSummary.upgradeAvailable}
+          />
           <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
         </div>
         {deletionScheduledAt !== null && (

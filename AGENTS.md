@@ -3059,6 +3059,10 @@ libs/design-system/components/
 
 O `DialogContent` (`src/components/ui/dialog.tsx`) usa `grid grid-cols-1` (`grid-template-columns: repeat(1, minmax(0, 1fr))`). **Não remova o `grid-cols-1`**: sem ele a coluna implícita é `auto` e não encolhe abaixo do min-content dos filhos, o que gera **scroll horizontal** em modais com inputs/botões em linha (ex.: "Gerenciar tópicos"). Para conteúdo que estoura, use `min-w-0`/`truncate`/`flex-1` nos filhos, não `w-full` em inputs dentro de `flex`.
 
+### Header do tenant — dados do cliente
+
+O `Header` (`src/libs/design-system/components/layout/Header.tsx`) recebe do `(tenant)/layout.tsx`: `email`, `orgName`, `orgCnpj`, `planName` e `upgradeAvailable`. Mostra o nome da empresa + CNPJ (oculto em telas < 768px) à esquerda e o pill do plano à direita (âmbar com "· Upgrade disponível" quando `upgradeAvailable`, neutro caso contrário). O CNPJ vem de `organizations.cnpj` (cadastro). O plano/elegibilidade vêm de `getTenantPlanSummary(tenantId)` (`billing.service.ts`): `upgradeAvailable` é `true` quando existe plano ativo com preço maior que o `snapshot_price_in_cents` da assinatura atual.
+
 ### Layout padrão de páginas
 
 Páginas do painel (`(tenant)` e `(super-admin)`) seguem o padrão:

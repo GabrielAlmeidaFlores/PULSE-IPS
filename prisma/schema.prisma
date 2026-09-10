@@ -78,6 +78,7 @@ model Organization {
   id                   String   @id @default(uuid())
   name                 String
   slug                 String   @unique
+  cnpj                 String?  @db.VarChar(18)
   planId               String?  @map("plan_id")
   externalCustomerId   String?  @unique @map("external_customer_id")
   billingStatus        String    @default("pending") @map("billing_status")
