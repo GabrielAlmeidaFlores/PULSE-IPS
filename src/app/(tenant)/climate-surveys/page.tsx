@@ -323,8 +323,8 @@ export default async function ClimateSurveyDashboardPage({ searchParams }: Props
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
               <ChartCard
-                title="Radar por tópico"
-                subtitle={`Comparação com a meta corporativa (${dashboard.corporateGoalPercent}%)`}
+                title="Radar por tópico vs meta"
+                subtitle={`Favorabilidade (% que concorda) por dimensão, meta corporativa de ${dashboard.corporateGoalPercent}%`}
               >
                 <ClimateSurveyTopicRadarChart
                   points={dashboard.radar}
