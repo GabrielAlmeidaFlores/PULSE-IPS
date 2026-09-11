@@ -245,7 +245,7 @@ describe("getClimateSurveyActionPlanBoard", () => {
         completedAt: null,
         assigneeId: "user-1",
         climateSurveyDispatchId: DISPATCH_ID,
-        climateSurveyDimension: null,
+        climateSurveyDimension: "leadership_trust",
         createdAt: new Date(),
         updatedAt: new Date(),
         tasks: [],
@@ -263,7 +263,7 @@ describe("getClimateSurveyActionPlanBoard", () => {
         completedAt: new Date(),
         assigneeId: "user-2",
         climateSurveyDispatchId: DISPATCH_ID,
-        climateSurveyDimension: null,
+        climateSurveyDimension: "job_satisfaction",
         createdAt: new Date(),
         updatedAt: new Date(),
         tasks: [],
@@ -279,6 +279,12 @@ describe("getClimateSurveyActionPlanBoard", () => {
 
     expect(board.actions).toHaveLength(1)
     expect(board.actions[0]?.id).toBe("plan-1")
+
+    const byPriority = await getClimateSurveyActionPlanBoard(TENANT_ID, { priority: "low" })
+    expect(byPriority.actions.map((action) => action.id)).toEqual(["plan-2"])
+
+    const byTopic = await getClimateSurveyActionPlanBoard(TENANT_ID, { dimension: "leadership_trust" })
+    expect(byTopic.actions.map((action) => action.id)).toEqual(["plan-1"])
   })
 })
 

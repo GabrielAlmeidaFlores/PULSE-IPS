@@ -4063,8 +4063,9 @@ RH (feature climate_surveys) → Sidebar “Pesquisa de Clima”
  ├─ Disparo & Canais `/climate-surveys/dispatches` — compositor de campanha + histórico
  └─ Plano de Ação `/climate-surveys/action-plans` (feature action_plans)
      · tópicos abaixo da meta (auto, da última onda)
-     · CRUD de ações: título, descrição, responsável, prioridade, status, prazo
-     · filtros por responsável/status · indicadores: concluídas / em andamento / atrasadas
+     · CRUD de ações: título, descrição, responsável, **tópico obrigatório**, prioridade, status, prazo
+     · lista em **cards** (pill de prioridade à esquerda, título, tópico abaixo, status à direita) com **prazo vencido destacado** (data em vermelho + ícone de alerta)
+     · filtros por **status, prioridade, tópico** e responsável · indicadores: concluídas / em andamento / atrasadas
 RH → /climate-surveys/configure
   └─ Lista de pesquisas · Nova/Editar: banco de perguntas em accordion por tópico (checkbox)
      + seção "Perguntas personalizadas" (texto, tópico e direção do score, add/remover inline),

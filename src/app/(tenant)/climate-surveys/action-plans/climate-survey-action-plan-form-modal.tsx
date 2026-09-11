@@ -98,18 +98,21 @@ export function ClimateSurveyActionPlanFormModal({
       return
     }
 
+    if (form.dimension.length === 0) {
+      toast.error("Selecione o tópico vinculado à ação.")
+      return
+    }
+
     startTransition(async () => {
       if (mode === "create") {
         const result = await createClimateSurveyActionPlanItemAction({
           title: form.title.trim(),
           priority: form.priority,
           status: form.status,
+          dimension: form.dimension,
           ...(form.description.trim().length > 0 ? { description: form.description.trim() } : {}),
           ...(form.dueDate.length > 0 ? { dueDate: form.dueDate } : {}),
           ...(form.assigneeId.length > 0 ? { assigneeId: form.assigneeId } : {}),
-          ...(form.dimension.length > 0
-            ? { dimension: form.dimension }
-            : {}),
           ...(waveId !== null ? { climateSurveyDispatchId: waveId } : {}),
         })
         if (result.error !== undefined) {
@@ -134,7 +137,7 @@ export function ClimateSurveyActionPlanFormModal({
         status: form.status,
         dueDate: form.dueDate.length > 0 ? form.dueDate : null,
         assigneeId: form.assigneeId.length > 0 ? form.assigneeId : null,
-        dimension: form.dimension.length > 0 ? form.dimension : null,
+        dimension: form.dimension,
       })
       if (result.error !== undefined) {
         toast.error(result.error)

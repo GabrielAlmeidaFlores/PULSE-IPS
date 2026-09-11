@@ -22,8 +22,9 @@ export default async function ClimateSurveyActionPlansPage({
   if (!(await hasTenantPlanFeature(session.tenantId, "action_plans"))) redirect("/climate-surveys")
 
   const params = await searchParams
-  const boardFilters: { status?: string; assigneeId?: string; dimension?: string } = {}
+  const boardFilters: { status?: string; priority?: string; assigneeId?: string; dimension?: string } = {}
   if (params["status"] !== undefined) boardFilters.status = params["status"]
+  if (params["priority"] !== undefined) boardFilters.priority = params["priority"]
   if (params["assigneeId"] !== undefined) boardFilters.assigneeId = params["assigneeId"]
   if (params["dimension"] !== undefined) boardFilters.dimension = params["dimension"]
 
@@ -90,12 +91,33 @@ export default async function ClimateSurveyActionPlansPage({
               type: "select",
               key: "status",
               label: "Status",
-              width: "w-[180px]",
+              width: "w-[160px]",
               options: [
                 { value: "open", label: "Planejado" },
                 { value: "in_progress", label: "Em andamento" },
                 { value: "completed", label: "Concluído" },
               ],
+            },
+            {
+              type: "select",
+              key: "priority",
+              label: "Prioridade",
+              width: "w-[160px]",
+              options: [
+                { value: "high", label: "Alta" },
+                { value: "medium", label: "Média" },
+                { value: "low", label: "Baixa" },
+              ],
+            },
+            {
+              type: "select",
+              key: "dimension",
+              label: "Tópico",
+              width: "w-[220px]",
+              options: board.topics.map((topic) => ({
+                value: topic.key,
+                label: topic.label,
+              })),
             },
             {
               type: "select",
@@ -110,6 +132,8 @@ export default async function ClimateSurveyActionPlansPage({
           ]}
           values={{
             ...(params["status"] !== undefined ? { status: params["status"] } : {}),
+            ...(params["priority"] !== undefined ? { priority: params["priority"] } : {}),
+            ...(params["dimension"] !== undefined ? { dimension: params["dimension"] } : {}),
             ...(params["assigneeId"] !== undefined ? { assigneeId: params["assigneeId"] } : {}),
           }}
         />

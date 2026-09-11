@@ -23,7 +23,7 @@ const createClimateSurveyActionSchema = z.object({
   status: climateSurveyActionStatusSchema.optional(),
   dueDate: z.string().optional(),
   assigneeId: z.string().uuid().optional(),
-  dimension: climateSurveyTopicKeySchema.optional(),
+  dimension: climateSurveyTopicKeySchema,
   climateSurveyDispatchId: z.string().uuid().optional(),
 })
 

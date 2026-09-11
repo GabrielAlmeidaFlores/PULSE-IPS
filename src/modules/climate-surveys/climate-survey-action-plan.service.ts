@@ -89,6 +89,7 @@ export interface ClimateSurveyActionPlanBoard {
 
 export interface ClimateSurveyActionPlanBoardFilters {
   status?: string
+  priority?: string
   assigneeId?: string
   dimension?: string
 }
@@ -191,6 +192,7 @@ export async function getClimateSurveyActionPlanBoard(
 
   const actions = allRows.filter((action) => {
     if (filters.status !== undefined && action.status !== filters.status) return false
+    if (filters.priority !== undefined && action.priority !== filters.priority) return false
     if (filters.assigneeId !== undefined && action.assigneeId !== filters.assigneeId) return false
     if (filters.dimension !== undefined && action.dimension !== filters.dimension) return false
     return true
