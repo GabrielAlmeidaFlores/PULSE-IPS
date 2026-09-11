@@ -184,11 +184,26 @@ export interface ClimateSurveyWaveEvolutionPoint {
   overallScorePercent: number | null
 }
 
+export const CLIMATE_SURVEY_HEATMAP_STRONG_GAP_PERCENT = 5
+export const CLIMATE_SURVEY_HEATMAP_ATTENTION_GAP_PERCENT = 10
+
+export type ClimateSurveyHeatmapBand = "strong" | "on_goal" | "attention" | "critical"
+
+export function resolveClimateSurveyHeatmapBand(
+  favorabilityPercent: number,
+  goalPercent: number,
+): ClimateSurveyHeatmapBand {
+  if (favorabilityPercent >= goalPercent + CLIMATE_SURVEY_HEATMAP_STRONG_GAP_PERCENT) return "strong"
+  if (favorabilityPercent >= goalPercent) return "on_goal"
+  if (favorabilityPercent >= goalPercent - CLIMATE_SURVEY_HEATMAP_ATTENTION_GAP_PERCENT) return "attention"
+  return "critical"
+}
+
 export interface ClimateSurveyHeatmapCell {
   dimension: ClimateSurveyDimension
   departmentId: string
-  scorePercent: number | null
-  status: ClimateSurveyMetricStatus
+  favorabilityPercent: number | null
+  band: ClimateSurveyHeatmapBand | null
   responseCount: number | null
 }
 

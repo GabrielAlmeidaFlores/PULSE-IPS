@@ -374,7 +374,7 @@ export default async function ClimateSurveyDashboardPage({ searchParams }: Props
 
             <ChartCard
               title="Mapa de calor tópicos × departamentos"
-              subtitle="Verde: acima da meta · Amarelo: atenção · Vermelho: crítico"
+              subtitle="Favorabilidade (%) — verde forte ≥ meta+5 · verde na meta · âmbar até 10 p.p. abaixo · vermelho mais de 10 abaixo"
             >
               <ClimateSurveyTopicDepartmentHeatmap heatmap={dashboard.heatmap} />
             </ChartCard>

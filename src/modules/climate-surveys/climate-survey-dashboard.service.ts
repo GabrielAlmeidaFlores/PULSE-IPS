@@ -22,6 +22,7 @@ import {
   CLIMATE_SURVEY_CORPORATE_GOAL_PERCENT,
   climateSurveyMetricStatus,
   resolveClimateSurveyFavorabilityBand,
+  resolveClimateSurveyHeatmapBand,
   resolveClimateSurveyTopicLabel,
   toClimateSurveyDimension,
   type ClimateSurveyDispatchDashboardStats,
@@ -493,12 +494,15 @@ function buildHeatmap(
       const metrics = canShow
         ? computeClimateSurveyMetricsBreakdown(deptTopicItems, metricQuestions).byTopic.get(dimension)
         : undefined
-      const scorePercent = canShow ? (metrics?.weightedScorePercent ?? null) : null
+      const favorabilityPercent = canShow ? (metrics?.favorabilityPercent ?? null) : null
       cells.push({
         dimension,
         departmentId: department.id,
-        scorePercent,
-        status: climateSurveyMetricStatus(scorePercent),
+        favorabilityPercent,
+        band:
+          favorabilityPercent === null
+            ? null
+            : resolveClimateSurveyHeatmapBand(favorabilityPercent, CLIMATE_SURVEY_CORPORATE_GOAL_PERCENT),
         responseCount: canShow ? estimatedRespondents : null,
       })
     }

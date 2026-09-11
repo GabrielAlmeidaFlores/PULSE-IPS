@@ -1,13 +1,14 @@
-import type { ClimateSurveyModuleDashboard, ClimateSurveyMetricStatus } from "@/modules/climate-surveys/climate-survey.types"
+import type { ClimateSurveyHeatmapBand, ClimateSurveyModuleDashboard } from "@/modules/climate-surveys/climate-survey.types"
 
 interface Props {
   heatmap: ClimateSurveyModuleDashboard["heatmap"]
 }
 
-function cellClass(status: ClimateSurveyMetricStatus): string {
-  if (status === "above_goal") return "bg-status-success-subtle text-status-success border-status-success-border"
-  if (status === "attention") return "bg-status-warning-subtle text-status-warning border-status-warning-border"
-  if (status === "critical") return "bg-status-danger-subtle text-status-danger border-status-danger-border"
+function cellClass(band: ClimateSurveyHeatmapBand | null): string {
+  if (band === "strong") return "bg-status-success-subtle text-status-success border-status-success-border"
+  if (band === "on_goal") return "bg-status-success-subtle/40 text-status-success border-status-success-border"
+  if (band === "attention") return "bg-status-warning-subtle text-status-warning border-status-warning-border"
+  if (band === "critical") return "bg-status-danger-subtle text-status-danger border-status-danger-border"
   return "bg-muted text-muted-foreground border-border"
 }
 
@@ -41,11 +42,11 @@ export function ClimateSurveyTopicDepartmentHeatmap({ heatmap }: Props): React.R
                 const cell = heatmap.cells.find(
                   (entry) => entry.dimension === topic.dimension && entry.departmentId === department.id,
                 )
-                const status = cell?.status ?? "unavailable"
-                const value = cell?.scorePercent
+                const band = cell?.band ?? null
+                const value = cell?.favorabilityPercent
                 return (
                   <td key={`${topic.dimension}-${department.id}`} className="px-2 py-2 text-center">
-                    <span className={`inline-flex min-w-[3.25rem] justify-center px-2 py-1 border text-[11px] font-bold tabular-nums ${cellClass(status)}`}>
+                    <span className={`inline-flex min-w-[3.25rem] justify-center px-2 py-1 border text-[11px] font-bold tabular-nums ${cellClass(band)}`}>
                       {value === null || value === undefined ? "—" : `${value}%`}
                     </span>
                   </td>

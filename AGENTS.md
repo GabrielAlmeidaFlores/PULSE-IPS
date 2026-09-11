@@ -4069,7 +4069,7 @@ RH → /climate-surveys/[dispatchId]
 | Barras | Favorabilidade por tópico — barras horizontais ordenadas do maior para o menor, linha tracejada vertical na meta; cor = verde na meta ou acima, âmbar até 10 p.p. abaixo, vermelho acima disso (`resolveClimateSurveyFavorabilityBand`) |
 | Linha | Evolução entre ondas (clima ponderado, favorabilidade, adesão, eNPS) |
 | Rosca eNPS | Promotores / Neutros / Detratores |
-| Heatmap | Tópicos × departamentos (verde ≥ meta, amarelo ≥ meta−20, vermelho crítico) |
+| Heatmap | Favorabilidade por tópico × departamento, com régua de 4 faixas relativa à meta (`resolveClimateSurveyHeatmapBand`): `≥ meta+5` forte · `meta..meta+5` na meta · `meta−10..meta` atenção · `< meta−10` crítico. Célula sem amostra suficiente mostra "—"; coluna de tópicos fixa na rolagem horizontal |
 
 **Fórmulas de métricas (`climate-survey-metrics.ts`) — obrigatórias:**
 

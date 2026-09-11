@@ -11,6 +11,7 @@ import {
   getClimateSurveyModuleDashboard,
   getLatestClimateSurveyDepartmentScores,
 } from "@/modules/climate-surveys/climate-survey-dashboard.service"
+import { resolveClimateSurveyHeatmapBand } from "@/modules/climate-surveys/climate-survey.types"
 import {
   findClimateSurveyDispatchesByTenant,
   createClimateSurveyDispatch,
@@ -624,8 +625,28 @@ describe("getClimateSurveyModuleDashboard", () => {
     expect(result.enpsBreakdown.total).toBe(6)
     expect(result.radar.find((p) => p.dimension === "job_satisfaction")?.scorePercent).not.toBeNull()
     expect(result.heatmap.departments).toHaveLength(2)
+    const vendasCell = result.heatmap.cells.find(
+      (cell) => cell.dimension === "job_satisfaction" && cell.departmentId === "dept-1",
+    )
+    expect(vendasCell?.favorabilityPercent).toBe(100)
+    expect(vendasCell?.band).toBe("strong")
+    const opsCell = result.heatmap.cells.find(
+      (cell) => cell.dimension === "job_satisfaction" && cell.departmentId === "dept-2",
+    )
+    expect(opsCell?.favorabilityPercent).toBeNull()
+    expect(opsCell?.band).toBeNull()
     expect(result.evolution).toHaveLength(1)
     expect(result.funnel.openRatePercent).toBe(50)
+  })
+
+  it("classifica as faixas do heatmap pela régua relativa à meta", () => {
+    expect(resolveClimateSurveyHeatmapBand(76, 70)).toBe("strong")
+    expect(resolveClimateSurveyHeatmapBand(75, 70)).toBe("strong")
+    expect(resolveClimateSurveyHeatmapBand(74, 70)).toBe("on_goal")
+    expect(resolveClimateSurveyHeatmapBand(70, 70)).toBe("on_goal")
+    expect(resolveClimateSurveyHeatmapBand(69, 70)).toBe("attention")
+    expect(resolveClimateSurveyHeatmapBand(60, 70)).toBe("attention")
+    expect(resolveClimateSurveyHeatmapBand(59, 70)).toBe("critical")
   })
 
   it("não revela scores nem contagens de células com participação abaixo do percentual mínimo", async () => {
@@ -653,7 +674,7 @@ describe("getClimateSurveyModuleDashboard", () => {
     expect(result.hasEnoughRespondents).toBe(false)
     expect(result.kpis.favorabilityPercent).toBeNull()
     expect(result.kpis.enps).toBeNull()
-    expect(result.heatmap.cells.every((cell) => cell.scorePercent === null)).toBe(true)
+    expect(result.heatmap.cells.every((cell) => cell.favorabilityPercent === null)).toBe(true)
     expect(result.heatmap.cells.every((cell) => cell.responseCount === null)).toBe(true)
   })
 
