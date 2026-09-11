@@ -70,6 +70,7 @@ export default defineConfig({
         "src/modules/climate-surveys/climate-survey-dispatch.service.ts",
         "src/modules/climate-surveys/climate-survey-response.service.ts",
         "src/modules/climate-surveys/climate-survey-dashboard.service.ts",
+        "src/modules/climate-surveys/climate-survey-reports.service.ts",
         "src/modules/climate-surveys/climate-survey-export.ts",
         "src/modules/climate-surveys/climate-survey-metrics.ts",
         "src/modules/climate-surveys/climate-survey-reminder.service.ts",

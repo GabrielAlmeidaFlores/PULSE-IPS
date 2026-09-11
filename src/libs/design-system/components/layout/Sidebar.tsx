@@ -71,6 +71,7 @@ function getModuleNav(module: ModuleKey, features: PlanFeature[]): NavGroup[] {
         { href: "/climate-surveys/configure", label: "Banco de perguntas", icon: <BookOpen className="h-3.5 w-3.5" /> },
         { href: "/climate-surveys/dispatches", label: "Disparo & canais", icon: <Send className="h-3.5 w-3.5" /> },
         { href: "/climate-surveys/compare", label: "Comparar ondas", icon: <GitCompareArrows className="h-3.5 w-3.5" /> },
+        { href: "/climate-surveys/reports", label: "Relatórios", icon: <FileText className="h-3.5 w-3.5" /> },
         { href: "/climate-surveys/action-plans", label: "Plano de ação", icon: <ListChecks className="h-3.5 w-3.5" />, feature: "action_plans" },
       ],
     })

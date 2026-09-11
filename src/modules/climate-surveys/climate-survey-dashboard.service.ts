@@ -376,6 +376,36 @@ export async function getClimateSurveyDispatchDashboard(
   return buildDispatchStats(data, org?.climateSurveyMinRespondentsPercent ?? 40, topicLabelMap, filterDeptIds)
 }
 
+export async function getClimateSurveyDispatchHeatmap(
+  tenantId: string,
+  dispatchId: string,
+): Promise<ClimateSurveyModuleDashboard["heatmap"] | null> {
+  const [data, org, topicLabelMap, topics] = await Promise.all([
+    findClimateSurveyDispatchWithDashboard(tenantId, dispatchId),
+    findOrganizationById(tenantId),
+    getClimateSurveyTopicLabelMap(tenantId),
+    listClimateSurveyTopics(tenantId),
+  ])
+  if (data === null) return null
+  const minRespondentsPercent = org?.climateSurveyMinRespondentsPercent ?? 40
+  const hasEnoughRespondents = canRevealClimateSurveyGroupResults(
+    data.totalResponses,
+    data.totalRecipients,
+    minRespondentsPercent,
+  )
+  const orderedTopicKeys = resolveWaveTopicKeys(topics, data.questions)
+  return buildHeatmap(
+    data.responseItems,
+    data.questions,
+    data.departments,
+    data.deptRecipients,
+    hasEnoughRespondents,
+    minRespondentsPercent,
+    orderedTopicKeys,
+    topicLabelMap,
+  )
+}
+
 export async function getClimateSurveyMultipleDispatchDashboards(
   tenantId: string,
   dispatchIds: string[],

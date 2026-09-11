@@ -13,6 +13,8 @@ import type {
   CreateClimateSurveyConfigInput,
   UpdateClimateSurveyConfigInput,
   ClimateSurveyQuestionInput,
+  ClimateSurveyFrequency,
+  ScoreDirection,
 } from "@/modules/climate-surveys/climate-survey.types"
 import { AppError } from "@/libs/errors/app-error"
 import { assertClimateSurveyTopicKeysExist } from "@/modules/climate-surveys/climate-survey-topic.service"
@@ -56,6 +58,47 @@ export function getClimateSurveyConfigsWithDepartments(
 
 export function getClimateSurveyConfig(tenantId: string, configId: string): ReturnType<typeof findClimateSurveyConfigById> {
   return findClimateSurveyConfigById(tenantId, configId)
+}
+
+export async function duplicateClimateSurveyConfig(tenantId: string, configId: string): Promise<string> {
+  const source = await findClimateSurveyConfigById(tenantId, configId)
+  if (source === null) throw new AppError("CONFIG_NOT_FOUND", "Configuração não encontrada.")
+
+  const departmentIds = source.configDepartments.map((configDepartment) => configDepartment.department.id)
+  if (departmentIds.length === 0) {
+    throw new AppError("NO_DEPARTMENTS", "A configuração não possui setores para duplicar.")
+  }
+
+  const questions: ClimateSurveyQuestionInput[] = source.questions.map((question) => ({
+    text: question.text,
+    order: question.order,
+    scoreDirection: question.scoreDirection as ScoreDirection,
+    dimension: question.dimension,
+  }))
+
+  const configInput: CreateClimateSurveyConfigInput = {
+    departmentIds,
+    name: `Cópia de ${source.name}`,
+    description: source.description ?? undefined,
+    frequency: source.frequency as ClimateSurveyFrequency,
+    scheduledDayOfMonth: source.scheduledDayOfMonth,
+    dispatchTime: source.dispatchTime,
+    workDays: source.workDays.map((workDay) => workDay.dayOfWeek),
+    respectEmployeeSchedule: source.respectEmployeeSchedule,
+    tokenExpiryHours: source.tokenExpiryHours,
+    sendViaMessaging: source.sendViaMessaging,
+    sendViaSignedLink: source.sendViaSignedLink,
+    questions,
+  }
+
+  const created = await createNewClimateSurveyConfigEntry(tenantId, configInput)
+  await recordClimateSurveyCreated(tenantId, created.id)
+  await recordClimateSurveyQuestionsSelected(
+    tenantId,
+    created.id,
+    created.questions.map((question) => ({ id: question.id, order: question.order })),
+  )
+  return created.id
 }
 
 export interface CreateClimateSurveyForDepartmentsInput {

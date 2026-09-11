@@ -232,6 +232,20 @@ export async function countActiveEmployeesGroupedByDepartment(
   return new Map(rows.map((row) => [row.departmentId, row._count._all]))
 }
 
+export interface ClimateSurveyDispatchOrdinalRow {
+  id: string
+  climateSurveyConfigurationId: string
+  scheduledAt: Date
+}
+
+export function findClimateSurveyDispatchOrdinalRows(tenantId: string): Promise<ClimateSurveyDispatchOrdinalRow[]> {
+  return prisma.climateSurveyDispatch.findMany({
+    where: { tenantId },
+    select: { id: true, climateSurveyConfigurationId: true, scheduledAt: true },
+    orderBy: [{ scheduledAt: "asc" }, { createdAt: "asc" }],
+  })
+}
+
 export function findClimateSurveyDispatchesByTenant(tenantId: string): Promise<ClimateSurveyDispatchWithConfig[]> {
   return prisma.climateSurveyDispatch.findMany({
     where: { tenantId },

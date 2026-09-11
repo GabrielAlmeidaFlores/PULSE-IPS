@@ -350,6 +350,7 @@ src/
 │   │   ├── health-surveys/
 │   │   ├── climate-surveys/                # Feature gate: climate_surveys — Sidebar: Pesquisa de Clima (Board, Adesão, Banco de Perguntas, Disparo & Canais, Plano de Ação)
 │   │   │   ├── compare/page.tsx            # Comparativo entre ondas (Onda 1 × Onda 2 / ROI)
+│   │   │   ├── reports/page.tsx            # Banco de relatórios — histórico de ondas + PDF + duplicar configuração
 │   │   │   └── configure/                  # Banco de Perguntas (importa perguntas de arquivo via IA)
 │   │   ├── reports/
 │   │   ├── action-plans/
@@ -370,6 +371,7 @@ src/
 │       ├── health/route.ts                 # GET — health check do banco de dados
 │       ├── documents/[id]/route.ts         # GET — download/acesso a documentos
 │       ├── pgr/[id]/pdf/route.ts           # GET — geração de PDF do relatório PGR
+│       ├── climate-surveys/[id]/pdf/route.ts  # GET — geração de PDF da onda de clima (capa + gráficos + tabela consolidada)
 │       ├── internal/request-log/route.ts   # POST — recebe logs de request do instrumentation.ts
 │       ├── internal/rate-limit-proxy/route.ts  # POST — endpoint de rate-limit chamado pelo proxy (2s timeout)
 │       ├── internal/data-ingestion/route.ts    # POST — aciona a ingestão de dados com IA (x-cron-secret)
@@ -418,6 +420,7 @@ src/
 │   │   ├── climate-survey-response.service.ts
 │   │   ├── climate-survey-dashboard.service.ts
 │   │   ├── climate-survey-comparison.service.ts   # Comparativo entre ondas (Onda 1 × Onda 2 / ROI)
+│   │   ├── climate-survey-reports.service.ts      # Banco de relatórios — histórico de ondas + métricas + numeração por config
 │   │   ├── climate-survey-import.service.ts       # Extração de perguntas de arquivo existente com IA
 │   │   ├── climate-survey-import.schema.ts        # Zod schema da tool save_climate_survey_question
 │   │   ├── climate-survey-action-plan.service.ts
@@ -529,6 +532,8 @@ src/
 │   │   ├── pdf/
 │   │   │   ├── pdf.interface.ts            # IPDFService — interface genérica (não usada pelo PGR)
 │   │   │   ├── pgr-pdf.adapter.tsx         # ✅ Implementação @react-pdf/renderer — gera PDF PGR
+│   │   │   ├── climate-survey-pdf.adapter.tsx  # ✅ Implementação @react-pdf/renderer — PDF da onda de clima (capa + gráficos + tabela consolidada)
+│   │   │   ├── climate-survey-pdf.types.ts     # Tipos de input do PDF de clima
 │   │   │   └── pgr-pdf.types.ts            # Tipos próprios de input do PDF (PgrPdfInput, etc.)
 │   │   ├── billing/
 │   │   │   ├── billing.interface.ts        # IBillingService
@@ -4164,6 +4169,8 @@ Exibido no Dashboard `/climate-surveys` (bloco Funil da onda). Falhas de insert 
 **Comparativo entre ondas (ROI):** página `/climate-surveys/compare` (`getClimateSurveyWaveComparison`). Seleciona duas ondas (padrão: as duas mais recentes) e compara **favorabilidade** por tópico e por departamento (valor base × comparada, delta em p.p. e pill de leitura da **RN-05**), além de KPIs (favorabilidade, eNPS, adesão, tópicos abaixo da meta) com delta, gráfico de barras agrupadas por tópico (linha de meta tracejada) e os blocos de 3 maiores altas / 3 maiores quedas. Tópico que cruza a meta entre as ondas é destacado. Departamento com menos de `CLIMATE_SURVEY_COMPARISON_MIN_RESPONDENTS` (5) respostas em qualquer onda fica marcado como amostra insuficiente. Exibe ainda os planos de ação criados a partir da onda base (`countClimateSurveyActionPlansByDispatch`). Opções via `findClimateSurveyWaveOptions`.
 
 **RN-05 (leitura nível × tendência):** `resolveClimateSurveyReadingPill(currentPercent, delta)` — nível `< 70` + piora = **Crítico**; nível `< 70` + melhora/estável = **Atenção**; nível `≥ 70` + piora = **Atenção**; nível `≥ 70` + melhora/estável = **Informativo** (`CLIMATE_SURVEY_READING_LOW_THRESHOLD_PERCENT = 70`, labels em `CLIMATE_SURVEY_READING_PILL_LABELS`).
+
+**Banco de relatórios (`/climate-surveys/reports`):** histórico das ondas (`getClimateSurveyWaveReports`) — uma linha por onda com numeração por configuração (ordinal por `scheduledAt` via `findClimateSurveyDispatchOrdinalRows`), período de coleta, público, adesão + pill, favorabilidade e eNPS. Ações por linha: abrir a onda em modo leitura (`/climate-surveys/[dispatchId]`), exportar PDF (`GET /api/climate-surveys/[id]/pdf` — capa, favorabilidade por tópico, eNPS e tabela consolidada tópico × setor, com a identidade da Pulse, via `generateClimateSurveyPdf`) e **duplicar a configuração** (`duplicateClimateSurveyConfig` — copia setores, canais e banco de perguntas para uma nova config "Cópia de X"). A onda é somente-leitura (não há UI que a edite) e o PDF respeita o limiar de anonimato por setor (`canRevealClimateSurveyGroupResults`).
 
 ### 20.15 Ingestão de dados com IA (Base Master Mensal)
 
