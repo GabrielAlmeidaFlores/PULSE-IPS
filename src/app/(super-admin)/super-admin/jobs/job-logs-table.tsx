@@ -30,7 +30,7 @@ const QUEUE_LABELS: Record<string, string> = {
 const JOB_NAME_LABELS: Record<string, string> = {
   "health-survey-dispatcher":               "Disparo de Pesquisas",
   "health-survey-adherence-checker":        "Verificador de Adesão",
-  "health-survey-score-alert-detector":     "Detector de Alertas de Score",
+  "health-survey-score-alert-detector":     "Detector de Alertas de Índice",
   "employee-unpause":                "Reativação de Colaboradores",
   "pgr-review-reminder":             "Lembrete de Revisão PGR",
   "stripe-webhook-retry":            "Reprocessamento de Webhooks",

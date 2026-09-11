@@ -10,7 +10,6 @@ import { NativeSelect } from "@/components/ui/native-select"
 const schema = z.object({
   name: z.string().min(1, { message: "Informe o nome da organização." }),
   timezone: z.string().min(1, { message: "Selecione o fuso horário." }),
-  climateSurveyMinRespondentsPercent: z.number().int().min(1).max(100, { message: "O percentual deve estar entre 1 e 100." }),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -18,17 +17,16 @@ type FormValues = z.infer<typeof schema>
 interface Props {
   name: string
   timezone: string
-  minRespondentsPercent: number
 }
 
 const inputCls =
   "w-full bg-input border border-border text-foreground text-[13px] px-3 py-2.5 placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
 const labelCls = "text-[10px] font-bold tracking-widest uppercase text-muted-foreground"
 
-export function SettingsForm({ name, timezone, minRespondentsPercent }: Props): React.ReactElement {
+export function SettingsForm({ name, timezone }: Props): React.ReactElement {
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name, timezone, climateSurveyMinRespondentsPercent: minRespondentsPercent },
+    defaultValues: { name, timezone },
   })
 
   async function onSubmit(values: FormValues): Promise<void> {
@@ -78,23 +76,6 @@ export function SettingsForm({ name, timezone, minRespondentsPercent }: Props): 
             <p className="text-xs text-destructive">Fuso horário é obrigatório.</p>
           )}
           <p className="text-[11px] text-muted-foreground">Define o horário local usado para decidir quando enviar pesquisas.</p>
-        </div>
-        <div className="space-y-1.5">
-          <label className={labelCls}>Percentual mínimo para exibir resultados de clima</label>
-          <input
-            type="number"
-            min={1}
-            max={100}
-            className={inputCls}
-            style={{ borderRadius: 0 }}
-            {...form.register("climateSurveyMinRespondentsPercent", { valueAsNumber: true })}
-          />
-          {form.formState.errors.climateSurveyMinRespondentsPercent && (
-            <p className="text-xs text-destructive">O percentual deve estar entre 1 e 100.</p>
-          )}
-          <p className="text-[11px] text-muted-foreground">
-            Os resultados da Pesquisa de Clima são exibidos quando a participação atinge esse percentual dos destinatários (mínimo de 3 respondentes), preservando o anonimato.
-          </p>
         </div>
         <div className="pt-2">
           <button

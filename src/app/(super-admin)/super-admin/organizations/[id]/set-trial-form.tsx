@@ -20,7 +20,7 @@ export function SetTrialForm({ organizationId, trialExpiresAt }: Props): React.R
       if (result.error) {
         toast.error(result.error)
       } else {
-        toast.success(date.length > 0 ? "Período de trial definido." : "Trial removido.")
+        toast.success(date.length > 0 ? "Período de teste definido." : "Período de teste removido.")
       }
     })
   }

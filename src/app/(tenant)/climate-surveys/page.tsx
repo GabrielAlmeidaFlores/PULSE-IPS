@@ -5,15 +5,33 @@ import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
 import { getClimateSurveyModuleDashboard } from "@/modules/climate-surveys/climate-survey-dashboard.service"
 import { getClimateSurveyConfigs } from "@/modules/climate-surveys/climate-survey-config.service"
 import { getOrganization } from "@/modules/organizations/organization.service"
+import { getActiveDepartments } from "@/modules/departments/department.service"
 import { formatInTimeZone } from "date-fns-tz"
 import { ChartCard } from "@/components/chart-card"
 import { PageHelp } from "@/components/page-help"
+import { FilterBar } from "@/libs/design-system"
 import { ClimateSurveyTopicRadarChart } from "@/app/(tenant)/climate-surveys/components/climate-survey-topic-radar-chart"
 import { ClimateSurveyWaveEvolutionChart } from "@/app/(tenant)/climate-surveys/components/climate-survey-wave-evolution-chart"
 import { ClimateSurveyEnpsDonutChart } from "@/app/(tenant)/climate-surveys/components/climate-survey-enps-donut-chart"
+import { ClimateSurveyTopicFavorabilityChart } from "@/app/(tenant)/climate-surveys/components/climate-survey-topic-favorability-chart"
 import { ClimateSurveyTopicDepartmentHeatmap } from "@/app/(tenant)/climate-surveys/components/climate-survey-topic-department-heatmap"
-import type { ClimateSurveyMetricStatus } from "@/modules/climate-surveys/climate-survey.types"
+import { ClimateSurveyDisplaySettingsButton } from "@/app/(tenant)/climate-surveys/climate-survey-display-settings-button"
+import { resolveClimateSurveyEnpsStatusLabel, type ClimateSurveyMetricStatus } from "@/modules/climate-surveys/climate-survey.types"
 import { CLIMATE_SURVEY_MIN_RESPONDENTS_FLOOR } from "@/libs/utils/anonymity"
+import { BADGE_AMBER, BADGE_BASE, BADGE_GREEN, BADGE_RED } from "@/libs/design-system/alert-labels"
+
+function enpsStatusBadgeClass(score: number): string {
+  if (score >= 30) return BADGE_GREEN
+  if (score >= 0) return BADGE_AMBER
+  return BADGE_RED
+}
+
+function enpsStatusBadge(score: number | null): React.ReactNode {
+  if (score === null) return undefined
+  return (
+    <span className={`${BADGE_BASE} ${enpsStatusBadgeClass(score)}`}>{resolveClimateSurveyEnpsStatusLabel(score)}</span>
+  )
+}
 
 function kpiToneClass(status: ClimateSurveyMetricStatus): string {
   if (status === "above_goal") return "border-status-success-border bg-status-success-subtle"
@@ -34,34 +52,81 @@ function formatKpi(value: number | null, suffix = ""): string {
   return `${value}${suffix}`
 }
 
-export default async function ClimateSurveyDashboardPage(): Promise<React.ReactElement> {
+function roundOneDecimal(value: number): number {
+  return Math.round(value * 10) / 10
+}
+
+function computeDelta(current: number | null | undefined, previous: number | null | undefined): number | null {
+  if (current === null || current === undefined || previous === null || previous === undefined) return null
+  return roundOneDecimal(current - previous)
+}
+
+function deltaLabel(delta: number | null): string {
+  if (delta === null) return "sem onda anterior"
+  if (delta === 0) return "→ 0.0 pp vs. onda anterior"
+  const sign = delta > 0 ? "+" : ""
+  return `${delta > 0 ? "▲" : "▼"} ${sign}${delta.toFixed(1)} pp vs. onda anterior`
+}
+
+function deltaClass(delta: number | null): string {
+  if (delta === null || delta === 0) return "text-muted-foreground"
+  return delta > 0 ? "text-status-success" : "text-status-danger"
+}
+
+function topicsBelowGoalClass(below: number, total: number): string {
+  if (below === 0) return "text-status-success"
+  if (total > 0 && below / total > 0.5) return "text-status-danger"
+  return "text-status-warning"
+}
+
+interface Props {
+  searchParams: Promise<Record<string, string | undefined>>
+}
+
+export default async function ClimateSurveyDashboardPage({ searchParams }: Props): Promise<React.ReactElement> {
   const session = await getSession()
   if (!session) redirect("/login")
   if (!(await hasTenantPlanFeature(session.tenantId, "climate_surveys"))) redirect("/dashboard")
 
-  const [dashboard, configs, org] = await Promise.all([
-    getClimateSurveyModuleDashboard(session.tenantId),
+  const params = await searchParams
+  const departmentId = params["department"]
+
+  const [dashboard, configs, org, departments] = await Promise.all([
+    getClimateSurveyModuleDashboard(session.tenantId, departmentId),
     getClimateSurveyConfigs(session.tenantId),
     getOrganization(session.tenantId),
+    getActiveDepartments(session.tenantId),
   ])
 
   const timezone = org?.timezone ?? "America/Sao_Paulo"
   const wave = dashboard.wave
+  const selectedDepartment = departmentId !== undefined ? departments.find((department) => department.id === departmentId) : undefined
+
+  const evolution = dashboard.evolution
+  const currentEvolution = evolution[evolution.length - 1]
+  const previousEvolution = evolution.length > 1 ? evolution[evolution.length - 2] : undefined
+  const favorabilityDelta = computeDelta(currentEvolution?.favorabilityPercent, previousEvolution?.favorabilityPercent)
+  const enpsDelta = computeDelta(currentEvolution?.enps, previousEvolution?.enps)
+  const adherenceDelta = computeDelta(currentEvolution?.adherencePercent, previousEvolution?.adherencePercent)
+  const topicsTotal = dashboard.radar.length
+  const topicsBelowGoal = dashboard.radar.filter(
+    (topic) => topic.scorePercent !== null && topic.scorePercent < dashboard.corporateGoalPercent,
+  ).length
 
   return (
     <div className="flex flex-col h-full">
       <div className="border-b border-border bg-card px-6 py-4 shrink-0">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
-            <div className="flex items-center gap-1.5">
-              <h1 className="text-sm font-bold uppercase tracking-widest">Dashboard — Pesquisa de Clima</h1>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h1 className="text-sm font-bold uppercase tracking-widest">Painel — Pesquisa de Clima</h1>
               <PageHelp
                 content={
                   <div className="space-y-3">
                     <div>
                       <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">KPIs</p>
                       <p className="text-[12px] text-foreground leading-relaxed">
-                        Adesão = respondentes / destinatários. Favorabilidade = (Concordo + Concordo Totalmente) / total × 100. Score de clima = média dos pesos Likert (1.0 / 0.8 / 0.6 / 0.4 / 0.2) × 100. eNPS = % promotores − % detratores (nota 0–10: 9–10 / 7–8 / 0–6).
+                        Adesão = respondentes / destinatários. Favorabilidade = (Concordo + Concordo Totalmente) / total × 100. Índice de clima = média dos pesos Likert (1.0 / 0.8 / 0.6 / 0.4 / 0.2) × 100. eNPS = % promotores − % detratores (nota 0–10: 9–10 / 7–8 / 0–6).
                       </p>
                     </div>
                     <div>
@@ -91,19 +156,56 @@ export default async function ClimateSurveyDashboardPage(): Promise<React.ReactE
               <p className="text-xs text-muted-foreground mt-0.5">Nenhuma onda ativa no momento</p>
             )}
           </div>
-          {wave !== null && (
+          <div className="flex items-center gap-2 shrink-0">
+            {session.role === "admin" && (
+              <ClimateSurveyDisplaySettingsButton minRespondentsPercent={dashboard.minRespondentsPercent} />
+            )}
             <Link
-              href={`/climate-surveys/${wave.id}`}
+              href="/climate-surveys/compare"
               className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-center"
               style={{ borderRadius: 0 }}
             >
-              Ver onda
+              Comparar ondas
             </Link>
-          )}
+            {wave !== null && (
+              <Link
+                href={`/climate-surveys/${wave.id}`}
+                className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-center"
+                style={{ borderRadius: 0 }}
+              >
+                Ver onda
+              </Link>
+            )}
+          </div>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
+        {departments.length > 0 && (
+          <div className="space-y-2">
+            <FilterBar
+              fields={[
+                {
+                  type: "select",
+                  key: "department",
+                  label: "Visão",
+                  width: "w-[240px]",
+                  options: departments.map((department) => ({ value: department.id, label: department.name })),
+                  allLabel: "Empresa toda",
+                },
+              ]}
+              values={{ ...(departmentId !== undefined ? { department: departmentId } : {}) }}
+            />
+            {selectedDepartment !== undefined && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border border-primary/30 bg-primary/10 text-primary">
+                Área: {selectedDepartment.name}
+                <Link href="/climate-surveys" aria-label="Remover filtro de área" className="hover:text-foreground">
+                  ×
+                </Link>
+              </span>
+            )}
+          </div>
+        )}
         {wave === null ? (
           <div className="border border-dashed border-border bg-card px-5 py-10 text-center">
             <p className="text-sm font-bold text-muted-foreground">Sem dados de clima para exibir</p>
@@ -126,41 +228,45 @@ export default async function ClimateSurveyDashboardPage(): Promise<React.ReactE
               <div className="border border-status-warning-border bg-status-warning-subtle px-4 py-3">
                 <p className="text-[11px] font-bold uppercase tracking-widest text-status-warning">Respondentes insuficientes</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Favorabilidade, eNPS, radar e heatmap ficam ocultos até haver pelo menos {dashboard.requiredRespondents} respostas na onda (mínimo de {dashboard.minRespondentsPercent}% de participação).
+                  Favorabilidade, eNPS, radar e mapa de calor ficam ocultos até haver pelo menos {dashboard.requiredRespondents} respostas na onda (mínimo de {dashboard.minRespondentsPercent}% de participação).
                 </p>
               </div>
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-              <div className={`border px-4 py-4 ${kpiToneClass(dashboard.kpis.adherenceStatus)}`}>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Adesão</p>
-                <p className={`text-3xl font-bold tabular-nums mt-2 ${kpiValueClass(dashboard.kpis.adherenceStatus)}`}>
-                  {formatKpi(dashboard.kpis.adherencePercent, "%")}
-                </p>
-                <p className="text-[11px] text-muted-foreground mt-1">% de respondentes</p>
-              </div>
-              <div className="border border-border bg-card px-4 py-4">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Total de respostas</p>
-                <p className="text-3xl font-bold tabular-nums mt-2 text-foreground">{dashboard.kpis.totalResponses}</p>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  de {dashboard.kpis.totalRecipients} destinatários
-                </p>
-              </div>
               <div className={`border px-4 py-4 ${kpiToneClass(dashboard.kpis.favorabilityStatus)}`}>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Favorabilidade</p>
                 <p className={`text-3xl font-bold tabular-nums mt-2 ${kpiValueClass(dashboard.kpis.favorabilityStatus)}`}>
                   {formatKpi(dashboard.kpis.favorabilityPercent, "%")}
                 </p>
-                <p className="text-[11px] text-muted-foreground mt-1">% de respostas positivas (4–5)</p>
+                <p className={`text-[11px] mt-1 ${deltaClass(favorabilityDelta)}`}>{deltaLabel(favorabilityDelta)}</p>
               </div>
               <div className={`border px-4 py-4 ${kpiToneClass(dashboard.kpis.enpsStatus)}`}>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">eNPS</p>
                 <p className={`text-3xl font-bold tabular-nums mt-2 ${kpiValueClass(dashboard.kpis.enpsStatus)}`}>
                   {formatKpi(dashboard.kpis.enps)}
                 </p>
-                <p className="text-[11px] text-muted-foreground mt-1">promotores − detratores</p>
+                <p className={`text-[11px] mt-1 ${deltaClass(enpsDelta)}`}>{deltaLabel(enpsDelta)}</p>
+              </div>
+              <div className={`border px-4 py-4 ${kpiToneClass(dashboard.kpis.adherenceStatus)}`}>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Adesão</p>
+                <p className={`text-3xl font-bold tabular-nums mt-2 ${kpiValueClass(dashboard.kpis.adherenceStatus)}`}>
+                  {formatKpi(dashboard.kpis.adherencePercent, "%")}
+                </p>
+                <p className={`text-[11px] mt-1 ${deltaClass(adherenceDelta)}`}>{deltaLabel(adherenceDelta)}</p>
+              </div>
+              <div className={`border px-4 py-4 ${topicsBelowGoal === 0 ? "border-status-success-border bg-status-success-subtle" : "border-border bg-card"}`}>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Tópicos abaixo da meta</p>
+                <p className={`text-3xl font-bold tabular-nums mt-2 ${topicsBelowGoalClass(topicsBelowGoal, topicsTotal)}`}>
+                  {topicsBelowGoal} de {topicsTotal}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-1">meta de {dashboard.corporateGoalPercent}%</p>
               </div>
             </div>
+
+            <p className="text-[11px] text-muted-foreground">
+              {dashboard.kpis.totalResponses} respostas de {dashboard.kpis.totalRecipients} convidados nesta onda
+            </p>
 
             <div className="border border-border bg-card px-4 py-4 space-y-3">
               <div>
@@ -232,18 +338,32 @@ export default async function ClimateSurveyDashboardPage(): Promise<React.ReactE
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
               <ChartCard
-                title="Radar por tópico"
-                subtitle={`Comparação com a meta corporativa (${dashboard.corporateGoalPercent}%)`}
+                title="Radar por tópico vs meta"
+                subtitle={`Favorabilidade (% que concorda) por dimensão, meta corporativa de ${dashboard.corporateGoalPercent}%`}
               >
                 <ClimateSurveyTopicRadarChart
                   points={dashboard.radar}
                   corporateGoalPercent={dashboard.corporateGoalPercent}
                 />
               </ChartCard>
-              <ChartCard title="eNPS" subtitle="Distribuição de promotores, neutros e detratores">
+              <ChartCard
+                title="eNPS"
+                subtitle="Distribuição de promotores, neutros e detratores"
+                action={enpsStatusBadge(dashboard.kpis.enps)}
+              >
                 <ClimateSurveyEnpsDonutChart breakdown={dashboard.enpsBreakdown} />
               </ChartCard>
             </div>
+
+            <ChartCard
+              title="Favorabilidade por tópico"
+              subtitle="Barras horizontais, linha tracejada = meta"
+            >
+              <ClimateSurveyTopicFavorabilityChart
+                points={dashboard.topicFavorability}
+                goalPercent={dashboard.corporateGoalPercent}
+              />
+            </ChartCard>
 
             <ChartCard title="Evolução entre ondas" subtitle="Clima, favorabilidade, adesão e eNPS ao longo do tempo">
               <ClimateSurveyWaveEvolutionChart
@@ -253,10 +373,13 @@ export default async function ClimateSurveyDashboardPage(): Promise<React.ReactE
             </ChartCard>
 
             <ChartCard
-              title="Heatmap tópicos × departamentos"
-              subtitle="Verde: acima da meta · Amarelo: atenção · Vermelho: crítico"
+              title="Mapa de calor tópicos × departamentos"
+              subtitle="Favorabilidade (%) — verde forte ≥ meta+5 · verde na meta · âmbar até 10 p.p. abaixo · vermelho mais de 10 abaixo · eNPS: verde ≥ 30 · âmbar ≥ 0 · vermelho < 0"
             >
-              <ClimateSurveyTopicDepartmentHeatmap heatmap={dashboard.heatmap} />
+              <ClimateSurveyTopicDepartmentHeatmap
+                heatmap={dashboard.heatmap}
+                goalPercent={dashboard.corporateGoalPercent}
+              />
             </ChartCard>
           </>
         )}

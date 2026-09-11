@@ -165,7 +165,7 @@ export function AssignPlanForm({ organizationId, plans }: Props): React.ReactEle
       )}
 
       <div>
-        <p className="text-[10px] text-muted-foreground mb-1">Trial expira em (opcional)</p>
+        <p className="text-[10px] text-muted-foreground mb-1">Teste expira em (opcional)</p>
         <Input
           type="date"
           value={trialDate}

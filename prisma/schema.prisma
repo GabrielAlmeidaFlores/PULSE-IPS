@@ -78,6 +78,7 @@ model Organization {
   id                   String   @id @default(uuid())
   name                 String
   slug                 String   @unique
+  cnpj                 String?  @db.VarChar(18)
   planId               String?  @map("plan_id")
   externalCustomerId   String?  @unique @map("external_customer_id")
   billingStatus        String    @default("pending") @map("billing_status")
@@ -106,6 +107,10 @@ model Organization {
   climateSurveyQuestions      ClimateSurveyQuestion[]
   climateSurveyResponses      ClimateSurveyResponse[]
   climateSurveyConfigs        ClimateSurveyConfiguration[]
+  climateSurveyTopics         ClimateSurveyTopic[]
+  dataImportBatches             DataImportBatch[]
+  employeeMonthly           EmployeeMonthly[]
+  workforceInsights         WorkforceInsight[]
   documents             Document[]
   actionPlans           ActionPlan[]
   actionPlanTasks       ActionPlanTask[]
@@ -117,6 +122,7 @@ model Organization {
   emailLogs             EmailLog[]
   climateSurveyAnalyticsEvents ClimateSurveyAnalyticsEvent[]
   climateSurveyResponseSessions ClimateSurveyResponseSession[]
+  climateSurveyActionSuggestions ClimateSurveyActionSuggestion[]
   pgrReviews            PgrReview[]
   consents              EmployeeConsent[]
 
@@ -144,6 +150,7 @@ model OrganizationUser {
   assignedActionPlanTasks        ActionPlanTask[]          @relation("ActionPlanTaskAssignee")
   resolvedAlerts                 Alert[]                   @relation("AlertResolver")
   auditLogs                      AuditLog[]                @relation("AuditLogActor")
+  createdDataImportBatches         DataImportBatch[]           @relation("DataImportBatchCreator")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -545,6 +552,103 @@ model ClimateSurveyQuestion {
   @@map("climate_survey_questions")
 }
 
+model ClimateSurveyTopic {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  key       String   @db.VarChar(60)
+  label     String   @db.VarChar(100)
+  isSystem  Boolean  @default(false) @map("is_system")
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, key])
+  @@index([tenantId])
+  @@map("climate_survey_topics")
+}
+
+model DataImportBatch {
+  id               String   @id @default(uuid())
+  tenantId         String   @map("tenant_id")
+  fileName         String   @map("file_name")
+  fileUrl          String?  @map("file_url") @db.VarChar(500)
+  fileType         String   @map("file_type")
+  competencia      String
+  status           String   @default("received")
+  aiProvider       String   @map("ai_provider")
+  totalRecords     Int      @default(0) @map("total_records")
+  correctedRecords Int      @default(0) @map("corrected_records")
+  errorRecords     Int      @default(0) @map("error_records")
+  errorMessage     String?  @map("error_message")
+  createdById      String?  @map("created_by_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization Organization      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy    OrganizationUser? @relation("DataImportBatchCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  rows         EmployeeMonthly[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("data_import_batches")
+}
+
+model EmployeeMonthly {
+  id                      String    @id @default(uuid())
+  tenantId                String    @map("tenant_id")
+  batchId                 String    @map("batch_id")
+  competencia             String
+  employeeName            String    @map("employee_name")
+  document                String?
+  registration            String?
+  departmentName          String?   @map("department_name")
+  roleName                String?   @map("role_name")
+  admissionDate           DateTime? @map("admission_date")
+  terminationDate         DateTime? @map("termination_date")
+  expectedHours           Float?    @map("expected_hours")
+  workedHours             Float?    @map("worked_hours")
+  justifiedAbsenceHours   Float?    @map("justified_absence_hours")
+  unjustifiedAbsenceHours Float?    @map("unjustified_absence_hours")
+  absenceRatePercent      Float?    @map("absence_rate_percent")
+  terminationType         String?   @map("termination_type")
+  qualityStatus           String    @default("pending") @map("quality_status")
+  validationNotes         String?   @map("validation_notes")
+  rowHash                 String    @map("row_hash")
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt               DateTime  @updatedAt @map("updated_at")
+
+  organization Organization  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  batch        DataImportBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, batchId, rowHash])
+  @@index([tenantId])
+  @@index([tenantId, competencia])
+  @@index([tenantId, batchId])
+  @@map("employee_monthly")
+}
+
+model WorkforceInsight {
+  id             String   @id @default(uuid())
+  tenantId       String   @map("tenant_id")
+  competencia    String
+  kind           String
+  severity       String
+  departmentName String?  @map("department_name")
+  title          String
+  description    String
+  actionPlanId   String?  @map("action_plan_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actionPlan   ActionPlan?  @relation("WorkforceInsightActionPlan", fields: [actionPlanId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, competencia])
+  @@map("workforce_insights")
+}
+
 model ClimateSurveyDispatch {
   id                           String    @id @default(uuid())
   tenantId                     String    @map("tenant_id")
@@ -563,6 +667,7 @@ model ClimateSurveyDispatch {
   responses                  ClimateSurveyResponse[]
   deptDispatches             ClimateSurveyDeptDispatch[]
   actionPlans                ActionPlan[]               @relation("ActionPlanOriginClimateSurveyDispatch")
+  actionSuggestions          ClimateSurveyActionSuggestion[] @relation("ClimateSurveyActionSuggestionDispatch")
   analyticsEvents            ClimateSurveyAnalyticsEvent[]
   responseSessions           ClimateSurveyResponseSession[]
 
@@ -614,6 +719,7 @@ model ClimateSurveyResponse {
   tenantId     String   @map("tenant_id")
   dispatchId   String   @map("dispatch_id")
   departmentId String?  @map("department_id")
+  enpsCategory String?  @map("enps_category") @db.VarChar(20)
   openComment  String?  @map("open_comment")
   createdAt    DateTime @default(now()) @map("created_at")
 
@@ -760,6 +866,8 @@ model ActionPlan {
   assignee              OrganizationUser?      @relation("ActionPlanAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   tasks                 ActionPlanTask[]
   suggestion            ActionPlanSuggestion?  @relation("ActionPlanSuggestionConvertedPlan")
+  climateSurveyActionSuggestion ClimateSurveyActionSuggestion? @relation("ClimateSurveyActionSuggestionPlan")
+  workforceInsights     WorkforceInsight[]     @relation("WorkforceInsightActionPlan")
 
   @@index([tenantId])
   @@index([climateSurveyDispatchId])
@@ -1110,4 +1218,31 @@ model JobLog {
   @@index([status])
   @@index([queueName])
   @@map("job_logs")
+}
+
+model ClimateSurveyActionSuggestion {
+  id             String    @id @default(uuid())
+  tenantId       String    @map("tenant_id")
+  dispatchId     String    @map("dispatch_id")
+  dimension      String
+  what           String
+  why            String
+  who            String
+  where          String
+  when           String
+  how            String
+  cost           String?
+  status         String    @default("pending")
+  rejectedReason String?   @map("rejected_reason")
+  actionPlanId   String?   @unique @map("action_plan_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  organization Organization          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  dispatch     ClimateSurveyDispatch @relation("ClimateSurveyActionSuggestionDispatch", fields: [dispatchId], references: [id], onDelete: Cascade)
+  actionPlan   ActionPlan?           @relation("ClimateSurveyActionSuggestionPlan", fields: [actionPlanId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status])
+  @@index([tenantId, dispatchId])
+  @@map("climate_survey_action_suggestions")
 }

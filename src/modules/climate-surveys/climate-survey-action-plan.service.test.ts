@@ -22,6 +22,32 @@ vi.mock("@/modules/audit/audit.repository")
 vi.mock("@/modules/auth/invite.service")
 vi.mock("@/modules/climate-surveys/climate-survey-dashboard.service")
 vi.mock("@/modules/climate-surveys/climate-survey.repository")
+vi.mock("@/modules/climate-surveys/climate-survey-topic.service", async () => {
+  const { CLIMATE_SURVEY_SYSTEM_TOPICS } = await import("@/modules/climate-surveys/climate-survey.types")
+  const topics = CLIMATE_SURVEY_SYSTEM_TOPICS.map((topic) => ({
+    id: topic.key,
+    tenantId: "tenant-1",
+    key: topic.key,
+    label: topic.label,
+    isSystem: true,
+    isActive: true,
+    sortOrder: topic.sortOrder,
+  }))
+  return {
+    ensureClimateSurveySystemTopics: vi.fn().mockResolvedValue(undefined),
+    listClimateSurveyTopics: vi.fn().mockResolvedValue(topics),
+    listClimateSurveyTopicOptions: vi.fn().mockResolvedValue(
+      topics.map((topic) => ({ id: topic.id, key: topic.key, label: topic.label, isSystem: true, isActive: true })),
+    ),
+    getClimateSurveyTopicLabelMap: vi.fn().mockResolvedValue(
+      new Map(topics.map((topic) => [topic.key, topic.label])),
+    ),
+    createClimateSurveyTopic: vi.fn(),
+    renameClimateSurveyTopic: vi.fn(),
+    deactivateClimateSurveyTopic: vi.fn(),
+    assertClimateSurveyTopicKeysExist: vi.fn().mockResolvedValue(undefined),
+  }
+})
 vi.mock("@/modules/climate-surveys/climate-survey-analytics.service", () => ({
   recordClimateSurveyActionCreated: vi.fn(),
   recordClimateSurveyActionCompleted: vi.fn(),
@@ -109,9 +135,10 @@ describe("getClimateSurveyActionPlanBoard", () => {
           status: "above_goal",
         },
       ],
+      topicFavorability: [],
       evolution: [],
       enpsBreakdown: { promoters: 0, neutrals: 0, detractors: 0, total: 0, score: null },
-      heatmap: { topics: [], departments: [], cells: [] },
+      heatmap: { topics: [], departments: [], cells: [], departmentTotals: [], companyEnps: null, companyScorePercent: null },
       hasEnoughRespondents: true,
       funnel: {
         dispatchId: DISPATCH_ID,
@@ -184,9 +211,10 @@ describe("getClimateSurveyActionPlanBoard", () => {
       minRespondentsPercent: 40,
       requiredRespondents: 0,
       radar: [],
+      topicFavorability: [],
       evolution: [],
       enpsBreakdown: { promoters: 0, neutrals: 0, detractors: 0, total: 0, score: null },
-      heatmap: { topics: [], departments: [], cells: [] },
+      heatmap: { topics: [], departments: [], cells: [], departmentTotals: [], companyEnps: null, companyScorePercent: null },
       hasEnoughRespondents: false,
       funnel: {
         dispatchId: null,
@@ -217,7 +245,7 @@ describe("getClimateSurveyActionPlanBoard", () => {
         completedAt: null,
         assigneeId: "user-1",
         climateSurveyDispatchId: DISPATCH_ID,
-        climateSurveyDimension: null,
+        climateSurveyDimension: "leadership_trust",
         createdAt: new Date(),
         updatedAt: new Date(),
         tasks: [],
@@ -235,7 +263,7 @@ describe("getClimateSurveyActionPlanBoard", () => {
         completedAt: new Date(),
         assigneeId: "user-2",
         climateSurveyDispatchId: DISPATCH_ID,
-        climateSurveyDimension: null,
+        climateSurveyDimension: "job_satisfaction",
         createdAt: new Date(),
         updatedAt: new Date(),
         tasks: [],
@@ -251,6 +279,12 @@ describe("getClimateSurveyActionPlanBoard", () => {
 
     expect(board.actions).toHaveLength(1)
     expect(board.actions[0]?.id).toBe("plan-1")
+
+    const byPriority = await getClimateSurveyActionPlanBoard(TENANT_ID, { priority: "low" })
+    expect(byPriority.actions.map((action) => action.id)).toEqual(["plan-2"])
+
+    const byTopic = await getClimateSurveyActionPlanBoard(TENANT_ID, { dimension: "leadership_trust" })
+    expect(byTopic.actions.map((action) => action.id)).toEqual(["plan-1"])
   })
 })
 

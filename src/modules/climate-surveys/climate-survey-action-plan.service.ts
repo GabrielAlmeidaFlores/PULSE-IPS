@@ -18,12 +18,14 @@ import { getOrgUsers } from "@/modules/auth/invite.service"
 import { getClimateSurveyModuleDashboard } from "@/modules/climate-surveys/climate-survey-dashboard.service"
 import {
   CLIMATE_SURVEY_CORPORATE_GOAL_PERCENT,
-  CLIMATE_SURVEY_DIMENSION_LABELS,
   climateSurveyMetricStatus,
+  resolveClimateSurveyTopicLabel,
   toClimateSurveyDimension,
   type ClimateSurveyDimension,
   type ClimateSurveyMetricStatus,
+  type ClimateSurveyTopicOption,
 } from "@/modules/climate-surveys/climate-survey.types"
+import { listClimateSurveyTopicOptions } from "@/modules/climate-surveys/climate-survey-topic.service"
 import { AppError } from "@/libs/errors/app-error"
 import { findLatestActiveClimateSurveyDispatch } from "@/modules/climate-surveys/climate-survey.repository"
 import {
@@ -81,11 +83,13 @@ export interface ClimateSurveyActionPlanBoard {
   actions: ClimateSurveyActionPlanRow[]
   indicators: ClimateSurveyActionPlanIndicators
   assignees: ClimateSurveyActionPlanAssigneeOption[]
+  topics: ClimateSurveyTopicOption[]
   corporateGoalPercent: number
 }
 
 export interface ClimateSurveyActionPlanBoardFilters {
   status?: string
+  priority?: string
   assigneeId?: string
   dimension?: string
 }
@@ -119,7 +123,11 @@ function isActionPlanPriority(value: string): value is ActionPlan["priority"] {
   return value === "low" || value === "medium" || value === "high"
 }
 
-function mapActionRow(plan: ActionPlanWithAssignee, now: Date): ClimateSurveyActionPlanRow {
+function mapActionRow(
+  plan: ActionPlanWithAssignee,
+  now: Date,
+  topicLabelMap: ReadonlyMap<string, string>,
+): ClimateSurveyActionPlanRow {
   const status = isActionPlanStatus(plan.status) ? plan.status : "open"
   const priority = isActionPlanPriority(plan.priority) ? plan.priority : "medium"
   const dimension =
@@ -140,7 +148,7 @@ function mapActionRow(plan: ActionPlanWithAssignee, now: Date): ClimateSurveyAct
     assigneeId: plan.assigneeId,
     assigneeName: plan.assignee?.name ?? null,
     dimension,
-    dimensionLabel: dimension !== null ? CLIMATE_SURVEY_DIMENSION_LABELS[dimension] : null,
+    dimensionLabel: dimension !== null ? resolveClimateSurveyTopicLabel(dimension, topicLabelMap) : null,
     dispatchId: plan.climateSurveyDispatchId,
     dispatchConfigName: plan.climateSurveyDispatch?.climateSurveyConfiguration.name ?? null,
     createdAt: plan.createdAt,
@@ -165,15 +173,17 @@ export async function getClimateSurveyActionPlanBoard(
   tenantId: string,
   filters: ClimateSurveyActionPlanBoardFilters = {},
 ): Promise<ClimateSurveyActionPlanBoard> {
-  const [dashboard, plans, indicators, users] = await Promise.all([
+  const [dashboard, plans, indicators, users, topics] = await Promise.all([
     getClimateSurveyModuleDashboard(tenantId),
     findClimateSurveyActionPlans(tenantId, {}),
     countClimateSurveyActionPlanIndicators(tenantId),
     getOrgUsers(tenantId),
+    listClimateSurveyTopicOptions(tenantId),
   ])
 
   const now = new Date()
-  const allRows = plans.map((plan) => mapActionRow(plan, now))
+  const topicLabelMap = new Map(topics.map((topic) => [topic.key, topic.label]))
+  const allRows = plans.map((plan) => mapActionRow(plan, now, topicLabelMap))
   const openCountByDimension = new Map<ClimateSurveyDimension, number>()
   for (const action of allRows) {
     if (action.dimension === null || action.status === "completed") continue
@@ -182,6 +192,7 @@ export async function getClimateSurveyActionPlanBoard(
 
   const actions = allRows.filter((action) => {
     if (filters.status !== undefined && action.status !== filters.status) return false
+    if (filters.priority !== undefined && action.priority !== filters.priority) return false
     if (filters.assigneeId !== undefined && action.assigneeId !== filters.assigneeId) return false
     if (filters.dimension !== undefined && action.dimension !== filters.dimension) return false
     return true
@@ -213,6 +224,7 @@ export async function getClimateSurveyActionPlanBoard(
       .filter((user) => user.isActive)
       .map((user) => ({ id: user.id, name: user.name }))
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
+    topics,
     corporateGoalPercent: CLIMATE_SURVEY_CORPORATE_GOAL_PERCENT,
   }
 }

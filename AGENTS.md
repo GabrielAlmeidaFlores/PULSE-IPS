@@ -244,9 +244,11 @@ Todo o projeto usa `"strict": true` mais flags adicionais (ver seção 9). `any`
 | `recharts` | Gráficos e visualização de dados (usado no dashboard) |
 | `sanitize-html` | Sanitização HTML segura (complementa `src/libs/utils/sanitize.ts`) |
 | `imask` + `react-imask` | Máscaras de input (telefone, CNPJ, etc.) |
-| `exceljs` | Geração de arquivos Excel (exportação de dados) |
+| `exceljs` | Geração de arquivos Excel (exportação de dados) e leitura de planilhas na importação |
+| `unpdf` | Extração de texto de PDFs (puro JS, baseada em pdf.js) — importação de pesquisas existentes |
 | `cmdk` | Componente de command menu (palette de comandos) |
 | `rate-limiter-flexible` | Rate limiting granular por chave/janela com suporte a Redis |
+| `html-to-image` | Exportação de nós DOM como imagem PNG (export do heatmap de clima) |
 
 ---
 
@@ -337,6 +339,7 @@ src/
 │   ├── (tenant)/                           # Painel da empresa (Admin + RH)
 │   │   ├── layout.tsx                      # Guard: verifica termos pendentes → /accept-terms
 │   │   ├── dashboard/page.tsx
+│   │   ├── governance/page.tsx             # Dashboard de governança (macro + roadmap de ondas)
 │   │   ├── employees/
 │   │   │   ├── page.tsx
 │   │   │   ├── new/page.tsx
@@ -346,10 +349,16 @@ src/
 │   │   ├── departments/
 │   │   ├── health-surveys/
 │   │   ├── climate-surveys/                # Feature gate: climate_surveys — Sidebar: Pesquisa de Clima (Board, Adesão, Banco de Perguntas, Disparo & Canais, Plano de Ação)
+│   │   │   ├── compare/page.tsx            # Comparativo entre ondas (Onda 1 × Onda 2 / ROI)
+│   │   │   ├── reports/page.tsx            # Banco de relatórios — histórico de ondas + PDF + duplicar configuração
+│   │   │   └── configure/                  # Banco de Perguntas (importa perguntas de arquivo via IA)
 │   │   ├── reports/
 │   │   ├── action-plans/
 │   │   ├── documents/
 │   │   ├── alerts/
+│   │   ├── workforce/                      # Métricas de Equipe — Headcount, Turnover e Absenteísmo
+│   │   │   ├── import/                     # Upload de arquivos + status das importações
+│   │   │   └── insights/                   # Cruzamento Workforce × Clima + análise com IA
 │   │   ├── pgr/
 │   │   ├── settings/
 │   │   └── billing/page.tsx               # Admin acessa Stripe Billing Portal
@@ -362,8 +371,11 @@ src/
 │       ├── health/route.ts                 # GET — health check do banco de dados
 │       ├── documents/[id]/route.ts         # GET — download/acesso a documentos
 │       ├── pgr/[id]/pdf/route.ts           # GET — geração de PDF do relatório PGR
+│       ├── climate-surveys/[id]/pdf/route.ts  # GET — geração de PDF da onda de clima (capa + gráficos + tabela consolidada)
 │       ├── internal/request-log/route.ts   # POST — recebe logs de request do instrumentation.ts
 │       ├── internal/rate-limit-proxy/route.ts  # POST — endpoint de rate-limit chamado pelo proxy (2s timeout)
+│       ├── internal/data-ingestion/route.ts    # POST — aciona a ingestão de dados com IA (x-cron-secret)
+│       ├── data-ingestion/batches/[id]/download/route.ts  # GET — download do arquivo enviado no lote (autenticado, tenant-guarded)
 │       ├── csp-report/route.ts             # POST — recebe violações de CSP (rate-limitado 20/60s por IP)
 │       └── super-admin/export/route.ts     # GET — exportação de dados (autenticado como super_admin)
 │
@@ -402,9 +414,15 @@ src/
 │   ├── climate-surveys/
 │   │   ├── climate-survey.repository.ts
 │   │   ├── climate-survey-config.service.ts
+│   │   ├── climate-survey-topic.repository.ts
+│   │   ├── climate-survey-topic.service.ts
 │   │   ├── climate-survey-dispatch.service.ts
 │   │   ├── climate-survey-response.service.ts
 │   │   ├── climate-survey-dashboard.service.ts
+│   │   ├── climate-survey-comparison.service.ts   # Comparativo entre ondas (Onda 1 × Onda 2 / ROI)
+│   │   ├── climate-survey-reports.service.ts      # Banco de relatórios — histórico de ondas + métricas + numeração por config
+│   │   ├── climate-survey-import.service.ts       # Extração de perguntas de arquivo existente com IA
+│   │   ├── climate-survey-import.schema.ts        # Zod schema da tool save_climate_survey_question
 │   │   ├── climate-survey-action-plan.service.ts
 │   │   ├── climate-survey-metrics.ts
 │   │   ├── climate-survey-adherence.service.ts
@@ -449,6 +467,21 @@ src/
 │   ├── dashboard/
 │   │   ├── dashboard.repository.ts         # Métricas do painel tenant
 │   │   └── dashboard.service.ts
+│   ├── data-ingestion/
+│   │   ├── data-ingestion.repository.ts      # Lotes de importação + linhas mensais (1 colaborador × 1 competência)
+│   │   ├── data-ingestion.service.ts         # Pipeline de 2 passadas de IA (extração + validação) com tool handler
+│   │   ├── data-ingestion.schema.ts          # Zod schemas das tools e tipos inferidos
+│   │   └── data-ingestion.types.ts
+│   ├── workforce/
+│   │   ├── workforce.repository.ts           # Leitura dos registros mensais para os indicadores
+│   │   ├── workforce.service.ts              # Métricas de Headcount, Turnover e Absenteísmo (por competência/setor)
+│   │   ├── workforce-insights.service.ts     # Cruzamento Workforce × Clima + geração de insights com IA
+│   │   ├── workforce-insight.repository.ts   # Persistência (replace atômico) dos insights por competência
+│   │   ├── workforce-insights.schema.ts      # Zod schema da tool save_workforce_insight
+│   │   └── workforce.types.ts
+│   ├── governance/
+│   │   ├── governance.service.ts            # Dashboard de governança (macro: clima, pessoas, alertas, planos, roadmap)
+│   │   └── governance.types.ts
 │   ├── job-logs/
 │   │   ├── job-log.repository.ts           # INSERT + listagem de logs de jobs
 │   │   ├── job-log.service.ts
@@ -495,10 +528,12 @@ src/
 │   │   ├── storage/
 │   │   │   ├── storage.interface.ts        # IStorageService
 │   │   │   ├── s3.adapter.ts               # ✅ Implementação S3 (AWS)
-│   │   │   └── console-storage.adapter.ts  # Desenvolvimento local
+│   │   │   └── console-storage.adapter.ts  # Desenvolvimento local (persiste em tmpdir, legível entre processos)
 │   │   ├── pdf/
 │   │   │   ├── pdf.interface.ts            # IPDFService — interface genérica (não usada pelo PGR)
 │   │   │   ├── pgr-pdf.adapter.tsx         # ✅ Implementação @react-pdf/renderer — gera PDF PGR
+│   │   │   ├── climate-survey-pdf.adapter.tsx  # ✅ Implementação @react-pdf/renderer — PDF da onda de clima (capa + gráficos + tabela consolidada)
+│   │   │   ├── climate-survey-pdf.types.ts     # Tipos de input do PDF de clima
 │   │   │   └── pgr-pdf.types.ts            # Tipos próprios de input do PDF (PgrPdfInput, etc.)
 │   │   ├── billing/
 │   │   │   ├── billing.interface.ts        # IBillingService
@@ -508,7 +543,13 @@ src/
 │   │   │   ├── redis-rate-limiter.adapter.ts  # ✅ Produção (rate-limiter-flexible + ioredis)
 │   │   │   ├── in-memory-rate-limiter.adapter.ts  # Testes/dev sem Redis
 │   │   │   └── redis-client.ts             # getRedisClient() — factory lazy que cria o ioredis singleton apenas na primeira chamada (evita conexões prematuras na inicialização do módulo; pino logging, isTest guard, reconexão)
-│   │   └── index.ts                        # Factories: getEmailService(), getBillingService(), getRateLimiterService()…
+│   │   ├── ai/
+│   │   │   ├── ai.interface.ts             # IAIService (generate com suporte a tool-calling)
+│   │   │   ├── openai.adapter.ts           # ✅ Implementação OpenAI (fetch, sem SDK)
+│   │   │   ├── claude.adapter.ts           # ✅ Implementação Anthropic/Claude (fetch, sem SDK)
+│   │   │   ├── gemini.adapter.ts           # ✅ Implementação Google Gemini (fetch, sem SDK)
+│   │   │   └── console-ai.adapter.ts       # Desenvolvimento local (no-op)
+│   │   └── index.ts                        # Factories: getEmailService(), getBillingService(), getRateLimiterService(), getAIService()…
 │   ├── email-templates/
 │   │   ├── index.ts                        # getTemplate(name, vars) → { subject, Component }
 │   │   ├── org-invite.tsx
@@ -774,7 +815,7 @@ O tenant. `id` é o `tenant_id` de todas as demais tabelas.
 | external_customer_id | varchar(255) | UNIQUE — ID do customer no provedor de billing |
 | billing_status | varchar(20) | `'pending'` \| `'active'` \| `'past_due'` \| `'suspended'` \| `'cancelled'` |
 | max_employees_override | integer | NULL = usa limite do plano |
-| climate_survey_min_respondents_percent | integer | NOT NULL, default 40 — percentual mínimo de participação (sobre destinatários) para exibir resultados de Pesquisa de Clima; piso absoluto de 3 respondentes; configurável pelo admin em `/settings` |
+| climate_survey_min_respondents_percent | integer | NOT NULL, default 40 — percentual mínimo de participação (sobre destinatários) para exibir resultados de Pesquisa de Clima; piso absoluto de 3 respondentes; configurável pelo admin no Dashboard de Pesquisa de Clima (`/climate-surveys`, botão "Configurações") |
 | trial_expires_at | timestamptz | NULL = sem trial ativo; NOT NULL = trial ativo até essa data (bypass do billing wall) |
 | deletion_scheduled_at | timestamptz | NULL = sem exclusão agendada; NOT NULL = exclusão permanente pendente |
 | is_active | boolean | NOT NULL, default true |
@@ -1108,7 +1149,7 @@ Configuração de Pesquisa de Clima Organizacional — módulo paralelo às pesq
 
 Join tables: `climate_survey_config_departments`, `climate_survey_config_work_days` (mesmo padrão das health surveys).
 
-> **Mapeamento vs modelo conceitual `clima_*`:** não existem tabelas com nomes em português. Equivalências: `clima_surveys` → `climate_survey_configurations` (`name`, `is_active`≈status, `frequency`≈recorrência; sem `created_by` / `data_inicio` / `data_fim` dedicados — a janela da onda fica em `climate_survey_dispatches.scheduled_at` / `dispatched_at`). `clima_topics` → campo `dimension` em `climate_survey_questions` (catálogo fixo de 8 tópicos no TypeScript; sem tabela `climate_topics`). `clima_questions` + `clima_survey_questions` → `climate_survey_questions` (1:N na config, com `order`; sem join M:N reutilizável). `clima_campaigns` → `climate_survey_dispatches` (canais na **config**, não por onda). `clima_recipients` → `climate_survey_response_tokens` (`employee_id`, `token`, `used_at`; status de envio em `message_logs` / `email_logs`). `clima_answers` → `climate_survey_responses` + `climate_survey_response_items` (**sem `token` nem `employee_id` nas respostas** — anonimato). `clima_action_plans` → `action_plans` com `climate_survey_dispatch_id` (sem `topic_id` / `responsavel_id` no plano; responsável fica em `action_tasks.assignee_id`).
+> **Mapeamento vs modelo conceitual `clima_*`:** não existem tabelas com nomes em português. Equivalências: `clima_surveys` → `climate_survey_configurations` (`name`, `is_active`≈status, `frequency`≈recorrência; sem `created_by` / `data_inicio` / `data_fim` dedicados — a janela da onda fica em `climate_survey_dispatches.scheduled_at` / `dispatched_at`). `clima_topics` → tabela `climate_survey_topics` (catálogo por tenant: 8 tópicos de sistema + customizados; `climate_survey_questions.dimension` referencia `key`). `clima_questions` + `clima_survey_questions` → `climate_survey_questions` (1:N na config, com `order`; sem join M:N reutilizável). `clima_campaigns` → `climate_survey_dispatches` (canais na **config**, não por onda). `clima_recipients` → `climate_survey_response_tokens` (`employee_id`, `token`, `used_at`; status de envio em `message_logs` / `email_logs`). `clima_answers` → `climate_survey_responses` + `climate_survey_response_items` (**sem `token` nem `employee_id` nas respostas** — anonimato). `clima_action_plans` → `action_plans` com `climate_survey_dispatch_id` (sem `topic_id` / `responsavel_id` no plano; responsável fica em `action_tasks.assignee_id`).
 
 #### `climate_survey_questions`
 
@@ -1120,10 +1161,29 @@ Join tables: `climate_survey_config_departments`, `climate_survey_config_work_da
 | text | text | NOT NULL |
 | order | integer | NOT NULL |
 | score_direction | varchar(30) | `'higher_is_better'` \| `'lower_is_better'` |
-| dimension | varchar | NOT NULL, default `'organizational_culture'` — `'job_satisfaction'` \| `'internal_communication'` \| `'relationships'` \| `'recognition_reward'` \| `'professional_development'` \| `'work_life_balance'` \| `'organizational_culture'` \| `'leadership_trust'` |
+| dimension | varchar | NOT NULL, default `'organizational_culture'` — chave do tópico (`climate_survey_topics.key`); os 8 tópicos de sistema são `'job_satisfaction'` \| `'internal_communication'` \| `'relationships'` \| `'recognition_reward'` \| `'professional_development'` \| `'work_life_balance'` \| `'organizational_culture'` \| `'leadership_trust'`; tópicos customizados criados pelo RH também são válidos |
 | is_active | boolean | NOT NULL, default true |
 
 **Índices:** `(tenant_id)`, `(tenant_id, climate_survey_configuration_id)`, `(dimension)`
+
+#### `climate_survey_topics`
+
+Catálogo de tópicos (dimensões) por tenant. Os 8 tópicos de sistema (`is_system = true`) são criados de forma lazy por tenant via `ensureClimateSurveySystemTopics` — sem seed em migration. Tópicos customizados (`is_system = false`) podem ser criados/renomeados/desativados pelo RH; tópicos de sistema não podem ser editados nem excluídos. `climate_survey_questions.dimension` referencia `key`.
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| tenant_id | uuid | NOT NULL, FK → organizations.id ON DELETE CASCADE |
+| key | varchar(60) | NOT NULL — slug do tópico (ex: `'seguranca-psicologica'`) |
+| label | varchar(100) | NOT NULL — nome exibido |
+| is_system | boolean | NOT NULL, default false — tópico padrão protegido |
+| is_active | boolean | NOT NULL, default true |
+| sort_order | integer | NOT NULL, default 0 |
+| created_at / updated_at | timestamptz | NOT NULL |
+
+**Índices:** `(tenant_id)`, UNIQUE `(tenant_id, key)`
+
+> O `dimension` de perguntas, métricas, dashboards (radar/heatmap), planos de ação e formulário público resolve o label pelo catálogo do tenant (`resolveClimateSurveyTopicLabel`), com fallback para os labels de sistema. Tópicos customizados aparecem no radar e no heatmap da onda em que foram usados.
 
 #### `climate_survey_dispatches`
 
@@ -1193,6 +1253,25 @@ Sessão de participação (por token) para tempo médio e abandono por pergunta.
 | created_at / updated_at | timestamptz | NOT NULL |
 
 **Índices:** `(tenant_id, dispatch_id)`, `(tenant_id, completed_at)`
+
+#### `climate_survey_action_suggestions`
+
+Sugestões automáticas de plano de ação (5W2H) geradas por onda para tópicos abaixo da meta. O RH aceita (vira `action_plan`), edita antes de aceitar ou recusa com motivo.
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| tenant_id | uuid | NOT NULL |
+| dispatch_id | uuid | NOT NULL, FK → climate_survey_dispatches |
+| dimension | varchar | tópico (`climate_survey_topics.key`) |
+| what / why / who / where / when / how | text | campos 5W2H preenchidos |
+| cost | varchar | NULL — em branco para o RH preencher |
+| status | varchar(20) | `'pending'` \| `'accepted'` \| `'rejected'` |
+| rejected_reason | varchar | NULL — obrigatório quando `status = 'rejected'` |
+| action_plan_id | uuid | UNIQUE, FK → action_plans.id — preenchido ao aceitar |
+| created_at / updated_at | timestamptz | NOT NULL |
+
+**Índices:** `(tenant_id, status)`, `(tenant_id, dispatch_id)`
 
 #### `anonymous_reports`
 
@@ -1509,6 +1588,72 @@ Resultado por pergunta gerado na revisão PGR. Permite análise de tendência po
 
 ---
 
+#### `data_import_batches`
+
+Lote de importação de arquivos operacionais (AFD/ponto, espelho, planilha). Cada upload cria um lote, processado pelo pipeline de IA (extração + validação).
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| tenant_id | uuid | NOT NULL, FK → organizations.id ON DELETE CASCADE |
+| file_name | varchar | NOT NULL |
+| file_url | varchar(500) | NULL — URL/chave no storage. Nulo quando o lote foi criado a partir de texto inline (endpoint interno), sem arquivo persistido |
+| file_type | varchar | NOT NULL — `'afd'` \| `'espelho'` \| `'planilha'` \| … |
+| competencia | varchar | NOT NULL — `AAAA-MM` |
+| status | varchar(20) | `'received'` \| `'processing'` \| `'extracted'` \| `'validated'` \| `'failed'` |
+| ai_provider | varchar | NOT NULL |
+| total_records / corrected_records / error_records | integer | NOT NULL, default 0 |
+| error_message | text | |
+| created_by_id | uuid | FK → organization_users.id ON DELETE SET NULL |
+| created_at / updated_at | timestamptz | NOT NULL |
+
+**Índices:** `(tenant_id)`, `(tenant_id, status)`
+
+#### `employee_monthly`
+
+Base Master Mensal. **1 registro = 1 colaborador × 1 competência mensal.**
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| tenant_id | uuid | NOT NULL |
+| batch_id | uuid | NOT NULL, FK → data_import_batches.id ON DELETE CASCADE |
+| competencia | varchar | NOT NULL |
+| employee_name | varchar | NOT NULL |
+| document / registration | varchar | |
+| department_name / role_name | varchar | |
+| admission_date / termination_date | timestamptz | |
+| expected_hours / worked_hours | float | |
+| justified_absence_hours / unjustified_absence_hours | float | |
+| absence_rate_percent | float | |
+| termination_type | varchar | |
+| quality_status | varchar(20) | `'pending'` \| `'validated'` \| `'corrected'` \| `'error'` |
+| validation_notes | text | |
+| row_hash | varchar | NOT NULL — hash idempotente (dedup por lote) |
+| created_at / updated_at | timestamptz | NOT NULL |
+
+**Índices:** `(tenant_id)`, `(tenant_id, competencia)`, `(tenant_id, batch_id)`, UNIQUE `(tenant_id, batch_id, row_hash)`
+
+#### `workforce_insights`
+
+Insights gerados por IA a partir do cruzamento de indicadores de pessoas (Headcount/Turnover/Absenteísmo) com o clima organizacional. Persistidos por competência — a geração substitui atomicamente o conjunto anterior da competência (`deleteMany` + `createMany` em transação).
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| tenant_id | uuid | NOT NULL, FK → organizations.id ON DELETE CASCADE |
+| competencia | varchar | NOT NULL — `AAAA-MM` |
+| kind | varchar(30) | `'root_cause'` \| `'burnout_risk'` \| `'action_suggestion'` |
+| severity | varchar(10) | `'high'` \| `'medium'` \| `'low'` |
+| department_name | varchar | NULL — setor relacionado (nulo = insight geral) |
+| title | varchar | NOT NULL |
+| description | text | NOT NULL |
+| created_at | timestamptz | NOT NULL |
+
+**Índices:** `(tenant_id, competencia)`
+
+---
+
 ### Resumo: Tabelas por Grupo
 
 | Grupo | Tabelas |
@@ -1520,10 +1665,11 @@ Resultado por pergunta gerado na revisão PGR. Permite análise de tendência po
 | **Tenant — estrutura** | `organizations`, `organization_subscriptions`, `organization_users`, `departments` |
 | **Tenant — colaboradores** | `employees`, `employee_consents` |
 | **Tenant — pesquisas** | `health_survey_configurations`, `health_survey_config_departments`, `health_survey_questions`, `health_survey_dispatches`, `health_survey_dept_dispatches`, `health_survey_response_tokens`, `health_survey_responses`, `health_survey_response_items` |
-| **Tenant — clima organizacional** | `climate_survey_configurations`, `climate_survey_config_departments`, `climate_survey_config_work_days`, `climate_survey_questions`, `climate_survey_dispatches`, `climate_survey_dept_dispatches`, `climate_survey_response_tokens`, `climate_survey_response_token_work_days`, `climate_survey_responses`, `climate_survey_response_items`, `climate_survey_analytics_events`, `climate_survey_response_sessions` |
+| **Tenant — clima organizacional** | `climate_survey_configurations`, `climate_survey_config_departments`, `climate_survey_config_work_days`, `climate_survey_questions`, `climate_survey_topics`, `climate_survey_dispatches`, `climate_survey_dept_dispatches`, `climate_survey_response_tokens`, `climate_survey_response_token_work_days`, `climate_survey_responses`, `climate_survey_response_items`, `climate_survey_analytics_events`, `climate_survey_response_sessions`, `climate_survey_action_suggestions` |
 | **Tenant — ocorrências** | `anonymous_reports`, `action_plans`, `action_tasks`, `action_plan_suggestions`, `action_plan_suggestion_tasks` |
 | **Tenant — documentos e PGR** | `documents`, `document_versions`, `pgr_reviews`, `pgr_dept_results`, `pgr_question_results` |
 | **Tenant — operacional** | `alerts`, `audit_logs` |
+| **Tenant — ingestão de dados** | `data_import_batches`, `employee_monthly`, `workforce_insights` |
 | **Plataforma** | `message_logs`, `email_logs`, `job_logs`, `request_logs` |
 
 ---
@@ -2566,6 +2712,8 @@ export interface IMessagingService {
 **Restrições SMS Barato (WhatsApp):** usa templates pré-aprovados no painel SMS Barato; os parâmetros são enviados na ordem esperada pelo template configurado (inclui o **link único** da pesquisa); `dest` igual ao SMS (apenas dígitos com DDD)
 
 > **Regra de terminologia:** os termos "SMS", "WhatsApp" e "CPF" **nunca devem aparecer em código, banco de dados ou UI**. Substituições obrigatórias: SMS/WhatsApp → `mensagem`/`message`; CPF → `document`/`documento`. Essa proibição se aplica a nomes de arquivos, classes, funções, variáveis, campos de banco, labels de UI e mensagens de erro.
+>
+> **Exceção — tela de Disparo e Canais (`/climate-surveys/dispatches`):** por decisão de produto, o canal único de mensagem é exibido como **"WhatsApp"** (envio via SMSBarato) nessa tela, sem qualquer seleção/troca de canal. É a única exceção autorizada; no restante do código, banco e UI continua valendo `mensagem`/`message`.
 
 > **Nomes de templates do provedor externo (SMS Barato)** são valores de configuração de infraestrutura — não são identificadores de domínio da aplicação. As variáveis `SMSBARATO_WA_TEMPLATE` e `SMSBARATO_WA_REMINDER_TEMPLATE` usam nomes como `"pulse_survey"` e `"pulse_survey_reminder"`, que não seguem o prefixo `health_survey_`. Isso é intencional: esses valores são definidos no painel externo do provedor, não no código.
 
@@ -2653,8 +2801,9 @@ export interface IBillingService {
 ```typescript
 export interface IStorageService {
   upload(params: UploadFileParams): Promise<UploadFileResult>
-  getSignedUrl(params: GetSignedUrlParams): Promise<string>
+  download(key: string): Promise<Buffer>
   delete(key: string): Promise<void>
+  getUrl(key: string): Promise<string>
 }
 ```
 
@@ -2726,7 +2875,51 @@ A chave de rate limiting é o IP do cliente (extraído via `extractClientIp` de 
 
 O proxy define um `Content-Security-Policy` strict com `nonce` único por requisição. Violações de CSP são reportadas em `POST /api/csp-report`, que é rate-limitado a 20 requisições por 60 segundos por IP para evitar abuso. As violações são logadas via pino logger mas **não persistidas no banco**.
 
+### AI
 
+```typescript
+// libs/integrations/ai/ai.interface.ts
+export interface AIToolDefinition {
+  name: string
+  description: string
+  parameters: JsonValue
+}
+
+export interface AIToolCall {
+  id: string
+  name: string
+  arguments: string   // JSON bruto — o tool handler faz o parse e valida com Zod
+}
+
+export interface AIGenerateParams {
+  system: string
+  messages: AIMessage[]
+  tools?: AIToolDefinition[]
+  tier?: AIModelTier   // "high" | "medium" | "low" (default: "medium")
+  temperature?: number
+  maxTokens?: number
+}
+
+export interface AIGenerateResult {
+  text: string | null
+  toolCalls: AIToolCall[]
+  usage: { inputTokens: number; outputTokens: number }
+}
+
+export interface IAIService {
+  generate(params: AIGenerateParams): Promise<AIGenerateResult>
+}
+```
+
+**Implementação OpenAI:** `AI_PROVIDER=openai` → `OpenAIAdapter` (via `fetch`, sem SDK)  
+**Implementação Claude:** `AI_PROVIDER=claude` → `ClaudeAdapter` (via `fetch`, sem SDK)  
+**Implementação Gemini:** `AI_PROVIDER=gemini` → `GeminiAdapter` (via `fetch`, sem SDK)  
+**Desenvolvimento:** `AI_PROVIDER=console` → `ConsoleAIService` (no-op)  
+**Factory:** `getAIService()` em `src/libs/integrations/index.ts`
+
+**Tiers de modelo e fallback:** cada adapter define **3 modelos por tier** (`high`/`medium`/`low`) e tenta em ordem até um responder (`runWithAIModelFallback`); cada falha intermediária é registrada via logger (`warn`) antes de tentar o próximo modelo. Os defaults ficam no próprio adapter; as listas podem ser sobrescritas por env (`OPENAI_MODELS_HIGH`, `ANTHROPIC_MODELS_LOW`, etc. — valores separados por vírgula). O caller escolhe o tier via `params.tier` (ex.: extração em `medium`, validação em `high`).
+
+**Regra inviolável — o modelo nunca acessa o banco nem escreve SQL.** Ele apenas retorna `toolCalls`; o código da aplicação valida os argumentos com Zod e persiste via service/repository (tool handler). Toda chamada de IA é feita via `getAIService()`, nunca instanciando o adapter direto.
 
 O PDF do relatório PGR é gerado **sob demanda** pela rota `GET /api/pgr/[id]/pdf`, sem armazenamento em disco/storage. A abordagem é domain-specific — não usa a interface genérica `IPDFService`.
 
@@ -2888,6 +3081,18 @@ libs/design-system/components/
 ├── feedback/        # Alert, EmptyState, LoadingSpinner
 └── data-display/   # StatCard, DataTable, StatusBadge, SectorHealthBar
 ```
+
+### Dialog — largura e overflow horizontal
+
+O `DialogContent` (`src/components/ui/dialog.tsx`) usa `grid grid-cols-1` (`grid-template-columns: repeat(1, minmax(0, 1fr))`). **Não remova o `grid-cols-1`**: sem ele a coluna implícita é `auto` e não encolhe abaixo do min-content dos filhos, o que gera **scroll horizontal** em modais com inputs/botões em linha (ex.: "Gerenciar tópicos"). Para conteúdo que estoura, use `min-w-0`/`truncate`/`flex-1` nos filhos, não `w-full` em inputs dentro de `flex`.
+
+### Header do tenant — dados do cliente
+
+O `Header` (`src/libs/design-system/components/layout/Header.tsx`) recebe do `(tenant)/layout.tsx`: `email`, `orgName`, `orgCnpj`, `planName` e `upgradeAvailable`. Mostra o nome da empresa + CNPJ (oculto em telas < 768px) à esquerda e o pill do plano à direita (âmbar com "· Upgrade disponível" quando `upgradeAvailable`, neutro caso contrário). O CNPJ vem de `organizations.cnpj` (cadastro). O plano/elegibilidade vêm de `getTenantPlanSummary(tenantId)` (`billing.service.ts`): `upgradeAvailable` é `true` quando existe plano ativo com preço maior que o `snapshot_price_in_cents` da assinatura atual.
+
+### Sidebar — seletor de módulos
+
+A `Sidebar` (`src/libs/design-system/components/layout/Sidebar.tsx`) tem um **seletor de módulos** no topo (`Clima` · `Métricas de Equipe` · `PGR`, cada um um `Link` para a tela padrão do módulo). O módulo ativo é resolvido pelo `pathname` (`resolveModule`). Abaixo, os itens do módulo agrupados por rótulo, seguidos de um grupo **Geral** (Painel, Governança, Funcionários, Departamentos, Alertas, Documentos, Relatos, + Assinatura/Configurações para `admin`). Vira menu hambúrguer em telas < `lg` (1024px). **Rótulos da UI em português** — sem termos em inglês (ex.: "Colaboradores" em vez de "Headcount", "Rotatividade" em vez de "Turnover").
 
 ### Layout padrão de páginas
 
@@ -3304,6 +3509,8 @@ Processos recorrentes gerenciados pelo **BullMQ** com Redis como broker.
 | `climate-survey-dispatcher` | A cada 5min | Auto-scheduler + processamento de ondas manuais de clima (respeita canais e feature `climate_surveys`/`messaging`) |
 | `climate-survey-response-reminder` | A cada hora | Lembrete halfway para tokens de clima não respondidos |
 | `climate-survey-response-token-cleanup` | Diário (02:00) | Remove tokens de clima expirados e não utilizados |
+| `climate-survey-action-suggestion-generator` | Diário (05:00) | Gera sugestões 5W2H de plano de ação para cada tópico abaixo da meta das ondas de clima com a janela de resposta encerrada (`runClimateSurveyActionSuggestionGenerator`) |
+| `data-ingestion-processor` | A cada 2min + on-demand | Processa lotes de importação com status `received`: baixa o arquivo do storage e roda extração + validação com IA |
 
 ### Nomenclatura de Jobs — regra obrigatória
 
@@ -3850,26 +4057,29 @@ Módulo paralelo às pesquisas de saúde (`src/modules/climate-surveys/`), gatea
 
 ```
 RH (feature climate_surveys) → Sidebar “Pesquisa de Clima”
- ├─ Dashboard `/climate-surveys` — KPIs + radar + evolução + eNPS + heatmap
+ ├─ Dashboard `/climate-surveys` — KPIs + radar + evolução + eNPS + heatmap; botão "Configurações" (admin) ajusta o percentual mínimo de participação para exibir resultados
  ├─ Adesão `/climate-surveys/adherence` — tabela por área, canais, lembrete manual
  ├─ Banco de Perguntas `/climate-surveys/configure`
  ├─ Disparo & Canais `/climate-surveys/dispatches` — compositor de campanha + histórico
  └─ Plano de Ação `/climate-surveys/action-plans` (feature action_plans)
      · tópicos abaixo da meta (auto, da última onda)
-     · CRUD de ações: título, descrição, responsável, prioridade, status, prazo
-     · filtros por responsável/status · indicadores: concluídas / em andamento / atrasadas
+     · CRUD de ações: título, descrição, responsável, **tópico obrigatório**, prioridade, status, prazo
+     · lista em **cards** (pill de prioridade à esquerda, título, tópico abaixo, status à direita) com **prazo vencido destacado** (data em vermelho + ícone de alerta)
+     · filtros por **status, prioridade, tópico** e responsável · indicadores: concluídas / em andamento / atrasadas
 RH → /climate-surveys/configure
   └─ Lista de pesquisas · Nova/Editar: banco de perguntas em accordion por tópico (checkbox)
      + seção "Perguntas personalizadas" (texto, tópico e direção do score, add/remover inline),
+     botão "Gerenciar tópicos" (criar/renomear/desativar tópicos customizados; tópicos de sistema são protegidos),
      painel lateral com contadores em tempo real (perguntas, tópicos, tempo estimado ≈20s/pergunta),
-     ações Salvar / Pré-visualizar; mín. 1 pergunta (catálogo + personalizadas), máx. 40; recomendado 3–5 por tópico
+     bloco fixo somente-leitura "Escala e pesos (RN-01)" (`CLIMATE_SURVEY_LIKERT_SCALE` — escala Likert de 5 pontos e pesos),
+     ações Salvar / Pré-visualizar; mín. 1 pergunta (catálogo + personalizadas), máx. 60 (`CLIMATE_SURVEY_MAX_QUESTIONS`); recomendado 3–5 por tópico
   └─ Agenda onda (manual) ou auto-scheduler (job climate-survey-dispatcher)
        ├─ Tokens + short_code; envio por mensagem (sendViaMessaging=true) quando feature messaging ativa
        └─ Sem e-mail/link assinado em campanhas novas: a UI de clima não expõe seleção de canal
           (compositor e config sempre enviam `sendViaMessaging=true`, `sendViaSignedLink=false`)
 Colaborador → /climate-survey/[token] | /climate-survey/[orgSlug]/[shortCode] | /climate-survey/link/[linkToken]
   └─ Consent Gate (source climate_survey_form no opt-out) → formulário mobile-first
-       (1 pergunta por vez com o TÓPICO exibido ao respondente, barra de progresso,
+       (1 pergunta por vez com o TÓPICO exibido ao respondente e a posição "Tópico N de M", barra de progresso,
         Likert 5 pontos com labels de concordância, auto-salva e avança ao tocar,
         botão Voltar, aviso fixo de anonimato)
        → passo final opcional "Comentário" (textarea livre anônimo, máx. 1000 chars) → Enviar
@@ -3885,10 +4095,11 @@ RH → /climate-surveys/[dispatchId]
 | Bloco | Conteúdo |
 |---|---|
 | KPIs | Adesão %, total de respostas, favorabilidade % (scores 4–5), eNPS |
-| Radar | 8 tópicos vs meta corporativa (`CLIMATE_SURVEY_CORPORATE_GOAL_PERCENT` = 70) — score = média dos pesos Likert × 100 |
+| Radar | Tópicos usados na onda (sistema + customizados) vs meta corporativa (`CLIMATE_SURVEY_CORPORATE_GOAL_PERCENT` = 70) — score = média dos pesos Likert × 100 |
+| Barras | Favorabilidade por tópico — barras horizontais ordenadas do maior para o menor, linha tracejada vertical na meta; cor = verde na meta ou acima, âmbar até 10 p.p. abaixo, vermelho acima disso (`resolveClimateSurveyFavorabilityBand`) |
 | Linha | Evolução entre ondas (clima ponderado, favorabilidade, adesão, eNPS) |
 | Rosca eNPS | Promotores / Neutros / Detratores |
-| Heatmap | Tópicos × departamentos (verde ≥ meta, amarelo ≥ meta−20, vermelho crítico) |
+| Heatmap | Favorabilidade por tópico × departamento, com régua de 4 faixas relativa à meta (`resolveClimateSurveyHeatmapBand`): `≥ meta+5` forte · `meta..meta+5` na meta · `meta−10..meta` atenção · `< meta−10` crítico. Célula sem amostra suficiente mostra "—"; coluna de tópicos fixa na rolagem horizontal. Rodapé consolidado com linhas de **eNPS** (faixas da RN-02 via `resolveClimateSurveyEnpsHeatmapBand`) e **Score Total** (régua da meta), com o valor da empresa na 1ª coluna; export em CSV (`buildClimateSurveyHeatmapCsv`) e imagem PNG (`html-to-image`) |
 
 **Fórmulas de métricas (`climate-survey-metrics.ts`) — obrigatórias:**
 
@@ -3899,10 +4110,11 @@ RH → /climate-surveys/[dispatchId]
 | Score de clima | média dos pesos × 100 |
 | Nota eNPS (0–10) | peso Likert × 10 (equivale a Likert × 2) |
 | eNPS | `% promotores − % detratores` — promotores nota 9–10 · neutros 7–8 · detratores 0–6 |
+| Faixa de status do eNPS (RN-02) | `≥ 50` Excelente · `≥ 30` Muito Bom · `≥ 10` Médio · `≥ 0` Atenção · `< 0` Crítico (`resolveClimateSurveyEnpsStatusLabel`) |
 
 Agregações disponíveis: **por pergunta**, **por tópico (`dimension`)**, **por departamento** e **geral da empresa/onda**. O eNPS agregado classifica a média das notas do respondente no escopo (não a resposta isolada), exceto quando o escopo já é uma única pergunta.
 
-**Tópicos (`ClimateSurveyDimension`):** `job_satisfaction`, `internal_communication`, `relationships`, `recognition_reward`, `professional_development`, `work_life_balance`, `organizational_culture`, `leadership_trust`.
+**Tópicos:** catálogo por tenant em `climate_survey_topics` (`key` + `label`). Os 8 tópicos de sistema (criados de forma lazy via `ensureClimateSurveySystemTopics`) são `job_satisfaction`, `internal_communication`, `relationships`, `recognition_reward`, `professional_development`, `work_life_balance`, `organizational_culture`, `leadership_trust`; o RH pode criar tópicos customizados pelo gerenciador em `/climate-surveys/configure` (tópicos de sistema não podem ser editados nem excluídos). O `dimension` das perguntas guarda o `key` do tópico e o label é resolvido via `resolveClimateSurveyTopicLabel`; `ClimateSurveyDimension` é `string` (não mais um union fixo).
 
 **Adesão (`getClimateSurveyAdherenceOverview` / `/climate-surveys/adherence`):**
 
@@ -3910,18 +4122,19 @@ Agregações disponíveis: **por pergunta**, **por tópico (`dimension`)**, **po
 |---|---|
 | Tabela por área | Colaboradores, respostas, % adesão, canais, status |
 | Status | Excelente ≥ 90% · Boa ≥ 75% · Reforçar &lt; 75% |
-| Canais | `Mensagem` (tokens com `shortCode`) · `E-mail` (link assinado; fallback = adesão geral quando os tokens já têm `shortCode`) |
+| Canais | `Mensagem` (tokens com `shortCode`) · `E-mail` (tokens sem `shortCode` — link assinado). Cada canal usa apenas os seus próprios tokens (sem fallback): a soma das respostas por canal fecha com o total da onda e um canal sem uso aparece como "— / Não utilizado nesta onda". Abaixo dos cards, uma linha de leitura compara a adesão entre os canais (ou indica o único canal usado) |
 | Card lembrete | Lista áreas &lt; 75%; ação “Disparar lembrete agora” → `sendClimateSurveyRemindersForDispatch` (Mensagem se feature `messaging` + canal; E-mail se canal ativo e colaborador com e-mail) |
 
 **Disparo & Canais (`launchClimateSurveyCampaign` / `/climate-surveys/dispatches`):**
 
 | Bloco | Conteúdo |
 |---|---|
-| Canais | Só Mensagem — a UI não expõe seleção de canal; campanhas novas usam `sendViaMessaging=true`, `sendViaSignedLink=false` (sem e-mail nem link assinado em campanhas novas; o backend de e-mail permanece para os demais fluxos/legado) |
-| Recorrência | `once` (sem auto-scheduler) · `quarterly` (90d) · `semiannual` (180d) |
+| Canais | Canal único **WhatsApp** (exceção de rótulo — ver §13), exibido como bloco informativo **sem seleção/troca de canal**; campanhas novas usam `sendViaMessaging=true`, `sendViaSignedLink=false` (o backend de e-mail permanece para os demais fluxos/legado) |
+| Recorrência | `monthly` (30d) · `quarterly` (90d) · `semiannual` (180d) · `once` (sem auto-scheduler) — intervalos em `FREQUENCY_INTERVAL_DAYS` |
 | Timing | Enviar agora · Agendar · Lembrete 48h (força `tokenExpiryHours ≥ 96`) |
-| Departamentos | Incluir/excluir + canal preferencial (UI) + headcount ativo |
-| Resumo | Destinatários, canais, recorrência, data/hora + prévia do template `SURVEY_MESSAGE_TEMPLATE` |
+| Departamentos | Incluir/excluir + headcount ativo por setor |
+| Resumo | Destinatários (soma só os setores marcados), canal, recorrência, data/hora + prévia do template `SURVEY_MESSAGE_TEMPLATE` |
+| Anonimato | Aviso fixo **não configurável**: a participação é controlada à parte e as respostas são anônimas, não vinculadas ao colaborador |
 
 **E-mail de pesquisa (`survey-email.service` / fila `pulse-emails`):**
 
@@ -3968,8 +4181,103 @@ Exibido no Dashboard `/climate-surveys` (bloco Funil da onda). Falhas de insert 
 | Limiar por percentual | `canRevealClimateSurveyGroupResults` / `climateSurveyRequiredRespondents` — revela quando `respostas ≥ max(3, ceil(destinatários × organizações.climate_survey_min_respondents_percent / 100))`; scores, favorabilidade, eNPS, radar, heatmap e distribuições ocultos abaixo do limiar (por onda e por célula/setor) |
 | Sem rastreamento individual no dashboard | UI/services só agregados; sem listagem de respondentes ou respostas por colaborador |
 | Sem export identificável | `assertClimateSurveyIdentifiableExportForbidden()` — proibido exportar respostas com identidade |
+| Classificação de eNPS persistida | `climate_survey_responses.enps_category` (`promoter`/`neutral`/`detractor`) é calculada no submit a partir da média dos scores normalizados do respondente (direção da pergunta aplicada) e gravada junto à resposta anônima — nunca vinculada ao colaborador |
 
 **Jobs:** `climate-survey-dispatcher`, `climate-survey-response-reminder`, `climate-survey-response-token-cleanup`.
+
+**Importação de perguntas de arquivo existente (IA):** em `/climate-surveys/configure`, o botão "Importar de arquivo (.xlsx/.csv)" no bloco de perguntas personalizadas chama `extractClimateSurveyQuestionsAction` (Server Action), que exige a feature `climate_surveys`, aplica rate limit por tenant (10/5min) e converte a planilha/texto em texto antes de chamar `extractClimateSurveyQuestionsFromFile(tenantId, sourceText)`. O serviço usa `getAIService()` com `tier: "medium"` e a tool `save_climate_survey_question`; cada argumento é validado com `climateSurveyQuestionImportToolSchema` (Zod). A dimensão é mapeada para um tópico ativo do tenant (fallback `organizational_culture`). As perguntas retornadas são adicionadas como rascunhos de perguntas personalizadas no formulário (o RH revisa e salva). Formatos aceitos: `.xlsx`, `.csv`, `.txt` e `.pdf` (máx. 10 MB). PDF é convertido em texto com `unpdf` (puro JS, sem dependência nativa); PDFs escaneados (imagem) não têm camada de texto e exigiriam OCR. O modelo **nunca acessa o banco** — só retorna tool calls.
+
+**Comparativo entre ondas (ROI):** página `/climate-surveys/compare` (`getClimateSurveyWaveComparison`). Seleciona duas ondas (padrão: as duas mais recentes) e compara **favorabilidade** por tópico e por departamento (valor base × comparada, delta em p.p. e pill de leitura da **RN-05**), além de KPIs (favorabilidade, eNPS, adesão, tópicos abaixo da meta) com delta, gráfico de barras agrupadas por tópico (linha de meta tracejada) e os blocos de 3 maiores altas / 3 maiores quedas. Tópico que cruza a meta entre as ondas é destacado. Departamento com menos de `CLIMATE_SURVEY_COMPARISON_MIN_RESPONDENTS` (5) respostas em qualquer onda fica marcado como amostra insuficiente. Exibe ainda os planos de ação criados a partir da onda base (`countClimateSurveyActionPlansByDispatch`). Opções via `findClimateSurveyWaveOptions`.
+
+**RN-05 (leitura nível × tendência):** `resolveClimateSurveyReadingPill(currentPercent, delta)` — nível `< 70` + piora = **Crítico**; nível `< 70` + melhora/estável = **Atenção**; nível `≥ 70` + piora = **Atenção**; nível `≥ 70` + melhora/estável = **Informativo** (`CLIMATE_SURVEY_READING_LOW_THRESHOLD_PERCENT = 70`, labels em `CLIMATE_SURVEY_READING_PILL_LABELS`).
+
+**Banco de relatórios (`/climate-surveys/reports`):** histórico das ondas (`getClimateSurveyWaveReports`) — uma linha por onda com numeração por configuração (ordinal por `scheduledAt` via `findClimateSurveyDispatchOrdinalRows`), período de coleta, público, adesão + pill, favorabilidade e eNPS. Ações por linha: abrir a onda em modo leitura (`/climate-surveys/[dispatchId]`), exportar PDF (`GET /api/climate-surveys/[id]/pdf` — capa, favorabilidade por tópico, eNPS e tabela consolidada tópico × setor, com a identidade da Pulse, via `generateClimateSurveyPdf`) e **duplicar a configuração** (`duplicateClimateSurveyConfig` — copia setores, canais e banco de perguntas para uma nova config "Cópia de X"). A onda é somente-leitura (não há UI que a edite) e o PDF respeita o limiar de anonimato por setor (`canRevealClimateSurveyGroupResults`).
+
+**Sugestão automática de plano de ação (5W2H):** job diário `climate-survey-action-suggestion-generator` (`runClimateSurveyActionSuggestionGenerator`) — para cada onda de clima com a janela de resposta encerrada, gera uma sugestão por **tópico abaixo da meta** (`generateClimateSurveyActionSuggestions`), com os 7 campos 5W2H preenchidos (o custo fica em branco): **o quê** e **como** vêm dos playbooks por tópico (`CLIMATE_SURVEY_ACTION_PLAYBOOKS`), **por quê** cita o número que disparou ("{tópico} fechou em X%, Y pontos abaixo da meta"), **onde** lista os setores onde o tópico está pior (heatmap), e **quem**/**quando** vêm do playbook. As sugestões ficam em `climate_survey_action_suggestions` (`status` `pending`/`accepted`/`rejected` + `rejected_reason`) e aparecem em `/climate-surveys/action-plans` com o pill "Sugerido pelo sistema". O RH pode **aceitar**, **editar e aceitar** (persiste os campos) ou **recusar** (exige motivo). Aceitar cria o `action_plan` vinculado à onda + dimensão (com audit log — trilha de evidência). Geração idempotente por `(dispatch, dimension)`.
+
+### 20.15 Ingestão de dados com IA (Base Master Mensal)
+
+Upload unificado de arquivos operacionais (AFD/ponto, espelho, planilha) → lote (`data_import_batches`) → pipeline de **2 passadas de IA** (sem aprovação humana por enquanto):
+
+1. **Extração** (`processDataExtractionWithAI`): o conteúdo é dividido em chunks (`MAX_SOURCE_CHARS_PER_AI_CALL`) e enviado ao `getAIService()` com `tier: "medium"`. A IA chama a tool `save_employee_monthly`; o **tool handler** valida os argumentos com Zod e grava via repository em `employee_monthly` (com `row_hash` idempotente). A tool `flag_extraction_error` registra problemas. Status do lote → `extracted`.
+2. **Validação** (`validateDataExtractionWithAI`): as linhas extraídas são enviadas à IA com `tier: "high"`, que chama `apply_employee_corrections` para pequenos consertos. Correções viram `quality_status = 'corrected'`; as demais viram `validated`. Status do lote → `validated`.
+
+**Regras:** o modelo **nunca acessa o banco** — só retorna `toolCalls`; a aplicação valida com Zod e persiste (tool handler). Cada linha tem `row_hash` (dedup por lote) e `batch_id` (rastreabilidade). Sem aprovação humana nesta fase — a confiança vem das duas camadas de IA + validação Zod. Módulo: `src/modules/data-ingestion/`.
+
+**Orquestração e acionamento:** `runDataIngestionWithAI(tenantId, input)` cria o lote e executa as duas passadas. O endpoint interno `POST /api/internal/data-ingestion` (protegido por `x-cron-secret`) recebe `{ tenantId, competencia, fileName, fileType, sourceText }` e retorna `{ batch, extraction, validation, rows }` — útil para testes e operação.
+
+**Upload e job assíncrono:** a UI em `/workforce/import` envia o arquivo (`.txt`/`.csv`, máx. 20 MB) via Server Action, que faz upload no storage (`IStorageService.upload`) e chama `enqueueDataIngestionBatch` (cria o lote com status `received` e enfileira o job `data-ingestion-processor`). O worker baixa o arquivo (`IStorageService.download`) e roda extração + validação. O job também roda a cada 2 min como rede de segurança para lotes pendentes.
+
+**Download do arquivo enviado:** a listagem `/workforce/import` exibe um ícone de download por lote (quando `file_url` não é nulo) que aponta para `GET /api/data-ingestion/batches/[id]/download` — rota autenticada e tenant-guarded que baixa o arquivo original via `getDataIngestionBatchFile` (`IStorageService.download`). Lotes criados a partir de texto inline (sem arquivo) não têm download.
+
+**Privacidade e LGPD (regra obrigatória):**
+
+| Regra | Detalhe |
+|---|---|
+| CPF fora da validação | O documento (CPF) **não** é enviado à IA na passada de validação — o payload omite `document` e a tool `apply_employee_corrections` não aceita correção do campo `document`. O CPF ainda é processado na extração (a IA lê o arquivo bruto), o que exige contrato/DPA com o provedor de IA. |
+| CPF em repouso | `employee_monthly.document` é armazenado como texto (usado para deduplicar colaboradores). Tratar com o mesmo cuidado de dado pessoal; hashing em repouso é uma decisão de produto pendente. |
+| Erros ao usuário | `errorMessage` do lote é sempre uma mensagem genérica em pt-BR (`resolveDataIngestionErrorMessage`); o detalhe técnico (ex.: erro do provedor em inglês) vai apenas para o log. |
+| Cruzamento agregado | Os insights de Workforce × Clima enviam à IA apenas dados agregados por setor (sem nome nem documento de colaborador). |
+
+### 20.16 Métricas de Equipe (Headcount, Turnover e Absenteísmo)
+
+Dashboard em `/workforce` (`getWorkforceDashboard`) que lê a Base Master Mensal (`employee_monthly`) e exibe indicadores por competência e setor.
+
+**Métricas (`workforce.service.ts`):**
+
+| Indicador | Fórmula |
+|---|---|
+| Headcount | registros ativos na competência (`terminationDate` nulo ou ≥ 1º dia da competência) |
+| Admissões | registros com `admissionDate` dentro da competência |
+| Desligamentos | registros com `terminationDate` dentro da competência |
+| Turnover % | desligamentos / headcount × 100 |
+| Absenteísmo % | (horas justificadas + injustificadas) / horas previstas × 100 |
+
+**Deduplicação:** como o mesmo colaborador pode aparecer em lotes diferentes da mesma competência, a leitura deduplica por colaborador (chave `document` → `registration` → `employeeName`) mantendo o registro mais recente (`createdAt`). Sem isso o headcount seria contado em duplicidade.
+
+**UI:** seletor de competência (`?competencia=AAAA-MM`), 5 KPIs, gráfico de evolução (headcount + turnover + absenteísmo) e tabela por setor. Setores sem headcount/admissões/desligamentos na competência são omitidos.
+
+### 20.17 Cruzamento Workforce × Clima com IA
+
+Página `/workforce/insights` (`getWorkforceInsights` / `generateWorkforceInsightsWithAI`) que cruza os indicadores de pessoas da competência selecionada com o clima da última onda e gera insights acionáveis com IA.
+
+**Cruzamento determinístico (`getWorkforceCrossAnalysis`):**
+
+| Etapa | Detalhe |
+|---|---|
+| Fontes | `getWorkforceDashboard(tenantId, competencia)` + `getLatestClimateSurveyDepartmentScores(tenantId)` (onda mais recente + scores por setor, sem recomputar radar/heatmap/evolução) |
+| Junção | setores pareados por nome normalizado (`trim().toLowerCase()`) entre workforce e `departmentScores` do clima |
+| Colunas | setor, headcount, absenteísmo %, turnover %, score de clima %, favorabilidade % e eNPS (nulos quando o clima está abaixo do limiar de anonimato) |
+| Risco | `high` = absenteísmo ≥ 8% **e** clima < meta corporativa (`CLIMATE_SURVEY_CORPORATE_GOAL_PERCENT` = 70); `medium` = apenas uma das condições; `low` = nenhuma |
+| Sem onda de clima | `climateWaveId = null`; risco calculado apenas pelo absenteísmo |
+
+**Geração com IA (`generateWorkforceInsightsWithAI`):**
+
+- Envia o cruzamento (competência + setores) para `getAIService()` com `tier: "high"` e a tool `save_workforce_insight`.
+- O modelo **nunca acessa o banco** — retorna `toolCalls`; cada argumento é validado com `workforceInsightToolSchema` (Zod) e persistido via `replaceWorkforceInsights` (delete + createMany atômico por competência).
+- `kind`: `root_cause` (causa raiz), `burnout_risk` (risco de burnout), `action_suggestion` (sugestão de ação). `severity`: `high`/`medium`/`low`. `departmentName` é opcional (nulo = insight geral).
+- Sem competência selecionada ou sem setores → `AppError("WORKFORCE_NO_DATA")`.
+- Tool calls inválidas ou de nome desconhecido são ignoradas (log `warn`), sem quebrar o fluxo.
+
+**UI:** link "Análise com IA" no header de `/workforce`; back link "← Métricas de Equipe"; seletor de competência; matriz de risco por setor (badge de risco) e insights agrupados por tipo (badge de severidade). Botão "Gerar análise com IA" disponível para `admin` e `rh`.
+
+**Criar plano de ação a partir de um insight:** cada insight do tipo `action_suggestion` exibe o botão "Criar plano de ação" (`createActionPlanFromInsightAction`). A ação chama `generateActionPlanFromWorkforceInsight(tenantId, insightId, actorId)`, que envia o insight + indicadores dos setores relacionados ao `getAIService()` (`tier: "high"`, tool `save_workforce_action_plan`) e cria o plano com tarefas via `createPlanWithTasks` (audit log incluído). O plano aparece em `/action-plans` e o usuário é redirecionado para lá. O modelo **nunca acessa o banco** — só retorna tool call.
+
+### 20.18 Dashboard de Governança
+
+Página `/governance` (`getGovernanceDashboard`) — painel macro para gestores, com título e descrição explicando cada métrica. Agrega serviços existentes (sem tabela própria):
+
+| Bloco | Fonte |
+|---|---|
+| Clima organizacional | `getClimateSurveyModuleDashboard` → adesão, favorabilidade, score de clima, eNPS, respostas, convidados + evolução entre ondas (gráfico) |
+| Riscos e alertas | `getAlertStats` → total, abertos, críticos, resolvidos |
+| Planos de ação | `countActionPlanOverview` → total, abertos, em andamento, concluídos, atrasados, taxa de conclusão |
+| Métricas de equipe | `getWorkforceDashboard` → headcount, admissões, desligamentos, turnover, absenteísmo + evolução por competência (gráfico) |
+| Roadmap de ondas | `findClimateSurveyDispatchTimeline(tenantId, 24)` |
+
+**Gráficos:** reutiliza `ClimateSurveyWaveEvolutionChart` (evolução do clima) e `WorkforceEvolutionChart` (evolução das métricas de equipe) dentro de `ChartCard` com título/subtítulo.
+
+**Status de cada onda (`resolveGovernanceWaveStatus`):** `available` ou com `dispatchedAt` → `completed` (Concluída); `scheduled` com `scheduledAt` no passado → `late` (Atrasada); `scheduled` no futuro → `scheduled` (Agendada); `failed`/`cancelled` mapeados diretamente. O roadmap anual é representado pelas ondas agendadas/disponíveis com o respectivo status. Entrada "Governança" na Sidebar (ícone `Gauge`), disponível a todos os tenants.
 
 ---
 
@@ -4024,6 +4332,23 @@ REDIS_PORT=6379
 REDIS_PASSWORD=...                        # opcional — autenticação Redis em produção
 CRON_SECRET=...                           # proteção dos endpoints /api/jobs/*
 RATE_LIMITER_PROVIDER=redis               # "redis" (padrão produção) | "memory" (testes sem Redis)
+
+# IA (ingestão e análise de dados)
+AI_PROVIDER=openai                        # "openai" | "claude" | "gemini" | "console" (default: "console")
+OPENAI_API_KEY=sk-...                     # obrigatória se AI_PROVIDER=openai
+OPENAI_MODELS_HIGH=gpt-4o,gpt-4-turbo,gpt-4o-mini        # opcional — default no adapter (fallback em ordem)
+OPENAI_MODELS_MEDIUM=gpt-4o-mini,gpt-4o,gpt-3.5-turbo    # opcional
+OPENAI_MODELS_LOW=gpt-4o-mini,gpt-3.5-turbo,gpt-4o       # opcional
+ANTHROPIC_API_KEY=sk-ant-...              # obrigatória se AI_PROVIDER=claude
+ANTHROPIC_MODELS_HIGH=claude-3-5-sonnet-latest,claude-3-opus-latest,claude-3-5-haiku-latest  # opcional
+ANTHROPIC_MODELS_MEDIUM=...               # opcional
+ANTHROPIC_MODELS_LOW=...                  # opcional
+GEMINI_API_KEY=...                        # obrigatória se AI_PROVIDER=gemini
+GEMINI_MODELS_HIGH=gemini-2.5-pro,gemini-pro-latest,gemini-3.5-flash   # opcional
+GEMINI_MODELS_MEDIUM=gemini-2.5-flash,gemini-flash-latest,gemini-3.5-flash   # opcional
+GEMINI_MODELS_LOW=gemini-flash-lite-latest,gemini-3.5-flash-lite,gemini-2.5-flash   # opcional
+AI_MAX_TOKENS=4096                        # default
+AI_TEMPERATURE=0                          # default (0 = determinístico)
 
 # URL pública
 NEXT_PUBLIC_APP_URL=https://app.pulse.com
@@ -4308,7 +4633,7 @@ import { BADGE_BASE, BADGE_RED, BADGE_GREEN, BADGE_AMBER, BADGE_BLUE } from "@/l
 
 As classes `badge-*` são utilitárias definidas em `@layer utilities` em `globals.css` e usam as variáveis `--status-*` — adaptam-se automaticamente ao tema dark/light sem precisar de prefixo `dark:`.
 
-**Não use inline `style={{ color, backgroundColor }}`** para badges — usar className garante consistência com o tema e o Tailwind JIT/oxide inclui as classes por serem literais no fonte.
+**Não use inline `style={{ color, backgroundColor }}`** para badges, indicadores de cor de legenda ou qualquer swatch — usar className garante consistência com o tema e o Tailwind JIT/oxide inclui as classes por serem literais no fonte. **Pitfall comprovado:** `style={{ backgroundColor: "var(--...)" }}` pode não resolver a variável (o elemento fica `transparent`) mesmo quando a var está definida em `:root` — use sempre a classe utilitária (`bg-status-success`, `bg-muted-foreground`). Em SVG de bibliotecas de gráfico (recharts), o atributo `fill="var(--...)"` funciona normalmente.
 
 ---
 

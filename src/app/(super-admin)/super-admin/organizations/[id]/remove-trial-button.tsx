@@ -20,7 +20,7 @@ export function RemoveTrialButton({ organizationId }: Props): React.ReactElement
         toast.error(result.error)
       } else {
         setOpen(false)
-        toast.success("Trial removido.")
+        toast.success("Período de teste removido.")
       }
     })
   }

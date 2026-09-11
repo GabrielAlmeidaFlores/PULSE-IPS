@@ -25,7 +25,6 @@ function isValidIanaTimezone(tz: string): boolean {
 const updateOrgSchema = z.object({
   name: z.string().min(1).max(255).trim(),
   timezone: z.string().min(1).max(100).refine(isValidIanaTimezone, { message: "Fuso horário inválido." }),
-  climateSurveyMinRespondentsPercent: z.coerce.number().int().min(1).max(100),
 })
 
 const inviteUserSchema = z.object({
@@ -42,7 +41,6 @@ const changePasswordSchema = z.object({
 export async function updateOrganizationAction(input: {
   name: string
   timezone: string
-  climateSurveyMinRespondentsPercent: number
 }): Promise<ActionResult> {
   const session = await getSession()
   if (!session) return { error: SESSION_EXPIRED_ERROR }
@@ -53,7 +51,6 @@ export async function updateOrganizationAction(input: {
     await updateOrg(session.tenantId, {
       name: parsed.data.name,
       timezone: parsed.data.timezone,
-      climateSurveyMinRespondentsPercent: parsed.data.climateSurveyMinRespondentsPercent,
     })
     revalidatePath("/settings")
     return {}

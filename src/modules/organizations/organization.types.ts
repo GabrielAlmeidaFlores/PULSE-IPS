@@ -2,6 +2,7 @@ export interface Organization {
   id: string
   name: string
   slug: string
+  cnpj: string | null
   planId: string | null
   externalCustomerId: string | null
   billingStatus: string

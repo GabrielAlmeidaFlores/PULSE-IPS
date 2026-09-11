@@ -3,6 +3,7 @@ import Link from "next/link"
 import { getSession } from "@/modules/auth/session"
 import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
 import { getActiveDepartments } from "@/modules/departments/department.service"
+import { listClimateSurveyTopicOptions } from "@/modules/climate-surveys/climate-survey-topic.service"
 import { ClimateSurveyConfigForm } from "@/app/(tenant)/climate-surveys/configure/climate-survey-config-form"
 import { createClimateSurveyConfigAction } from "@/app/(tenant)/climate-surveys/configure/new/actions"
 
@@ -11,7 +12,10 @@ export default async function NewClimateSurveyConfigPage(): Promise<React.ReactE
   if (!session) redirect("/login")
   if (!(await hasTenantPlanFeature(session.tenantId, "climate_surveys"))) redirect("/dashboard")
 
-  const departments = await getActiveDepartments(session.tenantId)
+  const [departments, topics] = await Promise.all([
+    getActiveDepartments(session.tenantId),
+    listClimateSurveyTopicOptions(session.tenantId),
+  ])
 
   return (
     <div className="flex flex-col h-full">
@@ -28,6 +32,7 @@ export default async function NewClimateSurveyConfigPage(): Promise<React.ReactE
         <ClimateSurveyConfigForm
           mode="create"
           departments={departments.map((d) => ({ id: d.id, name: d.name }))}
+          topics={topics}
           onSubmit={createClimateSurveyConfigAction}
           cancelHref="/climate-surveys/configure"
         />

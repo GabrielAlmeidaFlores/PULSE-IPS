@@ -5,7 +5,7 @@ import { getBillingService } from "@/libs/integrations"
 import { AppError } from "@/libs/errors/app-error"
 import { findActiveSubscription, upsertSubscription, findPlanPriceForProvisioning, createSubscriptionFeatureSnapshot, findTenantSubscriptionFeatures, replaceSubscriptionFeatures, cancelOrganizationSubscription } from "@/modules/billing/billing.repository"
 import { findOrganizationRequired, updateOrganizationBillingStatus, updateOrganizationCustomerId, setOrganizationTrialExpiresAt } from "@/modules/organizations/organization.repository"
-import { findPlanFeatures, findPlanPriceById } from "@/modules/plans/plan.repository"
+import { findPlanFeatures, findPlanPriceById, findAllPlans } from "@/modules/plans/plan.repository"
 import type { PlanFeature } from "@/modules/plans/plan.types"
 import type { SubscriptionWithPlan } from "@/modules/billing/billing.types"
 
@@ -102,6 +102,22 @@ export function getTenantPlanFeatures(tenantId: string): Promise<PlanFeature[]> 
 export async function hasTenantPlanFeature(tenantId: string, feature: PlanFeature): Promise<boolean> {
   const features = await findTenantSubscriptionFeatures(tenantId)
   return features.includes(feature)
+}
+
+export interface TenantPlanSummary {
+  planName: string | null
+  upgradeAvailable: boolean
+}
+
+export async function getTenantPlanSummary(tenantId: string): Promise<TenantPlanSummary> {
+  const [subscription, plans] = await Promise.all([getSubscription(tenantId), findAllPlans()])
+  if (subscription === null) {
+    return { planName: null, upgradeAvailable: plans.length > 0 }
+  }
+  const upgradeAvailable = plans.some((plan) =>
+    plan.prices.some((price) => price.priceInCents > subscription.snapshotPriceInCents),
+  )
+  return { planName: subscription.snapshotPlanName, upgradeAvailable }
 }
 
 export async function cancelOrgSubscriptionAsAdmin(tenantId: string): Promise<void> {

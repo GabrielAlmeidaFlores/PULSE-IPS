@@ -512,7 +512,7 @@ export default async function OrganizationDetailPage({
               <Card>
                 <CardHeader
                   icon={<CreditCard className="h-4 w-4" />}
-                  title="Billing"
+                  title="Cobrança"
                 />
                 <div className="px-5 py-3">
                   <div className="flex items-center justify-between">

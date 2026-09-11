@@ -13,13 +13,20 @@ import {
   findUsedClimateSurveyTokenForEmployee,
   createClimateSurveyTokens,
   refreshClimateSurveyTokenWorkHours,
+  findClimateSurveyQuestionDirectionsForDispatch,
 } from "@/modules/climate-surveys/climate-survey.repository"
 import {
   getCurrentConsent,
   getActiveConsentTermVersion,
 } from "@/modules/consent/consent.repository"
-import { toClimateSurveyDimension, type SubmitClimateSurveyInput, type ClimateSurveyTokenValidation, type ScoreDirection } from "@/modules/climate-surveys/climate-survey.types"
+import { toClimateSurveyDimension, resolveClimateSurveyTopicLabel, type SubmitClimateSurveyInput, type ClimateSurveyTokenValidation, type ScoreDirection, type ClimateSurveyEnpsCategory } from "@/modules/climate-surveys/climate-survey.types"
+import { getClimateSurveyTopicLabelMap } from "@/modules/climate-surveys/climate-survey-topic.service"
 import { completeClimateSurveyResponseAnalytics } from "@/modules/climate-surveys/climate-survey-analytics.service"
+import {
+  classifyClimateSurveyEnpsNote,
+  climateSurveyLikertToEnpsNote,
+  normalizeClimateSurveyLikertScore,
+} from "@/modules/climate-surveys/climate-survey-metrics"
 
 export interface SignedLinkUnlockResult {
   token: string
@@ -66,6 +73,8 @@ export async function validateClimateSurveyToken(token: string): Promise<Climate
   const questions = tokenRecord.dispatch.climateSurveyConfiguration.questions
   if (questions.length === 0) return { valid: false, error: "Esta pesquisa não possui perguntas ativas." }
 
+  const topicLabelMap = await getClimateSurveyTopicLabelMap(tokenRecord.tenantId)
+
   return {
     valid: true,
     employeeName: tokenRecord.employee.name,
@@ -79,13 +88,17 @@ export async function validateClimateSurveyToken(token: string): Promise<Climate
       workEndTime: tokenRecord.workEndTime,
       tenantId: tokenRecord.tenantId,
     },
-    questions: questions.map((q) => ({
-      id: q.id,
-      text: q.text,
-      order: q.order,
-      scoreDirection: q.scoreDirection as ScoreDirection,
-      dimension: toClimateSurveyDimension(q.dimension),
-    })),
+    questions: questions.map((q) => {
+      const dimension = toClimateSurveyDimension(q.dimension)
+      return {
+        id: q.id,
+        text: q.text,
+        order: q.order,
+        scoreDirection: q.scoreDirection as ScoreDirection,
+        dimension,
+        dimensionLabel: resolveClimateSurveyTopicLabel(dimension, topicLabelMap),
+      }
+    }),
     timezone,
   }
 }
@@ -113,6 +126,24 @@ export async function submitClimateSurveyResponse(input: SubmitClimateSurveyInpu
     throw new AppError("OPEN_COMMENT_TOO_LONG", "O comentário deve ter no máximo 1000 caracteres.")
   }
 
+  const questionDirections = await findClimateSurveyQuestionDirectionsForDispatch(
+    tokenRecord.tenantId,
+    tokenRecord.dispatchId,
+  )
+  const directionById = new Map(questionDirections.map((question) => [question.id, question.scoreDirection]))
+  const normalizedScores: number[] = []
+  for (const answer of input.answers) {
+    const direction = directionById.get(answer.questionId)
+    if (direction === undefined) continue
+    normalizedScores.push(normalizeClimateSurveyLikertScore(answer.score, direction))
+  }
+  const averageScore =
+    normalizedScores.length > 0
+      ? normalizedScores.reduce((sum, value) => sum + value, 0) / normalizedScores.length
+      : null
+  const enpsCategory: ClimateSurveyEnpsCategory | undefined =
+    averageScore === null ? undefined : classifyClimateSurveyEnpsNote(climateSurveyLikertToEnpsNote(averageScore))
+
   await createClimateSurveyResponseWithItems({
     tenantId: tokenRecord.tenantId,
     dispatchId: tokenRecord.dispatchId,
@@ -120,6 +151,7 @@ export async function submitClimateSurveyResponse(input: SubmitClimateSurveyInpu
     tokenId: tokenRecord.id,
     answers: input.answers,
     ...(trimmedOpenComment.length > 0 ? { openComment: trimmedOpenComment } : {}),
+    ...(enpsCategory !== undefined ? { enpsCategory } : {}),
   })
 
   await completeClimateSurveyResponseAnalytics(

@@ -41,7 +41,7 @@ const QUEUE_LABELS: Record<string, string> = {
 const JOB_NAME_LABELS: Record<string, string> = {
   "health-survey-dispatcher":               "Disparo de Pesquisas",
   "health-survey-adherence-checker":        "Verificador de Adesão",
-  "health-survey-score-alert-detector":     "Detector de Alertas de Score",
+  "health-survey-score-alert-detector":     "Detector de Alertas de Índice",
   "employee-unpause":                "Reativação de Colaboradores",
   "pgr-review-reminder":             "Lembrete de Revisão PGR",
   "stripe-webhook-retry":            "Reprocessamento de Webhooks",
@@ -54,7 +54,7 @@ const JOB_NAME_LABELS: Record<string, string> = {
 const JOB_DESCRIPTIONS: Record<string, string> = {
   "health-survey-dispatcher":             "Verifica quais pesquisas devem ser disparadas agora com base na frequência configurada, cria os tokens individuais por colaborador e envia as mensagens.",
   "health-survey-adherence-checker":      "48h após cada disparo, calcula a taxa de adesão por setor. Se menos de 80% responderam, cria um alerta de baixa adesão.",
-  "health-survey-score-alert-detector":   "Analisa os scores de cada setor e cria alertas de queda de score, score baixo ou tendência negativa em 3 períodos consecutivos.",
+  "health-survey-score-alert-detector":   "Analisa os índices de cada setor e cria alertas de queda de índice, índice baixo ou tendência negativa em 3 períodos consecutivos.",
   "employee-unpause":                     "Reativa automaticamente colaboradores cujo período de pausa encerrou (pause_end_at ≤ hoje).",
   "pgr-review-reminder":                  "30 dias antes da próxima revisão agendada do PGR, cria um alerta para lembrar o time de gerar o relatório.",
   "stripe-webhook-retry":                 "Reprocessa eventos do Stripe que falharam na primeira tentativa e ainda não foram processados.",

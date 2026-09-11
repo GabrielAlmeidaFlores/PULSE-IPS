@@ -331,3 +331,43 @@ export async function countClimateSurveyActionPlanIndicators(tenantId: string): 
   ])
   return { completed, inProgress, overdue }
 }
+
+export interface ClimateSurveyActionPlanStatusCounts {
+  total: number
+  open: number
+  inProgress: number
+  completed: number
+}
+
+export async function countClimateSurveyActionPlansByDispatch(
+  tenantId: string,
+  dispatchId: string,
+): Promise<ClimateSurveyActionPlanStatusCounts> {
+  const [total, open, inProgress, completed] = await prisma.$transaction([
+    prisma.actionPlan.count({ where: { tenantId, climateSurveyDispatchId: dispatchId } }),
+    prisma.actionPlan.count({ where: { tenantId, climateSurveyDispatchId: dispatchId, status: "open" } }),
+    prisma.actionPlan.count({ where: { tenantId, climateSurveyDispatchId: dispatchId, status: "in_progress" } }),
+    prisma.actionPlan.count({ where: { tenantId, climateSurveyDispatchId: dispatchId, status: "completed" } }),
+  ])
+  return { total, open, inProgress, completed }
+}
+
+export interface ActionPlanOverview {
+  total: number
+  open: number
+  inProgress: number
+  completed: number
+  overdue: number
+}
+
+export async function countActionPlanOverview(tenantId: string): Promise<ActionPlanOverview> {
+  const now = new Date()
+  const [total, open, inProgress, completed, overdue] = await prisma.$transaction([
+    prisma.actionPlan.count({ where: { tenantId } }),
+    prisma.actionPlan.count({ where: { tenantId, status: "open" } }),
+    prisma.actionPlan.count({ where: { tenantId, status: "in_progress" } }),
+    prisma.actionPlan.count({ where: { tenantId, status: "completed" } }),
+    prisma.actionPlan.count({ where: { tenantId, status: { not: "completed" }, dueDate: { lt: now } } }),
+  ])
+  return { total, open, inProgress, completed, overdue }
+}

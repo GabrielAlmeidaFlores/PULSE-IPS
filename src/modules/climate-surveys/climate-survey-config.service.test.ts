@@ -7,6 +7,7 @@ import {
   createClimateSurveyForDepartments,
   updateClimateSurveyConfig,
   deactivateClimateSurveyConfig,
+  duplicateClimateSurveyConfig,
 } from "@/modules/climate-surveys/climate-survey-config.service"
 import {
   findClimateSurveyConfigsByTenant,
@@ -20,6 +21,32 @@ import { findActiveDepartmentsByTenant } from "@/modules/departments/department.
 
 vi.mock("@/modules/climate-surveys/climate-survey.repository")
 vi.mock("@/modules/departments/department.repository")
+vi.mock("@/modules/climate-surveys/climate-survey-topic.service", async () => {
+  const { CLIMATE_SURVEY_SYSTEM_TOPICS } = await import("@/modules/climate-surveys/climate-survey.types")
+  const topics = CLIMATE_SURVEY_SYSTEM_TOPICS.map((topic) => ({
+    id: topic.key,
+    tenantId: "tenant-1",
+    key: topic.key,
+    label: topic.label,
+    isSystem: true,
+    isActive: true,
+    sortOrder: topic.sortOrder,
+  }))
+  return {
+    ensureClimateSurveySystemTopics: vi.fn().mockResolvedValue(undefined),
+    listClimateSurveyTopics: vi.fn().mockResolvedValue(topics),
+    listClimateSurveyTopicOptions: vi.fn().mockResolvedValue(
+      topics.map((topic) => ({ id: topic.id, key: topic.key, label: topic.label, isSystem: true, isActive: true })),
+    ),
+    getClimateSurveyTopicLabelMap: vi.fn().mockResolvedValue(
+      new Map(topics.map((topic) => [topic.key, topic.label])),
+    ),
+    createClimateSurveyTopic: vi.fn(),
+    renameClimateSurveyTopic: vi.fn(),
+    deactivateClimateSurveyTopic: vi.fn(),
+    assertClimateSurveyTopicKeysExist: vi.fn().mockResolvedValue(undefined),
+  }
+})
 vi.mock("@/modules/climate-surveys/climate-survey-analytics.service", () => ({
   recordClimateSurveyCreated: vi.fn(),
   recordClimateSurveyQuestionsSelected: vi.fn(),
@@ -290,5 +317,72 @@ describe("deactivateClimateSurveyConfig", () => {
     await deactivateClimateSurveyConfig("tenant-1", "cfg-1")
 
     expect(mockDeactivateConfig).toHaveBeenCalledWith("tenant-1", "cfg-1")
+  })
+})
+
+describe("duplicateClimateSurveyConfig", () => {
+  const SOURCE_CONFIG = {
+    id: "cfg-1",
+    name: "Pesquisa Teste",
+    description: null,
+    frequency: "weekly",
+    scheduledDayOfMonth: null,
+    dispatchTime: "09:00",
+    respectEmployeeSchedule: false,
+    tokenExpiryHours: 48,
+    sendViaMessaging: true,
+    sendViaSignedLink: false,
+    configDepartments: [{ department: { id: "dept-1" } }],
+    questions: [
+      {
+        id: "q-1",
+        text: "Pergunta 1",
+        order: 1,
+        scoreDirection: "higher_is_better",
+        dimension: "job_satisfaction",
+      },
+    ],
+    workDays: [{ dayOfWeek: 1 }, { dayOfWeek: 2 }],
+  } as NonNullable<Awaited<ReturnType<typeof findClimateSurveyConfigById>>>
+
+  it("copia setores, canais e banco de perguntas para uma nova config", async () => {
+    mockFindConfig.mockResolvedValue(SOURCE_CONFIG)
+    mockCreateNewConfig.mockResolvedValue({
+      id: "cfg-copy",
+      questions: [{ id: "q-1", order: 1 }],
+    } as Awaited<ReturnType<typeof createNewClimateSurveyConfigEntry>>)
+
+    const newConfigId = await duplicateClimateSurveyConfig("tenant-1", "cfg-1")
+
+    expect(newConfigId).toBe("cfg-copy")
+    expect(mockCreateNewConfig).toHaveBeenCalledWith(
+      "tenant-1",
+      expect.objectContaining({
+        name: "Cópia de Pesquisa Teste",
+        departmentIds: ["dept-1"],
+        sendViaMessaging: true,
+        sendViaSignedLink: false,
+        workDays: [1, 2],
+        questions: [expect.objectContaining({ text: "Pergunta 1", order: 1, dimension: "job_satisfaction" })],
+      }),
+    )
+  })
+
+  it("lança AppError quando a config não existe", async () => {
+    mockFindConfig.mockResolvedValue(null)
+
+    await expect(duplicateClimateSurveyConfig("tenant-1", "missing")).rejects.toMatchObject({
+      code: "CONFIG_NOT_FOUND",
+    })
+    expect(mockCreateNewConfig).not.toHaveBeenCalled()
+  })
+
+  it("lança AppError quando a config não tem setores", async () => {
+    mockFindConfig.mockResolvedValue({ ...SOURCE_CONFIG, configDepartments: [] })
+
+    await expect(duplicateClimateSurveyConfig("tenant-1", "cfg-1")).rejects.toMatchObject({
+      code: "NO_DEPARTMENTS",
+    })
+    expect(mockCreateNewConfig).not.toHaveBeenCalled()
   })
 })

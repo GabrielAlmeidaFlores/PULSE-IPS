@@ -41,6 +41,14 @@ export class S3Adapter implements IStorageService {
     await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }))
   }
 
+  async download(key: string): Promise<Buffer> {
+    const response = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }))
+    const body = response.Body
+    if (body === undefined) throw new Error("Arquivo não encontrado no storage.")
+    const bytes = await body.transformToByteArray()
+    return Buffer.from(bytes)
+  }
+
   getUrl(key: string): Promise<string> {
     const command = new GetObjectCommand({ Bucket: this.bucket, Key: key })
     return getSignedUrl(this.client, command, { expiresIn: SIGNED_URL_EXPIRES_IN })

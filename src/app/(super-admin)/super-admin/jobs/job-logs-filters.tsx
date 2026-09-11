@@ -15,7 +15,7 @@ const JOB_LOG_FILTER_FIELDS: FilterField[] = [
     options: [
       { value: "health-survey-dispatcher",              label: "Disparo de Pesquisas" },
       { value: "health-survey-adherence-checker",        label: "Verificador de Adesão" },
-      { value: "health-survey-score-alert-detector",     label: "Detector de Alertas de Score" },
+      { value: "health-survey-score-alert-detector",     label: "Detector de Alertas de Índice" },
       { value: "employee-unpause",                label: "Reativação de Colaboradores" },
       { value: "pgr-review-reminder",             label: "Lembrete de Revisão PGR" },
       { value: "stripe-webhook-retry",            label: "Reprocessamento de Webhooks" },

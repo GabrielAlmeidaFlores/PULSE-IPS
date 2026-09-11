@@ -26,6 +26,8 @@ export type JobName =
   | "climate-survey-dispatcher"
   | "climate-survey-response-reminder"
   | "climate-survey-response-token-cleanup"
+  | "climate-survey-action-suggestion-generator"
+  | "data-ingestion-processor"
 
 export interface SendMessageJobData {
   recipientPhone: string
@@ -86,6 +88,13 @@ export function createJobWorker(
     },
     { connection: redisConnection, concurrency: 1 },
   )
+}
+
+let _jobQueue: Queue<Record<string, never>, void, JobName> | null = null
+
+export function getJobQueue(): Queue<Record<string, never>, void, JobName> {
+  _jobQueue ??= createJobQueue()
+  return _jobQueue
 }
 
 let _messageQueue: Queue<SendMessageJobData> | null = null

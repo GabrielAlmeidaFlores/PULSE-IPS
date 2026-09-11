@@ -115,8 +115,8 @@ export function QuestionFilter({ questions }: Props): React.ReactElement {
           <div className="px-3 py-2 border-t border-border">
             <p className="text-[10px] text-muted-foreground">
               {selectedOrders.length === 0
-                ? "Exibindo scores de todas as perguntas"
-                : "Exibindo scores das perguntas selecionadas"}
+                ? "Exibindo índices de todas as perguntas"
+                : "Exibindo índices das perguntas selecionadas"}
             </p>
           </div>
         </div>

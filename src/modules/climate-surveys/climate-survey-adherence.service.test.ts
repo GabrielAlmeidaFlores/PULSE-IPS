@@ -125,7 +125,7 @@ describe("getClimateSurveyAdherenceOverview", () => {
     ])
   })
 
-  it("usa adesão geral como fallback do canal E-mail quando não há tokens sem shortCode", async () => {
+  it("não usa adesão geral como fallback do canal E-mail quando não há tokens sem shortCode", async () => {
     mockFindAdherenceDispatch.mockResolvedValue(makeDispatch())
     mockFindTokenChannelStats.mockResolvedValue([
       { shortCode: "1234567", usedAt: new Date(), departmentId: "dept-1" },
@@ -136,10 +136,61 @@ describe("getClimateSurveyAdherenceOverview", () => {
     const emailChannel = result.channelComparison.find((c) => c.channel === "email")
 
     expect(emailChannel).toMatchObject({
-      totalRecipients: 20,
-      totalResponses: 14,
-      adherencePercent: 70,
+      totalRecipients: 0,
+      totalResponses: 0,
+      adherencePercent: 0,
     })
+  })
+
+  it("gera leitura comparando os canais quando os dois têm adesões diferentes", async () => {
+    mockFindAdherenceDispatch.mockResolvedValue(makeDispatch())
+    mockFindTokenChannelStats.mockResolvedValue([
+      { shortCode: "1111111", usedAt: new Date(), departmentId: "dept-1" },
+      { shortCode: "2222222", usedAt: new Date(), departmentId: "dept-1" },
+      { shortCode: null, usedAt: new Date(), departmentId: "dept-2" },
+      { shortCode: null, usedAt: null, departmentId: "dept-2" },
+    ])
+
+    const result = await getClimateSurveyAdherenceOverview(TENANT_ID)
+
+    expect(result.channelReading).toBe(
+      "Mensagem tem adesão 50 p.p. maior que E-mail nesta onda (100% contra 50%).",
+    )
+  })
+
+  it("gera leitura de equivalência quando os canais têm a mesma adesão", async () => {
+    mockFindAdherenceDispatch.mockResolvedValue(makeDispatch())
+    mockFindTokenChannelStats.mockResolvedValue([
+      { shortCode: "1111111", usedAt: new Date(), departmentId: "dept-1" },
+      { shortCode: "2222222", usedAt: null, departmentId: "dept-1" },
+      { shortCode: null, usedAt: new Date(), departmentId: "dept-2" },
+      { shortCode: null, usedAt: null, departmentId: "dept-2" },
+    ])
+
+    const result = await getClimateSurveyAdherenceOverview(TENANT_ID)
+
+    expect(result.channelReading).toBe("Mensagem e E-mail tiveram adesão equivalente nesta onda (50%).")
+  })
+
+  it("gera leitura de canal único quando só um canal foi usado", async () => {
+    mockFindAdherenceDispatch.mockResolvedValue(makeDispatch())
+    mockFindTokenChannelStats.mockResolvedValue([
+      { shortCode: "1111111", usedAt: new Date(), departmentId: "dept-1" },
+      { shortCode: "2222222", usedAt: null, departmentId: "dept-1" },
+    ])
+
+    const result = await getClimateSurveyAdherenceOverview(TENANT_ID)
+
+    expect(result.channelReading).toBe("Somente Mensagem foi usado nesta onda (50% de adesão).")
+  })
+
+  it("não gera leitura quando nenhum canal teve destinatários", async () => {
+    mockFindAdherenceDispatch.mockResolvedValue(makeDispatch())
+    mockFindTokenChannelStats.mockResolvedValue([])
+
+    const result = await getClimateSurveyAdherenceOverview(TENANT_ID)
+
+    expect(result.channelReading).toBeNull()
   })
 
   it("habilita disparo de lembrete quando há tokens pendentes e feature messaging", async () => {

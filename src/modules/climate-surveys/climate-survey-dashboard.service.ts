@@ -11,6 +11,7 @@ import {
   findClimateSurveyConfigById,
   findClimateSurveyOpenCommentsByDispatchIds,
   findLatestActiveClimateSurveyDispatch,
+  findLatestAvailableClimateSurveyDispatchId,
   findRecentAvailableClimateSurveyDispatchesForOverview,
   type ClimateSurveyDispatchListingFilters,
   type ClimateSurveyDispatchDashboardData,
@@ -19,19 +20,27 @@ import {
 import { findOrganizationById } from "@/modules/organizations/organization.repository"
 import {
   CLIMATE_SURVEY_CORPORATE_GOAL_PERCENT,
-  CLIMATE_SURVEY_DIMENSION_LABELS,
-  CLIMATE_SURVEY_DIMENSION_ORDER,
   climateSurveyMetricStatus,
+  resolveClimateSurveyFavorabilityBand,
+  resolveClimateSurveyHeatmapBand,
+  resolveClimateSurveyTopicLabel,
   toClimateSurveyDimension,
   type ClimateSurveyDispatchDashboardStats,
   type ClimateSurveyDimension,
   type ClimateSurveyEnpsBreakdown,
   type ClimateSurveyHeatmapCell,
+  type ClimateSurveyHeatmapDepartmentTotal,
   type ClimateSurveyModuleDashboard,
+  type ClimateSurveyTopic,
+  type ClimateSurveyTopicFavorabilityPoint,
   type ClimateSurveyTopicRadarPoint,
   type ClimateSurveyWaveEvolutionPoint,
   type ScoreDirection,
 } from "@/modules/climate-surveys/climate-survey.types"
+import {
+  getClimateSurveyTopicLabelMap,
+  listClimateSurveyTopics,
+} from "@/modules/climate-surveys/climate-survey-topic.service"
 import {
   computeClimateSurveyMetricsBreakdown,
   getClimateSurveyAggregatedMetricsOrEmpty,
@@ -119,6 +128,7 @@ function buildDimensionScores(
   questions: ClimateSurveyDispatchDashboardStats["questions"],
   metricsByTopic: Map<ClimateSurveyDimension, ClimateSurveyAggregatedMetrics>,
   revealScores: boolean,
+  topicLabelMap: ReadonlyMap<string, string>,
 ): ClimateSurveyDispatchDashboardStats["dimensionScores"] {
   const byDimension = new Map<ClimateSurveyDimension, { scores: number[]; questionCount: number }>()
   for (const question of questions) {
@@ -133,7 +143,7 @@ function buildDimensionScores(
       : emptyAggregatedMetrics()
     return {
       dimension,
-      label: CLIMATE_SURVEY_DIMENSION_LABELS[dimension],
+      label: resolveClimateSurveyTopicLabel(dimension, topicLabelMap),
       avgScore: data.scores.length > 0 ? data.scores.reduce((a, b) => a + b, 0) / data.scores.length : null,
       favorabilityPercent: metrics.favorabilityPercent,
       weightedScorePercent: metrics.weightedScorePercent,
@@ -167,6 +177,7 @@ function buildDepartmentScores(
 function buildDispatchStats(
   data: ClimateSurveyDispatchDashboardData,
   minRespondentsPercent: number,
+  topicLabelMap: ReadonlyMap<string, string>,
   filterDeptIds?: string[],
 ): ClimateSurveyDispatchDashboardStats {
   const filteredItems =
@@ -229,7 +240,7 @@ function buildDispatchStats(
     minRespondentsPercent,
     requiredRespondents,
     questions,
-    dimensionScores: buildDimensionScores(questions, metrics.byTopic, hasEnoughRespondents),
+    dimensionScores: buildDimensionScores(questions, metrics.byTopic, hasEnoughRespondents, topicLabelMap),
     departmentScores: buildDepartmentScores(data.departments, metrics.byDepartment, hasEnoughRespondents),
   }
 }
@@ -356,12 +367,43 @@ export async function getClimateSurveyDispatchDashboard(
   dispatchId: string,
   filterDeptIds?: string[],
 ): Promise<ClimateSurveyDispatchDashboardStats | null> {
-  const [data, org] = await Promise.all([
+  const [data, org, topicLabelMap] = await Promise.all([
     findClimateSurveyDispatchWithDashboard(tenantId, dispatchId),
     findOrganizationById(tenantId),
+    getClimateSurveyTopicLabelMap(tenantId),
   ])
   if (!data) return null
-  return buildDispatchStats(data, org?.climateSurveyMinRespondentsPercent ?? 40, filterDeptIds)
+  return buildDispatchStats(data, org?.climateSurveyMinRespondentsPercent ?? 40, topicLabelMap, filterDeptIds)
+}
+
+export async function getClimateSurveyDispatchHeatmap(
+  tenantId: string,
+  dispatchId: string,
+): Promise<ClimateSurveyModuleDashboard["heatmap"] | null> {
+  const [data, org, topicLabelMap, topics] = await Promise.all([
+    findClimateSurveyDispatchWithDashboard(tenantId, dispatchId),
+    findOrganizationById(tenantId),
+    getClimateSurveyTopicLabelMap(tenantId),
+    listClimateSurveyTopics(tenantId),
+  ])
+  if (data === null) return null
+  const minRespondentsPercent = org?.climateSurveyMinRespondentsPercent ?? 40
+  const hasEnoughRespondents = canRevealClimateSurveyGroupResults(
+    data.totalResponses,
+    data.totalRecipients,
+    minRespondentsPercent,
+  )
+  const orderedTopicKeys = resolveWaveTopicKeys(topics, data.questions)
+  return buildHeatmap(
+    data.responseItems,
+    data.questions,
+    data.departments,
+    data.deptRecipients,
+    hasEnoughRespondents,
+    minRespondentsPercent,
+    orderedTopicKeys,
+    topicLabelMap,
+  )
 }
 
 export async function getClimateSurveyMultipleDispatchDashboards(
@@ -369,26 +411,84 @@ export async function getClimateSurveyMultipleDispatchDashboards(
   dispatchIds: string[],
   filterDeptIds?: string[],
 ): Promise<ClimateSurveyDispatchDashboardStats[]> {
-  const [dataList, org] = await Promise.all([
+  const [dataList, org, topicLabelMap] = await Promise.all([
     findClimateSurveyMultipleDispatchesWithDashboard(tenantId, dispatchIds),
     findOrganizationById(tenantId),
+    getClimateSurveyTopicLabelMap(tenantId),
   ])
   const minRespondentsPercent = org?.climateSurveyMinRespondentsPercent ?? 40
-  return dataList.map((data) => buildDispatchStats(data, minRespondentsPercent, filterDeptIds))
+  return dataList.map((data) => buildDispatchStats(data, minRespondentsPercent, topicLabelMap, filterDeptIds))
 }
 
-function buildRadarPoints(topicMetrics: Map<ClimateSurveyDimension, ClimateSurveyAggregatedMetrics>): ClimateSurveyTopicRadarPoint[] {
-  return CLIMATE_SURVEY_DIMENSION_ORDER.map((dimension) => {
+export interface LatestClimateSurveyDepartmentScores {
+  waveId: string | null
+  departments: ClimateSurveyDispatchDashboardStats["departmentScores"]
+}
+
+export async function getLatestClimateSurveyDepartmentScores(
+  tenantId: string,
+): Promise<LatestClimateSurveyDepartmentScores> {
+  const waveId = await findLatestAvailableClimateSurveyDispatchId(tenantId)
+  if (waveId === null) return { waveId: null, departments: [] }
+  const dashboard = await getClimateSurveyDispatchDashboard(tenantId, waveId)
+  return { waveId, departments: dashboard?.departmentScores ?? [] }
+}
+
+function resolveWaveTopicKeys(
+  topics: ClimateSurveyTopic[],
+  questions: { dimension: string }[],
+): ClimateSurveyDimension[] {
+  const usedKeys = new Set<ClimateSurveyDimension>()
+  for (const question of questions) {
+    usedKeys.add(toClimateSurveyDimension(question.dimension))
+  }
+  const orderedKeys: ClimateSurveyDimension[] = topics
+    .filter((topic) => usedKeys.has(topic.key))
+    .map((topic) => topic.key)
+  for (const key of usedKeys) {
+    if (!orderedKeys.includes(key)) orderedKeys.push(key)
+  }
+  return orderedKeys
+}
+
+function buildRadarPoints(
+  topicMetrics: Map<ClimateSurveyDimension, ClimateSurveyAggregatedMetrics>,
+  orderedTopicKeys: ClimateSurveyDimension[],
+  topicLabelMap: ReadonlyMap<string, string>,
+): ClimateSurveyTopicRadarPoint[] {
+  return orderedTopicKeys.map((dimension) => {
     const metrics = getClimateSurveyAggregatedMetricsOrEmpty(topicMetrics.get(dimension))
     const scorePercent = metrics.weightedScorePercent
     return {
       dimension,
-      label: CLIMATE_SURVEY_DIMENSION_LABELS[dimension],
+      label: resolveClimateSurveyTopicLabel(dimension, topicLabelMap),
       scorePercent,
       goalPercent: CLIMATE_SURVEY_CORPORATE_GOAL_PERCENT,
       status: climateSurveyMetricStatus(scorePercent),
     }
   })
+}
+
+function buildTopicFavorabilityPoints(
+  topicMetrics: Map<ClimateSurveyDimension, ClimateSurveyAggregatedMetrics>,
+  orderedTopicKeys: ClimateSurveyDimension[],
+  topicLabelMap: ReadonlyMap<string, string>,
+): ClimateSurveyTopicFavorabilityPoint[] {
+  return orderedTopicKeys
+    .map((dimension) => {
+      const metrics = getClimateSurveyAggregatedMetricsOrEmpty(topicMetrics.get(dimension))
+      const favorabilityPercent = metrics.favorabilityPercent
+      return {
+        dimension,
+        label: resolveClimateSurveyTopicLabel(dimension, topicLabelMap),
+        favorabilityPercent,
+        band:
+          favorabilityPercent === null
+            ? null
+            : resolveClimateSurveyFavorabilityBand(favorabilityPercent, CLIMATE_SURVEY_CORPORATE_GOAL_PERCENT),
+      }
+    })
+    .sort((a, b) => (b.favorabilityPercent ?? -1) - (a.favorabilityPercent ?? -1))
 }
 
 function buildHeatmap(
@@ -398,12 +498,14 @@ function buildHeatmap(
   deptRecipients: { departmentId: string; totalRecipients: number }[],
   hasEnoughRespondents: boolean,
   minRespondentsPercent: number,
+  orderedTopicKeys: ClimateSurveyDimension[],
+  topicLabelMap: ReadonlyMap<string, string>,
 ): ClimateSurveyModuleDashboard["heatmap"] {
   const metricQuestions = buildMetricQuestionInputs(questions)
   const deptRecipientsMap = new Map(deptRecipients.map((dr) => [dr.departmentId, dr.totalRecipients]))
   const cells: ClimateSurveyHeatmapCell[] = []
 
-  for (const dimension of CLIMATE_SURVEY_DIMENSION_ORDER) {
+  for (const dimension of orderedTopicKeys) {
     for (const department of departments) {
       const deptTopicItems = items.filter((item) => {
         if (item.departmentId !== department.id) return false
@@ -423,24 +525,52 @@ function buildHeatmap(
       const metrics = canShow
         ? computeClimateSurveyMetricsBreakdown(deptTopicItems, metricQuestions).byTopic.get(dimension)
         : undefined
-      const scorePercent = canShow ? (metrics?.weightedScorePercent ?? null) : null
+      const favorabilityPercent = canShow ? (metrics?.favorabilityPercent ?? null) : null
       cells.push({
         dimension,
         departmentId: department.id,
-        scorePercent,
-        status: climateSurveyMetricStatus(scorePercent),
+        favorabilityPercent,
+        band:
+          favorabilityPercent === null
+            ? null
+            : resolveClimateSurveyHeatmapBand(favorabilityPercent, CLIMATE_SURVEY_CORPORATE_GOAL_PERCENT),
         responseCount: canShow ? estimatedRespondents : null,
       })
     }
   }
 
+  const companyMetrics = hasEnoughRespondents
+    ? computeClimateSurveyMetricsBreakdown(items, metricQuestions).overall
+    : emptyAggregatedMetrics()
+  const departmentTotals: ClimateSurveyHeatmapDepartmentTotal[] = departments.map((department) => {
+    const deptItems = items.filter((item) => item.departmentId === department.id)
+    const totalQuestionCount = Math.max(questions.length, 1)
+    const estimatedRespondents = Math.round(deptItems.length / totalQuestionCount)
+    const scopeRecipients = deptRecipientsMap.get(department.id) ?? 0
+    const canShow =
+      hasEnoughRespondents &&
+      canRevealClimateSurveyGroupResults(estimatedRespondents, scopeRecipients, minRespondentsPercent) &&
+      deptItems.length > 0
+    const departmentMetrics = canShow
+      ? computeClimateSurveyMetricsBreakdown(deptItems, metricQuestions).overall
+      : emptyAggregatedMetrics()
+    return {
+      departmentId: department.id,
+      enps: canShow ? departmentMetrics.enps.score : null,
+      scorePercent: canShow ? departmentMetrics.weightedScorePercent : null,
+    }
+  })
+
   return {
-    topics: CLIMATE_SURVEY_DIMENSION_ORDER.map((dimension) => ({
+    topics: orderedTopicKeys.map((dimension) => ({
       dimension,
-      label: CLIMATE_SURVEY_DIMENSION_LABELS[dimension],
+      label: resolveClimateSurveyTopicLabel(dimension, topicLabelMap),
     })),
     departments,
     cells,
+    departmentTotals,
+    companyEnps: hasEnoughRespondents ? companyMetrics.enps.score : null,
+    companyScorePercent: hasEnoughRespondents ? companyMetrics.weightedScorePercent : null,
   }
 }
 
@@ -474,14 +604,20 @@ function resolveEnpsStatus(score: number | null): ClimateSurveyModuleDashboard["
   return "critical"
 }
 
-export async function getClimateSurveyModuleDashboard(tenantId: string): Promise<ClimateSurveyModuleDashboard> {
-  const [org, waves] = await Promise.all([
+export async function getClimateSurveyModuleDashboard(
+  tenantId: string,
+  departmentId?: string,
+): Promise<ClimateSurveyModuleDashboard> {
+  const [org, waves, topics] = await Promise.all([
     findOrganizationById(tenantId),
     findRecentAvailableClimateSurveyDispatchesForOverview(tenantId, 8),
+    listClimateSurveyTopics(tenantId),
   ])
   const minRespondentsPercent = org?.climateSurveyMinRespondentsPercent ?? 40
   const latest = waves[0] ?? null
   const emptyEnps = emptyEnpsBreakdown()
+  const topicLabelMap = new Map(topics.map((topic) => [topic.key, topic.label]))
+  const allTopicKeys = topics.map((topic) => topic.key)
 
   if (latest === null) {
     return {
@@ -499,34 +635,50 @@ export async function getClimateSurveyModuleDashboard(tenantId: string): Promise
       corporateGoalPercent: CLIMATE_SURVEY_CORPORATE_GOAL_PERCENT,
       minRespondentsPercent,
       requiredRespondents: 0,
-      radar: buildRadarPoints(new Map()),
+      radar: buildRadarPoints(new Map(), allTopicKeys, topicLabelMap),
+      topicFavorability: buildTopicFavorabilityPoints(new Map(), allTopicKeys, topicLabelMap),
       evolution: [],
       enpsBreakdown: emptyEnps,
       heatmap: {
-        topics: CLIMATE_SURVEY_DIMENSION_ORDER.map((dimension) => ({
+        topics: allTopicKeys.map((dimension) => ({
           dimension,
-          label: CLIMATE_SURVEY_DIMENSION_LABELS[dimension],
+          label: resolveClimateSurveyTopicLabel(dimension, topicLabelMap),
         })),
         departments: [],
         cells: [],
+        departmentTotals: [],
+        companyEnps: null,
+        companyScorePercent: null,
       },
       hasEnoughRespondents: false,
       funnel: emptyClimateSurveyFunnelMetrics(),
     }
   }
 
-  const hasEnoughRespondents = canRevealClimateSurveyGroupResults(
-    latest.totalResponses,
-    latest.totalRecipients,
-    minRespondentsPercent,
-  )
-  const requiredRespondents = latest.totalRecipients > 0
-    ? climateSurveyRequiredRespondents(latest.totalRecipients, minRespondentsPercent)
+  const filterDeptIds = departmentId !== undefined ? [departmentId] : undefined
+  const scopedItems =
+    filterDeptIds !== undefined
+      ? latest.responseItems.filter((item) => item.departmentId !== null && filterDeptIds.includes(item.departmentId))
+      : latest.responseItems
+  const scopeRecipients =
+    filterDeptIds !== undefined
+      ? latest.deptRecipients
+          .filter((recipient) => filterDeptIds.includes(recipient.departmentId))
+          .reduce((sum, recipient) => sum + recipient.totalRecipients, 0)
+      : latest.totalRecipients
+  const scopeResponses =
+    filterDeptIds !== undefined
+      ? Math.round(scopedItems.length / Math.max(latest.questions.length, 1))
+      : latest.totalResponses
+
+  const hasEnoughRespondents = canRevealClimateSurveyGroupResults(scopeResponses, scopeRecipients, minRespondentsPercent)
+  const requiredRespondents = scopeRecipients > 0
+    ? climateSurveyRequiredRespondents(scopeRecipients, minRespondentsPercent)
     : 0
   const adherencePercent =
-    latest.totalRecipients > 0 ? Math.round((latest.totalResponses / latest.totalRecipients) * 100) : 0
+    scopeRecipients > 0 ? Math.round((scopeResponses / scopeRecipients) * 100) : 0
   const metrics = hasEnoughRespondents
-    ? computeClimateSurveyMetricsBreakdown(latest.responseItems, buildMetricQuestionInputs(latest.questions))
+    ? computeClimateSurveyMetricsBreakdown(scopedItems, buildMetricQuestionInputs(latest.questions))
     : {
         overall: emptyAggregatedMetrics(),
         byQuestion: new Map<string, ClimateSurveyAggregatedMetrics>(),
@@ -535,6 +687,7 @@ export async function getClimateSurveyModuleDashboard(tenantId: string): Promise
       }
   const evolution = [...waves].reverse().map((wave) => buildWaveEvolutionPoint(wave, minRespondentsPercent))
   const funnel = await getClimateSurveyFunnelMetrics(tenantId, latest.id)
+  const orderedTopicKeys = resolveWaveTopicKeys(topics, latest.questions)
 
   return {
     wave: {
@@ -547,8 +700,8 @@ export async function getClimateSurveyModuleDashboard(tenantId: string): Promise
     },
     kpis: {
       adherencePercent,
-      totalResponses: latest.totalResponses,
-      totalRecipients: latest.totalRecipients,
+      totalResponses: scopeResponses,
+      totalRecipients: scopeRecipients,
       favorabilityPercent: metrics.overall.favorabilityPercent,
       enps: metrics.overall.enps.score,
       adherenceStatus: climateSurveyMetricStatus(adherencePercent, 80),
@@ -558,7 +711,8 @@ export async function getClimateSurveyModuleDashboard(tenantId: string): Promise
     corporateGoalPercent: CLIMATE_SURVEY_CORPORATE_GOAL_PERCENT,
     minRespondentsPercent,
     requiredRespondents,
-    radar: buildRadarPoints(metrics.byTopic),
+    radar: buildRadarPoints(metrics.byTopic, orderedTopicKeys, topicLabelMap),
+    topicFavorability: buildTopicFavorabilityPoints(metrics.byTopic, orderedTopicKeys, topicLabelMap),
     evolution,
     enpsBreakdown: metrics.overall.enps,
     heatmap: buildHeatmap(
@@ -568,6 +722,8 @@ export async function getClimateSurveyModuleDashboard(tenantId: string): Promise
       latest.deptRecipients,
       hasEnoughRespondents,
       minRespondentsPercent,
+      orderedTopicKeys,
+      topicLabelMap,
     ),
     hasEnoughRespondents,
     funnel,

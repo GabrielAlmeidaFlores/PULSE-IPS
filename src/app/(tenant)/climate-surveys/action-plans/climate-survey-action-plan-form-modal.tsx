@@ -8,10 +8,9 @@ import {
   createClimateSurveyActionPlanItemAction,
   updateClimateSurveyActionPlanItemAction,
 } from "@/app/(tenant)/climate-surveys/action-plans/actions"
-import {
-  CLIMATE_SURVEY_DIMENSION_LABELS,
-  CLIMATE_SURVEY_DIMENSION_ORDER,
-  type ClimateSurveyDimension,
+import type {
+  ClimateSurveyDimension,
+  ClimateSurveyTopicOption,
 } from "@/modules/climate-surveys/climate-survey.types"
 import type { ClimateSurveyActionPlanAssigneeOption, ClimateSurveyActionPlanRow } from "@/modules/climate-surveys/climate-survey-action-plan.service"
 
@@ -20,6 +19,7 @@ interface ClimateSurveyActionPlanFormModalProps {
   onClose: () => void
   mode: "create" | "edit"
   assignees: ClimateSurveyActionPlanAssigneeOption[]
+  topics: ClimateSurveyTopicOption[]
   waveId: string | null
   initialDimension?: ClimateSurveyDimension | null
   initialAction?: ClimateSurveyActionPlanRow | null
@@ -84,6 +84,7 @@ export function ClimateSurveyActionPlanFormModal({
   onClose,
   mode,
   assignees,
+  topics,
   waveId,
   initialDimension = null,
   initialAction = null,
@@ -97,18 +98,21 @@ export function ClimateSurveyActionPlanFormModal({
       return
     }
 
+    if (form.dimension.length === 0) {
+      toast.error("Selecione o tópico vinculado à ação.")
+      return
+    }
+
     startTransition(async () => {
       if (mode === "create") {
         const result = await createClimateSurveyActionPlanItemAction({
           title: form.title.trim(),
           priority: form.priority,
           status: form.status,
+          dimension: form.dimension,
           ...(form.description.trim().length > 0 ? { description: form.description.trim() } : {}),
           ...(form.dueDate.length > 0 ? { dueDate: form.dueDate } : {}),
           ...(form.assigneeId.length > 0 ? { assigneeId: form.assigneeId } : {}),
-          ...(form.dimension.length > 0
-            ? { dimension: form.dimension as ClimateSurveyDimension }
-            : {}),
           ...(waveId !== null ? { climateSurveyDispatchId: waveId } : {}),
         })
         if (result.error !== undefined) {
@@ -133,7 +137,7 @@ export function ClimateSurveyActionPlanFormModal({
         status: form.status,
         dueDate: form.dueDate.length > 0 ? form.dueDate : null,
         assigneeId: form.assigneeId.length > 0 ? form.assigneeId : null,
-        dimension: form.dimension.length > 0 ? (form.dimension as ClimateSurveyDimension) : null,
+        dimension: form.dimension,
       })
       if (result.error !== undefined) {
         toast.error(result.error)
@@ -160,7 +164,7 @@ export function ClimateSurveyActionPlanFormModal({
                 style={{ borderRadius: 0 }}
                 value={form.title}
                 onChange={(event) => { setForm((prev) => ({ ...prev, title: event.target.value })) }}
-                placeholder="Ex.: Melhorar feedback da liderança"
+                placeholder="Ex.: Melhorar a devolutiva da liderança"
               />
             </div>
             <div className="space-y-1.5">
@@ -196,9 +200,9 @@ export function ClimateSurveyActionPlanFormModal({
                   onChange={(event) => { setForm((prev) => ({ ...prev, dimension: event.target.value })) }}
                 >
                   <option value="">Sem tópico</option>
-                  {CLIMATE_SURVEY_DIMENSION_ORDER.map((dimension) => (
-                    <option key={dimension} value={dimension}>
-                      {CLIMATE_SURVEY_DIMENSION_LABELS[dimension]}
+                  {topics.map((topic) => (
+                    <option key={topic.key} value={topic.key} disabled={!topic.isActive}>
+                      {topic.isActive ? topic.label : `${topic.label} (desativado)`}
                     </option>
                   ))}
                 </NativeSelect>

@@ -1,9 +1,11 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
-import { ChevronDown, Eye, Plus, Trash2 } from "lucide-react"
+import { useEffect, useMemo, useRef, useState, useTransition } from "react"
+import { ChevronDown, Eye, Plus, Trash2, Upload } from "lucide-react"
+import { toast } from "sonner"
 import { Dialog, DialogClose, DialogContent, DialogOverlay, DialogPortal, DialogTitle } from "@/components/ui/dialog"
 import { NativeSelect } from "@/components/ui/native-select"
+import { extractClimateSurveyQuestionsAction } from "@/app/(tenant)/climate-surveys/configure/actions"
 import {
   CLIMATE_SURVEY_RECOMMENDED_QUESTIONS_PER_TOPIC_MAX,
   CLIMATE_SURVEY_RECOMMENDED_QUESTIONS_PER_TOPIC_MIN,
@@ -12,10 +14,10 @@ import {
   type ClimateSurveyCatalogQuestion,
 } from "@/app/(tenant)/climate-surveys/configure/climate-survey-question-catalog"
 import {
-  CLIMATE_SURVEY_DIMENSION_LABELS,
-  CLIMATE_SURVEY_DIMENSION_ORDER,
+  CLIMATE_SURVEY_MAX_QUESTIONS,
   toClimateSurveyDimension,
   type ClimateSurveyDimension,
+  type ClimateSurveyTopicOption,
   type ScoreDirection,
 } from "@/modules/climate-surveys/climate-survey.types"
 
@@ -310,8 +312,8 @@ export function validateClimateSurveyQuestionSelection(selectedQuestions: Climat
     }
   }
 
-  if (selectedQuestions.length > 40) {
-    return "Selecione no máximo 40 perguntas."
+  if (selectedQuestions.length > CLIMATE_SURVEY_MAX_QUESTIONS) {
+    return `Selecione no máximo ${String(CLIMATE_SURVEY_MAX_QUESTIONS)} perguntas.`
   }
 
   return null
@@ -319,13 +321,48 @@ export function validateClimateSurveyQuestionSelection(selectedQuestions: Climat
 
 interface CustomQuestionListProps {
   questions: ClimateSurveyCustomQuestionDraft[]
+  topics: ClimateSurveyTopicOption[]
   onChange: (next: ClimateSurveyCustomQuestionDraft[]) => void
 }
 
 const customQuestionInputCls =
   "w-full bg-input border border-input-border text-foreground text-sm px-3 py-2.5 placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
 
-export function ClimateSurveyCustomQuestionList({ questions, onChange }: CustomQuestionListProps): React.ReactElement {
+export function ClimateSurveyCustomQuestionList({ questions, topics, onChange }: CustomQuestionListProps): React.ReactElement {
+  const [isImporting, startImportTransition] = useTransition()
+  const importInputRef = useRef<HTMLInputElement>(null)
+
+  function resolveDefaultTopicKey(): ClimateSurveyDimension {
+    return topics.find((topic) => topic.isActive)?.key ?? "organizational_culture"
+  }
+
+  function handleImportFile(event: React.ChangeEvent<HTMLInputElement>): void {
+    const file = event.target.files?.[0]
+    event.target.value = ""
+    if (file === undefined) return
+    startImportTransition(async () => {
+      const formData = new FormData()
+      formData.set("file", file)
+      const result = await extractClimateSurveyQuestionsAction(formData)
+      if (result.error !== undefined) {
+        toast.error(result.error)
+        return
+      }
+      const imported = (result.questions ?? []).map((question) => ({
+        localId: crypto.randomUUID(),
+        text: question.text,
+        dimension: question.dimension,
+        scoreDirection: question.scoreDirection,
+      }))
+      if (imported.length === 0) {
+        toast.error("Nenhuma pergunta foi identificada no arquivo.")
+        return
+      }
+      onChange([...questions, ...imported])
+      toast.success(`${String(imported.length)} pergunta(s) importada(s).`)
+    })
+  }
+
   function addCustomQuestion(): void {
     onChange([
       ...questions,
@@ -333,7 +370,7 @@ export function ClimateSurveyCustomQuestionList({ questions, onChange }: CustomQ
         localId: crypto.randomUUID(),
         text: "",
         scoreDirection: "higher_is_better",
-        dimension: "organizational_culture",
+        dimension: resolveDefaultTopicKey(),
       },
     ])
   }
@@ -367,8 +404,10 @@ export function ClimateSurveyCustomQuestionList({ questions, onChange }: CustomQ
                 value={question.dimension}
                 onChange={(e) => updateCustomQuestion(question.localId, { dimension: toClimateSurveyDimension(e.target.value) })}
               >
-                {CLIMATE_SURVEY_DIMENSION_ORDER.map((dimension) => (
-                  <option key={dimension} value={dimension}>{CLIMATE_SURVEY_DIMENSION_LABELS[dimension]}</option>
+                {topics.map((topic) => (
+                  <option key={topic.key} value={topic.key} disabled={!topic.isActive}>
+                    {topic.isActive ? topic.label : `${topic.label} (desativado)`}
+                  </option>
                 ))}
               </NativeSelect>
               <NativeSelect
@@ -398,15 +437,34 @@ export function ClimateSurveyCustomQuestionList({ questions, onChange }: CustomQ
           />
         </div>
       ))}
-      <button
-        type="button"
-        onClick={addCustomQuestion}
-        className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold uppercase tracking-widest border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-        style={{ borderRadius: 0 }}
-      >
-        <Plus className="h-3.5 w-3.5" />
-        Adicionar pergunta personalizada
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={addCustomQuestion}
+          className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold uppercase tracking-widest border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          style={{ borderRadius: 0 }}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Adicionar pergunta personalizada
+        </button>
+        <button
+          type="button"
+          onClick={() => importInputRef.current?.click()}
+          disabled={isImporting}
+          className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold uppercase tracking-widest border border-border text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          style={{ borderRadius: 0 }}
+        >
+          <Upload className="h-3.5 w-3.5" />
+          {isImporting ? "Importando..." : "Importar de arquivo (.xlsx/.csv/.pdf)"}
+        </button>
+        <input
+          ref={importInputRef}
+          type="file"
+          accept=".xlsx,.csv,.txt,.pdf"
+          onChange={handleImportFile}
+          className="hidden"
+        />
+      </div>
     </div>
   )
 }

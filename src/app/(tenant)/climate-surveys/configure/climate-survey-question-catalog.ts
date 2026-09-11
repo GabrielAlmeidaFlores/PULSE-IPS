@@ -65,7 +65,7 @@ export function getClimateSurveyCatalogByTopic(): {
 }[] {
   return CLIMATE_SURVEY_DIMENSION_ORDER.map((dimension) => ({
     dimension,
-    label: CLIMATE_SURVEY_DIMENSION_LABELS[dimension],
+    label: CLIMATE_SURVEY_DIMENSION_LABELS[dimension] ?? dimension,
     questions: CLIMATE_SURVEY_QUESTION_CATALOG.filter((q) => q.dimension === dimension),
   }))
 }

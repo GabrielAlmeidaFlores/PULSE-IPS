@@ -9,7 +9,9 @@ import {
   getClimateSurveyDispatchesPaginated,
   getLatestActiveClimateSurveyWave,
   getClimateSurveyModuleDashboard,
+  getLatestClimateSurveyDepartmentScores,
 } from "@/modules/climate-surveys/climate-survey-dashboard.service"
+import { resolveClimateSurveyHeatmapBand } from "@/modules/climate-surveys/climate-survey.types"
 import {
   findClimateSurveyDispatchesByTenant,
   createClimateSurveyDispatch,
@@ -21,12 +23,41 @@ import {
   findClimateSurveyDispatchesPaginated,
   findClimateSurveyConfigById,
   findLatestActiveClimateSurveyDispatch,
+  findLatestAvailableClimateSurveyDispatchId,
   findRecentAvailableClimateSurveyDispatchesForOverview,
 } from "@/modules/climate-surveys/climate-survey.repository"
 import { findOrganizationById } from "@/modules/organizations/organization.repository"
 
 vi.mock("@/modules/climate-surveys/climate-survey.repository")
 vi.mock("@/modules/organizations/organization.repository")
+
+vi.mock("@/modules/climate-surveys/climate-survey-topic.service", async () => {
+  const { CLIMATE_SURVEY_SYSTEM_TOPICS } = await import("@/modules/climate-surveys/climate-survey.types")
+  const topics = CLIMATE_SURVEY_SYSTEM_TOPICS.map((topic) => ({
+    id: topic.key,
+    tenantId: "tenant-1",
+    key: topic.key,
+    label: topic.label,
+    isSystem: true,
+    isActive: true,
+    sortOrder: topic.sortOrder,
+  }))
+  return {
+    ensureClimateSurveySystemTopics: vi.fn().mockResolvedValue(undefined),
+    listClimateSurveyTopics: vi.fn().mockResolvedValue(topics),
+    listClimateSurveyTopicOptions: vi.fn().mockResolvedValue(
+      topics.map((topic) => ({ id: topic.id, key: topic.key, label: topic.label, isSystem: true, isActive: true })),
+    ),
+    getClimateSurveyTopicLabelMap: vi.fn().mockResolvedValue(
+      new Map(topics.map((topic) => [topic.key, topic.label])),
+    ),
+    createClimateSurveyTopic: vi.fn(),
+    renameClimateSurveyTopic: vi.fn(),
+    deactivateClimateSurveyTopic: vi.fn(),
+    assertClimateSurveyTopicKeysExist: vi.fn().mockResolvedValue(undefined),
+  }
+})
+
 vi.mock("@/modules/climate-surveys/climate-survey-analytics.service", () => ({
   emptyClimateSurveyFunnelMetrics: vi.fn(() => ({
     dispatchId: null,
@@ -70,6 +101,7 @@ const mockFindOrganizationById = vi.mocked(findOrganizationById)
 const mockFindDispatchesPaginated = vi.mocked(findClimateSurveyDispatchesPaginated)
 const mockFindConfigById = vi.mocked(findClimateSurveyConfigById)
 const mockFindLatestActiveDispatch = vi.mocked(findLatestActiveClimateSurveyDispatch)
+const mockFindLatestAvailableDispatchId = vi.mocked(findLatestAvailableClimateSurveyDispatchId)
 const mockFindRecentAvailableForOverview = vi.mocked(findRecentAvailableClimateSurveyDispatchesForOverview)
 
 const TENANT_ID = "tenant-1"
@@ -250,6 +282,28 @@ describe("getClimateSurveyMultipleDispatchDashboards", () => {
     expect(result).toHaveLength(2)
     expect(result[0]?.id).toBe("d-1")
     expect(result[1]?.id).toBe("d-2")
+  })
+})
+
+describe("getLatestClimateSurveyDepartmentScores", () => {
+  it("retorna onda nula e setores vazios quando não há onda disponível", async () => {
+    mockFindLatestAvailableDispatchId.mockResolvedValue(null)
+
+    const result = await getLatestClimateSurveyDepartmentScores(TENANT_ID)
+
+    expect(result).toEqual({ waveId: null, departments: [] })
+    expect(mockFindDispatchWithDashboard).not.toHaveBeenCalled()
+  })
+
+  it("retorna a onda mais recente e os scores por setor", async () => {
+    mockFindLatestAvailableDispatchId.mockResolvedValue("d-1")
+    mockFindDispatchWithDashboard.mockResolvedValue(DISPATCH_DATA)
+
+    const result = await getLatestClimateSurveyDepartmentScores(TENANT_ID)
+
+    expect(result.waveId).toBe("d-1")
+    expect(result.departments).toHaveLength(1)
+    expect(result.departments[0]?.departmentName).toBe("Vendas")
   })
 })
 
@@ -571,8 +625,36 @@ describe("getClimateSurveyModuleDashboard", () => {
     expect(result.enpsBreakdown.total).toBe(6)
     expect(result.radar.find((p) => p.dimension === "job_satisfaction")?.scorePercent).not.toBeNull()
     expect(result.heatmap.departments).toHaveLength(2)
+    const vendasCell = result.heatmap.cells.find(
+      (cell) => cell.dimension === "job_satisfaction" && cell.departmentId === "dept-1",
+    )
+    expect(vendasCell?.favorabilityPercent).toBe(100)
+    expect(vendasCell?.band).toBe("strong")
+    const opsCell = result.heatmap.cells.find(
+      (cell) => cell.dimension === "job_satisfaction" && cell.departmentId === "dept-2",
+    )
+    expect(opsCell?.favorabilityPercent).toBeNull()
+    expect(opsCell?.band).toBeNull()
+    const vendasTotal = result.heatmap.departmentTotals.find((total) => total.departmentId === "dept-1")
+    expect(vendasTotal?.enps).toBe(80)
+    expect(vendasTotal?.scorePercent).not.toBeNull()
+    const opsTotal = result.heatmap.departmentTotals.find((total) => total.departmentId === "dept-2")
+    expect(opsTotal?.enps).toBeNull()
+    expect(opsTotal?.scorePercent).toBeNull()
+    expect(result.heatmap.companyEnps).toBe(50)
+    expect(result.heatmap.companyScorePercent).not.toBeNull()
     expect(result.evolution).toHaveLength(1)
     expect(result.funnel.openRatePercent).toBe(50)
+  })
+
+  it("classifica as faixas do heatmap pela régua relativa à meta", () => {
+    expect(resolveClimateSurveyHeatmapBand(76, 70)).toBe("strong")
+    expect(resolveClimateSurveyHeatmapBand(75, 70)).toBe("strong")
+    expect(resolveClimateSurveyHeatmapBand(74, 70)).toBe("on_goal")
+    expect(resolveClimateSurveyHeatmapBand(70, 70)).toBe("on_goal")
+    expect(resolveClimateSurveyHeatmapBand(69, 70)).toBe("attention")
+    expect(resolveClimateSurveyHeatmapBand(60, 70)).toBe("attention")
+    expect(resolveClimateSurveyHeatmapBand(59, 70)).toBe("critical")
   })
 
   it("não revela scores nem contagens de células com participação abaixo do percentual mínimo", async () => {
@@ -600,8 +682,12 @@ describe("getClimateSurveyModuleDashboard", () => {
     expect(result.hasEnoughRespondents).toBe(false)
     expect(result.kpis.favorabilityPercent).toBeNull()
     expect(result.kpis.enps).toBeNull()
-    expect(result.heatmap.cells.every((cell) => cell.scorePercent === null)).toBe(true)
+    expect(result.heatmap.cells.every((cell) => cell.favorabilityPercent === null)).toBe(true)
     expect(result.heatmap.cells.every((cell) => cell.responseCount === null)).toBe(true)
+    expect(result.heatmap.departmentTotals.every((total) => total.enps === null)).toBe(true)
+    expect(result.heatmap.departmentTotals.every((total) => total.scorePercent === null)).toBe(true)
+    expect(result.heatmap.companyEnps).toBeNull()
+    expect(result.heatmap.companyScorePercent).toBeNull()
   })
 
   it("mantém requiredRespondents finito quando a onda não tem destinatários", async () => {

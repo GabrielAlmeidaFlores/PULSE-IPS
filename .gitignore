@@ -48,3 +48,4 @@ next-env.d.ts
 # Worker build output
 workers
 dist/
+/ia-data/whatsapp-chat

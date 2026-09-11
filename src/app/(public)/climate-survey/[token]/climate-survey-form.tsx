@@ -11,7 +11,7 @@ import {
   trackClimateSurveyResponseProgressAction,
 } from "@/app/(public)/climate-survey/[token]/actions"
 import { storage } from "@/libs/local-storage"
-import { CLIMATE_SURVEY_DIMENSION_LABELS, type ClimateSurveyDimension } from "@/modules/climate-surveys/climate-survey.types"
+import { CLIMATE_SURVEY_LIKERT_SCALE } from "@/modules/climate-surveys/climate-survey-metrics"
 
 interface ClimateSurveyQuestion {
   id: string
@@ -19,6 +19,7 @@ interface ClimateSurveyQuestion {
   order: number
   scoreDirection: "higher_is_better" | "lower_is_better"
   dimension: string
+  dimensionLabel: string
 }
 
 interface LikertOption {
@@ -32,20 +33,13 @@ interface ClimateSurveyFormDraft {
   openComment: string
 }
 
-const LIKERT_OPTIONS: LikertOption[] = [
-  { score: 5, label: "Concordo Totalmente" },
-  { score: 4, label: "Concordo" },
-  { score: 3, label: "Neutro" },
-  { score: 2, label: "Discordo" },
-  { score: 1, label: "Discordo Totalmente" },
-]
+const LIKERT_OPTIONS: LikertOption[] = CLIMATE_SURVEY_LIKERT_SCALE.map((point) => ({
+  score: point.score,
+  label: point.label,
+}))
 
 const ANONYMITY_NOTICE =
   "Suas respostas são 100% anônimas e não serão vinculadas à sua identidade."
-
-function climateSurveyTopicLabel(dimension: string): string {
-  return CLIMATE_SURVEY_DIMENSION_LABELS[dimension as ClimateSurveyDimension] ?? dimension
-}
 
 const ADVANCE_DELAY_MS = 280
 const EMPTY_DRAFT_JSON = ""
@@ -148,6 +142,8 @@ export function ClimateSurveyForm({ token, employeeName, questions }: Props): Re
   const commentStepIndex = totalQuestions
   const isCommentStep = currentIndex >= totalQuestions
   const currentQuestion = !isCommentStep ? sortedQuestions[currentIndex] : undefined
+  const topicKeys = Array.from(new Set(sortedQuestions.map((question) => question.dimension)))
+  const currentTopicPosition = currentQuestion === undefined ? 0 : topicKeys.indexOf(currentQuestion.dimension) + 1
   const progressPercent = totalQuestions === 0 ? 0 : Math.min(((currentIndex + 1) / totalQuestions) * 100, 100)
   const canGoBack = currentIndex > 0
   const interactionLocked = submitting || advancing || optedOut
@@ -318,10 +314,12 @@ export function ClimateSurveyForm({ token, employeeName, questions }: Props): Re
 
         <div className="px-4 pt-4 pb-2 space-y-2">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              {isCommentStep ? `Comentário final` : `Pergunta ${currentIndex + 1} de ${totalQuestions}`}
+            <p className="min-w-0 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              {isCommentStep
+                ? "Comentário final"
+                : `Tópico ${currentTopicPosition} de ${topicKeys.length} · Pergunta ${currentIndex + 1} de ${totalQuestions}`}
             </p>
-            <p className="text-[10px] font-semibold text-muted-foreground tabular-nums">
+            <p className="shrink-0 text-[10px] font-semibold text-muted-foreground tabular-nums">
               {Math.round(progressPercent)}%
             </p>
           </div>
@@ -386,7 +384,7 @@ export function ClimateSurveyForm({ token, employeeName, questions }: Props): Re
                 className="inline-block border border-border bg-muted px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
                 style={{ borderRadius: 0 }}
               >
-                {climateSurveyTopicLabel(currentQuestion?.dimension ?? "")}
+                {currentQuestion?.dimensionLabel ?? ""}
               </span>
             </div>
             <p className="text-base sm:text-lg font-semibold text-foreground leading-snug">

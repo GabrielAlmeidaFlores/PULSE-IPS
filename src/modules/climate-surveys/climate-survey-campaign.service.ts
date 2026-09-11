@@ -3,6 +3,7 @@ import { env } from "@/env"
 import { AppError } from "@/libs/errors/app-error"
 import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
 import { findActiveDepartmentsByTenant } from "@/modules/departments/department.repository"
+import { findOrganizationById } from "@/modules/organizations/organization.repository"
 import {
   countActiveEmployeesGroupedByDepartment,
   createClimateSurveyDispatch,
@@ -14,6 +15,13 @@ import type {
   ClimateSurveyCampaignSetup,
   LaunchClimateSurveyCampaignInput,
 } from "@/modules/climate-surveys/climate-survey.types"
+
+async function resolveScheduledDayOfMonth(tenantId: string, scheduledAt: Date): Promise<number> {
+  const organization = await findOrganizationById(tenantId)
+  const timezone = organization?.timezone ?? "America/Sao_Paulo"
+  const day = Number(new Intl.DateTimeFormat("en-US", { timeZone: timezone, day: "numeric" }).format(scheduledAt))
+  return Math.min(Math.max(day, 1), 28)
+}
 
 export async function getClimateSurveyCampaignSetup(tenantId: string): Promise<ClimateSurveyCampaignSetup> {
   const [configs, departments, hasMessagingFeature] = await Promise.all([
@@ -67,6 +75,8 @@ export async function launchClimateSurveyCampaign(
   }
 
   const tokenExpiryHours = input.timingMode === "reminder_48h" ? Math.max(config.tokenExpiryHours, 96) : config.tokenExpiryHours
+  const scheduledDayOfMonth =
+    input.frequency === "monthly" ? await resolveScheduledDayOfMonth(tenantId, input.scheduledAt) : null
 
   await updateClimateSurveyConfigCampaignSettings(tenantId, input.configId, {
     frequency: input.frequency,
@@ -74,6 +84,7 @@ export async function launchClimateSurveyCampaign(
     sendViaSignedLink: input.sendViaSignedLink,
     tokenExpiryHours,
     departmentIds: input.departmentIds,
+    scheduledDayOfMonth,
   })
 
   const signedLinkToken = input.sendViaSignedLink ? randomUUID() : undefined

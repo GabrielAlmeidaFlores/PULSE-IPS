@@ -21,6 +21,8 @@ import { runActionPlanSuggestionGenerator } from "@/modules/action-plans/action-
 import { runOrganizationDeletionExecutor } from "@/modules/organizations/account-deletion.service"
 import { runHealthSurveyResponseReminder } from "@/modules/health-surveys/health-survey-reminder.service"
 import { runClimateSurveyResponseReminder } from "@/modules/climate-surveys/climate-survey-reminder.service"
+import { runClimateSurveyActionSuggestionGenerator } from "@/modules/climate-surveys/climate-survey-action-suggestion.service"
+import { processPendingDataIngestionBatches } from "@/modules/data-ingestion/data-ingestion.service"
 import { createLogger } from "@/libs/utils/logger"
 import type { InsertJobLogInput } from "@/modules/job-logs/job-log.types"
 
@@ -98,6 +100,16 @@ async function processJob(jobName: JobName): Promise<void> {
     case "climate-survey-response-reminder": {
       await runClimateSurveyResponseReminder()
       workerLogger.success("climate-survey-response-reminder: done")
+      break
+    }
+    case "climate-survey-action-suggestion-generator": {
+      const result = await runClimateSurveyActionSuggestionGenerator()
+      workerLogger.success("climate-survey-action-suggestion-generator", result)
+      break
+    }
+    case "data-ingestion-processor": {
+      const result = await processPendingDataIngestionBatches()
+      workerLogger.success("data-ingestion-processor", result)
       break
     }
   }

@@ -15,6 +15,7 @@ import {
   findUsedClimateSurveyTokenForEmployee,
   createClimateSurveyTokens,
   refreshClimateSurveyTokenWorkHours,
+  findClimateSurveyQuestionDirectionsForDispatch,
 } from "@/modules/climate-surveys/climate-survey.repository"
 import {
   getCurrentConsent,
@@ -28,6 +29,33 @@ vi.mock("@/modules/consent/consent.repository")
 vi.mock("@/modules/climate-surveys/climate-survey-analytics.service", () => ({
   completeClimateSurveyResponseAnalytics: vi.fn(),
 }))
+
+vi.mock("@/modules/climate-surveys/climate-survey-topic.service", async () => {
+  const { CLIMATE_SURVEY_SYSTEM_TOPICS } = await import("@/modules/climate-surveys/climate-survey.types")
+  const topics = CLIMATE_SURVEY_SYSTEM_TOPICS.map((topic) => ({
+    id: topic.key,
+    tenantId: "tenant-1",
+    key: topic.key,
+    label: topic.label,
+    isSystem: true,
+    isActive: true,
+    sortOrder: topic.sortOrder,
+  }))
+  return {
+    ensureClimateSurveySystemTopics: vi.fn().mockResolvedValue(undefined),
+    listClimateSurveyTopics: vi.fn().mockResolvedValue(topics),
+    listClimateSurveyTopicOptions: vi.fn().mockResolvedValue(
+      topics.map((topic) => ({ id: topic.id, key: topic.key, label: topic.label, isSystem: true, isActive: true })),
+    ),
+    getClimateSurveyTopicLabelMap: vi.fn().mockResolvedValue(
+      new Map(topics.map((topic) => [topic.key, topic.label])),
+    ),
+    createClimateSurveyTopic: vi.fn(),
+    renameClimateSurveyTopic: vi.fn(),
+    deactivateClimateSurveyTopic: vi.fn(),
+    assertClimateSurveyTopicKeysExist: vi.fn().mockResolvedValue(undefined),
+  }
+})
 
 const mockFormatFn = vi.hoisted(() => vi.fn(() => "12:00"))
 
@@ -53,6 +81,7 @@ const mockFindUnusedToken = vi.mocked(findUnusedClimateSurveyTokenForEmployee)
 const mockFindUsedToken = vi.mocked(findUsedClimateSurveyTokenForEmployee)
 const mockCreateTokens = vi.mocked(createClimateSurveyTokens)
 const mockRefreshTokenWorkHours = vi.mocked(refreshClimateSurveyTokenWorkHours)
+const mockFindQuestionDirections = vi.mocked(findClimateSurveyQuestionDirectionsForDispatch)
 
 const TOKEN_VALUE = "token-abc-123"
 const WORK_HOUR_MIDDAY = "12:00"
@@ -60,6 +89,7 @@ const TENANT_ID = "tenant-1"
 const EMPLOYEE_ID = "employee-1"
 const DISPATCH_ID = "dispatch-1"
 const CONFIG_ID = "config-1"
+const QUESTION_ID = "question-1"
 const SIGNED_LINK_TOKEN = "signed-link-token-xyz"
 const EMPLOYEE_PHONE = "+5511999999999"
 
@@ -127,7 +157,7 @@ function makeTokenRecord(overrides?: Partial<TokenRecord>): TokenRecord {
         updatedAt: new Date(),
         questions: [
           {
-            id: "question-1",
+            id: QUESTION_ID,
             tenantId: TENANT_ID,
             climateSurveyConfigurationId: CONFIG_ID,
             text: "Como você se sente hoje?",
@@ -143,6 +173,7 @@ function makeTokenRecord(overrides?: Partial<TokenRecord>): TokenRecord {
           name: "Acme Corp",
           planId: null,
           externalCustomerId: null,
+          cnpj: null,
           timezone: "America/Sao_Paulo",
           billingStatus: "active",
           maxEmployeesOverride: null,
@@ -183,7 +214,7 @@ const ACCEPTED_CONSENT: ConsentWithTermVersion = {
 
 const SUBMIT_INPUT = {
   token: TOKEN_VALUE,
-  answers: [{ questionId: "question-1", score: 4 }],
+  answers: [{ questionId: QUESTION_ID, score: 4 }],
 }
 
 beforeEach(() => {
@@ -194,6 +225,7 @@ beforeEach(() => {
   mockGetActiveConsentTermVersion.mockResolvedValue(ACTIVE_TERM)
   mockCreateResponse.mockResolvedValue(undefined)
   mockDeleteExpiredTokens.mockResolvedValue({ count: 5 })
+  mockFindQuestionDirections.mockResolvedValue([{ id: QUESTION_ID, scoreDirection: "higher_is_better" }])
 })
 
 describe("validateClimateSurveyToken — guards de entrada", () => {
@@ -407,6 +439,7 @@ describe("submitClimateSurveyResponse — happy path", () => {
       departmentId: "dept-1",
       tokenId: "token-1",
       answers: SUBMIT_INPUT.answers,
+      enpsCategory: "neutral",
     })
   })
 
@@ -420,6 +453,7 @@ describe("submitClimateSurveyResponse — happy path", () => {
       tokenId: "token-1",
       answers: SUBMIT_INPUT.answers,
       openComment: "Ambiente ótimo",
+      enpsCategory: "neutral",
     })
   })
 
@@ -432,6 +466,7 @@ describe("submitClimateSurveyResponse — happy path", () => {
       departmentId: "dept-1",
       tokenId: "token-1",
       answers: SUBMIT_INPUT.answers,
+      enpsCategory: "neutral",
     })
   })
 
@@ -447,6 +482,41 @@ describe("submitClimateSurveyResponse — happy path", () => {
 
     const [payload] = mockCreateResponse.mock.calls[0] as [{ employeeId?: string }]
     expect(payload).not.toHaveProperty("employeeId")
+  })
+})
+
+describe("submitClimateSurveyResponse — classificação de eNPS", () => {
+  it("classifica como promotor quando o score normalizado é 5", async () => {
+    mockFindQuestionDirections.mockResolvedValue([{ id: QUESTION_ID, scoreDirection: "higher_is_better" }])
+
+    await submitClimateSurveyResponse({ ...SUBMIT_INPUT, answers: [{ questionId: QUESTION_ID, score: 5 }] })
+
+    expect(mockCreateResponse).toHaveBeenCalledWith(expect.objectContaining({ enpsCategory: "promoter" }))
+  })
+
+  it("classifica como detrator quando o score normalizado é 1", async () => {
+    mockFindQuestionDirections.mockResolvedValue([{ id: QUESTION_ID, scoreDirection: "higher_is_better" }])
+
+    await submitClimateSurveyResponse({ ...SUBMIT_INPUT, answers: [{ questionId: QUESTION_ID, score: 1 }] })
+
+    expect(mockCreateResponse).toHaveBeenCalledWith(expect.objectContaining({ enpsCategory: "detractor" }))
+  })
+
+  it("inverte o score quando a direção é lower_is_better", async () => {
+    mockFindQuestionDirections.mockResolvedValue([{ id: QUESTION_ID, scoreDirection: "lower_is_better" }])
+
+    await submitClimateSurveyResponse({ ...SUBMIT_INPUT, answers: [{ questionId: QUESTION_ID, score: 1 }] })
+
+    expect(mockCreateResponse).toHaveBeenCalledWith(expect.objectContaining({ enpsCategory: "promoter" }))
+  })
+
+  it("não inclui enpsCategory quando nenhuma pergunta é reconhecida", async () => {
+    mockFindQuestionDirections.mockResolvedValue([])
+
+    await submitClimateSurveyResponse(SUBMIT_INPUT)
+
+    const [payload] = mockCreateResponse.mock.calls[0] as [{ enpsCategory?: string }]
+    expect(payload).not.toHaveProperty("enpsCategory")
   })
 })
 
@@ -492,6 +562,7 @@ function makeDispatchRecord(overrides?: Partial<DispatchRecord>): DispatchRecord
         name: "Acme Corp",
         planId: null,
         externalCustomerId: null,
+        cnpj: null,
         timezone: "America/Sao_Paulo",
         billingStatus: "active",
         maxEmployeesOverride: null,

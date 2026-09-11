@@ -11,10 +11,10 @@ import {
   updateClimateSurveyActionPlan,
   updateClimateSurveyActionPlanStatus,
 } from "@/modules/climate-surveys/climate-survey-action-plan.service"
-import { CLIMATE_SURVEY_DIMENSION_ZOD_ENUM } from "@/modules/climate-surveys/climate-survey.types"
 
 const climateSurveyActionStatusSchema = z.enum(["open", "in_progress", "completed"])
 const climateSurveyActionPrioritySchema = z.enum(["low", "medium", "high"])
+const climateSurveyTopicKeySchema = z.string().trim().min(1).max(60)
 
 const createClimateSurveyActionSchema = z.object({
   title: z.string().trim().min(1, "Informe o título.").max(255),
@@ -23,7 +23,7 @@ const createClimateSurveyActionSchema = z.object({
   status: climateSurveyActionStatusSchema.optional(),
   dueDate: z.string().optional(),
   assigneeId: z.string().uuid().optional(),
-  dimension: z.enum(CLIMATE_SURVEY_DIMENSION_ZOD_ENUM).optional(),
+  dimension: climateSurveyTopicKeySchema,
   climateSurveyDispatchId: z.string().uuid().optional(),
 })
 
@@ -35,7 +35,7 @@ const updateClimateSurveyActionSchema = z.object({
   status: climateSurveyActionStatusSchema.optional(),
   dueDate: z.string().nullable().optional(),
   assigneeId: z.string().uuid().nullable().optional(),
-  dimension: z.enum(CLIMATE_SURVEY_DIMENSION_ZOD_ENUM).nullable().optional(),
+  dimension: climateSurveyTopicKeySchema.nullable().optional(),
 })
 
 async function assertClimateActionPlanAccess(tenantId: string): Promise<string | null> {

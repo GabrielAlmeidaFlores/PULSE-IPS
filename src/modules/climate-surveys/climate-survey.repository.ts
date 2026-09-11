@@ -4,7 +4,7 @@ import { prisma } from "@/libs/db"
 import { AppError } from "@/libs/errors/app-error"
 import { toAnonymousSurveyResponseDate } from "@/libs/utils/anonymity"
 import { normalizePhoneToE164 } from "@/libs/utils/phone"
-import type { CreateClimateSurveyConfigInput, UpdateClimateSurveyConfigInput, CreateClimateSurveyResponseInput, CreateClimateSurveyTokenInput, CreateClimateSurveyAdherenceAlertInput } from "@/modules/climate-surveys/climate-survey.types"
+import type { CreateClimateSurveyConfigInput, UpdateClimateSurveyConfigInput, CreateClimateSurveyResponseInput, CreateClimateSurveyTokenInput, CreateClimateSurveyAdherenceAlertInput, ScoreDirection } from "@/modules/climate-surveys/climate-survey.types"
 
 type ClimateSurveyConfigWithWorkDays = Prisma.ClimateSurveyConfigurationGetPayload<{ include: { workDays: true } }>
 export type ClimateSurveyConfigWithDetails = ClimateSurveyConfigWithWorkDays & {
@@ -187,6 +187,7 @@ export interface ClimateSurveyCampaignSettingsInput {
   sendViaSignedLink: boolean
   tokenExpiryHours: number
   departmentIds: string[]
+  scheduledDayOfMonth: number | null
 }
 
 export async function updateClimateSurveyConfigCampaignSettings(
@@ -204,7 +205,7 @@ export async function updateClimateSurveyConfigCampaignSettings(
       sendViaMessaging: input.sendViaMessaging,
       sendViaSignedLink: input.sendViaSignedLink,
       tokenExpiryHours: input.tokenExpiryHours,
-      scheduledDayOfMonth: null,
+      scheduledDayOfMonth: input.scheduledDayOfMonth,
       configDepartments: {
         deleteMany: {},
         createMany: { data: input.departmentIds.map((departmentId) => ({ departmentId })) },
@@ -231,6 +232,52 @@ export async function countActiveEmployeesGroupedByDepartment(
   return new Map(rows.map((row) => [row.departmentId, row._count._all]))
 }
 
+export interface ClimateSurveyDispatchForSuggestionRow {
+  id: string
+  tenantId: string
+  dispatchedAt: Date
+  tokenExpiryHours: number
+}
+
+export async function findAllTenantsClimateSurveyDispatchesForSuggestion(): Promise<
+  ClimateSurveyDispatchForSuggestionRow[]
+> {
+  const rows = await prisma.climateSurveyDispatch.findMany({
+    where: { status: "available", dispatchedAt: { not: null } },
+    select: {
+      id: true,
+      tenantId: true,
+      dispatchedAt: true,
+      climateSurveyConfiguration: { select: { tokenExpiryHours: true } },
+    },
+  })
+  const result: ClimateSurveyDispatchForSuggestionRow[] = []
+  for (const row of rows) {
+    if (row.dispatchedAt === null) continue
+    result.push({
+      id: row.id,
+      tenantId: row.tenantId,
+      dispatchedAt: row.dispatchedAt,
+      tokenExpiryHours: row.climateSurveyConfiguration.tokenExpiryHours,
+    })
+  }
+  return result
+}
+
+export interface ClimateSurveyDispatchOrdinalRow {
+  id: string
+  climateSurveyConfigurationId: string
+  scheduledAt: Date
+}
+
+export function findClimateSurveyDispatchOrdinalRows(tenantId: string): Promise<ClimateSurveyDispatchOrdinalRow[]> {
+  return prisma.climateSurveyDispatch.findMany({
+    where: { tenantId },
+    select: { id: true, climateSurveyConfigurationId: true, scheduledAt: true },
+    orderBy: [{ scheduledAt: "asc" }, { createdAt: "asc" }],
+  })
+}
+
 export function findClimateSurveyDispatchesByTenant(tenantId: string): Promise<ClimateSurveyDispatchWithConfig[]> {
   return prisma.climateSurveyDispatch.findMany({
     where: { tenantId },
@@ -246,6 +293,74 @@ export function findLatestActiveClimateSurveyDispatch(tenantId: string): Promise
     include: DISPATCH_WITH_CONFIG_INCLUDE,
     orderBy: [{ dispatchedAt: "desc" }, { scheduledAt: "desc" }],
   })
+}
+
+export async function findLatestAvailableClimateSurveyDispatchId(tenantId: string): Promise<string | null> {
+  const dispatch = await prisma.climateSurveyDispatch.findFirst({
+    where: { tenantId, status: "available" },
+    orderBy: [{ dispatchedAt: "desc" }, { scheduledAt: "desc" }],
+    select: { id: true },
+  })
+  return dispatch?.id ?? null
+}
+
+export interface ClimateSurveyWaveOptionRow {
+  id: string
+  configName: string
+  scheduledAt: Date
+  dispatchedAt: Date | null
+}
+
+export interface ClimateSurveyDispatchTimelineRow {
+  id: string
+  configName: string
+  scheduledAt: Date
+  dispatchedAt: Date | null
+  status: string
+}
+
+export async function findClimateSurveyDispatchTimeline(
+  tenantId: string,
+  take: number,
+): Promise<ClimateSurveyDispatchTimelineRow[]> {
+  const dispatches = await prisma.climateSurveyDispatch.findMany({
+    where: { tenantId },
+    orderBy: { scheduledAt: "desc" },
+    take,
+    select: {
+      id: true,
+      scheduledAt: true,
+      dispatchedAt: true,
+      status: true,
+      climateSurveyConfiguration: { select: { name: true } },
+    },
+  })
+  return dispatches.map((dispatch) => ({
+    id: dispatch.id,
+    configName: dispatch.climateSurveyConfiguration.name,
+    scheduledAt: dispatch.scheduledAt,
+    dispatchedAt: dispatch.dispatchedAt,
+    status: dispatch.status,
+  }))
+}
+
+export async function findClimateSurveyWaveOptions(tenantId: string): Promise<ClimateSurveyWaveOptionRow[]> {
+  const dispatches = await prisma.climateSurveyDispatch.findMany({
+    where: { tenantId, status: "available" },
+    orderBy: { scheduledAt: "desc" },
+    select: {
+      id: true,
+      scheduledAt: true,
+      dispatchedAt: true,
+      climateSurveyConfiguration: { select: { name: true } },
+    },
+  })
+  return dispatches.map((dispatch) => ({
+    id: dispatch.id,
+    configName: dispatch.climateSurveyConfiguration.name,
+    scheduledAt: dispatch.scheduledAt,
+    dispatchedAt: dispatch.dispatchedAt,
+  }))
 }
 
 export interface ClimateSurveyDispatchListingFilters {
@@ -707,6 +822,30 @@ export function findUsedClimateSurveyTokenForEmployee(
   })
 }
 
+export interface ClimateSurveyQuestionDirectionRow {
+  id: string
+  scoreDirection: ScoreDirection
+}
+
+export async function findClimateSurveyQuestionDirectionsForDispatch(
+  tenantId: string,
+  dispatchId: string,
+): Promise<ClimateSurveyQuestionDirectionRow[]> {
+  const dispatch = await prisma.climateSurveyDispatch.findFirst({
+    where: { id: dispatchId, tenantId },
+    select: {
+      climateSurveyConfiguration: {
+        select: { questions: { select: { id: true, scoreDirection: true } } },
+      },
+    },
+  })
+  const questions = dispatch?.climateSurveyConfiguration.questions ?? []
+  return questions.map((question) => ({
+    id: question.id,
+    scoreDirection: question.scoreDirection === "lower_is_better" ? "lower_is_better" : "higher_is_better",
+  }))
+}
+
 export async function createClimateSurveyResponseWithItems(data: CreateClimateSurveyResponseInput): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const claimed = await tx.climateSurveyResponseToken.updateMany({
@@ -724,6 +863,7 @@ export async function createClimateSurveyResponseWithItems(data: CreateClimateSu
         dispatchId: data.dispatchId,
         createdAt: toAnonymousSurveyResponseDate(),
         ...(data.departmentId !== null ? { departmentId: data.departmentId } : {}),
+        ...(data.enpsCategory !== undefined ? { enpsCategory: data.enpsCategory } : {}),
         ...(data.openComment !== undefined ? { openComment: data.openComment } : {}),
         items: {
           create: data.answers.map((a) => ({

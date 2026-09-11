@@ -17,6 +17,8 @@ const REPEAT_SCHEDULES: Record<JobName, string> = {
   "climate-survey-dispatcher": "*/5 * * * *",
   "climate-survey-response-reminder": "0 * * * *",
   "climate-survey-response-token-cleanup": "0 2 * * *",
+  "climate-survey-action-suggestion-generator": "0 5 * * *",
+  "data-ingestion-processor":       "*/2 * * * *",
 }
 
 async function removeStaleSchedulers(queue: ReturnType<typeof createJobQueue>): Promise<void> {
