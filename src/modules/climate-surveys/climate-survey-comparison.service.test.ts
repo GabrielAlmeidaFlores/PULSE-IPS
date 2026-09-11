@@ -6,7 +6,10 @@ import {
 import { findClimateSurveyWaveOptions } from "@/modules/climate-surveys/climate-survey.repository"
 import { getClimateSurveyMultipleDispatchDashboards } from "@/modules/climate-surveys/climate-survey-dashboard.service"
 import { countClimateSurveyActionPlansByDispatch } from "@/modules/action-plans/action-plan.repository"
-import type { ClimateSurveyDispatchDashboardStats } from "@/modules/climate-surveys/climate-survey.types"
+import {
+  resolveClimateSurveyReadingPill,
+  type ClimateSurveyDispatchDashboardStats,
+} from "@/modules/climate-surveys/climate-survey.types"
 
 vi.mock("@/modules/climate-surveys/climate-survey.repository")
 vi.mock("@/modules/climate-surveys/climate-survey-dashboard.service")
@@ -58,10 +61,39 @@ const BASE_STATS = makeDashboardStats({
       dimension: "leadership_trust",
       label: "Liderança",
       avgScore: 3.5,
-      favorabilityPercent: 50,
+      favorabilityPercent: 80,
       weightedScorePercent: 55,
       enps: 0,
       questionCount: 2,
+    },
+    {
+      dimension: "job_satisfaction",
+      label: "Satisfação",
+      avgScore: 3.5,
+      favorabilityPercent: 65,
+      weightedScorePercent: 60,
+      enps: 0,
+      questionCount: 2,
+    },
+  ],
+  departmentScores: [
+    {
+      departmentId: "dept-1",
+      departmentName: "Vendas",
+      favorabilityPercent: 60,
+      weightedScorePercent: 60,
+      enps: 0,
+      answerCount: 20,
+      respondentCount: 10,
+    },
+    {
+      departmentId: "dept-2",
+      departmentName: "Ops",
+      favorabilityPercent: 80,
+      weightedScorePercent: 80,
+      enps: 0,
+      answerCount: 4,
+      respondentCount: 2,
     },
   ],
 })
@@ -70,7 +102,6 @@ const COMPARE_STATS = makeDashboardStats({
   id: "d-2",
   adherenceRate: 0.8,
   favorabilityPercent: 65,
-  weightedScorePercent: 70,
   enps: 20,
   dimensionScores: [
     {
@@ -81,6 +112,35 @@ const COMPARE_STATS = makeDashboardStats({
       weightedScorePercent: 70,
       enps: 20,
       questionCount: 2,
+    },
+    {
+      dimension: "job_satisfaction",
+      label: "Satisfação",
+      avgScore: 4,
+      favorabilityPercent: 75,
+      weightedScorePercent: 75,
+      enps: 20,
+      questionCount: 2,
+    },
+  ],
+  departmentScores: [
+    {
+      departmentId: "dept-1",
+      departmentName: "Vendas",
+      favorabilityPercent: 90,
+      weightedScorePercent: 90,
+      enps: 40,
+      answerCount: 20,
+      respondentCount: 10,
+    },
+    {
+      departmentId: "dept-2",
+      departmentName: "Ops",
+      favorabilityPercent: 50,
+      weightedScorePercent: 50,
+      enps: 0,
+      answerCount: 4,
+      respondentCount: 2,
     },
   ],
 })
@@ -103,6 +163,27 @@ describe("listClimateSurveyWaveOptions", () => {
   })
 })
 
+describe("resolveClimateSurveyReadingPill — matriz da RN-05", () => {
+  it("classifica nível baixo em piora como crítico", () => {
+    expect(resolveClimateSurveyReadingPill(63, -32)).toBe("critical")
+    expect(resolveClimateSurveyReadingPill(69, -1)).toBe("critical")
+  })
+
+  it("classifica nível baixo em melhora como atenção", () => {
+    expect(resolveClimateSurveyReadingPill(60, 5)).toBe("attention")
+  })
+
+  it("classifica nível saudável em piora como atenção", () => {
+    expect(resolveClimateSurveyReadingPill(88, -8)).toBe("attention")
+    expect(resolveClimateSurveyReadingPill(75, -3)).toBe("attention")
+  })
+
+  it("classifica nível saudável em melhora como informativo", () => {
+    expect(resolveClimateSurveyReadingPill(91, 7)).toBe("informative")
+    expect(resolveClimateSurveyReadingPill(75, 0)).toBe("informative")
+  })
+})
+
 describe("getClimateSurveyWaveComparison", () => {
   it("compara as duas ondas mais recentes por padrão e calcula os deltas", async () => {
     const result = await getClimateSurveyWaveComparison(TENANT_ID)
@@ -116,16 +197,71 @@ describe("getClimateSurveyWaveComparison", () => {
     const byKey = new Map(result.comparison.metrics.map((metric) => [metric.key, metric]))
     expect(byKey.get("adherence")).toMatchObject({ baseValue: 70, compareValue: 80, delta: 10 })
     expect(byKey.get("favorability")).toMatchObject({ baseValue: 50, compareValue: 65, delta: 15 })
-    expect(byKey.get("score")).toMatchObject({ baseValue: 55, compareValue: 70, delta: 15 })
     expect(byKey.get("enps")).toMatchObject({ baseValue: 0, compareValue: 20, delta: 20 })
+    expect(byKey.get("topics_below_goal")).toMatchObject({ baseValue: 1, compareValue: 1, delta: 0, higherIsBetter: false })
 
-    expect(result.comparison.topics[0]).toMatchObject({
-      dimension: "leadership_trust",
-      baseScorePercent: 55,
-      compareScorePercent: 70,
-      delta: 15,
-    })
     expect(result.comparison.actionPlans).toEqual({ total: 3, open: 1, inProgress: 1, completed: 1 })
+  })
+
+  it("compara tópicos por favorabilidade com leitura da RN-05 e destaque de meta cruzada", async () => {
+    const result = await getClimateSurveyWaveComparison(TENANT_ID, "d-1", "d-2")
+    expect(result.comparison).not.toBeNull()
+    if (result.comparison === null) return
+
+    const leadership = result.comparison.topics.find((topic) => topic.dimension === "leadership_trust")
+    expect(leadership).toMatchObject({
+      baseValue: 80,
+      compareValue: 65,
+      delta: -15,
+      reading: "critical",
+      crossedGoal: true,
+    })
+
+    const satisfaction = result.comparison.topics.find((topic) => topic.dimension === "job_satisfaction")
+    expect(satisfaction).toMatchObject({
+      baseValue: 65,
+      compareValue: 75,
+      delta: 10,
+      reading: "informative",
+      crossedGoal: true,
+    })
+  })
+
+  it("compara departamentos e exclui os com amostra insuficiente", async () => {
+    const result = await getClimateSurveyWaveComparison(TENANT_ID, "d-1", "d-2")
+    expect(result.comparison).not.toBeNull()
+    if (result.comparison === null) return
+
+    const vendas = result.comparison.departments.find((department) => department.departmentId === "dept-1")
+    expect(vendas).toMatchObject({
+      label: "Vendas",
+      baseValue: 60,
+      compareValue: 90,
+      delta: 30,
+      reading: "informative",
+      excluded: false,
+    })
+
+    const ops = result.comparison.departments.find((department) => department.departmentId === "dept-2")
+    expect(ops).toMatchObject({
+      baseValue: null,
+      compareValue: null,
+      delta: null,
+      reading: null,
+      excluded: true,
+    })
+  })
+
+  it("monta as três maiores altas e as três maiores quedas", async () => {
+    const result = await getClimateSurveyWaveComparison(TENANT_ID, "d-1", "d-2")
+    expect(result.comparison).not.toBeNull()
+    if (result.comparison === null) return
+
+    expect(result.comparison.topIncreases).toEqual([
+      { kind: "department", label: "Vendas", delta: 30 },
+      { kind: "topic", label: "Satisfação", delta: 10 },
+    ])
+    expect(result.comparison.topDrops).toEqual([{ kind: "topic", label: "Liderança", delta: -15 }])
   })
 
   it("usa as ondas informadas por parâmetro", async () => {

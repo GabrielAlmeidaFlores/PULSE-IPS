@@ -500,6 +500,23 @@ export function formatClimateSurveyEnps(value: number | null): string {
   return value > 0 ? `+${value}` : String(value)
 }
 
+export const CLIMATE_SURVEY_READING_LOW_THRESHOLD_PERCENT = 70
+
+export type ClimateSurveyReadingPill = "critical" | "attention" | "informative"
+
+export const CLIMATE_SURVEY_READING_PILL_LABELS: Record<ClimateSurveyReadingPill, string> = {
+  critical: "Crítico",
+  attention: "Atenção",
+  informative: "Informativo",
+}
+
+export function resolveClimateSurveyReadingPill(currentPercent: number, delta: number): ClimateSurveyReadingPill {
+  if (currentPercent < CLIMATE_SURVEY_READING_LOW_THRESHOLD_PERCENT) {
+    return delta < 0 ? "critical" : "attention"
+  }
+  return delta < 0 ? "attention" : "informative"
+}
+
 export interface CreateClimateSurveyResponseInput {
   tenantId: string
   dispatchId: string
