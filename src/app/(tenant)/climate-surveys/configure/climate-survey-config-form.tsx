@@ -29,6 +29,7 @@ import {
   validateClimateSurveyQuestionSelection,
   type ClimateSurveyCustomQuestionDraft,
 } from "@/app/(tenant)/climate-surveys/configure/climate-survey-question-bank"
+import { ClimateSurveyScaleWeightsCard } from "@/app/(tenant)/climate-surveys/configure/climate-survey-scale-weights-card"
 
 interface DepartmentOption {
   id: string
@@ -657,6 +658,8 @@ export function ClimateSurveyConfigForm({ mode, departments, topics, initialConf
             <ClimateSurveyCustomQuestionList questions={customQuestions} topics={topics} onChange={setCustomQuestions} />
           </div>
         </div>
+
+        <ClimateSurveyScaleWeightsCard />
 
         <div className="lg:hidden space-y-2">
           <ClimateSurveyQuestionBankSidePanel

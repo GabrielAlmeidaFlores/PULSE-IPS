@@ -12,6 +12,20 @@ export const CLIMATE_SURVEY_LIKERT_WEIGHT_BY_SCORE: Record<1 | 2 | 3 | 4 | 5, nu
   5: 1.0,
 }
 
+export interface ClimateSurveyLikertScalePoint {
+  score: 1 | 2 | 3 | 4 | 5
+  label: string
+  weight: number
+}
+
+export const CLIMATE_SURVEY_LIKERT_SCALE: ClimateSurveyLikertScalePoint[] = [
+  { score: 5, label: "Concordo Totalmente", weight: CLIMATE_SURVEY_LIKERT_WEIGHT_BY_SCORE[5] },
+  { score: 4, label: "Concordo", weight: CLIMATE_SURVEY_LIKERT_WEIGHT_BY_SCORE[4] },
+  { score: 3, label: "Neutro", weight: CLIMATE_SURVEY_LIKERT_WEIGHT_BY_SCORE[3] },
+  { score: 2, label: "Discordo", weight: CLIMATE_SURVEY_LIKERT_WEIGHT_BY_SCORE[2] },
+  { score: 1, label: "Discordo Totalmente", weight: CLIMATE_SURVEY_LIKERT_WEIGHT_BY_SCORE[1] },
+]
+
 export interface ClimateSurveyMetricAnswerInput {
   questionId: string
   responseId: string

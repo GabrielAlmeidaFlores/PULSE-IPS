@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  CLIMATE_SURVEY_LIKERT_SCALE,
   classifyClimateSurveyEnpsNote,
   climateSurveyLikertToEnpsNote,
   climateSurveyLikertWeight,
@@ -9,6 +10,18 @@ import {
   computeClimateSurveyWeightedScorePercent,
   normalizeClimateSurveyLikertScore,
 } from "@/modules/climate-surveys/climate-survey-metrics"
+
+describe("CLIMATE_SURVEY_LIKERT_SCALE", () => {
+  it("expõe a escala de 5 pontos com labels e pesos oficiais", () => {
+    expect(CLIMATE_SURVEY_LIKERT_SCALE).toEqual([
+      { score: 5, label: "Concordo Totalmente", weight: 1.0 },
+      { score: 4, label: "Concordo", weight: 0.8 },
+      { score: 3, label: "Neutro", weight: 0.6 },
+      { score: 2, label: "Discordo", weight: 0.4 },
+      { score: 1, label: "Discordo Totalmente", weight: 0.2 },
+    ])
+  })
+})
 
 describe("climate-survey-metrics — pesos Likert", () => {
   it("aplica os pesos oficiais 1.0 / 0.8 / 0.6 / 0.4 / 0.2", () => {

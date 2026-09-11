@@ -11,6 +11,7 @@ import {
   trackClimateSurveyResponseProgressAction,
 } from "@/app/(public)/climate-survey/[token]/actions"
 import { storage } from "@/libs/local-storage"
+import { CLIMATE_SURVEY_LIKERT_SCALE } from "@/modules/climate-surveys/climate-survey-metrics"
 
 interface ClimateSurveyQuestion {
   id: string
@@ -32,13 +33,10 @@ interface ClimateSurveyFormDraft {
   openComment: string
 }
 
-const LIKERT_OPTIONS: LikertOption[] = [
-  { score: 5, label: "Concordo Totalmente" },
-  { score: 4, label: "Concordo" },
-  { score: 3, label: "Neutro" },
-  { score: 2, label: "Discordo" },
-  { score: 1, label: "Discordo Totalmente" },
-]
+const LIKERT_OPTIONS: LikertOption[] = CLIMATE_SURVEY_LIKERT_SCALE.map((point) => ({
+  score: point.score,
+  label: point.label,
+}))
 
 const ANONYMITY_NOTICE =
   "Suas respostas são 100% anônimas e não serão vinculadas à sua identidade."

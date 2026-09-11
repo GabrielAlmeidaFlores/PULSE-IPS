@@ -4043,6 +4043,7 @@ RH → /climate-surveys/configure
      + seção "Perguntas personalizadas" (texto, tópico e direção do score, add/remover inline),
      botão "Gerenciar tópicos" (criar/renomear/desativar tópicos customizados; tópicos de sistema são protegidos),
      painel lateral com contadores em tempo real (perguntas, tópicos, tempo estimado ≈20s/pergunta),
+     bloco fixo somente-leitura "Escala e pesos (RN-01)" (`CLIMATE_SURVEY_LIKERT_SCALE` — escala Likert de 5 pontos e pesos),
      ações Salvar / Pré-visualizar; mín. 1 pergunta (catálogo + personalizadas), máx. 60 (`CLIMATE_SURVEY_MAX_QUESTIONS`); recomendado 3–5 por tópico
   └─ Agenda onda (manual) ou auto-scheduler (job climate-survey-dispatcher)
        ├─ Tokens + short_code; envio por mensagem (sendViaMessaging=true) quando feature messaging ativa
