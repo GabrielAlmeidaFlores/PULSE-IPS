@@ -142,6 +142,8 @@ export function ClimateSurveyForm({ token, employeeName, questions }: Props): Re
   const commentStepIndex = totalQuestions
   const isCommentStep = currentIndex >= totalQuestions
   const currentQuestion = !isCommentStep ? sortedQuestions[currentIndex] : undefined
+  const topicKeys = Array.from(new Set(sortedQuestions.map((question) => question.dimension)))
+  const currentTopicPosition = currentQuestion === undefined ? 0 : topicKeys.indexOf(currentQuestion.dimension) + 1
   const progressPercent = totalQuestions === 0 ? 0 : Math.min(((currentIndex + 1) / totalQuestions) * 100, 100)
   const canGoBack = currentIndex > 0
   const interactionLocked = submitting || advancing || optedOut
@@ -312,10 +314,12 @@ export function ClimateSurveyForm({ token, employeeName, questions }: Props): Re
 
         <div className="px-4 pt-4 pb-2 space-y-2">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              {isCommentStep ? `Comentário final` : `Pergunta ${currentIndex + 1} de ${totalQuestions}`}
+            <p className="min-w-0 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              {isCommentStep
+                ? "Comentário final"
+                : `Tópico ${currentTopicPosition} de ${topicKeys.length} · Pergunta ${currentIndex + 1} de ${totalQuestions}`}
             </p>
-            <p className="text-[10px] font-semibold text-muted-foreground tabular-nums">
+            <p className="shrink-0 text-[10px] font-semibold text-muted-foreground tabular-nums">
               {Math.round(progressPercent)}%
             </p>
           </div>

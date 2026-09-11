@@ -4053,7 +4053,7 @@ RH → /climate-surveys/configure
           (compositor e config sempre enviam `sendViaMessaging=true`, `sendViaSignedLink=false`)
 Colaborador → /climate-survey/[token] | /climate-survey/[orgSlug]/[shortCode] | /climate-survey/link/[linkToken]
   └─ Consent Gate (source climate_survey_form no opt-out) → formulário mobile-first
-       (1 pergunta por vez com o TÓPICO exibido ao respondente, barra de progresso,
+       (1 pergunta por vez com o TÓPICO exibido ao respondente e a posição "Tópico N de M", barra de progresso,
         Likert 5 pontos com labels de concordância, auto-salva e avança ao tocar,
         botão Voltar, aviso fixo de anonimato)
        → passo final opcional "Comentário" (textarea livre anônimo, máx. 1000 chars) → Enviar
