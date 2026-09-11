@@ -49,3 +49,14 @@ next-env.d.ts
 workers
 dist/
 /ia-data/whatsapp-chat
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# Playwright auth
+/e2e/.auth/
+/e2e/__screenshots__
+/relatorio
