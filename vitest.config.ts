@@ -78,6 +78,7 @@ export default defineConfig({
         "src/modules/climate-surveys/climate-survey-campaign.service.ts",
         "src/modules/climate-surveys/climate-survey-anonymity.service.ts",
         "src/modules/climate-surveys/climate-survey-action-plan.service.ts",
+        "src/modules/climate-surveys/climate-survey-action-suggestion.service.ts",
         "src/modules/climate-surveys/climate-survey-analytics.service.ts",
         "src/modules/messaging/survey-email.service.ts",
         "src/modules/messaging/messaging.service.ts",

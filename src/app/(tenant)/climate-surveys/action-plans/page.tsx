@@ -4,8 +4,10 @@ import { CheckCircle2, Clock3, AlertTriangle } from "lucide-react"
 import { getSession } from "@/modules/auth/session"
 import { hasTenantPlanFeature } from "@/modules/billing/billing.service"
 import { getClimateSurveyActionPlanBoard } from "@/modules/climate-surveys/climate-survey-action-plan.service"
+import { getPendingClimateSurveyActionSuggestions } from "@/modules/climate-surveys/climate-survey-action-suggestion.service"
 import { FilterBar } from "@/libs/design-system"
 import { ClimateSurveyActionPlanBoardClient } from "@/app/(tenant)/climate-surveys/action-plans/climate-survey-action-plan-board-client"
+import { ClimateSurveyActionSuggestionCards } from "@/app/(tenant)/climate-surveys/action-plans/climate-survey-action-suggestion-cards"
 import { getOrganization } from "@/modules/organizations/organization.service"
 import { formatInTimeZone } from "date-fns-tz"
 
@@ -25,9 +27,10 @@ export default async function ClimateSurveyActionPlansPage({
   if (params["assigneeId"] !== undefined) boardFilters.assigneeId = params["assigneeId"]
   if (params["dimension"] !== undefined) boardFilters.dimension = params["dimension"]
 
-  const [board, org] = await Promise.all([
+  const [board, org, suggestions] = await Promise.all([
     getClimateSurveyActionPlanBoard(session.tenantId, boardFilters),
     getOrganization(session.tenantId),
+    getPendingClimateSurveyActionSuggestions(session.tenantId),
   ])
 
   const timezone = org?.timezone ?? "America/Sao_Paulo"
@@ -110,6 +113,8 @@ export default async function ClimateSurveyActionPlansPage({
             ...(params["assigneeId"] !== undefined ? { assigneeId: params["assigneeId"] } : {}),
           }}
         />
+
+        <ClimateSurveyActionSuggestionCards suggestions={suggestions} />
 
         <ClimateSurveyActionPlanBoardClient
           belowGoalTopics={board.belowGoalTopics}

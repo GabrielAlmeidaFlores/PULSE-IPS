@@ -26,6 +26,7 @@ export type JobName =
   | "climate-survey-dispatcher"
   | "climate-survey-response-reminder"
   | "climate-survey-response-token-cleanup"
+  | "climate-survey-action-suggestion-generator"
   | "data-ingestion-processor"
 
 export interface SendMessageJobData {

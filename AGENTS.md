@@ -1254,6 +1254,25 @@ Sessão de participação (por token) para tempo médio e abandono por pergunta.
 
 **Índices:** `(tenant_id, dispatch_id)`, `(tenant_id, completed_at)`
 
+#### `climate_survey_action_suggestions`
+
+Sugestões automáticas de plano de ação (5W2H) geradas por onda para tópicos abaixo da meta. O RH aceita (vira `action_plan`), edita antes de aceitar ou recusa com motivo.
+
+| Coluna | Tipo | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| tenant_id | uuid | NOT NULL |
+| dispatch_id | uuid | NOT NULL, FK → climate_survey_dispatches |
+| dimension | varchar | tópico (`climate_survey_topics.key`) |
+| what / why / who / where / when / how | text | campos 5W2H preenchidos |
+| cost | varchar | NULL — em branco para o RH preencher |
+| status | varchar(20) | `'pending'` \| `'accepted'` \| `'rejected'` |
+| rejected_reason | varchar | NULL — obrigatório quando `status = 'rejected'` |
+| action_plan_id | uuid | UNIQUE, FK → action_plans.id — preenchido ao aceitar |
+| created_at / updated_at | timestamptz | NOT NULL |
+
+**Índices:** `(tenant_id, status)`, `(tenant_id, dispatch_id)`
+
 #### `anonymous_reports`
 
 Relatos anônimos enviados pelo canal público. O campo `category` é texto livre (não FK), não existe tabela `report_categories`.
@@ -1646,7 +1665,7 @@ Insights gerados por IA a partir do cruzamento de indicadores de pessoas (Headco
 | **Tenant — estrutura** | `organizations`, `organization_subscriptions`, `organization_users`, `departments` |
 | **Tenant — colaboradores** | `employees`, `employee_consents` |
 | **Tenant — pesquisas** | `health_survey_configurations`, `health_survey_config_departments`, `health_survey_questions`, `health_survey_dispatches`, `health_survey_dept_dispatches`, `health_survey_response_tokens`, `health_survey_responses`, `health_survey_response_items` |
-| **Tenant — clima organizacional** | `climate_survey_configurations`, `climate_survey_config_departments`, `climate_survey_config_work_days`, `climate_survey_questions`, `climate_survey_topics`, `climate_survey_dispatches`, `climate_survey_dept_dispatches`, `climate_survey_response_tokens`, `climate_survey_response_token_work_days`, `climate_survey_responses`, `climate_survey_response_items`, `climate_survey_analytics_events`, `climate_survey_response_sessions` |
+| **Tenant — clima organizacional** | `climate_survey_configurations`, `climate_survey_config_departments`, `climate_survey_config_work_days`, `climate_survey_questions`, `climate_survey_topics`, `climate_survey_dispatches`, `climate_survey_dept_dispatches`, `climate_survey_response_tokens`, `climate_survey_response_token_work_days`, `climate_survey_responses`, `climate_survey_response_items`, `climate_survey_analytics_events`, `climate_survey_response_sessions`, `climate_survey_action_suggestions` |
 | **Tenant — ocorrências** | `anonymous_reports`, `action_plans`, `action_tasks`, `action_plan_suggestions`, `action_plan_suggestion_tasks` |
 | **Tenant — documentos e PGR** | `documents`, `document_versions`, `pgr_reviews`, `pgr_dept_results`, `pgr_question_results` |
 | **Tenant — operacional** | `alerts`, `audit_logs` |
@@ -3490,6 +3509,7 @@ Processos recorrentes gerenciados pelo **BullMQ** com Redis como broker.
 | `climate-survey-dispatcher` | A cada 5min | Auto-scheduler + processamento de ondas manuais de clima (respeita canais e feature `climate_surveys`/`messaging`) |
 | `climate-survey-response-reminder` | A cada hora | Lembrete halfway para tokens de clima não respondidos |
 | `climate-survey-response-token-cleanup` | Diário (02:00) | Remove tokens de clima expirados e não utilizados |
+| `climate-survey-action-suggestion-generator` | Diário (05:00) | Gera sugestões 5W2H de plano de ação para cada tópico abaixo da meta das ondas de clima com a janela de resposta encerrada (`runClimateSurveyActionSuggestionGenerator`) |
 | `data-ingestion-processor` | A cada 2min + on-demand | Processa lotes de importação com status `received`: baixa o arquivo do storage e roda extração + validação com IA |
 
 ### Nomenclatura de Jobs — regra obrigatória
@@ -4171,6 +4191,8 @@ Exibido no Dashboard `/climate-surveys` (bloco Funil da onda). Falhas de insert 
 **RN-05 (leitura nível × tendência):** `resolveClimateSurveyReadingPill(currentPercent, delta)` — nível `< 70` + piora = **Crítico**; nível `< 70` + melhora/estável = **Atenção**; nível `≥ 70` + piora = **Atenção**; nível `≥ 70` + melhora/estável = **Informativo** (`CLIMATE_SURVEY_READING_LOW_THRESHOLD_PERCENT = 70`, labels em `CLIMATE_SURVEY_READING_PILL_LABELS`).
 
 **Banco de relatórios (`/climate-surveys/reports`):** histórico das ondas (`getClimateSurveyWaveReports`) — uma linha por onda com numeração por configuração (ordinal por `scheduledAt` via `findClimateSurveyDispatchOrdinalRows`), período de coleta, público, adesão + pill, favorabilidade e eNPS. Ações por linha: abrir a onda em modo leitura (`/climate-surveys/[dispatchId]`), exportar PDF (`GET /api/climate-surveys/[id]/pdf` — capa, favorabilidade por tópico, eNPS e tabela consolidada tópico × setor, com a identidade da Pulse, via `generateClimateSurveyPdf`) e **duplicar a configuração** (`duplicateClimateSurveyConfig` — copia setores, canais e banco de perguntas para uma nova config "Cópia de X"). A onda é somente-leitura (não há UI que a edite) e o PDF respeita o limiar de anonimato por setor (`canRevealClimateSurveyGroupResults`).
+
+**Sugestão automática de plano de ação (5W2H):** job diário `climate-survey-action-suggestion-generator` (`runClimateSurveyActionSuggestionGenerator`) — para cada onda de clima com a janela de resposta encerrada, gera uma sugestão por **tópico abaixo da meta** (`generateClimateSurveyActionSuggestions`), com os 7 campos 5W2H preenchidos (o custo fica em branco): **o quê** e **como** vêm dos playbooks por tópico (`CLIMATE_SURVEY_ACTION_PLAYBOOKS`), **por quê** cita o número que disparou ("{tópico} fechou em X%, Y pontos abaixo da meta"), **onde** lista os setores onde o tópico está pior (heatmap), e **quem**/**quando** vêm do playbook. As sugestões ficam em `climate_survey_action_suggestions` (`status` `pending`/`accepted`/`rejected` + `rejected_reason`) e aparecem em `/climate-surveys/action-plans` com o pill "Sugerido pelo sistema". O RH pode **aceitar**, **editar e aceitar** (persiste os campos) ou **recusar** (exige motivo). Aceitar cria o `action_plan` vinculado à onda + dimensão (com audit log — trilha de evidência). Geração idempotente por `(dispatch, dimension)`.
 
 ### 20.15 Ingestão de dados com IA (Base Master Mensal)
 
