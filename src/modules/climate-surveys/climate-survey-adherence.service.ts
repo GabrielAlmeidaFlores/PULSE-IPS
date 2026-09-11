@@ -28,19 +28,14 @@ function resolveEnabledChannels(sendViaMessaging: boolean, sendViaSignedLink: bo
 function computeChannelAdherence(
   tokens: ClimateSurveyTokenChannelStatRow[],
   channel: ClimateSurveyAdherenceChannelKey,
-  overallRecipients: number,
-  overallResponses: number,
 ): ClimateSurveyAdherenceChannelComparison {
   const filtered = tokens.filter((token) => {
     if (channel === "messaging") return token.shortCode !== null
     return token.shortCode === null
   })
 
-  const useOverallFallback = channel === "email" && filtered.length === 0 && overallRecipients > 0
-  const totalRecipients = useOverallFallback ? overallRecipients : filtered.length
-  const totalResponses = useOverallFallback
-    ? overallResponses
-    : filtered.filter((token) => token.usedAt !== null).length
+  const totalRecipients = filtered.length
+  const totalResponses = filtered.filter((token) => token.usedAt !== null).length
   const adherencePercent = totalRecipients > 0 ? Math.round((totalResponses / totalRecipients) * 100) : 0
 
   return {
@@ -50,6 +45,25 @@ function computeChannelAdherence(
     totalResponses,
     adherencePercent,
   }
+}
+
+function buildClimateSurveyChannelReading(
+  channels: ClimateSurveyAdherenceChannelComparison[],
+): string | null {
+  const withRecipients = channels.filter((channel) => channel.totalRecipients > 0)
+  const first = withRecipients[0]
+  if (first === undefined) return null
+  const second = withRecipients[1]
+  if (second === undefined) {
+    return `Somente ${first.label} foi usado nesta onda (${first.adherencePercent}% de adesão).`
+  }
+  if (first.adherencePercent === second.adherencePercent) {
+    return `${first.label} e ${second.label} tiveram adesão equivalente nesta onda (${first.adherencePercent}%).`
+  }
+  const higher = first.adherencePercent > second.adherencePercent ? first : second
+  const lower = first.adherencePercent > second.adherencePercent ? second : first
+  const difference = higher.adherencePercent - lower.adherencePercent
+  return `${higher.label} tem adesão ${difference} p.p. maior que ${lower.label} nesta onda (${higher.adherencePercent}% contra ${lower.adherencePercent}%).`
 }
 
 function buildDepartmentRows(
@@ -99,6 +113,7 @@ export async function getClimateSurveyAdherenceOverview(
       wave: null,
       departments: [],
       channelComparison: [],
+      channelReading: null,
       reminderAreas: [],
       canSendReminderNow: false,
     }
@@ -110,9 +125,7 @@ export async function getClimateSurveyAdherenceOverview(
   const totalResponses = departments.reduce((sum, row) => sum + row.totalResponses, 0)
   const adherencePercent = totalRecipients > 0 ? Math.round((totalResponses / totalRecipients) * 100) : 0
   const tokenStats = await findClimateSurveyTokenChannelStats(tenantId, dispatch.id)
-  const channelComparison = enabledChannels.map((channel) =>
-    computeChannelAdherence(tokenStats, channel, totalRecipients, totalResponses),
-  )
+  const channelComparison = enabledChannels.map((channel) => computeChannelAdherence(tokenStats, channel))
   const reminderAreas = buildReminderAreas(departments)
 
   const hasMessagingFeature = await hasTenantPlanFeature(tenantId, "messaging")
@@ -146,6 +159,7 @@ export async function getClimateSurveyAdherenceOverview(
     },
     departments,
     channelComparison,
+    channelReading: buildClimateSurveyChannelReading(channelComparison),
     reminderAreas,
     canSendReminderNow: pendingForChannels.length > 0 && (canRemindViaMessaging || canRemindViaEmail),
   }

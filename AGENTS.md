@@ -4092,7 +4092,7 @@ Agregações disponíveis: **por pergunta**, **por tópico (`dimension`)**, **po
 |---|---|
 | Tabela por área | Colaboradores, respostas, % adesão, canais, status |
 | Status | Excelente ≥ 90% · Boa ≥ 75% · Reforçar &lt; 75% |
-| Canais | `Mensagem` (tokens com `shortCode`) · `E-mail` (link assinado; fallback = adesão geral quando os tokens já têm `shortCode`) |
+| Canais | `Mensagem` (tokens com `shortCode`) · `E-mail` (tokens sem `shortCode` — link assinado). Cada canal usa apenas os seus próprios tokens (sem fallback): a soma das respostas por canal fecha com o total da onda e um canal sem uso aparece como "— / Não utilizado nesta onda". Abaixo dos cards, uma linha de leitura compara a adesão entre os canais (ou indica o único canal usado) |
 | Card lembrete | Lista áreas &lt; 75%; ação “Disparar lembrete agora” → `sendClimateSurveyRemindersForDispatch` (Mensagem se feature `messaging` + canal; E-mail se canal ativo e colaborador com e-mail) |
 
 **Disparo & Canais (`launchClimateSurveyCampaign` / `/climate-surveys/dispatches`):**

@@ -128,7 +128,10 @@ export default async function ClimateSurveyAdherencePage(): Promise<React.ReactE
               title="Comparação por canal"
               subtitle="Mensagem (envio automático) × E-mail (link assinado)"
             >
-              <ClimateSurveyAdherenceChannelComparisonCards channels={overview.channelComparison} />
+              <ClimateSurveyAdherenceChannelComparisonCards
+                channels={overview.channelComparison}
+                reading={overview.channelReading}
+              />
             </ChartCard>
           </>
         )}

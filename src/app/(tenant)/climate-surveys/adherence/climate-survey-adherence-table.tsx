@@ -75,32 +75,46 @@ export function ClimateSurveyAdherenceDepartmentTable({ rows }: TableProps): Rea
 
 interface ChannelProps {
   channels: ClimateSurveyAdherenceChannelComparison[]
+  reading: string | null
 }
 
-export function ClimateSurveyAdherenceChannelComparisonCards({ channels }: ChannelProps): React.ReactElement {
+export function ClimateSurveyAdherenceChannelComparisonCards({ channels, reading }: ChannelProps): React.ReactElement {
   if (channels.length === 0) {
     return <p className="text-xs text-muted-foreground text-center py-6">Nenhum canal configurado nesta onda.</p>
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      {channels.map((channel) => (
-        <div key={channel.channel} className="border border-border bg-card px-4 py-4">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{channel.label}</p>
-          <p className={`text-3xl font-bold tabular-nums mt-2 ${adherenceRateTextColor(channel.adherencePercent)}`}>
-            {channel.adherencePercent}%
-          </p>
-          <p className="text-[11px] text-muted-foreground mt-1">
-            {channel.totalResponses} de {channel.totalRecipients} respondentes
-          </p>
-          <div className="mt-3 h-1.5 bg-muted overflow-hidden">
-            <div
-              className={`h-full transition-all ${adherenceRateBarClass(channel.adherencePercent)}`}
-              style={{ width: `${String(Math.min(channel.adherencePercent, 100))}%` }}
-            />
+    <>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {channels.map((channel) => (
+          <div key={channel.channel} className="border border-border bg-card px-4 py-4">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{channel.label}</p>
+            {channel.totalRecipients === 0 ? (
+              <>
+                <p className="text-3xl font-bold tabular-nums mt-2 text-muted-foreground">—</p>
+                <p className="text-[11px] text-muted-foreground mt-1">Não utilizado nesta onda</p>
+                <div className="mt-3 h-1.5 bg-muted overflow-hidden" />
+              </>
+            ) : (
+              <>
+                <p className={`text-3xl font-bold tabular-nums mt-2 ${adherenceRateTextColor(channel.adherencePercent)}`}>
+                  {channel.adherencePercent}%
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  {channel.totalResponses} de {channel.totalRecipients} respondentes
+                </p>
+                <div className="mt-3 h-1.5 bg-muted overflow-hidden">
+                  <div
+                    className={`h-full transition-all ${adherenceRateBarClass(channel.adherencePercent)}`}
+                    style={{ width: `${String(Math.min(channel.adherencePercent, 100))}%` }}
+                  />
+                </div>
+              </>
+            )}
           </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+      {reading !== null && <p className="text-[11px] text-muted-foreground mt-3">{reading}</p>}
+    </>
   )
 }

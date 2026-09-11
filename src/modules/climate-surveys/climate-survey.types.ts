@@ -286,6 +286,7 @@ export interface ClimateSurveyAdherenceOverview {
   } | null
   departments: ClimateSurveyAdherenceDepartmentRow[]
   channelComparison: ClimateSurveyAdherenceChannelComparison[]
+  channelReading: string | null
   reminderAreas: ClimateSurveyAdherenceReminderArea[]
   canSendReminderNow: boolean
 }
