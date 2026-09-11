@@ -38,7 +38,7 @@ function getOrgLocalDatetimeString(timezone: string): string {
 }
 
 function mapConfigFrequency(value: string): ClimateSurveyFrequency {
-  if (value === "once" || value === "quarterly" || value === "semiannual") return value
+  if (value === "once" || value === "monthly" || value === "quarterly" || value === "semiannual") return value
   return "once"
 }
 
@@ -235,6 +235,30 @@ export function ClimateSurveyDispatchCampaignComposer({ setup, orgTimezone }: Pr
           </div>
         </div>
 
+        <div className="border border-border bg-card">
+          <div className="border-b border-border px-4 py-2.5 bg-muted">
+            <p className="text-[10px] font-black uppercase tracking-widest text-foreground">Canais</p>
+          </div>
+          <div className="p-4">
+            <p className="text-sm font-medium text-foreground">WhatsApp</p>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Envio automático da pesquisa por WhatsApp, com link único e anônimo por colaborador.
+            </p>
+          </div>
+        </div>
+
+        <div className="border border-border bg-card">
+          <div className="border-b border-border px-4 py-2.5 bg-muted">
+            <p className="text-[10px] font-black uppercase tracking-widest text-foreground">Anonimato</p>
+          </div>
+          <div className="p-4">
+            <p className="text-[11px] text-muted-foreground">
+              A participação é controlada separadamente do conteúdo: as respostas são anônimas e não ficam vinculadas
+              ao colaborador.
+            </p>
+          </div>
+        </div>
+
         <div className="border border-border bg-card overflow-x-auto">
           <div className="border-b border-border px-4 py-2.5 bg-muted">
             <p className="text-[10px] font-black uppercase tracking-widest text-foreground">Departamentos</p>
@@ -300,7 +324,7 @@ export function ClimateSurveyDispatchCampaignComposer({ setup, orgTimezone }: Pr
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Canal</p>
-            <p className="text-sm font-medium mt-1">Mensagem</p>
+            <p className="text-sm font-medium mt-1">WhatsApp</p>
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Recorrência</p>

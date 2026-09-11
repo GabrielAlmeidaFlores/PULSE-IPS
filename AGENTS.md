@@ -2688,6 +2688,8 @@ export interface IMessagingService {
 **Restrições SMS Barato (WhatsApp):** usa templates pré-aprovados no painel SMS Barato; os parâmetros são enviados na ordem esperada pelo template configurado (inclui o **link único** da pesquisa); `dest` igual ao SMS (apenas dígitos com DDD)
 
 > **Regra de terminologia:** os termos "SMS", "WhatsApp" e "CPF" **nunca devem aparecer em código, banco de dados ou UI**. Substituições obrigatórias: SMS/WhatsApp → `mensagem`/`message`; CPF → `document`/`documento`. Essa proibição se aplica a nomes de arquivos, classes, funções, variáveis, campos de banco, labels de UI e mensagens de erro.
+>
+> **Exceção — tela de Disparo e Canais (`/climate-surveys/dispatches`):** por decisão de produto, o canal único de mensagem é exibido como **"WhatsApp"** (envio via SMSBarato) nessa tela, sem qualquer seleção/troca de canal. É a única exceção autorizada; no restante do código, banco e UI continua valendo `mensagem`/`message`.
 
 > **Nomes de templates do provedor externo (SMS Barato)** são valores de configuração de infraestrutura — não são identificadores de domínio da aplicação. As variáveis `SMSBARATO_WA_TEMPLATE` e `SMSBARATO_WA_REMINDER_TEMPLATE` usam nomes como `"pulse_survey"` e `"pulse_survey_reminder"`, que não seguem o prefixo `health_survey_`. Isso é intencional: esses valores são definidos no painel externo do provedor, não no código.
 
@@ -4101,11 +4103,12 @@ Agregações disponíveis: **por pergunta**, **por tópico (`dimension`)**, **po
 
 | Bloco | Conteúdo |
 |---|---|
-| Canais | Só Mensagem — a UI não expõe seleção de canal; campanhas novas usam `sendViaMessaging=true`, `sendViaSignedLink=false` (sem e-mail nem link assinado em campanhas novas; o backend de e-mail permanece para os demais fluxos/legado) |
-| Recorrência | `once` (sem auto-scheduler) · `quarterly` (90d) · `semiannual` (180d) |
+| Canais | Canal único **WhatsApp** (exceção de rótulo — ver §13), exibido como bloco informativo **sem seleção/troca de canal**; campanhas novas usam `sendViaMessaging=true`, `sendViaSignedLink=false` (o backend de e-mail permanece para os demais fluxos/legado) |
+| Recorrência | `monthly` (30d) · `quarterly` (90d) · `semiannual` (180d) · `once` (sem auto-scheduler) — intervalos em `FREQUENCY_INTERVAL_DAYS` |
 | Timing | Enviar agora · Agendar · Lembrete 48h (força `tokenExpiryHours ≥ 96`) |
-| Departamentos | Incluir/excluir + canal preferencial (UI) + headcount ativo |
-| Resumo | Destinatários, canais, recorrência, data/hora + prévia do template `SURVEY_MESSAGE_TEMPLATE` |
+| Departamentos | Incluir/excluir + headcount ativo por setor |
+| Resumo | Destinatários (soma só os setores marcados), canal, recorrência, data/hora + prévia do template `SURVEY_MESSAGE_TEMPLATE` |
+| Anonimato | Aviso fixo **não configurável**: a participação é controlada à parte e as respostas são anônimas, não vinculadas ao colaborador |
 
 **E-mail de pesquisa (`survey-email.service` / fila `pulse-emails`):**
 

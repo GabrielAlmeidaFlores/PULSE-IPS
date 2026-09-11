@@ -403,7 +403,7 @@ export const CLIMATE_SURVEY_FREQUENCY_LABELS: Record<ClimateSurveyFrequency, str
   semiannual: "Semestral",
 }
 
-export const CLIMATE_SURVEY_CAMPAIGN_FREQUENCIES: ClimateSurveyFrequency[] = ["once", "quarterly", "semiannual"]
+export const CLIMATE_SURVEY_CAMPAIGN_FREQUENCIES: ClimateSurveyFrequency[] = ["monthly", "quarterly", "semiannual", "once"]
 
 export type ClimateSurveyCampaignChannel = "messaging" | "email"
 

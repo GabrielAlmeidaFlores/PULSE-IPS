@@ -101,13 +101,13 @@ export default async function ClimateSurveysListPage({ searchParams }: ClimateSu
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Canal</p>
                   <p className="text-[12px] text-foreground leading-relaxed">
-                    Mensagem = envio automático para o colaborador.
+                    WhatsApp = envio automático para o colaborador.
                   </p>
                 </div>
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Recorrência</p>
                   <p className="text-[12px] text-foreground leading-relaxed">
-                    Pesquisa única não entra no auto-scheduler. Trimestral e semestral definem o intervalo entre ondas automáticas.
+                    Pesquisa única não entra no auto-scheduler. Mensal, trimestral e semestral definem o intervalo entre ondas automáticas.
                   </p>
                 </div>
                 <div>
@@ -120,7 +120,7 @@ export default async function ClimateSurveysListPage({ searchParams }: ClimateSu
             } />
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Monte a campanha, escolha canais e departamentos, e acompanhe o histórico de disparos
+            Monte a campanha, selecione os departamentos e acompanhe o histórico de disparos
           </p>
         </div>
         <Link

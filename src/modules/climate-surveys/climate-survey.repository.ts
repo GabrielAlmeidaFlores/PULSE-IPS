@@ -187,6 +187,7 @@ export interface ClimateSurveyCampaignSettingsInput {
   sendViaSignedLink: boolean
   tokenExpiryHours: number
   departmentIds: string[]
+  scheduledDayOfMonth: number | null
 }
 
 export async function updateClimateSurveyConfigCampaignSettings(
@@ -204,7 +205,7 @@ export async function updateClimateSurveyConfigCampaignSettings(
       sendViaMessaging: input.sendViaMessaging,
       sendViaSignedLink: input.sendViaSignedLink,
       tokenExpiryHours: input.tokenExpiryHours,
-      scheduledDayOfMonth: null,
+      scheduledDayOfMonth: input.scheduledDayOfMonth,
       configDepartments: {
         deleteMany: {},
         createMany: { data: input.departmentIds.map((departmentId) => ({ departmentId })) },
