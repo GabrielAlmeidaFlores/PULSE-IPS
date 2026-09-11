@@ -21,6 +21,8 @@ const eslintConfig = defineConfig([
     "node_modules/**",
     "prisma/**",
     "src/cli/**",
+    "e2e/**",
+    "playwright.config.ts",
   ]),
 
   {
