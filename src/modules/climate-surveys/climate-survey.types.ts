@@ -154,6 +154,26 @@ export interface ClimateSurveyTopicRadarPoint {
   status: ClimateSurveyMetricStatus
 }
 
+export const CLIMATE_SURVEY_FAVORABILITY_ATTENTION_GAP_PERCENT = 10
+
+export type ClimateSurveyFavorabilityBand = "at_goal" | "below_goal" | "critical"
+
+export function resolveClimateSurveyFavorabilityBand(
+  favorabilityPercent: number,
+  goalPercent: number,
+): ClimateSurveyFavorabilityBand {
+  if (favorabilityPercent >= goalPercent) return "at_goal"
+  if (favorabilityPercent >= goalPercent - CLIMATE_SURVEY_FAVORABILITY_ATTENTION_GAP_PERCENT) return "below_goal"
+  return "critical"
+}
+
+export interface ClimateSurveyTopicFavorabilityPoint {
+  dimension: ClimateSurveyDimension
+  label: string
+  favorabilityPercent: number | null
+  band: ClimateSurveyFavorabilityBand | null
+}
+
 export interface ClimateSurveyWaveEvolutionPoint {
   dispatchId: string
   label: string
@@ -195,6 +215,7 @@ export interface ClimateSurveyModuleDashboard {
   minRespondentsPercent: number
   requiredRespondents: number
   radar: ClimateSurveyTopicRadarPoint[]
+  topicFavorability: ClimateSurveyTopicFavorabilityPoint[]
   evolution: ClimateSurveyWaveEvolutionPoint[]
   enpsBreakdown: ClimateSurveyEnpsBreakdown
   heatmap: {
@@ -426,6 +447,18 @@ export interface SubmitClimateSurveyInput {
   openComment?: string
 }
 
+export type ClimateSurveyEnpsCategory = "promoter" | "neutral" | "detractor"
+
+export type ClimateSurveyEnpsStatusLabel = "Excelente" | "Muito Bom" | "Médio" | "Atenção" | "Crítico"
+
+export function resolveClimateSurveyEnpsStatusLabel(score: number): ClimateSurveyEnpsStatusLabel {
+  if (score >= 50) return "Excelente"
+  if (score >= 30) return "Muito Bom"
+  if (score >= 10) return "Médio"
+  if (score >= 0) return "Atenção"
+  return "Crítico"
+}
+
 export interface CreateClimateSurveyResponseInput {
   tenantId: string
   dispatchId: string
@@ -433,6 +466,7 @@ export interface CreateClimateSurveyResponseInput {
   tokenId: string
   answers: { questionId: string; score: number }[]
   openComment?: string
+  enpsCategory?: ClimateSurveyEnpsCategory
 }
 
 export interface CreateClimateSurveyTokenInput {

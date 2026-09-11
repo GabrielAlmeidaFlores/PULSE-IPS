@@ -13,10 +13,25 @@ import { FilterBar } from "@/libs/design-system"
 import { ClimateSurveyTopicRadarChart } from "@/app/(tenant)/climate-surveys/components/climate-survey-topic-radar-chart"
 import { ClimateSurveyWaveEvolutionChart } from "@/app/(tenant)/climate-surveys/components/climate-survey-wave-evolution-chart"
 import { ClimateSurveyEnpsDonutChart } from "@/app/(tenant)/climate-surveys/components/climate-survey-enps-donut-chart"
+import { ClimateSurveyTopicFavorabilityChart } from "@/app/(tenant)/climate-surveys/components/climate-survey-topic-favorability-chart"
 import { ClimateSurveyTopicDepartmentHeatmap } from "@/app/(tenant)/climate-surveys/components/climate-survey-topic-department-heatmap"
 import { ClimateSurveyDisplaySettingsButton } from "@/app/(tenant)/climate-surveys/climate-survey-display-settings-button"
-import type { ClimateSurveyMetricStatus } from "@/modules/climate-surveys/climate-survey.types"
+import { resolveClimateSurveyEnpsStatusLabel, type ClimateSurveyMetricStatus } from "@/modules/climate-surveys/climate-survey.types"
 import { CLIMATE_SURVEY_MIN_RESPONDENTS_FLOOR } from "@/libs/utils/anonymity"
+import { BADGE_AMBER, BADGE_BASE, BADGE_GREEN, BADGE_RED } from "@/libs/design-system/alert-labels"
+
+function enpsStatusBadgeClass(score: number): string {
+  if (score >= 30) return BADGE_GREEN
+  if (score >= 0) return BADGE_AMBER
+  return BADGE_RED
+}
+
+function enpsStatusBadge(score: number | null): React.ReactNode {
+  if (score === null) return undefined
+  return (
+    <span className={`${BADGE_BASE} ${enpsStatusBadgeClass(score)}`}>{resolveClimateSurveyEnpsStatusLabel(score)}</span>
+  )
+}
 
 function kpiToneClass(status: ClimateSurveyMetricStatus): string {
   if (status === "above_goal") return "border-status-success-border bg-status-success-subtle"
@@ -331,10 +346,24 @@ export default async function ClimateSurveyDashboardPage({ searchParams }: Props
                   corporateGoalPercent={dashboard.corporateGoalPercent}
                 />
               </ChartCard>
-              <ChartCard title="eNPS" subtitle="Distribuição de promotores, neutros e detratores">
+              <ChartCard
+                title="eNPS"
+                subtitle="Distribuição de promotores, neutros e detratores"
+                action={enpsStatusBadge(dashboard.kpis.enps)}
+              >
                 <ClimateSurveyEnpsDonutChart breakdown={dashboard.enpsBreakdown} />
               </ChartCard>
             </div>
+
+            <ChartCard
+              title="Favorabilidade por tópico"
+              subtitle="Barras horizontais, linha tracejada = meta"
+            >
+              <ClimateSurveyTopicFavorabilityChart
+                points={dashboard.topicFavorability}
+                goalPercent={dashboard.corporateGoalPercent}
+              />
+            </ChartCard>
 
             <ChartCard title="Evolução entre ondas" subtitle="Clima, favorabilidade, adesão e eNPS ao longo do tempo">
               <ClimateSurveyWaveEvolutionChart

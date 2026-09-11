@@ -21,6 +21,7 @@ import { findOrganizationById } from "@/modules/organizations/organization.repos
 import {
   CLIMATE_SURVEY_CORPORATE_GOAL_PERCENT,
   climateSurveyMetricStatus,
+  resolveClimateSurveyFavorabilityBand,
   resolveClimateSurveyTopicLabel,
   toClimateSurveyDimension,
   type ClimateSurveyDispatchDashboardStats,
@@ -29,6 +30,7 @@ import {
   type ClimateSurveyHeatmapCell,
   type ClimateSurveyModuleDashboard,
   type ClimateSurveyTopic,
+  type ClimateSurveyTopicFavorabilityPoint,
   type ClimateSurveyTopicRadarPoint,
   type ClimateSurveyWaveEvolutionPoint,
   type ScoreDirection,
@@ -435,6 +437,28 @@ function buildRadarPoints(
   })
 }
 
+function buildTopicFavorabilityPoints(
+  topicMetrics: Map<ClimateSurveyDimension, ClimateSurveyAggregatedMetrics>,
+  orderedTopicKeys: ClimateSurveyDimension[],
+  topicLabelMap: ReadonlyMap<string, string>,
+): ClimateSurveyTopicFavorabilityPoint[] {
+  return orderedTopicKeys
+    .map((dimension) => {
+      const metrics = getClimateSurveyAggregatedMetricsOrEmpty(topicMetrics.get(dimension))
+      const favorabilityPercent = metrics.favorabilityPercent
+      return {
+        dimension,
+        label: resolveClimateSurveyTopicLabel(dimension, topicLabelMap),
+        favorabilityPercent,
+        band:
+          favorabilityPercent === null
+            ? null
+            : resolveClimateSurveyFavorabilityBand(favorabilityPercent, CLIMATE_SURVEY_CORPORATE_GOAL_PERCENT),
+      }
+    })
+    .sort((a, b) => (b.favorabilityPercent ?? -1) - (a.favorabilityPercent ?? -1))
+}
+
 function buildHeatmap(
   items: ClimateSurveyDispatchResponseItem[],
   questions: ClimateSurveyDispatchDashboardData["questions"],
@@ -552,6 +576,7 @@ export async function getClimateSurveyModuleDashboard(
       minRespondentsPercent,
       requiredRespondents: 0,
       radar: buildRadarPoints(new Map(), allTopicKeys, topicLabelMap),
+      topicFavorability: buildTopicFavorabilityPoints(new Map(), allTopicKeys, topicLabelMap),
       evolution: [],
       enpsBreakdown: emptyEnps,
       heatmap: {
@@ -624,6 +649,7 @@ export async function getClimateSurveyModuleDashboard(
     minRespondentsPercent,
     requiredRespondents,
     radar: buildRadarPoints(metrics.byTopic, orderedTopicKeys, topicLabelMap),
+    topicFavorability: buildTopicFavorabilityPoints(metrics.byTopic, orderedTopicKeys, topicLabelMap),
     evolution,
     enpsBreakdown: metrics.overall.enps,
     heatmap: buildHeatmap(

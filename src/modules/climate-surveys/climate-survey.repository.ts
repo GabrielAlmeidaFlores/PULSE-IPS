@@ -4,7 +4,7 @@ import { prisma } from "@/libs/db"
 import { AppError } from "@/libs/errors/app-error"
 import { toAnonymousSurveyResponseDate } from "@/libs/utils/anonymity"
 import { normalizePhoneToE164 } from "@/libs/utils/phone"
-import type { CreateClimateSurveyConfigInput, UpdateClimateSurveyConfigInput, CreateClimateSurveyResponseInput, CreateClimateSurveyTokenInput, CreateClimateSurveyAdherenceAlertInput } from "@/modules/climate-surveys/climate-survey.types"
+import type { CreateClimateSurveyConfigInput, UpdateClimateSurveyConfigInput, CreateClimateSurveyResponseInput, CreateClimateSurveyTokenInput, CreateClimateSurveyAdherenceAlertInput, ScoreDirection } from "@/modules/climate-surveys/climate-survey.types"
 
 type ClimateSurveyConfigWithWorkDays = Prisma.ClimateSurveyConfigurationGetPayload<{ include: { workDays: true } }>
 export type ClimateSurveyConfigWithDetails = ClimateSurveyConfigWithWorkDays & {
@@ -775,6 +775,30 @@ export function findUsedClimateSurveyTokenForEmployee(
   })
 }
 
+export interface ClimateSurveyQuestionDirectionRow {
+  id: string
+  scoreDirection: ScoreDirection
+}
+
+export async function findClimateSurveyQuestionDirectionsForDispatch(
+  tenantId: string,
+  dispatchId: string,
+): Promise<ClimateSurveyQuestionDirectionRow[]> {
+  const dispatch = await prisma.climateSurveyDispatch.findFirst({
+    where: { id: dispatchId, tenantId },
+    select: {
+      climateSurveyConfiguration: {
+        select: { questions: { select: { id: true, scoreDirection: true } } },
+      },
+    },
+  })
+  const questions = dispatch?.climateSurveyConfiguration.questions ?? []
+  return questions.map((question) => ({
+    id: question.id,
+    scoreDirection: question.scoreDirection === "lower_is_better" ? "lower_is_better" : "higher_is_better",
+  }))
+}
+
 export async function createClimateSurveyResponseWithItems(data: CreateClimateSurveyResponseInput): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const claimed = await tx.climateSurveyResponseToken.updateMany({
@@ -792,6 +816,7 @@ export async function createClimateSurveyResponseWithItems(data: CreateClimateSu
         dispatchId: data.dispatchId,
         createdAt: toAnonymousSurveyResponseDate(),
         ...(data.departmentId !== null ? { departmentId: data.departmentId } : {}),
+        ...(data.enpsCategory !== undefined ? { enpsCategory: data.enpsCategory } : {}),
         ...(data.openComment !== undefined ? { openComment: data.openComment } : {}),
         items: {
           create: data.answers.map((a) => ({

@@ -42,6 +42,7 @@ const CLIMATE_MODULE: ClimateSurveyModuleDashboard = {
   minRespondentsPercent: 40,
   requiredRespondents: 20,
   radar: [],
+  topicFavorability: [],
   evolution: [
     {
       dispatchId: "wave-1",

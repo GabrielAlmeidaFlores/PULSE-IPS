@@ -717,6 +717,7 @@ model ClimateSurveyResponse {
   tenantId     String   @map("tenant_id")
   dispatchId   String   @map("dispatch_id")
   departmentId String?  @map("department_id")
+  enpsCategory String?  @map("enps_category") @db.VarChar(20)
   openComment  String?  @map("open_comment")
   createdAt    DateTime @default(now()) @map("created_at")
 

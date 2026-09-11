@@ -4066,6 +4066,7 @@ RH → /climate-surveys/[dispatchId]
 |---|---|
 | KPIs | Adesão %, total de respostas, favorabilidade % (scores 4–5), eNPS |
 | Radar | Tópicos usados na onda (sistema + customizados) vs meta corporativa (`CLIMATE_SURVEY_CORPORATE_GOAL_PERCENT` = 70) — score = média dos pesos Likert × 100 |
+| Barras | Favorabilidade por tópico — barras horizontais ordenadas do maior para o menor, linha tracejada vertical na meta; cor = verde na meta ou acima, âmbar até 10 p.p. abaixo, vermelho acima disso (`resolveClimateSurveyFavorabilityBand`) |
 | Linha | Evolução entre ondas (clima ponderado, favorabilidade, adesão, eNPS) |
 | Rosca eNPS | Promotores / Neutros / Detratores |
 | Heatmap | Tópicos × departamentos (verde ≥ meta, amarelo ≥ meta−20, vermelho crítico) |
@@ -4079,6 +4080,7 @@ RH → /climate-surveys/[dispatchId]
 | Score de clima | média dos pesos × 100 |
 | Nota eNPS (0–10) | peso Likert × 10 (equivale a Likert × 2) |
 | eNPS | `% promotores − % detratores` — promotores nota 9–10 · neutros 7–8 · detratores 0–6 |
+| Faixa de status do eNPS (RN-02) | `≥ 50` Excelente · `≥ 30` Muito Bom · `≥ 10` Médio · `≥ 0` Atenção · `< 0` Crítico (`resolveClimateSurveyEnpsStatusLabel`) |
 
 Agregações disponíveis: **por pergunta**, **por tópico (`dimension`)**, **por departamento** e **geral da empresa/onda**. O eNPS agregado classifica a média das notas do respondente no escopo (não a resposta isolada), exceto quando o escopo já é uma única pergunta.
 
@@ -4148,6 +4150,7 @@ Exibido no Dashboard `/climate-surveys` (bloco Funil da onda). Falhas de insert 
 | Limiar por percentual | `canRevealClimateSurveyGroupResults` / `climateSurveyRequiredRespondents` — revela quando `respostas ≥ max(3, ceil(destinatários × organizações.climate_survey_min_respondents_percent / 100))`; scores, favorabilidade, eNPS, radar, heatmap e distribuições ocultos abaixo do limiar (por onda e por célula/setor) |
 | Sem rastreamento individual no dashboard | UI/services só agregados; sem listagem de respondentes ou respostas por colaborador |
 | Sem export identificável | `assertClimateSurveyIdentifiableExportForbidden()` — proibido exportar respostas com identidade |
+| Classificação de eNPS persistida | `climate_survey_responses.enps_category` (`promoter`/`neutral`/`detractor`) é calculada no submit a partir da média dos scores normalizados do respondente (direção da pergunta aplicada) e gravada junto à resposta anônima — nunca vinculada ao colaborador |
 
 **Jobs:** `climate-survey-dispatcher`, `climate-survey-response-reminder`, `climate-survey-response-token-cleanup`.
 
@@ -4593,7 +4596,7 @@ import { BADGE_BASE, BADGE_RED, BADGE_GREEN, BADGE_AMBER, BADGE_BLUE } from "@/l
 
 As classes `badge-*` são utilitárias definidas em `@layer utilities` em `globals.css` e usam as variáveis `--status-*` — adaptam-se automaticamente ao tema dark/light sem precisar de prefixo `dark:`.
 
-**Não use inline `style={{ color, backgroundColor }}`** para badges — usar className garante consistência com o tema e o Tailwind JIT/oxide inclui as classes por serem literais no fonte.
+**Não use inline `style={{ color, backgroundColor }}`** para badges, indicadores de cor de legenda ou qualquer swatch — usar className garante consistência com o tema e o Tailwind JIT/oxide inclui as classes por serem literais no fonte. **Pitfall comprovado:** `style={{ backgroundColor: "var(--...)" }}` pode não resolver a variável (o elemento fica `transparent`) mesmo quando a var está definida em `:root` — use sempre a classe utilitária (`bg-status-success`, `bg-muted-foreground`). Em SVG de bibliotecas de gráfico (recharts), o atributo `fill="var(--...)"` funciona normalmente.
 
 ---
 
