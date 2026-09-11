@@ -138,7 +138,7 @@ describe("getClimateSurveyActionPlanBoard", () => {
       topicFavorability: [],
       evolution: [],
       enpsBreakdown: { promoters: 0, neutrals: 0, detractors: 0, total: 0, score: null },
-      heatmap: { topics: [], departments: [], cells: [] },
+      heatmap: { topics: [], departments: [], cells: [], departmentTotals: [], companyEnps: null, companyScorePercent: null },
       hasEnoughRespondents: true,
       funnel: {
         dispatchId: DISPATCH_ID,
@@ -214,7 +214,7 @@ describe("getClimateSurveyActionPlanBoard", () => {
       topicFavorability: [],
       evolution: [],
       enpsBreakdown: { promoters: 0, neutrals: 0, detractors: 0, total: 0, score: null },
-      heatmap: { topics: [], departments: [], cells: [] },
+      heatmap: { topics: [], departments: [], cells: [], departmentTotals: [], companyEnps: null, companyScorePercent: null },
       hasEnoughRespondents: false,
       funnel: {
         dispatchId: null,

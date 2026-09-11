@@ -38,6 +38,7 @@
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
     "exceljs": "^4.4.0",
+    "html-to-image": "^1.11.13",
     "imask": "^7.6.1",
     "ioredis": "^5.10.1",
     "jose": "^6.2.2",

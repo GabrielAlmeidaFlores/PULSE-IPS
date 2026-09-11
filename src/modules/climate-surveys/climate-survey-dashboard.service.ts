@@ -29,6 +29,7 @@ import {
   type ClimateSurveyDimension,
   type ClimateSurveyEnpsBreakdown,
   type ClimateSurveyHeatmapCell,
+  type ClimateSurveyHeatmapDepartmentTotal,
   type ClimateSurveyModuleDashboard,
   type ClimateSurveyTopic,
   type ClimateSurveyTopicFavorabilityPoint,
@@ -508,6 +509,28 @@ function buildHeatmap(
     }
   }
 
+  const companyMetrics = hasEnoughRespondents
+    ? computeClimateSurveyMetricsBreakdown(items, metricQuestions).overall
+    : emptyAggregatedMetrics()
+  const departmentTotals: ClimateSurveyHeatmapDepartmentTotal[] = departments.map((department) => {
+    const deptItems = items.filter((item) => item.departmentId === department.id)
+    const totalQuestionCount = Math.max(questions.length, 1)
+    const estimatedRespondents = Math.round(deptItems.length / totalQuestionCount)
+    const scopeRecipients = deptRecipientsMap.get(department.id) ?? 0
+    const canShow =
+      hasEnoughRespondents &&
+      canRevealClimateSurveyGroupResults(estimatedRespondents, scopeRecipients, minRespondentsPercent) &&
+      deptItems.length > 0
+    const departmentMetrics = canShow
+      ? computeClimateSurveyMetricsBreakdown(deptItems, metricQuestions).overall
+      : emptyAggregatedMetrics()
+    return {
+      departmentId: department.id,
+      enps: canShow ? departmentMetrics.enps.score : null,
+      scorePercent: canShow ? departmentMetrics.weightedScorePercent : null,
+    }
+  })
+
   return {
     topics: orderedTopicKeys.map((dimension) => ({
       dimension,
@@ -515,6 +538,9 @@ function buildHeatmap(
     })),
     departments,
     cells,
+    departmentTotals,
+    companyEnps: hasEnoughRespondents ? companyMetrics.enps.score : null,
+    companyScorePercent: hasEnoughRespondents ? companyMetrics.weightedScorePercent : null,
   }
 }
 
@@ -590,6 +616,9 @@ export async function getClimateSurveyModuleDashboard(
         })),
         departments: [],
         cells: [],
+        departmentTotals: [],
+        companyEnps: null,
+        companyScorePercent: null,
       },
       hasEnoughRespondents: false,
       funnel: emptyClimateSurveyFunnelMetrics(),

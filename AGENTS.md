@@ -248,6 +248,7 @@ Todo o projeto usa `"strict": true` mais flags adicionais (ver seção 9). `any`
 | `unpdf` | Extração de texto de PDFs (puro JS, baseada em pdf.js) — importação de pesquisas existentes |
 | `cmdk` | Componente de command menu (palette de comandos) |
 | `rate-limiter-flexible` | Rate limiting granular por chave/janela com suporte a Redis |
+| `html-to-image` | Exportação de nós DOM como imagem PNG (export do heatmap de clima) |
 
 ---
 
@@ -4069,7 +4070,7 @@ RH → /climate-surveys/[dispatchId]
 | Barras | Favorabilidade por tópico — barras horizontais ordenadas do maior para o menor, linha tracejada vertical na meta; cor = verde na meta ou acima, âmbar até 10 p.p. abaixo, vermelho acima disso (`resolveClimateSurveyFavorabilityBand`) |
 | Linha | Evolução entre ondas (clima ponderado, favorabilidade, adesão, eNPS) |
 | Rosca eNPS | Promotores / Neutros / Detratores |
-| Heatmap | Favorabilidade por tópico × departamento, com régua de 4 faixas relativa à meta (`resolveClimateSurveyHeatmapBand`): `≥ meta+5` forte · `meta..meta+5` na meta · `meta−10..meta` atenção · `< meta−10` crítico. Célula sem amostra suficiente mostra "—"; coluna de tópicos fixa na rolagem horizontal |
+| Heatmap | Favorabilidade por tópico × departamento, com régua de 4 faixas relativa à meta (`resolveClimateSurveyHeatmapBand`): `≥ meta+5` forte · `meta..meta+5` na meta · `meta−10..meta` atenção · `< meta−10` crítico. Célula sem amostra suficiente mostra "—"; coluna de tópicos fixa na rolagem horizontal. Rodapé consolidado com linhas de **eNPS** (faixas da RN-02 via `resolveClimateSurveyEnpsHeatmapBand`) e **Score Total** (régua da meta), com o valor da empresa na 1ª coluna; export em CSV (`buildClimateSurveyHeatmapCsv`) e imagem PNG (`html-to-image`) |
 
 **Fórmulas de métricas (`climate-survey-metrics.ts`) — obrigatórias:**
 

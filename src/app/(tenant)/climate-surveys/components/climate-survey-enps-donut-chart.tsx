@@ -1,7 +1,7 @@
 "use client"
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
-import type { ClimateSurveyEnpsBreakdown } from "@/modules/climate-surveys/climate-survey.types"
+import { formatClimateSurveyEnps, type ClimateSurveyEnpsBreakdown } from "@/modules/climate-surveys/climate-survey.types"
 
 interface Props {
   breakdown: ClimateSurveyEnpsBreakdown
@@ -25,11 +25,6 @@ function segmentColor(name: string): string {
 
 function segmentBgClass(name: string): string {
   return SEGMENT_BG_CLASSES[name] ?? "bg-muted-foreground"
-}
-
-function formatEnpsScore(score: number | null): string {
-  if (score === null) return "—"
-  return score > 0 ? `+${score}` : String(score)
 }
 
 function computeIntegerPercentages(values: number[]): number[] {
@@ -114,7 +109,7 @@ export function ClimateSurveyEnpsDonutChart({ breakdown }: Props): React.ReactEl
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <div className="text-center">
-            <p className="text-3xl font-bold tabular-nums text-foreground">{formatEnpsScore(breakdown.score)}</p>
+            <p className="text-3xl font-bold tabular-nums text-foreground">{formatClimateSurveyEnps(breakdown.score)}</p>
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">eNPS</p>
           </div>
         </div>

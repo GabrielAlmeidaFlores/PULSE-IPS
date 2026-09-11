@@ -55,7 +55,7 @@ const CLIMATE_MODULE: ClimateSurveyModuleDashboard = {
     },
   ],
   enpsBreakdown: { promoters: 10, neutrals: 20, detractors: 10, total: 40, score: 20 },
-  heatmap: { topics: [], departments: [], cells: [] },
+  heatmap: { topics: [], departments: [], cells: [], departmentTotals: [], companyEnps: null, companyScorePercent: null },
   hasEnoughRespondents: true,
   funnel: {
     dispatchId: "wave-1",

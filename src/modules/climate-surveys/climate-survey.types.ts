@@ -207,6 +207,19 @@ export interface ClimateSurveyHeatmapCell {
   responseCount: number | null
 }
 
+export function resolveClimateSurveyEnpsHeatmapBand(score: number): ClimateSurveyHeatmapBand {
+  if (score >= 50) return "strong"
+  if (score >= 30) return "on_goal"
+  if (score >= 0) return "attention"
+  return "critical"
+}
+
+export interface ClimateSurveyHeatmapDepartmentTotal {
+  departmentId: string
+  enps: number | null
+  scorePercent: number | null
+}
+
 export interface ClimateSurveyModuleDashboard {
   wave: {
     id: string
@@ -237,6 +250,9 @@ export interface ClimateSurveyModuleDashboard {
     topics: { dimension: ClimateSurveyDimension; label: string }[]
     departments: { id: string; name: string }[]
     cells: ClimateSurveyHeatmapCell[]
+    departmentTotals: ClimateSurveyHeatmapDepartmentTotal[]
+    companyEnps: number | null
+    companyScorePercent: number | null
   }
   hasEnoughRespondents: boolean
   funnel: ClimateSurveyFunnelMetrics
@@ -473,6 +489,15 @@ export function resolveClimateSurveyEnpsStatusLabel(score: number): ClimateSurve
   if (score >= 10) return "Médio"
   if (score >= 0) return "Atenção"
   return "Crítico"
+}
+
+export function formatClimateSurveyPercent(value: number | null): string {
+  return value === null ? "—" : `${value}%`
+}
+
+export function formatClimateSurveyEnps(value: number | null): string {
+  if (value === null) return "—"
+  return value > 0 ? `+${value}` : String(value)
 }
 
 export interface CreateClimateSurveyResponseInput {
