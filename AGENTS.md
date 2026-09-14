@@ -3092,7 +3092,7 @@ O `Header` (`src/libs/design-system/components/layout/Header.tsx`) recebe do `(t
 
 ### Sidebar — seletor de módulos
 
-A `Sidebar` (`src/libs/design-system/components/layout/Sidebar.tsx`) tem um **seletor de módulos** no topo (`Clima` · `Métricas de Equipe` · `PGR`, cada um um `Link` para a tela padrão do módulo). O módulo ativo é resolvido pelo `pathname` (`resolveModule`). Abaixo, os itens do módulo agrupados por rótulo, seguidos de um grupo **Geral** (Painel, Governança, Funcionários, Departamentos, Alertas, Documentos, Relatos, + Assinatura/Configurações para `admin`). Vira menu hambúrguer em telas < `lg` (1024px). **Rótulos da UI em português** — sem termos em inglês (ex.: "Colaboradores" em vez de "Headcount", "Rotatividade" em vez de "Turnover").
+A `Sidebar` (`src/libs/design-system/components/layout/Sidebar.tsx`) tem um **seletor de módulos** no topo (`Clima` · `Métricas de Equipe` · `PGR`, cada um um `Link` para a tela padrão do módulo). O módulo ativo é resolvido pelo `pathname` (`resolveModule`). Abaixo, os itens do módulo agrupados por rótulo, seguidos de um grupo **Geral** (Painel, Governança, Funcionários, Departamentos, Pesquisas de Saúde, Alertas, Documentos, Relatos, + Assinatura/Configurações para `admin`). As pesquisas de saúde (`/health-surveys`) ficam no grupo Geral e não têm feature de plano (sempre disponíveis); a tela de configuração (`/health-surveys/configure`) é acessada por dentro da própria tela de pesquisas, sem item próprio no menu. Vira menu hambúrguer em telas < `lg` (1024px). **Rótulos da UI em português** — sem termos em inglês (ex.: "Colaboradores" em vez de "Headcount", "Rotatividade" em vez de "Turnover").
 
 ### Layout padrão de páginas
 
