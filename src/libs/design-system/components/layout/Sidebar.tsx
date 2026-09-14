@@ -23,6 +23,7 @@ import {
   Upload,
   Sparkles,
   GitCompareArrows,
+  ClipboardList,
 } from "lucide-react"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { Logo } from "@/libs/design-system/components/logo"
@@ -111,6 +112,7 @@ function getGeneralNav(features: PlanFeature[], role: "admin" | "rh"): NavLinkIt
     { href: "/governance", label: "Governança", icon: <Gauge className="h-4 w-4" /> },
     { href: "/employees", label: "Funcionários", icon: <Users className="h-4 w-4" /> },
     { href: "/departments", label: "Departamentos", icon: <Building2 className="h-4 w-4" /> },
+    { href: "/health-surveys", label: "Pesquisas de Saúde", icon: <ClipboardList className="h-4 w-4" /> },
     { href: "/alerts", label: "Alertas", icon: <Bell className="h-4 w-4" /> },
     { href: "/documents", label: "Documentos", icon: <FileText className="h-4 w-4" />, feature: "documents" },
     { href: "/reports", label: "Relatos", icon: <MessageSquare className="h-4 w-4" />, feature: "anonymous_reports" },

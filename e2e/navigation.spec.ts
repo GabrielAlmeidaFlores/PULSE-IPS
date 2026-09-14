@@ -39,4 +39,19 @@ test.describe("Organização da plataforma", () => {
     await gotoAndSettle(page, "/alerts")
     await expect(page.locator("body")).toBeVisible()
   })
+
+  test("o grupo Geral dá acesso às pesquisas de saúde", async ({ page }): Promise<void> => {
+    await gotoAndSettle(page, "/dashboard")
+    const nav = page.locator("aside").first()
+    const link = nav.getByRole("link", { name: "Pesquisas de Saúde" })
+    await expect(link).toBeVisible()
+    await expect(nav.getByRole("link", { name: "Configurar pesquisas" })).toHaveCount(0)
+
+    await link.click()
+    await page.waitForURL("**/health-surveys", { timeout: 30000 })
+    await expect(page.getByRole("heading", { name: "Pesquisas", exact: true })).toBeVisible()
+
+    await gotoAndSettle(page, "/health-surveys/configure")
+    await expect(page.getByRole("heading", { name: "Configurar Pesquisas" })).toBeVisible()
+  })
 })
