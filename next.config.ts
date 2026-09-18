@@ -27,6 +27,12 @@ const securityHeadersDisabled = env.DISABLE_SECURITY_HEADERS;
 const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "2gb",
+    },
+    middlewareClientMaxBodySize: "2gb",
+  },
   env: {
     NEXT_PUBLIC_APP_VERSION: appVersion,
   },
