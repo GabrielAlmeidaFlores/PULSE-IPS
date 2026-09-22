@@ -31,7 +31,7 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "2gb",
     },
-    middlewareClientMaxBodySize: "2gb",
+    proxyClientMaxBodySize: "2gb",
   },
   env: {
     NEXT_PUBLIC_APP_VERSION: appVersion,

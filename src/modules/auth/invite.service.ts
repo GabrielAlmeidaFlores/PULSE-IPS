@@ -4,6 +4,8 @@ import { env } from "@/env"
 import { getEmailService } from "@/libs/integrations"
 import { renderEmailTemplate } from "@/libs/email-templates"
 import { AppError } from "@/libs/errors/app-error"
+import { logger } from "@/libs/logger"
+import { normalizeEmail } from "@/libs/utils/email"
 import { hashPassword } from "@/modules/auth/auth.service"
 import {
   findOrgUserByEmailInTenant,
@@ -26,20 +28,21 @@ export async function sendInvite(
   role: "admin" | "rh",
   actorId?: string,
 ): Promise<void> {
-  const existingUser = await findOrgUserByEmailInTenant(tenantId, email)
+  const normalizedEmail = normalizeEmail(email)
+  const existingUser = await findOrgUserByEmailInTenant(tenantId, normalizedEmail)
   if (existingUser) throw new AppError("USER_ALREADY_EXISTS", "Usuário já cadastrado")
 
   const token = randomUUID()
   const expiresAt = addDays(new Date(), 7)
 
-  await createOrgInvitation({ tenantId, email, role, token, expiresAt })
+  await createOrgInvitation({ tenantId, email: normalizedEmail, role, token, expiresAt })
 
   const org = await findOrgByIdOrThrow(tenantId)
   const inviteUrl = `${env.NEXT_PUBLIC_APP_URL}/invite/${token}`
 
   const emailService = getEmailService()
-  await emailService.send({
-    to: email,
+  const sendResult = await emailService.send({
+    to: normalizedEmail,
     subject: `Você foi convidado para ${org.name} no Pulse`,
     html: renderEmailTemplate({
       name: "org-invite",
@@ -47,7 +50,12 @@ export async function sendInvite(
     }),
   })
 
-  await createAuditLog({ tenantId, ...(actorId !== undefined ? { userId: actorId } : {}), action: "user.invited", resource: "organization_invitations", metadata: { email, role } })
+  await createAuditLog({ tenantId, ...(actorId !== undefined ? { userId: actorId } : {}), action: "user.invited", resource: "organization_invitations", metadata: { email: normalizedEmail, role } })
+
+  if (sendResult.error !== undefined) {
+    logger.error(`falha ao enviar convite para ${normalizedEmail}: ${sendResult.error}`)
+    throw new AppError("EMAIL_SEND_FAILED", "O convite foi criado, mas o e-mail não pôde ser enviado. Use \"Reenviar convite\" para tentar novamente.")
+  }
 }
 
 export async function acceptInvite(
@@ -73,11 +81,16 @@ export async function acceptInvite(
   })
 
   const emailService = getEmailService()
-  await emailService.send({
-    to: invitation.email,
-    subject: `Welcome to ${invitation.organization.name} on Pulse`,
-    html: `<p>Welcome to <strong>${invitation.organization.name}</strong>! Your account has been created successfully.</p>`,
+  const welcomeEmail = normalizeEmail(invitation.email)
+  const sendResult = await emailService.send({
+    to: welcomeEmail,
+    subject: `Bem-vindo(a) à ${invitation.organization.name} no Pulse`,
+    html: `<p>Bem-vindo(a) à <strong>${invitation.organization.name}</strong>! Sua conta foi criada com sucesso.</p>`,
   })
+
+  if (sendResult.error !== undefined) {
+    logger.error(`falha ao enviar e-mail de boas-vindas para ${welcomeEmail}: ${sendResult.error}`)
+  }
 }
 
 export function getInviteByToken(token: string): ReturnType<typeof findOrgInviteByToken> {
@@ -105,10 +118,11 @@ export async function resendOrgInvite(tenantId: string, inviteId: string, actorI
 
   const org = await findOrgByIdOrThrow(tenantId)
   const inviteUrl = `${env.NEXT_PUBLIC_APP_URL}/invite/${newToken}`
+  const inviteEmail = normalizeEmail(invite.email)
 
   const emailService = getEmailService()
-  await emailService.send({
-    to: invite.email,
+  const sendResult = await emailService.send({
+    to: inviteEmail,
     subject: `Convite para ${org.name} no Pulse`,
     html: renderEmailTemplate({
       name: "org-invite",
@@ -116,7 +130,12 @@ export async function resendOrgInvite(tenantId: string, inviteId: string, actorI
     }),
   })
 
-  await createAuditLog({ tenantId, ...(actorId !== undefined ? { userId: actorId } : {}), action: "user.invite_resent", resource: "organization_invitations", metadata: { email: invite.email } })
+  await createAuditLog({ tenantId, ...(actorId !== undefined ? { userId: actorId } : {}), action: "user.invite_resent", resource: "organization_invitations", metadata: { email: inviteEmail } })
+
+  if (sendResult.error !== undefined) {
+    logger.error(`falha ao reenviar convite para ${inviteEmail}: ${sendResult.error}`)
+    throw new AppError("EMAIL_SEND_FAILED", "Não foi possível reenviar o e-mail de convite. Tente novamente.")
+  }
 }
 
 export async function cancelOrgInvite(tenantId: string, inviteId: string, actorId?: string): Promise<void> {

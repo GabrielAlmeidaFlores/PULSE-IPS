@@ -7,9 +7,9 @@ import type { ActionResult } from "@/libs/utils/action-result"
 import { getStorageService } from "@/libs/integrations"
 import { getSession } from "@/modules/auth/session"
 import { enqueueDataIngestionBatch } from "@/modules/data-ingestion/data-ingestion.service"
+import { MAX_DATA_INGESTION_FILE_BYTES } from "@/modules/data-ingestion/data-ingestion.constants"
 
 const ALLOWED_EXTENSIONS = ["txt", "csv"]
-const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024
 const MAX_STORAGE_FILE_NAME_LENGTH = 120
 
 function sanitizeFileName(fileName: string): string {
@@ -45,8 +45,8 @@ export async function uploadDataIngestionFileAction(formData: FormData): Promise
   if (!ALLOWED_EXTENSIONS.includes(extension)) {
     return { error: "Formato não suportado. Envie um arquivo .txt ou .csv." }
   }
-  if (file.size > MAX_FILE_SIZE_BYTES) {
-    return { error: "Arquivo muito grande (máximo 20 MB)." }
+  if (file.size > MAX_DATA_INGESTION_FILE_BYTES) {
+    return { error: "Arquivo muito grande (máximo 100 MB)." }
   }
 
   try {

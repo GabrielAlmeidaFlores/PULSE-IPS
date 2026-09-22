@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Upload } from "lucide-react"
 import { uploadDataIngestionFileAction } from "@/app/(tenant)/workforce/import/actions"
+import { MAX_DATA_INGESTION_FILE_BYTES } from "@/modules/data-ingestion/data-ingestion.constants"
 
 const INPUT_CLASS =
   "w-full bg-input border border-input-border text-foreground text-sm px-3 py-2.5 placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
@@ -24,6 +25,10 @@ export function DataIngestionUploadForm(): React.ReactElement {
   function handleSubmit(): void {
     if (file === null) {
       toast.error("Selecione um arquivo.")
+      return
+    }
+    if (file.size > MAX_DATA_INGESTION_FILE_BYTES) {
+      toast.error("O arquivo excede o limite de 100 MB.")
       return
     }
     startTransition(async () => {

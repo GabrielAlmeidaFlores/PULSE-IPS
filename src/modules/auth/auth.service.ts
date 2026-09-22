@@ -5,6 +5,8 @@ import { env } from "@/env"
 import { getEmailService } from "@/libs/integrations"
 import { renderEmailTemplate } from "@/libs/email-templates"
 import { AppError } from "@/libs/errors/app-error"
+import { logger } from "@/libs/logger"
+import { normalizeEmail } from "@/libs/utils/email"
 import { createSession, createSuperAdminSession, destroySession, destroySuperAdminSession } from "@/modules/auth/session"
 import type { LoginInput, SuperAdminLoginInput, SessionPayload, SafeSuperAdmin } from "@/modules/auth/auth.types"
 import {
@@ -117,11 +119,16 @@ export async function requestPasswordReset(email: string, orgSlug: string): Prom
 
   const resetUrl = `${env.NEXT_PUBLIC_APP_URL}/reset-password/${token}`
   const emailService = getEmailService()
-  await emailService.send({
-    to: email,
+  const normalizedEmail = normalizeEmail(email)
+  const sendResult = await emailService.send({
+    to: normalizedEmail,
     subject: "Redefinição de senha — Pulse",
     html: renderEmailTemplate({ name: "password-reset", props: { resetUrl } }),
   })
+
+  if (sendResult.error !== undefined) {
+    logger.error(`falha ao enviar e-mail de redefinição de senha para ${normalizedEmail}: ${sendResult.error}`)
+  }
 }
 
 export async function resetPassword(token: string, newPassword: string): Promise<void> {

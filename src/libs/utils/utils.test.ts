@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest"
-import { generateSlug, isValidSlug } from "@/libs/utils/slug"
+import { generateSlug, isValidSlug, normalizeOrgSlug } from "@/libs/utils/slug"
 import { buildPaginationParams, buildSkipTake, buildPaginatedResult } from "@/libs/utils/pagination"
 import { verifyCronSecret } from "@/libs/utils/cron-auth"
 import { isTokenExpired, isFutureDate, isWithinWorkHours, formatDatePtBR, formatDateTimePtBR, formatRelative } from "@/libs/utils/date"
@@ -81,6 +81,16 @@ describe("isValidSlug", () => {
 
   it("rejects slug with special characters", () => {
     expect(isValidSlug("acme!corp")).toBe(false)
+  })
+})
+
+describe("normalizeOrgSlug", () => {
+  it("rebaixa a caixa e remove espaços nas bordas", () => {
+    expect(normalizeOrgSlug("  Innovatox  ")).toBe("innovatox")
+  })
+
+  it("mantém slug já normalizado", () => {
+    expect(normalizeOrgSlug("acme-corp")).toBe("acme-corp")
   })
 })
 

@@ -6,6 +6,8 @@ import { sendInvite } from "@/modules/auth/invite.service"
 import { createCheckoutSession } from "@/modules/billing/billing.service"
 import { env } from "@/env"
 import { getPlanPriceWithPlan } from "@/modules/plans/plan.service"
+import { AppError } from "@/libs/errors/app-error"
+import { logger } from "@/libs/logger"
 
 interface CheckoutResult {
   error?: string
@@ -35,7 +37,12 @@ export async function selfServiceCheckoutAction(input: {
 
     const org = await createOrg({ name: parsed.data.orgName, slug: parsed.data.slug })
 
-    await sendInvite(org.id, parsed.data.adminEmail, "admin")
+    try {
+      await sendInvite(org.id, parsed.data.adminEmail, "admin")
+    } catch (inviteErr) {
+      if (!(inviteErr instanceof AppError) || inviteErr.code !== "EMAIL_SEND_FAILED") throw inviteErr
+      logger.error(`organização ${org.id} criada, mas o convite para ${parsed.data.adminEmail} não foi enviado: ${inviteErr.message}`)
+    }
 
     const successUrl = `${env.NEXT_PUBLIC_APP_URL}/checkout/success`
     const cancelUrl = `${env.NEXT_PUBLIC_APP_URL}/checkout?priceId=${parsed.data.priceId}`

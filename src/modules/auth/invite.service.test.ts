@@ -48,13 +48,14 @@ const mockGetEmailService = vi.mocked(getEmailService)
 
 const TENANT_ID = "tenant-1"
 const ACTOR_ID = "user-actor"
-const MOCK_EMAIL_SEND = vi.fn().mockResolvedValue(undefined)
+const NOVO_EMAIL = "novo@acme.com"
+const MOCK_EMAIL_SEND = vi.fn().mockResolvedValue({ id: "email-1" })
 
 const ORG = { id: TENANT_ID, name: "Acme Corp" }
 const INVITE = {
   id: "invite-1",
   tenantId: TENANT_ID,
-  email: "novo@acme.com",
+  email: NOVO_EMAIL,
   role: "rh",
   token: "token-abc",
   usedAt: null,
@@ -79,10 +80,10 @@ beforeEach(() => {
 
 describe("sendInvite", () => {
   it("envia convite e cria audit log quando e-mail não está cadastrado", async () => {
-    await sendInvite(TENANT_ID, "novo@acme.com", "rh", ACTOR_ID)
+    await sendInvite(TENANT_ID, NOVO_EMAIL, "rh", ACTOR_ID)
 
     expect(mockCreateOrgInvitation).toHaveBeenCalledWith(
-      expect.objectContaining({ tenantId: TENANT_ID, email: "novo@acme.com", role: "rh" }),
+      expect.objectContaining({ tenantId: TENANT_ID, email: NOVO_EMAIL, role: "rh" }),
     )
     expect(MOCK_EMAIL_SEND).toHaveBeenCalledOnce()
     expect(mockCreateAuditLog).toHaveBeenCalledWith(
@@ -97,6 +98,24 @@ describe("sendInvite", () => {
       code: "USER_ALREADY_EXISTS",
     })
     expect(MOCK_EMAIL_SEND).not.toHaveBeenCalled()
+  })
+
+  it("normaliza o e-mail do convite antes de persistir e enviar", async () => {
+    await sendInvite(TENANT_ID, "  Novo@Acme.COM ", "rh")
+
+    expect(mockFindOrgUserByEmailInTenant).toHaveBeenCalledWith(TENANT_ID, NOVO_EMAIL)
+    expect(mockCreateOrgInvitation).toHaveBeenCalledWith(
+      expect.objectContaining({ email: NOVO_EMAIL }),
+    )
+    expect(MOCK_EMAIL_SEND).toHaveBeenCalledWith(expect.objectContaining({ to: NOVO_EMAIL }))
+  })
+
+  it("lança EMAIL_SEND_FAILED quando o envio retorna erro", async () => {
+    MOCK_EMAIL_SEND.mockResolvedValueOnce({ id: "", error: "domínio não verificado" })
+
+    await expect(sendInvite(TENANT_ID, NOVO_EMAIL, "rh")).rejects.toMatchObject({
+      code: "EMAIL_SEND_FAILED",
+    })
   })
 })
 
@@ -139,6 +158,12 @@ describe("acceptInvite", () => {
       code: "INVITE_EXPIRED",
     })
   })
+
+  it("não falha o aceite quando o e-mail de boas-vindas retorna erro", async () => {
+    MOCK_EMAIL_SEND.mockResolvedValueOnce({ id: "", error: "falha temporária" })
+
+    await expect(acceptInvite("token-abc", "senha123", "Nome")).resolves.toBeUndefined()
+  })
 })
 
 describe("resendOrgInvite", () => {
@@ -170,6 +195,14 @@ describe("resendOrgInvite", () => {
 
     await expect(resendOrgInvite(TENANT_ID, "invite-1")).rejects.toMatchObject({
       code: "USER_ALREADY_EXISTS",
+    })
+  })
+
+  it("lança EMAIL_SEND_FAILED quando o reenvio retorna erro", async () => {
+    MOCK_EMAIL_SEND.mockResolvedValueOnce({ id: "", error: "falha temporária" })
+
+    await expect(resendOrgInvite(TENANT_ID, "invite-1")).rejects.toMatchObject({
+      code: "EMAIL_SEND_FAILED",
     })
   })
 })

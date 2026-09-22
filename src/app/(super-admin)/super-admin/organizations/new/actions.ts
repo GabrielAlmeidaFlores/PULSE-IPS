@@ -9,6 +9,7 @@ import { sendInvite } from "@/modules/auth/invite.service"
 import { createOrgByAdminSchema } from "@/modules/organizations/organization.schema"
 import type { ActionResult } from "@/libs/utils/action-result"
 import { AppError } from "@/libs/errors/app-error"
+import { logger } from "@/libs/logger"
 
 export async function createOrgByAdminAction(input: unknown): Promise<ActionResult> {
   const session = await getSuperAdminSession()
@@ -25,7 +26,13 @@ export async function createOrgByAdminAction(input: unknown): Promise<ActionResu
       ...(parsed.data.timezone !== undefined ? { timezone: parsed.data.timezone } : {}),
     })
 
-    await sendInvite(org.id, parsed.data.adminEmail, "admin")
+    try {
+      await sendInvite(org.id, parsed.data.adminEmail, "admin")
+    } catch (inviteErr) {
+      if (!(inviteErr instanceof AppError) || inviteErr.code !== "EMAIL_SEND_FAILED") throw inviteErr
+      logger.error(`organização ${org.id} criada, mas o convite para ${parsed.data.adminEmail} não foi enviado: ${inviteErr.message}`)
+    }
+
     revalidatePath("/super-admin/organizations")
     redirect(`/super-admin/organizations/${org.id}`)
   } catch (err) {

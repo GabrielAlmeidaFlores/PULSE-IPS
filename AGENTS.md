@@ -471,6 +471,7 @@ src/
 │   │   ├── data-ingestion.repository.ts      # Lotes de importação + linhas mensais (1 colaborador × 1 competência)
 │   │   ├── data-ingestion.service.ts         # Pipeline de 2 passadas de IA (extração + validação) com tool handler
 │   │   ├── data-ingestion.schema.ts          # Zod schemas das tools e tipos inferidos
+│   │   ├── data-ingestion.constants.ts       # MAX_DATA_INGESTION_FILE_BYTES (limite de upload cliente + servidor)
 │   │   └── data-ingestion.types.ts
 │   ├── workforce/
 │   │   ├── workforce.repository.ts           # Leitura dos registros mensais para os indicadores
@@ -567,6 +568,7 @@ src/
 │       ├── anonymity.ts                   # MINIMUM_RESPONDENTS_FOR_DISPLAY (health, env HEALTH_SURVEY_MINIMUM_RESPONDENTS_FOR_DISPLAY, padrão 5) + clima por percentual: CLIMATE_SURVEY_MIN_RESPONDENTS_FLOOR=3, climateSurveyRequiredRespondents(), canRevealClimateSurveyGroupResults()
 │       ├── client-ip.ts                   # extractClientIp(headers) — cf-connecting-ip → x-real-ip → x-forwarded-for
 │       ├── cn.ts                          # cn(...inputs) = twMerge(clsx(inputs))
+│       ├── email.ts                       # normalizeEmail(value) — trim + lowercase (identificador case-insensitive)
 │       ├── json.ts                        # JsonValue — tipo JSON próprio da aplicação (não usa Prisma)
 │       ├── phone.ts                       # normalizePhoneToE164(raw) — normaliza número brasileiro para E.164
 │       ├── sanitize.ts                    # sanitizeRichHtml (editor) + sanitizeLegalDocument (docs oficiais)
@@ -1892,6 +1894,35 @@ async findByDepartment(tenantId: string, departmentId: string): Promise<Employee
 async create(tenantId: string, data: CreateEmployeeInput): Promise<Employee>
 ```
 
+### Normalização de e-mail e slug — obrigatória
+
+**E-mail e slug de organização são identificadores case-insensitive.** Nunca compare nem persista esses valores sem normalizar. O mesmo e-mail pode existir em organizações diferentes — a unicidade é `(tenant_id, email)`.
+
+- **E-mail:** `normalizeEmail(value)` de `@/libs/utils/email` — `trim()` + `toLowerCase()`.
+- **Slug:** `normalizeOrgSlug(value)` de `@/libs/utils/slug` — `trim()` + `toLowerCase()`.
+
+**Onde normalizar (todas as camadas):**
+
+| Ponto | Regra |
+|---|---|
+| Lookups de autenticação (`findOrgBySlug`, `findOrgUserByEmail`, `findSuperAdminByEmail`) | Normalizar o valor **e** buscar com `mode: "insensitive"` — garante que dados legados com maiúsculas continuem acessíveis |
+| Writes (`createOrgInvitation`, `acceptInviteTransaction`) | Normalizar antes do `create` — a base passa a ter apenas e-mails em minúsculas |
+| Services (`login`, `requestPasswordReset`, `superAdminLogin`, `sendInvite`, `resendOrgInvite`) | Normalizar o input antes de usar em `to:` de e-mail e em qualquer persistência |
+
+```typescript
+// ✅ Correto — lookup tolerante a legado
+export function findOrgUserByEmail(tenantId: string, email: string): Promise<OrganizationUser | null> {
+  return prisma.organizationUser.findFirst({
+    where: { tenantId, email: { equals: normalizeEmail(email), mode: "insensitive" } },
+  })
+}
+
+// ❌ Proibido — findUnique com valor cru (case-sensitive)
+prisma.organizationUser.findUnique({ where: { tenantId_email: { tenantId, email } } })
+```
+
+**Backfill de dados legados:** `yarn backfill:normalize-emails` rebaixa e-mails existentes em `organization_users` e `organization_invitations`. É um script one-off em `src/cli/backfill/` (não é migration — §19 proíbe SQL manual em migrations).
+
 ### Proibição de comentários
 
 **Comentários em código são proibidos** — incluindo `//`, `/* */` e JSDoc (`/** */`). O código deve ser autoexplicativo.
@@ -2730,6 +2761,8 @@ export interface IEmailService {
 **Implementação atual:** `EMAIL_PROVIDER=resend` → `ResendAdapter`  
 **Desenvolvimento:** `EMAIL_PROVIDER=console` → `ConsoleEmailAdapter` (imprime HTML completo no terminal)  
 **Variáveis necessárias:** `RESEND_API_KEY`, `EMAIL_FROM`
+
+> **Regra — o adapter não lança em falha de envio:** `IEmailService.send` retorna `SendEmailResult` (`{ id, error? }`). O código chamador **deve** checar `result.error` e decidir: em fluxos transacionais que dependem do envio (convite de usuário), lançar `AppError("EMAIL_SEND_FAILED", ...)` em pt-BR + `logger.error`; em fluxos que não podem vazar existência do e-mail (reset de senha), apenas `logger.error` e seguir. Nunca ignorar o retorno silenciosamente.
 
 #### Templates de e-mail e gatilhos
 
@@ -4206,7 +4239,18 @@ Upload unificado de arquivos operacionais (AFD/ponto, espelho, planilha) → lot
 
 **Orquestração e acionamento:** `runDataIngestionWithAI(tenantId, input)` cria o lote e executa as duas passadas. O endpoint interno `POST /api/internal/data-ingestion` (protegido por `x-cron-secret`) recebe `{ tenantId, competencia, fileName, fileType, sourceText }` e retorna `{ batch, extraction, validation, rows }` — útil para testes e operação.
 
-**Upload e job assíncrono:** a UI em `/workforce/import` envia o arquivo (`.txt`/`.csv`, máx. 20 MB) via Server Action, que faz upload no storage (`IStorageService.upload`) e chama `enqueueDataIngestionBatch` (cria o lote com status `received` e enfileira o job `data-ingestion-processor`). O worker baixa o arquivo (`IStorageService.download`) e roda extração + validação. O job também roda a cada 2 min como rede de segurança para lotes pendentes.
+**Upload e job assíncrono:** a UI em `/workforce/import` envia o arquivo (`.txt`/`.csv`, máx. 100 MB) via Server Action, que faz upload no storage (`IStorageService.upload`) e chama `enqueueDataIngestionBatch` (cria o lote com status `received` e enfileira o job `data-ingestion-processor`). O worker baixa o arquivo (`IStorageService.download`) e roda extração + validação. O job também roda a cada 2 min como rede de segurança para lotes pendentes. O formulário bloqueia arquivos acima de 100 MB no cliente (`MAX_DATA_INGESTION_FILE_BYTES`) antes de submeter.
+
+**Limite de tamanho de upload — cadeia completa (todas as camadas precisam permitir):**
+
+| Camada | Limite | Onde |
+|---|---|---|
+| Cliente + Server Action | 100 MB (`MAX_DATA_INGESTION_FILE_BYTES`) | `data-ingestion.constants.ts`, usado em `data-ingestion-upload-form.tsx` e `import/actions.ts` |
+| Next.js Server Actions / proxy | `2gb` | `next.config.ts` → `experimental.serverActions.bodySizeLimit` + `experimental.proxyClientMaxBodySize` |
+| nginx (host) | `client_max_body_size 110M` (folga para o overhead do multipart) + `proxy_send_timeout/proxy_read_timeout 300s` | `/etc/nginx/sites-enabled/default` (infra, fora do repo) |
+| Cloudflare | ~100 MB (plano Free/Pro) | infra |
+
+> Se um upload falhar sem criar lote e **sem** registro em `request_logs`, o bloqueio aconteceu **antes** do app (nginx/Cloudflare) — subir o limite nessas camadas, não no código.
 
 **Download do arquivo enviado:** a listagem `/workforce/import` exibe um ícone de download por lote (quando `file_url` não é nulo) que aponta para `GET /api/data-ingestion/batches/[id]/download` — rota autenticada e tenant-guarded que baixa o arquivo original via `getDataIngestionBatchFile` (`IStorageService.download`). Lotes criados a partir de texto inline (sem arquivo) não têm download.
 

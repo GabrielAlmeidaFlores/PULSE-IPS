@@ -74,7 +74,10 @@ export async function inviteUserAction(input: {
     revalidatePath("/settings")
     return {}
   } catch (err) {
-    if (err instanceof AppError) return { error: err.message }
+    if (err instanceof AppError) {
+      if (err.code === "EMAIL_SEND_FAILED") revalidatePath("/settings")
+      return { error: err.message }
+    }
     throw err
   }
 }
@@ -90,7 +93,10 @@ export async function resendOrgInviteAction(inviteId: string): Promise<ActionRes
     revalidatePath("/settings")
     return {}
   } catch (err) {
-    if (err instanceof AppError) return { error: err.message }
+    if (err instanceof AppError) {
+      if (err.code === "EMAIL_SEND_FAILED") revalidatePath("/settings")
+      return { error: err.message }
+    }
     throw err
   }
 }

@@ -1,14 +1,18 @@
 import { prisma } from "@/libs/db"
 import type { Organization, OrganizationUser, AuthToken, SuperAdmin, OrganizationInvitation } from "@prisma/client"
+import { normalizeEmail } from "@/libs/utils/email"
+import { normalizeOrgSlug } from "@/libs/utils/slug"
 import type { CreateOrgInvitationInput, AcceptInviteInput, SafeOrgUser, SafeSuperAdmin, PendingOrgInvite } from "@/modules/auth/auth.types"
 
 export function findOrgBySlug(slug: string): Promise<Organization | null> {
-  return prisma.organization.findUnique({ where: { slug, isActive: true } })
+  return prisma.organization.findFirst({
+    where: { slug: { equals: normalizeOrgSlug(slug), mode: "insensitive" }, isActive: true },
+  })
 }
 
 export function findOrgUserByEmail(tenantId: string, email: string): Promise<OrganizationUser | null> {
-  return prisma.organizationUser.findUnique({
-    where: { tenantId_email: { tenantId, email } },
+  return prisma.organizationUser.findFirst({
+    where: { tenantId, email: { equals: normalizeEmail(email), mode: "insensitive" } },
   })
 }
 
@@ -25,7 +29,9 @@ export async function updateOrgUserPassword(userId: string, tenantId: string, pa
 }
 
 export function findSuperAdminByEmail(email: string): Promise<SuperAdmin | null> {
-  return prisma.superAdmin.findUnique({ where: { email } })
+  return prisma.superAdmin.findFirst({
+    where: { email: { equals: normalizeEmail(email), mode: "insensitive" } },
+  })
 }
 
 export async function invalidatePreviousResetTokens(userId: string): Promise<void> {
@@ -60,7 +66,7 @@ export function findOrgInviteByToken(token: string): Promise<(OrganizationInvita
 }
 
 export async function createOrgInvitation(data: CreateOrgInvitationInput): Promise<void> {
-  await prisma.organizationInvitation.create({ data })
+  await prisma.organizationInvitation.create({ data: { ...data, email: normalizeEmail(data.email) } })
 }
 
 export function findOrgByIdOrThrow(tenantId: string): Promise<Organization> {
@@ -76,7 +82,7 @@ export async function acceptInviteTransaction(data: AcceptInviteInput): Promise<
     prisma.organizationUser.create({
       data: {
         tenantId: data.tenantId,
-        email: data.email,
+        email: normalizeEmail(data.email),
         passwordHash: data.passwordHash,
         name: data.name,
         role: data.role,

@@ -25,6 +25,7 @@ export default defineConfig({
       provider: "v8",
       include: [
         "src/libs/utils/slug.ts",
+        "src/libs/utils/email.ts",
         "src/libs/utils/pagination.ts",
         "src/libs/utils/cron-auth.ts",
         "src/libs/utils/date.ts",
