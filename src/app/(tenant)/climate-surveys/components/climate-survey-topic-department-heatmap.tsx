@@ -92,7 +92,7 @@ export function ClimateSurveyTopicDepartmentHeatmap({ heatmap, goalPercent }: Pr
       </div>
       {imageError && <p className="text-[10px] text-status-danger text-right mb-2">Não foi possível gerar a imagem.</p>}
       <div className="overflow-x-auto">
-        <div ref={tableRef} className="bg-card w-max">
+        <div ref={tableRef} className="bg-card w-max min-w-full">
           <table className="w-full min-w-[720px] border-collapse text-xs">
             <thead>
               <tr className="border-b border-border">
