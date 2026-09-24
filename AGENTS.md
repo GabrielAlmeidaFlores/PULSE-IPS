@@ -6007,6 +6007,8 @@ A diretiva CSP `style-src 'unsafe-inline'` está presente intencionalmente e **n
 
 **Para remover `unsafe-inline` no futuro:** converter todos os `style={{}}` para Tailwind classes ou CSS modules. Estimativa: 360+ componentes.
 
+> **Regra inviolável:** a diretiva `style-src` **nunca** pode conter um `nonce`. Pela spec da CSP, a presença de `nonce-...` ou hash em uma diretiva faz o navegador **ignorar** o `'unsafe-inline'` daquela diretiva. Com `nonce` em `style-src`, todo estilo inline sem nonce é bloqueado, incluindo os `<style>` injetados por bibliotecas (ex.: sonner, que renderiza o toast sem estilo no fim do DOM) e os atributos `style="..."` do React. O nonce permanece apenas em `script-src`.
+
 ### 38.2 `script-src 'unsafe-eval'` — apenas em development
 
 Em `NODE_ENV=development`, o CSP inclui `'unsafe-eval'` em `script-src` e amplia `connect-src` com `ws:` / `wss:` / `http://localhost:*`. O React (Flight / Turbopack) usa `eval()` no modo de desenvolvimento para reconstruir call stacks e hot reload; sem isso a app quebra no browser.

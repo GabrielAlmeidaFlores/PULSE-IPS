@@ -77,7 +77,7 @@ function buildCspDirectives(nonce: string): string {
   return [
     "default-src 'self'",
     scriptSrc,
-    `style-src 'self' 'unsafe-inline' 'nonce-${nonce}'`,
+    "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
     connectSrc,
