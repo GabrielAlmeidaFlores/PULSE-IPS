@@ -50,6 +50,7 @@ export const TYPE_LABELS: Record<string, string> = {
   negative_trend: "Tendência de piora persistente",
   low_adherence: "Adesão baixa",
   no_response: "Sem resposta",
+  crisis_report: "Relato de crise",
 }
 
 export const TYPE_STYLE: Record<string, string> = {

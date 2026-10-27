@@ -221,8 +221,11 @@ function SidebarContent({
   onNavigate?: (() => void) | undefined
 }): React.ReactElement {
   const pathname = usePathname()
-  const activeModule = resolveModule(pathname)
+  const resolvedModule = resolveModule(pathname)
   const visibleModules = MODULES.filter((module) => module.feature === undefined || features.includes(module.feature))
+  const activeModule = visibleModules.some((module) => module.key === resolvedModule)
+    ? resolvedModule
+    : (visibleModules[0]?.key ?? "people")
   const generalNav = getGeneralNav(features, role)
 
   return (

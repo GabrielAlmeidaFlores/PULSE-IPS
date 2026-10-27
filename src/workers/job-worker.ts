@@ -1,3 +1,4 @@
+import "dotenv/config"
 import { createJobWorker, createMessageWorker, createEmailWorker, QUEUE_NAME, MESSAGE_QUEUE_NAME, EMAIL_QUEUE_NAME, type JobName, type ProcessSendMessageJobContext, type ProcessSendEmailJobContext } from "@/libs/queue"
 import { prisma } from "@/libs/db"
 import { runHealthSurveyDispatcher, checkHealthSurveyDispatchAdherence, runHealthSurveyAutoDispatchScheduler } from "@/modules/health-surveys/health-survey-dispatch.service"

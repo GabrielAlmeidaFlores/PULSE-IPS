@@ -201,6 +201,42 @@ O seed é **idempotente via upsert**: se os dados já existirem, o conteúdo é 
 
 > Troque a senha do super admin imediatamente após o primeiro login em produção.
 
+### Ambiente de demonstração (dados simulados)
+
+O comando `yarn seed:demo` monta uma base completa simulando produção, com 26 meses de histórico:
+7 organizações, 248 colaboradores (147 na organização principal), ~13 mil respostas de saúde,
+6 ondas de clima, alertas, planos de ação, PGR, workforce, documentos com arquivo real,
+relatos anônimos, mensagens, jobs e logs de requests.
+
+```bash
+docker compose up -d db redis
+yarn seed          # dados obrigatórios (super admin, planos, termos)
+yarn seed:demo     # dados de demonstração
+yarn dev           # painel em http://localhost:3000
+yarn worker:dev    # worker BullMQ (opcional)
+```
+
+| Acesso | Credenciais |
+|---|---|
+| Organização principal | slug `meridiano` · `admin@meridiano.com.br` / `Testando123!` |
+| RH da organização | `rh@meridiano.com.br` / `Testando123!` |
+| Super Admin | `/super-admin/login` · `admin@admin.com` / `Testando123!` |
+| Aurora Labs (trial) | slug `aurora-labs` · `admin@auroralabs.com.br` / `Testando123!` |
+| Vertex Indústria (past_due) | slug `vertex` · `admin@vertex.ind.br` / `Testando123!` |
+| Nexo Saúde (pending) | slug `nexo-saude` · `admin@nexosaude.com.br` / `Testando123!` |
+| Lumen Tech (suspended) | slug `lumen-tech` · `admin@lumentech.com.br` / `Testando123!` |
+| Horizonte Varejo (cancelled) | slug `horizonte-varejo` · `admin@horizontevarejo.com.br` / `Testando123!` |
+| Atlas Serviços (active) | slug `atlas-servicos` · `admin@atlasservicos.com.br` / `Testando123!` |
+
+> ⚠️ `yarn seed:demo` **apaga todas as organizações** e seus dados de tenant antes de recriar a demo.
+> Planos, super admin e documentos legais são preservados. Não execute em produção.
+
+Para gravar uma demo com melhor performance, use o build de produção:
+
+```bash
+yarn build && yarn start
+```
+
 ---
 
 ## Workers e filas

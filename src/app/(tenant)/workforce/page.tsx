@@ -30,6 +30,8 @@ export default async function WorkforcePage({ searchParams }: Props): Promise<Re
   const params = await searchParams
   const competencia = params["competencia"]
   const dashboard = await getWorkforceDashboard(session.tenantId, competencia)
+  const filterValues: Record<string, string> = {}
+  if (dashboard.selectedCompetencia !== null) filterValues["competencia"] = dashboard.selectedCompetencia
 
   return (
     <div className="flex flex-col h-full">
@@ -83,9 +85,7 @@ export default async function WorkforcePage({ searchParams }: Props): Promise<Re
                   })),
                 },
               ]}
-              values={{
-                ...(params["competencia"] !== undefined ? { competencia: params["competencia"] } : {}),
-              }}
+              values={filterValues}
             />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">

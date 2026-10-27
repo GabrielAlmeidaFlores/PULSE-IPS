@@ -108,9 +108,9 @@ export default async function ClimateSurveyDashboardPage({ searchParams }: Props
   const favorabilityDelta = computeDelta(currentEvolution?.favorabilityPercent, previousEvolution?.favorabilityPercent)
   const enpsDelta = computeDelta(currentEvolution?.enps, previousEvolution?.enps)
   const adherenceDelta = computeDelta(currentEvolution?.adherencePercent, previousEvolution?.adherencePercent)
-  const topicsTotal = dashboard.radar.length
-  const topicsBelowGoal = dashboard.radar.filter(
-    (topic) => topic.scorePercent !== null && topic.scorePercent < dashboard.corporateGoalPercent,
+  const topicsTotal = dashboard.topicFavorability.length
+  const topicsBelowGoal = dashboard.topicFavorability.filter(
+    (topic) => topic.favorabilityPercent !== null && topic.favorabilityPercent < dashboard.corporateGoalPercent,
   ).length
 
   return (

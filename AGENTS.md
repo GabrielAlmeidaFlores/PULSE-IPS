@@ -4460,7 +4460,8 @@ npx prisma studio           # abre UI de inspeção do banco
 npx prisma migrate deploy   # aplica migrations pendentes (produção)
 
 # Seed
-npx ts-node src/cli/seed/index.ts   # popula banco com super admin + termos v1.0.0
+yarn seed                    # popula banco com super admin + planos + termos v1.0.0
+yarn seed:demo               # base completa de demonstração (⚠️ apaga organizações e dados de tenant)
 
 # TypeScript
 npx tsc --noEmit            # verifica tipagem sem compilar (deve retornar 0 erros)

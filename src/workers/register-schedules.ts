@@ -1,3 +1,4 @@
+import "dotenv/config"
 import { createJobQueue, type JobName } from "@/libs/queue"
 import { createLogger } from "@/libs/utils/logger"
 
